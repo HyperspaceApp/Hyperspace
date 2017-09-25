@@ -148,7 +148,7 @@ func (t Transaction) ID() TransactionID {
 	// Get the transaction id by hashing all data minus the signatures.
 	var txid TransactionID
 	h := crypto.NewHash()
-	t.marshalSiaNoSignatures(h)
+	t.MarshalSiaNoSignatures(h)
 	h.Sum(txid[:0])
 
 	// Sanity check in debug builds to make sure that the ids are going to be
@@ -183,7 +183,7 @@ func (t Transaction) SiacoinOutputID(i uint64) SiacoinOutputID {
 	var id SiacoinOutputID
 	h := crypto.NewHash()
 	h.Write(SpecifierSiacoinOutput[:])
-	t.marshalSiaNoSignatures(h) // Encode non-signature fields into hash.
+	t.MarshalSiaNoSignatures(h) // Encode non-signature fields into hash.
 	encoding.WriteUint64(h, i)  // Writes index of this output.
 	h.Sum(id[:0])
 
@@ -219,7 +219,7 @@ func (t Transaction) FileContractID(i uint64) FileContractID {
 	var id FileContractID
 	h := crypto.NewHash()
 	h.Write(SpecifierFileContract[:])
-	t.marshalSiaNoSignatures(h) // Encode non-signature fields into hash.
+	t.MarshalSiaNoSignatures(h) // Encode non-signature fields into hash.
 	encoding.WriteUint64(h, i)  // Writes index of this output.
 	h.Sum(id[:0])
 
@@ -255,7 +255,7 @@ func (t Transaction) SiafundOutputID(i uint64) SiafundOutputID {
 	var id SiafundOutputID
 	h := crypto.NewHash()
 	h.Write(SpecifierSiafundOutput[:])
-	t.marshalSiaNoSignatures(h) // Encode non-signature fields into hash.
+	t.MarshalSiaNoSignatures(h) // Encode non-signature fields into hash.
 	encoding.WriteUint64(h, i)  // Writes index of this output.
 	h.Sum(id[:0])
 

@@ -162,6 +162,7 @@ type API struct {
 	renter   modules.Renter
 	tpool    modules.TransactionPool
 	wallet   modules.Wallet
+	pool     modules.Pool
 
 	router http.Handler
 }
@@ -174,7 +175,7 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // New creates a new Sia API from the provided modules.  The API will require
 // authentication using HTTP basic auth for certain endpoints of the supplied
 // password is not the empty string.  Usernames are ignored for authentication.
-func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet) *API {
+func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool) *API {
 	api := &API{
 		cs:       cs,
 		explorer: e,
@@ -184,6 +185,7 @@ func New(requiredUserAgent string, requiredPassword string, cs modules.Consensus
 		renter:   r,
 		tpool:    tp,
 		wallet:   w,
+		pool:     p,
 	}
 
 	// Register API handlers
@@ -234,6 +236,17 @@ func New(requiredUserAgent string, requiredPassword string, cs modules.Consensus
 		router.POST("/miner/header", RequirePassword(api.minerHeaderHandlerPOST, requiredPassword))
 		router.GET("/miner/start", RequirePassword(api.minerStartHandler, requiredPassword))
 		router.GET("/miner/stop", RequirePassword(api.minerStopHandler, requiredPassword))
+	}
+
+	// Mining pool API Calls
+	if api.pool != nil {
+		router.GET("/pool", api.poolHandler)
+		router.GET("/pool/clients", api.poolGetClientsInfo)
+		router.GET("/pool/client", api.poolGetClientInfo)
+		router.POST("/pool/config", RequirePassword(api.poolConfigHandlerPOST, requiredPassword)) // Change the settings of the host.
+		router.GET("/pool/config", RequirePassword(api.poolConfigHandler, requiredPassword))
+		router.GET("/pool/start", RequirePassword(api.poolStartHandler, requiredPassword))
+		router.GET("/pool/stop", RequirePassword(api.poolStopHandler, requiredPassword))
 	}
 
 	// Renter API Calls
