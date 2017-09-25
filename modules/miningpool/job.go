@@ -2,7 +2,6 @@ package pool
 
 import (
 	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
 )
 
 //
@@ -10,9 +9,9 @@ import (
 // identified by a Job ID and this is used to keep track of what work has been assigned to each client
 //
 type Job struct {
-	JobID      uint64
-	Block      types.Block
-	MerkleRoot crypto.Hash
+	JobID           uint64
+	MarshalledBlock []byte
+	MerkleRoot      crypto.Hash
 }
 
 func newJob(p *Pool) (*Job, error) {

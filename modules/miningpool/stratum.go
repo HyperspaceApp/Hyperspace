@@ -308,7 +308,8 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	var b types.Block
 	for _, j := range h.s.CurrentJobs {
 		if jobID == j.JobID {
-			b = j.Block // copy so the j.Block is not disturbed
+			// copy so the j.Block is not disturbed
+			encoding.Unmarshal(j.MarshalledBlock, &b)
 		}
 	}
 	if len(b.MinerPayouts) == 0 {
@@ -397,17 +398,18 @@ func (h *Handler) sendStratumNotify(cleanJobs bool) {
 	job, _ := newJob(h.p)
 	h.s.addJob(job)
 	jobid := job.printID()
-	job.Block = h.p.persist.GetCopyUnsolvedBlock() // make a copy of the block and hold it until the solution is submitted
-	job.MerkleRoot = job.Block.MerkleRoot()
+	b := h.p.persist.GetCopyUnsolvedBlock()
+	job.MarshalledBlock = encoding.Marshal(b) // make a copy of the block and hold it until the solution is submitted
+	job.MerkleRoot = b.MerkleRoot()
 	mbranch := crypto.NewTree()
 	var buf bytes.Buffer
-	for _, payout := range job.Block.MinerPayouts {
+	for _, payout := range b.MinerPayouts {
 		payout.MarshalSia(&buf)
 		mbranch.Push(buf.Bytes())
 		buf.Reset()
 	}
 
-	for _, txn := range job.Block.Transactions {
+	for _, txn := range b.Transactions {
 		txn.MarshalSia(&buf)
 		mbranch.Push(buf.Bytes())
 		buf.Reset()
@@ -441,14 +443,14 @@ func (h *Handler) sendStratumNotify(cleanJobs bool) {
 	mbj, _ := json.Marshal(merkle)
 	//	h.log.Debugf("merkleBranch: %s\n", mbj)
 
-	bpm, _ := job.Block.ParentID.MarshalJSON()
+	bpm, _ := b.ParentID.MarshalJSON()
 
 	version := ""
 	nbits := fmt.Sprintf("%08x", BigToCompact(h.p.persist.Target.Int()))
 	//	nbits := "1a08645a"
 
 	buf.Reset()
-	encoding.WriteUint64(&buf, uint64(job.Block.Timestamp))
+	encoding.WriteUint64(&buf, uint64(b.Timestamp))
 	ntime := hex.EncodeToString(buf.Bytes())
 
 	raw := fmt.Sprintf(`[ "%s", %s, "%s", "%s", %s, "%s", "%s", "%s", %t ]`,
