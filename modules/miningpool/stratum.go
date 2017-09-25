@@ -398,8 +398,9 @@ func (h *Handler) sendStratumNotify(cleanJobs bool) {
 	job, _ := newJob(h.p)
 	h.s.addJob(job)
 	jobid := job.printID()
-	b := h.p.persist.GetCopyUnsolvedBlock()
-	job.MarshalledBlock = encoding.Marshal(b) // make a copy of the block and hold it until the solution is submitted
+	var b types.Block
+	job.MarshalledBlock = encoding.Marshal(h.p.persist.GetUnsolvedBlockPtr()) // make a copy of the block and hold it until the solution is submitted
+	encoding.Unmarshal(job.MarshalledBlock, &b)
 	job.MerkleRoot = b.MerkleRoot()
 	mbranch := crypto.NewTree()
 	var buf bytes.Buffer
