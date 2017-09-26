@@ -28,7 +28,7 @@ func (p *Pool) newSourceBlock() {
 
 	// Update the source block.
 	block := p.persist.GetUnsolvedBlockPtr()
-
+	p.persist.mu.Lock()
 	// Update the timestamp.
 	if block.Timestamp < types.CurrentTimestamp() {
 		block.Timestamp = types.CurrentTimestamp()
@@ -36,8 +36,9 @@ func (p *Pool) newSourceBlock() {
 
 	block.MinerPayouts = []types.SiacoinOutput{{
 		Value:      block.CalculateSubsidy(p.persist.BlockHeight + 1),
-		UnlockHash: p.persist.GetSettings().PoolOperatorWallet,
+		UnlockHash: p.persist.Settings.PoolOperatorWallet,
 	}}
+	p.persist.mu.Unlock()
 	p.saveSync()
 	p.sourceBlock = block
 	p.sourceBlockTime = time.Now()

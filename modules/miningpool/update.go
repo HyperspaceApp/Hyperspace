@@ -143,6 +143,8 @@ func (p *Pool) adjustUnsolvedBlock() {
 	for _, elem := range p.blockMapHeap.selectID {
 		numTxns += len(elem.set.transactions)
 	}
+	p.persist.mu.Lock()
+	defer p.persist.mu.Unlock()
 	// If the transactions that need to be added don't fit in the block,
 	// increase the size of the block by a constant factor to be more efficient.
 	if numTxns > cap(p.persist.UnsolvedBlock.Transactions) {
