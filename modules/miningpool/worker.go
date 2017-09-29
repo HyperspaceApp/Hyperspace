@@ -56,7 +56,7 @@ func newWorker(c *Client, name string) (*Worker, error) {
 		invalidSharesThisBlock:   0,
 		staleSharesThisBlock:     0,
 		blocksFound:              0,
-		currentDifficulty:        4.0,
+		currentDifficulty:        1.0,
 		lastVardiffRetarget:      time.Now(),
 		lastVardiffTimestamp:     time.Now(),
 	}
