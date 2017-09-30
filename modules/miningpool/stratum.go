@@ -232,9 +232,7 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 			h.s.addClient(c)
 			h.s.addWorker(c.Worker(worker))
 			h.s.CurrentWorker.log.Printf("Clearing share stats\n")
-			h.s.CurrentWorker.ClearInvalidSharesThisSession()
-			h.s.CurrentWorker.ClearStaleSharesThisSession()
-			h.s.CurrentWorker.ClearSharesThisSession()
+			h.sendSetDifficulty(h.s.CurrentWorker.CurrentDifficulty())
 		}
 		// TODO: figure out how to store this worker - probably in Session
 	default:
@@ -302,7 +300,6 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
 	h.s.CurrentWorker.ClearContinuousStaleCount()
 	h.s.CurrentWorker.IncrementSharesThisBlock()
-	h.s.CurrentWorker.IncrementSharesThisSession()
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
 	var b types.Block
@@ -315,9 +312,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	if len(b.MinerPayouts) == 0 {
 		r.Error = json.RawMessage(`["21","Stale - old/unknown job"]`)
 		h.s.CurrentWorker.log.Printf("Stale Share rejected - old/unknown job\n")
-		h.s.CurrentWorker.IncrementStaleSharesThisSession()
 		h.s.CurrentWorker.IncrementStaleSharesThisBlock()
-		h.s.CurrentWorker.IncrementInvalidSharesThisSessin()
 		h.s.CurrentWorker.IncrementInvalidSharesThisBlock()
 		h.sendResponse(r)
 		return
@@ -352,9 +347,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		h.log.Printf("Failed to SubmitBlock(): %v\n", err)
 		r.Result = json.RawMessage(`false`)
 		r.Error = json.RawMessage(`["20","Stale share"]`)
-		h.s.CurrentWorker.IncrementStaleSharesThisSession()
 		h.s.CurrentWorker.IncrementStaleSharesThisBlock()
-		h.s.CurrentWorker.IncrementInvalidSharesThisSessin()
 		h.s.CurrentWorker.IncrementInvalidSharesThisBlock()
 		h.sendResponse(r)
 		// fmt.Printf("%s: %s Handle submit - done - unknown\n", time.Now(), h.s.printID())
@@ -372,6 +365,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 				w.ClearInvalidSharesThisBlock()
 				w.ClearSharesThisBlock()
 				w.ClearStaleSharesThisBlock()
+				w.ClearCumulativeDifficulty()
 			}
 		}
 		h.p.BlocksFound = append(h.p.BlocksFound, ac)
@@ -385,7 +379,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 func (h *Handler) sendSetDifficulty(d float64) {
 	var r StratumRequestMsg
 	r.Method = "mining.set_difficulty"
-	r.ID = 1 // assuming this ID is the response to the original subscribe which appears to be a 1
+	r.ID = 0 // assuming this ID is the response to the original subscribe which appears to be a 1
 	r.Params = json.RawMessage(fmt.Sprintf("[%f]", d))
 	h.sendRequest(r)
 }
@@ -533,9 +527,9 @@ func (d *Dispatcher) ListenHandlers(port string) {
 }
 
 func (d *Dispatcher) NotifyClients() {
-	d.log.Printf("Notifying %d clients\n", len(d.handlers))
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.log.Printf("Notifying %d clients\n", len(d.handlers))
 	for _, h := range d.handlers {
 		h.notify <- true
 	}

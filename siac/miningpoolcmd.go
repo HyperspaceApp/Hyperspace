@@ -162,25 +162,33 @@ func poolclientcmd(name string) {
 		die("Could not get pool client:", err)
 	}
 	fmt.Printf("\nClient Name: % 76.76s\nBlocks Mined: %d\n\n", client.ClientName, client.BlocksMined)
-	fmt.Printf("                    Per Current Block           Per Current Session\n")
-	fmt.Printf("Worker Name         Shares    Stale   Invalid   Shares    Stale   Invalid     Blocks Found   Last Share Time\n")
+	fmt.Printf("                    Per Current Block\n")
+	fmt.Printf("Worker Name         Work Diff  Shares    Cumm Diff      Stale    Invalid   Blocks Found   Last Share Time\n")
+	fmt.Printf("----------------    --------   -------   ---------   --------   --------       --------   ----------------\n")
 	sort.Sort(ByWorkerName(client.Workers))
 	for _, w := range client.Workers {
-		fmt.Printf("% -16s  % 8d % 8d  % 8d % 8d % 8d  % 8d         % 8d   %v\n",
-			w.WorkerName, w.SharesThisBlock, w.StaleSharesThisBlock, w.InvalidSharesThisBlock,
-			w.SharesThisSession, w.StaleSharesThisSession, w.InvalidSharesThisSession, w.BlocksFound,
-			shareTime(w.LastShareTime))
+		var stale, invalid float64
+		if w.SharesThisBlock == 0 {
+			stale = 0.0
+			invalid = 0.0
+		} else {
+			stale = float64(w.StaleSharesThisBlock) / float64(w.SharesThisBlock) * 100.0
+			invalid = float64(w.InvalidSharesThisBlock) / float64(w.SharesThisBlock) * 100.0
+		}
+		fmt.Printf("% -16s   % 8f  % 8d    % 8d  % 8f  % 8f       % 8d  %v\n",
+			w.WorkerName, w.CurrentDifficulty, w.SharesThisBlock, uint64(w.CumulativeDifficulty),
+			stale, invalid, w.BlocksFound, shareTime(w.LastShareTime))
 	}
 
 }
 
 func shareTime(t time.Time) string {
 	if t.IsZero() {
-		return "never"
+		return " never"
 	}
 
 	if time.Now().Sub(t).Seconds() < 1 {
-		return "now"
+		return " now"
 	}
 
 	switch {

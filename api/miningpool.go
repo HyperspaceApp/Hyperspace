@@ -37,15 +37,14 @@ type (
 		Workers     []PoolWorkerInfo `json:"workers"`
 	}
 	PoolWorkerInfo struct {
-		WorkerName               string    `json:"workername"`
-		LastShareTime            time.Time `json:"lastsharetime"`
-		SharesThisSession        uint64    `json:"sharesthissession"`
-		InvalidSharesThisSession uint64    `json:"invalidsharesthissession"`
-		StaleSharesThisSession   uint64    `json:"stalesharesthissession"`
-		SharesThisBlock          uint64    `json:"sharesthisblock"`
-		InvalidSharesThisBlock   uint64    `json:"invalidsharesthisblock"`
-		StaleSharesThisBlock     uint64    `json:"stalesharesthisblock"`
-		BlocksFound              uint64    `json:"blocksfound"`
+		WorkerName             string    `json:"workername"`
+		LastShareTime          time.Time `json:"lastsharetime"`
+		CurrentDifficulty      float64   `json:"currentdifficult"`
+		CumulativeDifficulty   float64   `json:"cumulativedifficulty"`
+		SharesThisBlock        uint64    `json:"sharesthisblock"`
+		InvalidSharesThisBlock uint64    `json:"invalidsharesthisblock"`
+		StaleSharesThisBlock   uint64    `json:"stalesharesthisblock"`
+		BlocksFound            uint64    `json:"blocksfound"`
 	}
 )
 
@@ -179,15 +178,14 @@ func (api *API) poolGetClientInfo(w http.ResponseWriter, req *http.Request, _ ht
 	var pw []PoolWorkerInfo
 	for _, wn := range client.Workers {
 		worker := PoolWorkerInfo{
-			WorkerName:               wn.WorkerName,
-			LastShareTime:            wn.LastShareTime,
-			SharesThisSession:        wn.SharesThisSession,
-			InvalidSharesThisSession: wn.InvalidSharesThisSession,
-			StaleSharesThisSession:   wn.StaleSharesThisSession,
-			SharesThisBlock:          wn.SharesThisBlock,
-			InvalidSharesThisBlock:   wn.InvalidSharesThisBlock,
-			StaleSharesThisBlock:     wn.StaleSharesThisBlock,
-			BlocksFound:              wn.BlocksFound,
+			WorkerName:             wn.WorkerName,
+			LastShareTime:          wn.LastShareTime,
+			CurrentDifficulty:      wn.CurrentDifficulty,
+			CumulativeDifficulty:   wn.CumulativeDifficulty,
+			SharesThisBlock:        wn.SharesThisBlock,
+			InvalidSharesThisBlock: wn.InvalidSharesThisBlock,
+			StaleSharesThisBlock:   wn.StaleSharesThisBlock,
+			BlocksFound:            wn.BlocksFound,
 		}
 		pw = append(pw, worker)
 	}

@@ -462,16 +462,15 @@ func (p *Pool) FindClient(name string) *modules.PoolClients {
 		var pw []modules.PoolWorkers
 		for wn, w := range c.Workers() {
 			worker := modules.PoolWorkers{
-				WorkerName:               wn,
-				LastShareDuration:        w.LastShareDuration(),
-				LastShareTime:            w.LastShareTime(),
-				SharesThisSession:        w.SharesThisSession(),
-				InvalidSharesThisSession: w.InvalidSharesThisSession(),
-				StaleSharesThisSession:   w.StaleSharesThisSession(),
-				SharesThisBlock:          w.SharesThisBlock(),
-				InvalidSharesThisBlock:   w.InvalidSharesThisBlock(),
-				StaleSharesThisBlock:     w.StaleSharesThisBlock(),
-				BlocksFound:              w.BlocksFound(),
+				WorkerName:             wn,
+				LastShareDuration:      w.LastShareDuration(),
+				LastShareTime:          w.LastShareTime(),
+				CurrentDifficulty:      w.CurrentDifficulty(),
+				CumulativeDifficulty:   w.CumulativeDifficulty(),
+				SharesThisBlock:        w.SharesThisBlock(),
+				InvalidSharesThisBlock: w.InvalidSharesThisBlock(),
+				StaleSharesThisBlock:   w.StaleSharesThisBlock(),
+				BlocksFound:            w.BlocksFound(),
 			}
 			cbf += w.BlocksFound()
 			pw = append(pw, worker)
@@ -493,16 +492,15 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		var pw []modules.PoolWorkers
 		for wn, w := range c.Workers() {
 			worker := modules.PoolWorkers{
-				WorkerName:               wn,
-				LastShareDuration:        w.LastShareDuration(),
-				LastShareTime:            w.LastShareTime(),
-				SharesThisSession:        w.SharesThisSession(),
-				InvalidSharesThisSession: w.InvalidSharesThisSession(),
-				StaleSharesThisSession:   w.StaleSharesThisSession(),
-				SharesThisBlock:          w.SharesThisBlock(),
-				InvalidSharesThisBlock:   w.InvalidSharesThisBlock(),
-				StaleSharesThisBlock:     w.StaleSharesThisBlock(),
-				BlocksFound:              w.BlocksFound(),
+				WorkerName:             wn,
+				LastShareDuration:      w.LastShareDuration(),
+				LastShareTime:          w.LastShareTime(),
+				CurrentDifficulty:      w.CurrentDifficulty(),
+				CumulativeDifficulty:   w.CumulativeDifficulty(),
+				SharesThisBlock:        w.SharesThisBlock(),
+				InvalidSharesThisBlock: w.InvalidSharesThisBlock(),
+				StaleSharesThisBlock:   w.StaleSharesThisBlock(),
+				BlocksFound:            w.BlocksFound(),
 			}
 			cbf += w.BlocksFound()
 			pw = append(pw, worker)

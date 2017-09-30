@@ -22,15 +22,13 @@ type Worker struct {
 	name     string
 	parent   *Client
 	// stats
-	sharesThisSession        uint64
-	invalidSharesThisSession uint64
-	staleSharesThisSession   uint64
-	sharesThisBlock          uint64
-	invalidSharesThisBlock   uint64
-	staleSharesThisBlock     uint64
-	continuousStaleCount     uint64
-	blocksFound              uint64
-	lastShareTime            time.Time
+	sharesThisBlock        uint64
+	invalidSharesThisBlock uint64
+	staleSharesThisBlock   uint64
+	cumulativeDifficulty   float64
+	continuousStaleCount   uint64
+	blocksFound            uint64
+	lastShareTime          time.Time
 	// vardiff
 	currentDifficulty    float64
 	vardiff              Vardiff
@@ -46,19 +44,17 @@ func newWorker(c *Client, name string) (*Worker, error) {
 	p := c.Pool()
 	id := p.newStratumID()
 	w := &Worker{
-		workerID:                 id(),
-		name:                     name,
-		parent:                   c,
-		sharesThisSession:        0,
-		invalidSharesThisSession: 0,
-		staleSharesThisSession:   0,
-		sharesThisBlock:          0,
-		invalidSharesThisBlock:   0,
-		staleSharesThisBlock:     0,
-		blocksFound:              0,
-		currentDifficulty:        1.0,
-		lastVardiffRetarget:      time.Now(),
-		lastVardiffTimestamp:     time.Now(),
+		workerID:               id(),
+		name:                   name,
+		parent:                 c,
+		sharesThisBlock:        0,
+		invalidSharesThisBlock: 0,
+		staleSharesThisBlock:   0,
+		cumulativeDifficulty:   0.0,
+		blocksFound:            0,
+		currentDifficulty:      1.0,
+		lastVardiffRetarget:    time.Now(),
+		lastVardiffTimestamp:   time.Now(),
 	}
 
 	w.vardiff = *w.newVardiff()
@@ -111,25 +107,6 @@ func (w *Worker) SetParent(p *Client) {
 	w.parent = p
 }
 
-func (w *Worker) SharesThisSession() uint64 {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	return w.sharesThisSession
-}
-
-func (w *Worker) ClearSharesThisSession() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.sharesThisSession = 0
-}
-
-func (w *Worker) IncrementSharesThisSession() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.sharesThisSession += uint64(w.currentDifficulty)
-}
-
 func (w *Worker) SharesThisBlock() uint64 {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
@@ -146,26 +123,8 @@ func (w *Worker) ClearSharesThisBlock() {
 func (w *Worker) IncrementSharesThisBlock() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.sharesThisBlock += uint64(w.currentDifficulty)
-}
-
-func (w *Worker) InvalidSharesThisSession() uint64 {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	return w.invalidSharesThisSession
-}
-
-func (w *Worker) ClearInvalidSharesThisSession() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.invalidSharesThisSession = 0
-}
-
-func (w *Worker) IncrementInvalidSharesThisSessin() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.invalidSharesThisSession += uint64(w.currentDifficulty)
+	w.sharesThisBlock++
+	w.cumulativeDifficulty += w.currentDifficulty
 }
 
 func (w *Worker) InvalidSharesThisBlock() uint64 {
@@ -184,26 +143,7 @@ func (w *Worker) ClearInvalidSharesThisBlock() {
 func (w *Worker) IncrementInvalidSharesThisBlock() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.invalidSharesThisBlock += uint64(w.currentDifficulty)
-}
-
-func (w *Worker) StaleSharesThisSession() uint64 {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	return w.staleSharesThisSession
-}
-
-func (w *Worker) ClearStaleSharesThisSession() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.staleSharesThisSession = 0
-}
-
-func (w *Worker) IncrementStaleSharesThisSession() {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.staleSharesThisSession += uint64(w.currentDifficulty)
+	w.invalidSharesThisBlock++
 }
 
 func (w *Worker) StaleSharesThisBlock() uint64 {
@@ -222,7 +162,7 @@ func (w *Worker) ClearStaleSharesThisBlock() {
 func (w *Worker) IncrementStaleSharesThisBlock() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.staleSharesThisBlock += uint64(w.currentDifficulty)
+	w.staleSharesThisBlock++
 }
 
 func (w *Worker) ContinuousStaleCount() uint64 {
@@ -261,6 +201,18 @@ func (w *Worker) IncrementBlocksFound() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.blocksFound++
+}
+
+func (w *Worker) CumulativeDifficulty() float64 {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.cumulativeDifficulty
+}
+
+func (w *Worker) ClearCumulativeDifficulty() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.cumulativeDifficulty = 0.0
 }
 
 func (w *Worker) SetLastShareTime(t time.Time) {
