@@ -163,7 +163,7 @@ func poolclientcmd(name string) {
 	}
 	fmt.Printf("\nClient Name: % 76.76s\nBlocks Mined: %d\n\n", client.ClientName, client.BlocksMined)
 	fmt.Printf("                    Per Current Block\n")
-	fmt.Printf("Worker Name         Work Diff  Shares    Cumm Diff      Stale    Invalid   Blocks Found   Last Share Time\n")
+	fmt.Println("Worker Name         Work Diff  Shares    Cumm Diff   Stale(%) Invalid(%)   Blocks Found   Last Share Time")
 	fmt.Printf("----------------    --------   -------   ---------   --------   --------       --------   ----------------\n")
 	sort.Sort(ByWorkerName(client.Workers))
 	for _, w := range client.Workers {
@@ -175,7 +175,7 @@ func poolclientcmd(name string) {
 			stale = float64(w.StaleSharesThisBlock) / float64(w.SharesThisBlock) * 100.0
 			invalid = float64(w.InvalidSharesThisBlock) / float64(w.SharesThisBlock) * 100.0
 		}
-		fmt.Printf("% -16s   % 8f  % 8d    % 8d  % 8f  % 8f       % 8d  %v\n",
+		fmt.Printf("% -16s   % 8f  % 8d    % 8d   % 8.3f   % 8.3f       % 8d  %v\n",
 			w.WorkerName, w.CurrentDifficulty, w.SharesThisBlock, uint64(w.CumulativeDifficulty),
 			stale, invalid, w.BlocksFound, shareTime(w.LastShareTime))
 	}
