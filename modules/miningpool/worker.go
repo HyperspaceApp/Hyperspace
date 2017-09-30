@@ -52,7 +52,7 @@ func newWorker(c *Client, name string) (*Worker, error) {
 		staleSharesThisBlock:   0,
 		cumulativeDifficulty:   0.0,
 		blocksFound:            0,
-		currentDifficulty:      1.0,
+		currentDifficulty:      4.0,
 		lastVardiffRetarget:    time.Now(),
 		lastVardiffTimestamp:   time.Now(),
 	}
