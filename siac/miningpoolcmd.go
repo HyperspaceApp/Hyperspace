@@ -175,7 +175,7 @@ func poolclientcmd(name string) {
 			stale = float64(w.StaleSharesThisBlock) / float64(w.SharesThisBlock) * 100.0
 			invalid = float64(w.InvalidSharesThisBlock) / float64(w.SharesThisBlock) * 100.0
 		}
-		fmt.Printf("% -16s   % 8f  % 8d    % 8d   % 8.3f   % 8.3f       % 8d  %v\n",
+		fmt.Printf("% -16s    % 8.3f  % 8d    % 8d   % 8.3f   % 8.3f       % 8d  %v\n",
 			w.WorkerName, w.CurrentDifficulty, w.SharesThisBlock, uint64(w.CumulativeDifficulty),
 			stale, invalid, w.BlocksFound, shareTime(w.LastShareTime))
 	}
