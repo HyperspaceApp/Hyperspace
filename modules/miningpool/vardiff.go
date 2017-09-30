@@ -16,7 +16,7 @@ type Vardiff struct {
 	bufSize uint64
 }
 
-func (w *Worker) newVardiff() *Vardiff {
+func (s *Session) newVardiff() *Vardiff {
 	variance := float64(targetDuration) * (float64(variancePercent) / 100.0)
 	size := uint64(retargetDuration / targetDuration * 4)
 	if size > numSharesToAverage {
@@ -28,32 +28,32 @@ func (w *Worker) newVardiff() *Vardiff {
 		bufSize: numSharesToAverage,
 	}
 
-	w.lastVardiffRetarget = time.Now().Add(time.Duration(-retargetDuration / 2.0))
-	w.lastVardiffTimestamp = time.Now()
+	s.lastVardiffRetarget = time.Now().Add(time.Duration(-retargetDuration / 2.0))
+	s.lastVardiffTimestamp = time.Now()
 
 	return v
 }
 
-func (w *Worker) checkDiffOnNewShare() bool {
+func (s *Session) checkDiffOnNewShare() bool {
 
-	sinceLast := time.Now().Sub(w.lastVardiffTimestamp).Seconds()
-	w.SetLastShareDuration(sinceLast)
-	w.lastVardiffTimestamp = time.Now()
-	w.log.Debugf("Duration: %f\n", time.Now().Sub(w.lastVardiffRetarget).Seconds())
-	if time.Now().Sub(w.lastVardiffRetarget).Seconds() < retargetDuration {
+	sinceLast := time.Now().Sub(s.lastVardiffTimestamp).Seconds()
+	s.SetLastShareDuration(sinceLast)
+	s.lastVardiffTimestamp = time.Now()
+	s.log.Debugf("Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
+	if time.Now().Sub(s.lastVardiffRetarget).Seconds() < retargetDuration {
 		return false
 	}
-	w.lastVardiffRetarget = time.Now()
+	s.lastVardiffRetarget = time.Now()
 
-	average := w.ShareDurationAverage()
+	average := s.ShareDurationAverage()
 	var deltaDiff float64
 	deltaDiff = float64(targetDuration) / float64(average)
-	w.log.Debugf("Average: %f Delta %f\n", average, deltaDiff)
-	if average < w.vardiff.tmax && average > w.vardiff.tmin { // close enough
+	s.log.Debugf("Average: %f Delta %f\n", average, deltaDiff)
+	if average < s.vardiff.tmax && average > s.vardiff.tmin { // close enough
 		return false
 	}
-	w.log.Debugf("Old difficulty was %v\n", w.currentDifficulty)
-	w.SetCurrentDifficulty(w.CurrentDifficulty() * deltaDiff)
-	w.log.Printf("Set new difficulty to %v\n", w.currentDifficulty)
+	s.log.Debugf("Old difficulty was %v\n", s.currentDifficulty)
+	s.SetCurrentDifficulty(s.CurrentDifficulty() * deltaDiff)
+	s.log.Printf("Set new difficulty to %v\n", s.currentDifficulty)
 	return true
 }

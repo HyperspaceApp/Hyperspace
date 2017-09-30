@@ -8,10 +8,6 @@ import (
 	"github.com/NebulousLabs/Sia/persist"
 )
 
-const (
-	numSharesToAverage = 20
-)
-
 //
 // A Worker is an instance of one miner.  A Client often represents a user and the worker represents a single miner.  There
 // is a one to many client worker relationship
@@ -29,13 +25,6 @@ type Worker struct {
 	continuousStaleCount   uint64
 	blocksFound            uint64
 	lastShareTime          time.Time
-	// vardiff
-	currentDifficulty    float64
-	vardiff              Vardiff
-	lastShareSpot        uint64
-	shareTimes           [numSharesToAverage]float64
-	lastVardiffRetarget  time.Time
-	lastVardiffTimestamp time.Time
 	// utility
 	log *persist.Logger
 }
@@ -52,12 +41,7 @@ func newWorker(c *Client, name string) (*Worker, error) {
 		staleSharesThisBlock:   0,
 		cumulativeDifficulty:   0.0,
 		blocksFound:            0,
-		currentDifficulty:      4.0,
-		lastVardiffRetarget:    time.Now(),
-		lastVardiffTimestamp:   time.Now(),
 	}
-
-	w.vardiff = *w.newVardiff()
 
 	var err error
 	// Create the perist directory if it does not yet exist.
@@ -120,11 +104,11 @@ func (w *Worker) ClearSharesThisBlock() {
 	w.sharesThisBlock = 0
 }
 
-func (w *Worker) IncrementSharesThisBlock() {
+func (w *Worker) IncrementSharesThisBlock(currentDifficulty float64) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.sharesThisBlock++
-	w.cumulativeDifficulty += w.currentDifficulty
+	w.cumulativeDifficulty += currentDifficulty
 }
 
 func (w *Worker) InvalidSharesThisBlock() uint64 {
@@ -184,6 +168,18 @@ func (w *Worker) IncrementContinuousStaleCount() {
 	w.continuousStaleCount++
 }
 
+func (w *Worker) SetLastShareTime(t time.Time) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.lastShareTime = t
+}
+
+func (w *Worker) LastShareTime() time.Time {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return w.lastShareTime
+}
+
 func (w *Worker) BlocksFound() uint64 {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
@@ -215,53 +211,20 @@ func (w *Worker) ClearCumulativeDifficulty() {
 	w.cumulativeDifficulty = 0.0
 }
 
-func (w *Worker) SetLastShareTime(t time.Time) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.lastShareTime = t
-}
-
-func (w *Worker) LastShareTime() time.Time {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	return w.lastShareTime
-}
-
-func (w *Worker) LastShareDuration() float64 {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-
-	return w.shareTimes[w.lastShareSpot]
-}
-
-func (w *Worker) SetLastShareDuration(seconds float64) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.lastShareSpot++
-	if w.lastShareSpot == w.vardiff.bufSize {
-		w.lastShareSpot = 0
-	}
-	//	fmt.Printf("Shares per minute: %.2f\n", w.ShareRate()*60)
-	w.shareTimes[w.lastShareSpot] = seconds
-}
-
-func (w *Worker) ShareDurationAverage() float64 {
-	var average float64
-	for i := uint64(0); i < w.vardiff.bufSize; i++ {
-		average += w.shareTimes[i]
-	}
-	return average / float64(w.vardiff.bufSize)
-}
-
+// CurrentDifficulty returns the average difficulty of all instances of this worker
 func (w *Worker) CurrentDifficulty() float64 {
-	w.mu.RLock()
-	defer w.mu.RUnlock()
-	return w.currentDifficulty
-}
+	var currentDiff float64
+	var workerCount uint64
+	pool := w.parent.Pool()
+	d := pool.dispatcher
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, h := range d.handlers {
+		if h.s.Client == w.Parent() && h.s.CurrentWorker == w {
+			currentDiff += h.s.CurrentDifficulty()
+			workerCount++
+		}
+	}
 
-func (w *Worker) SetCurrentDifficulty(d float64) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-	w.currentDifficulty = d
+	return currentDiff / float64(workerCount)
 }

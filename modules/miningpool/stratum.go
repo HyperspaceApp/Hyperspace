@@ -219,6 +219,7 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 		if c.Worker(worker) == nil {
 			w, _ := newWorker(c, worker)
 			c.addWorker(w)
+			h.s.log = w.log
 			c.log.Printf("Adding new worker: %s\n", worker)
 			w.log.Printf("Adding new worker: %s\n", worker)
 		}
@@ -232,7 +233,7 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 			h.s.addClient(c)
 			h.s.addWorker(c.Worker(worker))
 			h.s.CurrentWorker.log.Printf("Clearing share stats\n")
-			h.sendSetDifficulty(h.s.CurrentWorker.CurrentDifficulty())
+			h.sendSetDifficulty(h.s.CurrentDifficulty())
 		}
 		// TODO: figure out how to store this worker - probably in Session
 	default:
@@ -290,8 +291,8 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		h.log.Printf("Worker failed to authorize - dropping\n")
 		return
 	}
-	if h.s.CurrentWorker.checkDiffOnNewShare() {
-		h.sendSetDifficulty(h.s.CurrentWorker.CurrentDifficulty())
+	if h.s.checkDiffOnNewShare() {
+		h.sendSetDifficulty(h.s.CurrentDifficulty())
 		needNewJob = true
 	}
 
@@ -299,7 +300,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
 	h.s.CurrentWorker.ClearContinuousStaleCount()
-	h.s.CurrentWorker.IncrementSharesThisBlock()
+	h.s.CurrentWorker.IncrementSharesThisBlock(h.s.CurrentDifficulty())
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
 	var b types.Block

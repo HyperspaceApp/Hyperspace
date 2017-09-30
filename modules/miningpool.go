@@ -37,7 +37,6 @@ type (
 
 	PoolWorkers struct {
 		WorkerName             string    `json:"workername"`
-		LastShareDuration      float64   `json:"lastshareduration"`
 		LastShareTime          time.Time `json:"lastsharetime"`
 		CurrentDifficulty      float64   `json:"currentdifficulty"`
 		CumulativeDifficulty   float64   `json:"cumulativedifficulty"`

@@ -463,7 +463,6 @@ func (p *Pool) FindClient(name string) *modules.PoolClients {
 		for wn, w := range c.Workers() {
 			worker := modules.PoolWorkers{
 				WorkerName:             wn,
-				LastShareDuration:      w.LastShareDuration(),
 				LastShareTime:          w.LastShareTime(),
 				CurrentDifficulty:      w.CurrentDifficulty(),
 				CumulativeDifficulty:   w.CumulativeDifficulty(),
@@ -493,7 +492,6 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		for wn, w := range c.Workers() {
 			worker := modules.PoolWorkers{
 				WorkerName:             wn,
-				LastShareDuration:      w.LastShareDuration(),
 				LastShareTime:          w.LastShareTime(),
 				CurrentDifficulty:      w.CurrentDifficulty(),
 				CumulativeDifficulty:   w.CumulativeDifficulty(),

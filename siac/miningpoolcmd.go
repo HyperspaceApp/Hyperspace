@@ -149,6 +149,7 @@ func poolclientscmd() {
 	for _, c := range clients.Clients {
 		fmt.Printf("% 76.76s %d\n", c.ClientName, c.BlocksMined)
 		fmt.Printf("     Worker Name      Last Share Time\n")
+		sort.Sort(ByWorkerName(c.Workers))
 		for _, w := range c.Workers {
 			fmt.Printf(" % -16s     %v\n", w.WorkerName, shareTime(w.LastShareTime))
 		}
