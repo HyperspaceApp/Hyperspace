@@ -337,6 +337,8 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	t := h.p.persist.GetTarget()
 	h.s.CurrentWorker.log.Printf("BH hash is %064x\n", bh)
 	h.s.CurrentWorker.log.Printf("Target is  %064x\n", t.Int())
+	h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
+		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		h.s.CurrentWorker.log.Printf("Block is greater than target\n")
 		h.sendResponse(r)
@@ -579,6 +581,24 @@ func (p *Pool) coinB1Txn() string {
 }
 func (p *Pool) coinB2() string {
 	return "0000000000000000"
+}
+
+func printWithSuffix(number types.Currency) string {
+	num := number.Big().Uint64()
+
+	if num > 1000000000000000 {
+		return fmt.Sprintf("%dP", num/1000000000000000)
+	}
+	if num > 1000000000000 {
+		return fmt.Sprintf("%dT", num/1000000000000)
+	}
+	if num > 1000000000 {
+		return fmt.Sprintf("%dG", num/1000000000)
+	}
+	if num > 1000000 {
+		return fmt.Sprintf("%dM", num/1000000)
+	}
+	return fmt.Sprintf("%d", num)
 }
 
 //
