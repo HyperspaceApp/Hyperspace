@@ -3,6 +3,7 @@ package contractor
 import (
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -198,9 +199,73 @@ func (stubHostDB) ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown
 	return modules.HostScoreBreakdown{}
 }
 
-// TestAllowanceOverspend verifies that the contractor will not spend more
-// than the allowance if contracts need to be renewed early.
-func TestAllowanceOverspend(t *testing.T) {
+// TestAllowancePeriodTracking verifies that the contractor tracks its current
+// period correctly as renewals occur.
+func TestAllowancePeriodTracking(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+
+	_, c, m, err := newTestingTrio(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// set an allowance
+	c.mu.Lock()
+	initialHeight := c.blockHeight
+	c.mu.Unlock()
+	testAllowance := modules.Allowance{
+		Funds:       types.SiacoinPrecision.Mul64(5000),
+		RenewWindow: 10,
+		Hosts:       1,
+		Period:      20,
+	}
+	err = c.SetAllowance(testAllowance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = build.Retry(50, 100*time.Millisecond, func() error {
+		if len(c.Contracts()) != 1 {
+			return errors.New("allowance forming seems to have failed")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	if c.CurrentPeriod() != initialHeight {
+		t.Fatal("expected current period to start at", initialHeight, "got", c.CurrentPeriod())
+	}
+	// mine until one before the renew window, current period should stay
+	// constant
+	for i := types.BlockHeight(0); i < testAllowance.RenewWindow; i++ {
+		_, err = m.AddBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if c.CurrentPeriod() != initialHeight {
+		t.Fatal("current period should not have incremeented, wanted", initialHeight, "got", c.CurrentPeriod())
+	}
+	// mine another another block. current period should increment.
+	_, err = m.AddBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.mu.Lock()
+	height := c.blockHeight
+	c.mu.Unlock()
+	if c.CurrentPeriod() != height-1 {
+		t.Fatal("unexpected period", c.CurrentPeriod(), "wanted", height-1)
+	}
+}
+
+// TestAllowanceSpending verifies that the contractor will not spend more or
+// less than the allowance if uploading causes repeated early renewal, and that
+// correct spending metrics are returned, even across renewals.
+func TestAllowanceSpending(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -284,7 +349,6 @@ func TestAllowanceOverspend(t *testing.T) {
 		}
 	}
 
-	// TODO: replace this logic with wallet contexts
 	var minerRewards types.Currency
 	w := c.wallet.(*walletBridge).w.(modules.Wallet)
 	txns, err := w.Transactions(0, 1000)
@@ -299,9 +363,41 @@ func TestAllowanceOverspend(t *testing.T) {
 		}
 	}
 	balance, _, _ := w.ConfirmedBalance()
-	spent := minerRewards.Sub(balance).Sub(h.FinancialMetrics().LockedStorageCollateral)
+	spent := minerRewards.Sub(balance)
 	if spent.Cmp(testAllowance.Funds) > 0 {
 		t.Fatal("contractor spent too much money: spent", spent.HumanString(), "allowance funds:", testAllowance.Funds.HumanString())
+	}
+
+	// we should have spent at least the allowance minus the cost of one more refresh
+	refreshCost := c.Contracts()[0].TotalCost.Mul64(2)
+	expectedMinSpending := testAllowance.Funds.Sub(refreshCost)
+	if spent.Cmp(expectedMinSpending) < 0 {
+		t.Fatal("contractor spent to little money: spent", spent.HumanString(), "expected at least:", expectedMinSpending.HumanString())
+	}
+
+	// PeriodSpending should reflect the amount of spending accurately
+	reportedSpending := c.PeriodSpending()
+	if reportedSpending.ContractSpending.Cmp(spent) != 0 {
+		t.Fatal("reported incorrect spending for this billing cycle: got", reportedSpending.ContractSpending.HumanString(), "wanted", spent.HumanString())
+	}
+
+	// enter a new period. PeriodSpending should reset.
+	c.mu.Lock()
+	renewHeight := c.blockHeight + c.allowance.RenewWindow
+	blocksToMine := renewHeight - c.blockHeight
+	c.mu.Unlock()
+	for i := types.BlockHeight(0); i < blocksToMine; i++ {
+		_, err = m.AddBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	newReportedSpending := c.PeriodSpending()
+	if reflect.DeepEqual(newReportedSpending, reportedSpending) {
+		t.Fatal("reported spending was identical after entering a renew period")
+	}
+	if newReportedSpending.Unspent.Cmp(reportedSpending.Unspent) <= 0 {
+		t.Fatal("expected newReportedSpending to have more unspent")
 	}
 }
 

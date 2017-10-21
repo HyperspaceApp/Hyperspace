@@ -17,13 +17,14 @@ dependencies:
 	go get -u github.com/NebulousLabs/errors
 	go get -u github.com/NebulousLabs/go-upnp
 	go get -u github.com/NebulousLabs/muxado
+	go get -u github.com/NebulousLabs/threadgroup
 	go get -u github.com/klauspost/reedsolomon
 	go get -u github.com/julienschmidt/httprouter
 	go get -u github.com/inconshreveable/go-update
 	go get -u github.com/kardianos/osext
 	go get -u github.com/inconshreveable/mousetrap
 	# Frontend Dependencies
-	go get -u github.com/bgentry/speakeasy
+	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
 	# Developer Dependencies
 	go install -race std
@@ -38,7 +39,7 @@ pkgs = ./api ./build ./compatibility ./crypto ./encoding ./modules ./modules/con
        ./modules/explorer ./modules/gateway ./modules/host ./modules/host/contractmanager                               \
        ./modules/renter ./modules/renter/contractor ./modules/renter/hostdb ./modules/renter/hostdb/hosttree            \
        ./modules/renter/proto ./modules/miner ./modules/wallet ./modules/transactionpool ./modules/miningpool ./persist \
-	   ./siac ./siad ./sync ./types
+	   ./cmd/siac ./cmd/siad ./sync ./types
 
 # fmt calls go fmt on all packages.
 fmt:
@@ -59,7 +60,7 @@ lint:
 
 # spellcheck checks for misspelled words in comments or strings.
 spellcheck:
-	misspell -error -i "marshalled,marshalling,Marshalling,Marshalled" .
+	misspell -error .
 
 # dev builds and installs developer binaries.
 dev:
@@ -71,7 +72,7 @@ release:
 release-race:
 	go install -race -tags='debug profile netgo' $(pkgs)
 release-std:
-	go install -tags 'netgo' -ldflags='-s -w' $(pkgs)
+	go install -tags 'netgo' -a -ldflags='-s -w' $(pkgs)
 
 # clean removes all directories that get automatically created during
 # development.

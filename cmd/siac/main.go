@@ -9,7 +9,6 @@ import (
 	"os"
 	"reflect"
 
-	"github.com/bgentry/speakeasy"
 	"github.com/spf13/cobra"
 
 	"github.com/NebulousLabs/Sia/api"
@@ -19,15 +18,19 @@ import (
 var (
 	// Flags.
 	addr              string // override default API address
-	initPassword      bool   // supply a custom password when creating a wallet
-	initForce         bool   // destroy and reencrypt the wallet on init if it already exists
 	hostVerbose       bool   // display additional host info
-	renterShowHistory bool   // Show download history in addition to download queue.
+	initForce         bool   // destroy and reencrypt the wallet on init if it already exists
+	initPassword      bool   // supply a custom password when creating a wallet
 	renterListVerbose bool   // Show additional info about uploaded files.
+	renterShowHistory bool   // Show download history in addition to download queue.
+)
 
+var (
 	// Globals.
 	rootCmd *cobra.Command // Root command cobra object, used by bash completion cmd.
+)
 
+var (
 	// User-supplied password, cached so that we don't need to prompt multiple
 	// times.
 	apiPassword string
@@ -76,7 +79,7 @@ func apiGet(call string) (*http.Response, error) {
 		if apiPassword == "" {
 			// prompt for password and store it in a global var for subsequent
 			// calls
-			apiPassword, err = speakeasy.Ask("API password: ")
+			apiPassword, err = passwordPrompt("API password: ")
 			if err != nil {
 				return nil, err
 			}
@@ -145,7 +148,7 @@ func apiPost(call, vals string) (*http.Response, error) {
 	if resp.StatusCode == http.StatusUnauthorized {
 		resp.Body.Close()
 		// Prompt for password and retry request with authentication.
-		password, err := speakeasy.Ask("API password: ")
+		password, err := passwordPrompt("API password: ")
 		if err != nil {
 			return nil, err
 		}

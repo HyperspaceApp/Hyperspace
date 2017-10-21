@@ -858,6 +858,7 @@ lists the status of all files.
   "files": [
     {
       "siapath":        "foo/bar.txt",
+      "localpath":      "/home/foo/bar.txt",
       "filesize":       8192, // bytes
       "available":      true,
       "renewing":       true,
@@ -1076,6 +1077,8 @@ locked or unlocked.
 
   "siafundbalance":      "1",    // siafunds, big int
   "siacoinclaimbalance": "9001", // hastings, big int
+
+  "dustthreshold": "1234", // hastings, big int
 }
 ```
 
