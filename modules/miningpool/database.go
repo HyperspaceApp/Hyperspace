@@ -460,6 +460,9 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		}
 		if currentClient != clientName {
 			c = p.findClient(clientName)
+			if c == nil {
+				continue
+			}
 		}
 		if currentWorker != workerName {
 			if len(currentWorker) != 0 {
