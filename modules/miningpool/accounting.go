@@ -43,10 +43,8 @@ func (ba *Accounting) incrementClientShares(name string, shares uint64) {
 }
 
 func (p *Pool) incrementBlockCount() uint64 {
-	p.log.Debugf("Waiting to lock pool\n")
 	p.mu.Lock()
 	defer func() {
-		p.log.Debugf("Unlocking pool\n")
 		p.mu.Unlock()
 	}()
 	atomic.AddUint64(&p.blockCounter, 1)

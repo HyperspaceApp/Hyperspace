@@ -95,13 +95,6 @@ func (c *Client) Workers() map[string]*Worker {
 	return c.workers
 }
 
-func (c *Client) addWorker(w *Worker) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	c.workers[w.Name()] = w
-}
-
 func (c *Client) printID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

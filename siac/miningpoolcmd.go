@@ -164,7 +164,7 @@ func poolclientcmd(name string) {
 	}
 	fmt.Printf("\nClient Name: % 76.76s\nBlocks Mined: %d\n\n", client.ClientName, client.BlocksMined)
 	fmt.Printf("                    Per Current Block\n")
-	fmt.Println("Worker Name         Work Diff  Shares    Cumm Diff   Stale(%) Invalid(%)   Blocks Found   Last Share Time")
+	fmt.Println("Worker Name         Work Diff  Shares   Share*Diff   Stale(%) Invalid(%)   Blocks Found   Last Share Time")
 	fmt.Printf("----------------    --------   -------   ---------   --------   --------       --------   ----------------\n")
 	sort.Sort(ByWorkerName(client.Workers))
 	for _, w := range client.Workers {
@@ -194,7 +194,7 @@ func shareTime(t time.Time) string {
 
 	switch {
 	case time.Now().Sub(t).Hours() > 1:
-		return fmt.Sprintf(" %v", t)
+		return fmt.Sprintf(" %s", t.Format(time.RFC822))
 	case time.Now().Sub(t).Minutes() > 1:
 		return fmt.Sprintf(" %.2f minutes ago", time.Now().Sub(t).Minutes())
 	default:

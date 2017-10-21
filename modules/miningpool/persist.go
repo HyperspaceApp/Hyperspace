@@ -5,12 +5,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/modules"
 	"github.com/NebulousLabs/Sia/persist"
 	"github.com/NebulousLabs/Sia/types"
-
-	"github.com/NebulousLabs/bolt"
 )
 
 // persistence is the data that is kept when the pool is restarted.
@@ -245,53 +242,14 @@ func (mp *Pool) loadPersistObject(p *persistence) {
 	mp.persist.SetUnsolvedBlock(p.GetCopyUnsolvedBlock())
 }
 
-// initDB will check that the database has been initialized and if not, will
-// initialize the database.
-func (mp *Pool) initDB() (err error) {
-	// Open the pool's database and set up the stop function to close it.
-	mp.db, err = mp.dependencies.openDatabase(dbMetadata, filepath.Join(mp.persistDir, dbFilename))
-	if err != nil {
-		return err
-	}
-	mp.tg.AfterStop(func() {
-		err = mp.db.Close()
-		if err != nil {
-			mp.log.Println("Could not close the database:", err)
-		}
-	})
-
-	return mp.db.Update(func(tx *bolt.Tx) error {
-		// The storage obligation bucket does not exist, which means the
-		// database needs to be initialized. Create the database buckets.
-		buckets := [][]byte{
-			bucketActionItems,
-			bucketStorageObligations,
-		}
-		for _, bucket := range buckets {
-			_, err := tx.CreateBucketIfNotExists(bucket)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}
-
 // load loads the Hosts's persistent data from disk.
 func (mp *Pool) load() error {
-	// Initialize the host database.
-	err := mp.initDB()
-	if err != nil {
-		err = build.ExtendErr("Could not initialize database:", err)
-		mp.log.Println(err)
-		return err
-	}
 
 	// Load the old persistence object from disk. Simple task if the version is
 	// the most recent version, but older versions need to be updated to the
 	// more recent structures.
 	p := new(persistence)
-	err = mp.dependencies.loadFile(persistMetadata, p, filepath.Join(mp.persistDir, settingsFile))
+	err := mp.dependencies.loadFile(persistMetadata, p, filepath.Join(mp.persistDir, settingsFile))
 	if err == nil {
 		// Copy in the persistence.
 		mp.loadPersistObject(p)

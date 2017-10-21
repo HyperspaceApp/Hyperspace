@@ -2,6 +2,7 @@ package pool
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -208,20 +209,34 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 		c := h.p.findClient(client)
 		if c == nil {
 			c, _ = newClient(h.p, client)
-			c.log.Printf("Adding new client: %s\n", client)
-			h.p.AddClient(c)
+			h.p.log.Printf("Adding new client: %s\n", client)
+			err = h.p.AddClient(c)
+			if err != nil {
+				h.p.log.Printf("Failed to add client: %s\n", err)
+			}
 			//
 			// There is a race condition here which we can reduce/avoid by re-searching for the client once we
 			// have added it.
 			//
 			c = h.p.findClient(client)
+			if c == nil {
+				h.p.log.Printf("Failed to find client\n")
+			}
 		}
-		if c.Worker(worker) == nil {
+		err = c.findWorker(worker)
+		if err != nil { // returns error on new workers
+			if err != sql.ErrNoRows {
+				c.log.Printf("Failed to find worker %s: %s\n", worker, err)
+			}
 			w, _ := newWorker(c, worker)
-			c.addWorker(w)
-			h.s.log = w.log
-			c.log.Printf("Adding new worker: %s\n", worker)
-			w.log.Printf("Adding new worker: %s\n", worker)
+			err = c.addWorker(w)
+			if err != nil {
+				c.log.Printf("Failed to add worker: %s\n", err)
+			} else {
+				h.s.log = w.log
+				c.log.Printf("Adding new worker: %s\n", worker)
+				w.log.Printf("Adding new worker: %s\n", worker)
+			}
 		}
 		h.log.Debugln("client = " + client + ", worker = " + worker)
 		if c.Wallet().LoadString(c.Name()) != nil {
@@ -299,7 +314,6 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	h.log.Debugln("name = " + name + ", jobID = " + fmt.Sprintf("%X", jobID) + ", extraNonce2 = " + extraNonce2 + ", nTime = " + nTime + ", nonce = " + nonce)
 
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
-	h.s.CurrentWorker.ClearContinuousStaleCount()
 	h.s.CurrentWorker.IncrementSharesThisBlock(h.s.CurrentDifficulty())
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
@@ -360,23 +374,16 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		h.s.CurrentWorker.Parent().log.Printf("Yay!!! Solved a block!!\n")
 		h.s.CurrentWorker.log.Printf("Yay!!! Solved a block!!\n")
 		h.s.CurrentJobs = nil
-		ac, _ := newAccounting(h.p, b.ID())
-		for _, cl := range h.p.clients {
-			for _, w := range cl.workers {
-				ac.incrementClientShares(cl.Name(), w.SharesThisBlock())
-
-				w.ClearInvalidSharesThisBlock()
-				w.ClearSharesThisBlock()
-				w.ClearStaleSharesThisBlock()
-				w.ClearCumulativeDifficulty()
-			}
+		h.s.CurrentWorker.IncrementBlocksFound()
+		err = h.s.CurrentWorker.addFoundBlock(&b)
+		if err != nil {
+			h.s.CurrentWorker.log.Printf("Failed to update block in database: %s\n", err)
 		}
+		ac, _ := newAccounting(h.p, b.ID())
 		h.p.BlocksFound = append(h.p.BlocksFound, ac)
 		fmt.Printf("%v\n", ac)
-		h.s.CurrentWorker.IncrementBlocksFound()
 	}
 	h.sendResponse(r)
-	// fmt.Printf("%s: %s Handle submit - done -new block\n", time.Now(), h.s.printID())
 }
 
 func (h *Handler) sendSetDifficulty(d float64) {

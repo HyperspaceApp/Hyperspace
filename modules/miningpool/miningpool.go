@@ -6,6 +6,7 @@ package pool
 // TODO: everything
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -20,6 +21,10 @@ import (
 	"github.com/NebulousLabs/Sia/persist"
 	siasync "github.com/NebulousLabs/Sia/sync"
 	"github.com/NebulousLabs/Sia/types"
+	// blank to load the sql driver for sqlite3
+	_ "github.com/mattn/go-sqlite3"
+	// blank to load the sql driver for postgres
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -30,13 +35,6 @@ const (
 )
 
 var (
-	// dbMetadata is a header that gets put into the database to identify a
-	// version and indicate that the database holds pool information.
-	dbMetadata = persist.Metadata{
-		Header:  "Sia Pool DB",
-		Version: "0.0.1",
-	}
-
 	// persistMetadata is the header that gets written to the persist file, and is
 	// used to recognize other persist files.
 	persistMetadata = persist.Metadata{
@@ -138,7 +136,6 @@ type Pool struct {
 	// transactions.
 	announceConfirmed bool
 	secretKey         crypto.SecretKey
-	clients           map[string]*Client
 	BlocksFound       []*Accounting
 	// Pool transient fields - these fields are either determined at startup or
 	// otherwise are not critical to always be correct.
@@ -146,7 +143,7 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	db           *persist.BoltDatabase
+	sqldb        *sql.DB
 	listener     net.Listener
 	log          *persist.Logger
 	mu           sync.RWMutex
@@ -247,7 +244,6 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		arbDataMem:   make(map[types.BlockHeader][crypto.EntropySize]byte),
 		headerMem:    make([]types.BlockHeader, HeaderMemory),
 
-		clients:   make(map[string]*Client),
 		fullSets:  make(map[modules.TransactionSetID][]int),
 		splitSets: make(map[splitSetID]*splitSet),
 		blockMapHeap: &mapHeap{
@@ -307,6 +303,27 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			p.log.Println("Could not save pool upon shutdown:", err)
 		}
 	})
+
+	optionString := "file:" + filepath.Join(p.persistDir, dbFilename) + "?cache=shared&mode=rwc"
+	p.sqldb, err = sql.Open("sqlite3", optionString)
+	if err != nil {
+		return nil, errors.New("Failed to open database: " + err.Error())
+	}
+
+	err = p.sqldb.Ping()
+	if err != nil {
+		return nil, errors.New("Failed to ping database: " + err.Error())
+	}
+
+	err = p.createOrUpdateDatabase()
+	if err != nil {
+		return nil, errors.New("Failed to create/update database: " + err.Error())
+	}
+	err = p.setBlockCounterFromDB()
+	if err != nil {
+		return nil, errors.New("Failed to update block count: " + err.Error())
+	}
+
 	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())
 	if err == modules.ErrInvalidConsensusChangeID {
 		// Perform a rescan of the consensus set if the change id is not found.
@@ -350,6 +367,7 @@ func New(cs modules.ConsensusSet, tpool modules.TransactionPool, wallet modules.
 
 // Close shuts down the pool.
 func (p *Pool) Close() error {
+	p.sqldb.Close()
 	return p.tg.Stop()
 }
 
@@ -434,83 +452,15 @@ func (p *Pool) InternalSettings() modules.PoolInternalSettings {
 	return p.persist.GetSettings()
 }
 
-func (p *Pool) AddClient(c *Client) {
-	//	p.log.Debugf("Waiting to lock pool\n")
-	p.mu.Lock()
-	defer func() {
-		//		p.log.Debugf("Unlocking pool\n")
-		p.mu.Unlock()
-	}()
-
-	p.clients[c.Name()] = c
-}
-
-func (p *Pool) findClient(name string) *Client {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	c, ok := p.clients[name]
-	if ok {
-		return c
-	}
-	return nil
-}
-
 func (p *Pool) FindClient(name string) *modules.PoolClients {
-	c := p.findClient(name)
-	if c != nil {
-		cbf := uint64(0)
-		var pw []modules.PoolWorkers
-		for wn, w := range c.Workers() {
-			worker := modules.PoolWorkers{
-				WorkerName:             wn,
-				LastShareTime:          w.LastShareTime(),
-				CurrentDifficulty:      w.CurrentDifficulty(),
-				CumulativeDifficulty:   w.CumulativeDifficulty(),
-				SharesThisBlock:        w.SharesThisBlock(),
-				InvalidSharesThisBlock: w.InvalidSharesThisBlock(),
-				StaleSharesThisBlock:   w.StaleSharesThisBlock(),
-				BlocksFound:            w.BlocksFound(),
-			}
-			cbf += w.BlocksFound()
-			pw = append(pw, worker)
+	clients := p.ClientData()
+	for _, cn := range clients {
+		if cn.ClientName == name {
+			return &cn
 		}
-		client := modules.PoolClients{
-			ClientName:  name,
-			BlocksMined: cbf,
-			Workers:     pw,
-		}
-		return &client
 	}
+	p.log.Printf("Failed to find Client %s\n", name)
 	return nil
-}
-
-func (p *Pool) ClientData() []modules.PoolClients {
-	var pc []modules.PoolClients
-	for cn, c := range p.clients {
-		cbf := uint64(0)
-		var pw []modules.PoolWorkers
-		for wn, w := range c.Workers() {
-			worker := modules.PoolWorkers{
-				WorkerName:             wn,
-				LastShareTime:          w.LastShareTime(),
-				CurrentDifficulty:      w.CurrentDifficulty(),
-				CumulativeDifficulty:   w.CumulativeDifficulty(),
-				SharesThisBlock:        w.SharesThisBlock(),
-				InvalidSharesThisBlock: w.InvalidSharesThisBlock(),
-				StaleSharesThisBlock:   w.StaleSharesThisBlock(),
-				BlocksFound:            w.BlocksFound(),
-			}
-			cbf += w.BlocksFound()
-			pw = append(pw, worker)
-		}
-		client := modules.PoolClients{
-			ClientName:  cn,
-			BlocksMined: cbf,
-			Workers:     pw,
-		}
-		pc = append(pc, client)
-	}
-	return pc
 }
 
 // checkAddress checks that the miner has an address, fetching an address from
