@@ -126,7 +126,7 @@ func (w *Worker) setFieldValue(field string, value interface{}) {
 	defer stmt.Close()
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
 	if err != nil {
-		driverErr := err.(*sqlite3.Error)
+		driverErr := err.(sqlite3.Error)
 
 		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
 		if driverErr.Code == sqlite3.ErrLocked {
@@ -173,7 +173,7 @@ func (w *Worker) incrementFieldValue(field string) {
 	var value uint64
 	err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
 	if err != nil {
-		driverErr := err.(*sqlite3.Error)
+		driverErr := err.(sqlite3.Error)
 
 		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
 		w.log.Printf("Failed to increment field %s: %s\n", field, err)
@@ -189,7 +189,7 @@ func (w *Worker) incrementFieldValue(field string) {
 	defer stmt.Close()
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
 	if err != nil {
-		driverErr := err.(*sqlite3.Error)
+		driverErr := err.(sqlite3.Error)
 
 		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
 		w.log.Printf("Failed to increment field %s: %s\n", field, err)
