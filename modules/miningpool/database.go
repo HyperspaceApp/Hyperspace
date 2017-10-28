@@ -127,14 +127,23 @@ func (w *Worker) setFieldValue(field string, value interface{}) {
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
 	if err != nil {
 		driverErr := err.(sqlite3.Error)
+		count := 0
+		for driverErr.Code == sqlite3.ErrLocked && count < 5 {
 
-		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
-		if driverErr.Code == sqlite3.ErrLocked {
-			// Handle the permission-denied error
+			time.Sleep(time.Millisecond * 100)
+			res, err = stmt.Exec(w.workerID, w.parent.pool.blockCounter)
+			if err != nil {
+				driverErr = err.(sqlite3.Error)
+			} else {
+				driverErr.Code = 0
+			}
+			count++
 		}
-
-		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
-		return
+		w.log.Printf("SQLite Error count is %d\n", count)
+		if err != nil {
+			w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
+			return
+		}
 	}
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
@@ -174,10 +183,23 @@ func (w *Worker) incrementFieldValue(field string) {
 	err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
 	if err != nil {
 		driverErr := err.(sqlite3.Error)
+		count := 0
+		for driverErr.Code == sqlite3.ErrLocked && count < 5 {
 
-		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
-		return
+			time.Sleep(time.Millisecond * 100)
+			err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
+			if err != nil {
+				driverErr = err.(sqlite3.Error)
+			} else {
+				driverErr.Code = 0
+			}
+			count++
+		}
+		w.log.Printf("SQLite Error count is %d\n", count)
+		if err != nil {
+			w.log.Printf("Failed to increment field %s: %s\n", field, err)
+			return
+		}
 	}
 	query = fmt.Sprintf("UPDATE [Worker] SET [%s] = %d WHERE [WorkerID] = $1 AND [Blocks] = $2;",
 		field, value+1)
@@ -190,10 +212,23 @@ func (w *Worker) incrementFieldValue(field string) {
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
 	if err != nil {
 		driverErr := err.(sqlite3.Error)
+		count := 0
+		for driverErr.Code == sqlite3.ErrLocked && count < 5 {
 
-		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
-		return
+			time.Sleep(time.Millisecond * 100)
+			err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
+			if err != nil {
+				driverErr = err.(sqlite3.Error)
+			} else {
+				driverErr.Code = 0
+			}
+			count++
+		}
+		w.log.Printf("SQLite Error count is %d\n", count)
+		if err != nil {
+			w.log.Printf("Failed to increment field %s: %s\n", field, err)
+			return
+		}
 	}
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
