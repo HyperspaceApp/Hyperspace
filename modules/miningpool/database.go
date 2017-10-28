@@ -9,6 +9,11 @@ import (
 	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
+const (
+	sqlLockRetry  = 10
+	sqlRetryDelay = 100 // milliseconds
+)
+
 func (p *Pool) AddClient(c *Client) error {
 	//	p.log.Debugf("Waiting to lock pool\n")
 	p.mu.Lock()
@@ -128,9 +133,9 @@ func (w *Worker) setFieldValue(field string, value interface{}) {
 	if err != nil {
 		driverErr := err.(sqlite3.Error)
 		count := 0
-		for driverErr.Code == sqlite3.ErrLocked && count < 5 {
+		for driverErr.Code == sqlite3.ErrLocked && count < sqlLockRetry {
 
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * sqlRetryDelay)
 			res, err = stmt.Exec(w.workerID, w.parent.pool.blockCounter)
 			if err != nil {
 				driverErr = err.(sqlite3.Error)
@@ -184,9 +189,9 @@ func (w *Worker) incrementFieldValue(field string) {
 	if err != nil {
 		driverErr := err.(sqlite3.Error)
 		count := 0
-		for driverErr.Code == sqlite3.ErrLocked && count < 5 {
+		for driverErr.Code == sqlite3.ErrLocked && count < sqlLockRetry {
 
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * sqlRetryDelay)
 			err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
 			if err != nil {
 				driverErr = err.(sqlite3.Error)
@@ -213,9 +218,9 @@ func (w *Worker) incrementFieldValue(field string) {
 	if err != nil {
 		driverErr := err.(sqlite3.Error)
 		count := 0
-		for driverErr.Code == sqlite3.ErrLocked && count < 5 {
+		for driverErr.Code == sqlite3.ErrLocked && count < sqlLockRetry {
 
-			time.Sleep(time.Millisecond * 100)
+			time.Sleep(time.Millisecond * sqlRetryDelay)
 			err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
 			if err != nil {
 				driverErr = err.(sqlite3.Error)
