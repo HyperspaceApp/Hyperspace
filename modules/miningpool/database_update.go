@@ -60,6 +60,7 @@ func (p *Pool) createDatabase() error {
 		return err
 	}
 	defer tx.Rollback()
+
 	_, err = tx.Exec(`
 		CREATE TABLE [SchemaVersion]
 		(
@@ -119,6 +120,10 @@ func (p *Pool) updateFrom0_0To0_1() error {
 			[Time] TIMESTAMP
 			);
 	`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES (1, 0, "0", 0);`)
 	if err != nil {
 		return err
 	}

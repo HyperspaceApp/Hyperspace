@@ -1,12 +1,12 @@
 package pool
 
 import (
-	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/NebulousLabs/Sia/modules"
 	"github.com/NebulousLabs/Sia/types"
+	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 func (p *Pool) AddClient(c *Client) error {
@@ -51,10 +51,10 @@ func (p *Pool) AddClient(c *Client) error {
 func (p *Pool) findClient(name string) *Client {
 	var clientID uint64
 	var Name, Wallet string
-	p.log.Printf("Searching database for client: %s\n", name)
+	// p.log.Printf("Searching database for client: %s\n", name)
 	err := p.sqldb.QueryRow("SELECT [ClientID], [Name], [Wallet] FROM [Clients] WHERE [Name] = ?", name).Scan(&clientID, &Name, &Wallet)
 	if err != nil {
-		p.log.Printf("Search failed: %s\n", err)
+		p.log.Debugf("Search failed: %s\n", err)
 		return nil
 	}
 	c, err := newClient(p, Name)
@@ -125,6 +125,12 @@ func (w *Worker) setFieldValue(field string, value interface{}) {
 	}
 	defer stmt.Close()
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
+	if driverErr, ok := err.(*sqlite3.Error); ok { // Now the error number is accessible directly
+		fmt.Printf("Error is %d\n", driverErr.Code)
+		if driverErr.Code == sqlite3.ErrLocked {
+			// Handle the permission-denied error
+		}
+	}
 	if err != nil {
 		w.log.Printf("Failed to clear field %s: %s\n", field, err)
 		return
@@ -262,6 +268,11 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 }
 
 func (p *Pool) addIfNeededBlockCounter() error {
+	var count uint64
+	err := p.sqldb.QueryRow("SELECT [BlockID] FROM [Block] WHERE [BlockID] = $1;", p.blockCounter).Scan(&count)
+	if err == nil {
+		return err
+	}
 	tx, err := p.sqldb.Begin()
 	if err != nil {
 		return err
@@ -269,23 +280,30 @@ func (p *Pool) addIfNeededBlockCounter() error {
 
 	defer tx.Rollback()
 
-	var count uint64
-	err = tx.QueryRow("SELECT [BlockID] FROM [Block] WHERE [BlockID] = $1;", p.blockCounter).Scan(&count)
-
-	if err != nil && err == sql.ErrNoRows {
-		_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, p.blockCounter)
-		if err != nil {
-			return err
-		}
-		p.log.Printf("New candidate block added %d\n", p.blockCounter)
-		tx.Commit()
-		return nil
+	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, p.blockCounter)
+	if err != nil {
+		return err
 	}
-	return err
+	p.log.Printf("New candidate block added %d\n", p.blockCounter)
+	tx.Commit()
+	return nil
 }
 
 func (w *Worker) addIfNeededWorkerRecord() error {
 
+	var id uint64
+	err := w.parent.pool.sqldb.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [WorkerID] = $1 AND [Blocks] = $2;",
+		w.workerID, w.parent.pool.blockCounter).Scan(&id)
+	if err == nil {
+		return err
+	}
+	err = w.parent.pool.addIfNeededBlockCounter()
+	if err != nil {
+		w.log.Printf("Failed to add new block: %s\n", err)
+		return err
+	}
+
+	// At this point we need the record
 	tx, err := w.parent.pool.sqldb.Begin()
 	if err != nil {
 		return err
@@ -293,30 +311,23 @@ func (w *Worker) addIfNeededWorkerRecord() error {
 
 	defer tx.Rollback()
 
-	var id uint64
-	err = tx.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [WorkerID] = $1 AND [Blocks] = $2;",
-		w.workerID, w.parent.pool.blockCounter).Scan(&id)
-
-	if err != nil && err == sql.ErrNoRows {
-		w.log.Debugf("Need new worker record for %s, %d\n", w.name, w.parent.pool.blockCounter)
-		stmt, err := tx.Prepare(`
+	w.log.Debugf("Need new worker record for %s, %d\n", w.name, w.parent.pool.blockCounter)
+	stmt, err := tx.Prepare(`
 			INSERT INTO [Worker]([WorkerID], [Name], [Parent], [Blocks], [SharesThisBlock], 
 				[InvalidSharesThisBlock], [StaleSharesThisBlock], 
 				[CumulativeDifficulty], [BlocksFound], [LastShareTime])
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 		`)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
-		_, err = stmt.Exec(w.workerID, w.name, w.parent.clientID, w.parent.pool.blockCounter, 0, 0, 0, 0.0, 0, 0)
-		if err != nil {
-			return err
-		}
-
-		err = tx.Commit()
+	if err != nil {
 		return err
 	}
+	defer stmt.Close()
+	_, err = stmt.Exec(w.workerID, w.name, w.parent.clientID, w.parent.pool.blockCounter, 0, 0, 0, 0.0, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
 	return err
 }
 
