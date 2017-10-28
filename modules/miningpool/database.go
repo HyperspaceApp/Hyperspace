@@ -102,17 +102,17 @@ func (p *Pool) findClient(name string) *Client {
 func (w *Worker) setFieldValue(field string, value interface{}) {
 	err := w.parent.pool.addIfNeededBlockCounter()
 	if err != nil {
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
+		w.log.Printf("Failed to add block record: %s\n", err)
 		return
 	}
 	err = w.addIfNeededWorkerRecord()
 	if err != nil {
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
+		w.log.Printf("Failed to add worker record: %s\n", err)
 		return
 	}
 	tx, err := w.parent.pool.sqldb.Begin()
 	if err != nil {
-		w.log.Printf("Failed to clear field %s: %s\n", field, err)
+		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
 		return
 	}
 	defer tx.Rollback()
@@ -120,28 +120,29 @@ func (w *Worker) setFieldValue(field string, value interface{}) {
 		field, value)
 	stmt, err := tx.Prepare(query)
 	if err != nil {
-		w.log.Printf("Failed to clear field %s: %s\n", field, err)
+		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
 		return
 	}
 	defer stmt.Close()
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
-	if driverErr, ok := err.(*sqlite3.Error); ok { // Now the error number is accessible directly
-		fmt.Printf("Error is %d\n", driverErr.Code)
+	if err != nil {
+		driverErr := err.(*sqlite3.Error)
+
+		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
 		if driverErr.Code == sqlite3.ErrLocked {
 			// Handle the permission-denied error
 		}
-	}
-	if err != nil {
-		w.log.Printf("Failed to clear field %s: %s\n", field, err)
+
+		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
 		return
 	}
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
-		w.log.Printf("Failed to clear field %s: %s\n", field, err)
+		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
 		return
 	}
 	if rowCnt != 1 {
-		w.log.Printf("Failed to clear field: %d\n", rowCnt)
+		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
 		return
 	}
 
@@ -152,12 +153,12 @@ func (w *Worker) setFieldValue(field string, value interface{}) {
 func (w *Worker) incrementFieldValue(field string) {
 	err := w.parent.pool.addIfNeededBlockCounter()
 	if err != nil {
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
+		w.log.Printf("Failed to add block record: %s\n", err)
 		return
 	}
 	err = w.addIfNeededWorkerRecord()
 	if err != nil {
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
+		w.log.Printf("Failed to add worker record: %s\n", err)
 		return
 	}
 
@@ -172,6 +173,9 @@ func (w *Worker) incrementFieldValue(field string) {
 	var value uint64
 	err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
 	if err != nil {
+		driverErr := err.(*sqlite3.Error)
+
+		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
 		w.log.Printf("Failed to increment field %s: %s\n", field, err)
 		return
 	}
@@ -185,6 +189,9 @@ func (w *Worker) incrementFieldValue(field string) {
 	defer stmt.Close()
 	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
 	if err != nil {
+		driverErr := err.(*sqlite3.Error)
+
+		w.log.Printf("SQLite Error is %d\n", driverErr.Code)
 		w.log.Printf("Failed to increment field %s: %s\n", field, err)
 		return
 	}
