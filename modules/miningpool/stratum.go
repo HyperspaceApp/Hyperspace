@@ -249,7 +249,11 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 			h.s.addClient(c)
 			h.s.addWorker(c.Worker(worker))
 			h.s.addShift(h.p.newShift(h.s.CurrentWorker))
-			h.s.CurrentWorker.log.Printf("Clearing share stats\n")
+			if h.s.CurrentWorker == nil {
+				h.p.log.Printf("Missing current worker!\n")
+			} else {
+				h.s.CurrentWorker.log.Printf("Clearing share stats\n")
+			}
 			h.sendSetDifficulty(h.s.CurrentDifficulty())
 		}
 		// TODO: figure out how to store this worker - probably in Session

@@ -399,7 +399,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	})
 	// pause for a while to get a valid netaddr
 	var count uint64
-	for p.gw.Address().IsStdValid() != nil && count < 20 {
+	for p.gw.Address().IsStdValid() != nil && count < 60 {
 		time.Sleep(time.Second * 1)
 		count++
 	}
