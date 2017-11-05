@@ -348,7 +348,7 @@ func (c *Client) addWorker(w *Worker) error {
 func (c *Client) findWorker(worker string, s *Session) error {
 	var id uint64
 	err := c.pool.sqldb.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [Name] = $1;",
-		worker, c.pool.blockCounter).Scan(&id)
+		worker).Scan(&id)
 	if err == nil {
 		w, err := newWorker(c, worker, s)
 		if err == nil {
@@ -357,6 +357,9 @@ func (c *Client) findWorker(worker string, s *Session) error {
 			w.wr.workerID = id
 			c.workers[worker] = w
 		}
+	}
+	if err != nil {
+		c.log.Printf("Error finding worker %s: %s\n", worker, err)
 	}
 	return err
 }
