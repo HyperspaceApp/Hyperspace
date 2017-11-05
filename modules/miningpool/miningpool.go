@@ -13,6 +13,7 @@ import (
 	"net"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/NebulousLabs/Sia/build"
@@ -49,6 +50,7 @@ var (
 	// Nil dependency errors.
 	errNilCS    = errors.New("pool cannot use a nil consensus state")
 	errNilTpool = errors.New("pool cannot use a nil transaction pool")
+	errNilGW    = errors.New("pool cannot use a nil gateway")
 	//	errNilWallet = errors.New("pool cannot use a nil wallet")
 
 	// Required settings to run pool
@@ -129,6 +131,7 @@ type Pool struct {
 	cs     modules.ConsensusSet
 	tpool  modules.TransactionPool
 	wallet modules.Wallet
+	gw     modules.Gateway
 	dependencies
 	modules.StorageManager
 
@@ -143,17 +146,22 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	sqldb        *sql.DB
-	listener     net.Listener
-	log          *persist.Logger
-	mu           sync.RWMutex
-	persistDir   string
-	port         string
-	tg           siasync.ThreadGroup
-	persist      persistence
-	dispatcher   *Dispatcher
-	stratumID    uint64
-	blockCounter uint64
+	sqldb          *sql.DB
+	listener       net.Listener
+	log            *persist.Logger
+	mu             sync.RWMutex
+	persistDir     string
+	port           string
+	tg             siasync.ThreadGroup
+	persist        persistence
+	dispatcher     *Dispatcher
+	id             string // uniquely identify this pool instance - intially ip:port will be used
+	stratumID      uint64
+	shiftID        uint64
+	shiftChan      chan bool
+	shiftTimestamp time.Time
+	blockCounter   uint64
+	clients        map[string]*Client //client name to client pointer mapping
 }
 
 // checkUnlockHash will check that the pool has an unlock hash. If the pool
@@ -222,13 +230,16 @@ func (p *Pool) startupRescan() error {
 // mocked such that the dependencies can return unexpected errors or unique
 // behaviors during testing, enabling easier testing of the failure modes of
 // the Pool.
-func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, wallet modules.Wallet, listenerAddress string, persistDir string) (*Pool, error) {
+func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, listenerAddress string, persistDir string) (*Pool, error) {
 	// Check that all the dependencies were provided.
 	if cs == nil {
 		return nil, errNilCS
 	}
 	if tpool == nil {
 		return nil, errNilTpool
+	}
+	if gw == nil {
+		return nil, errNilGW
 	}
 	// if wallet == nil {
 	// 	return nil, errNilWallet
@@ -238,6 +249,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	p := &Pool{
 		cs:    cs,
 		tpool: tpool,
+		gw:    gw,
 		//		wallet:       wallet,
 		dependencies: dependencies,
 		blockMem:     make(map[types.BlockHeader]*types.Block),
@@ -259,6 +271,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 
 		persistDir: persistDir,
 		stratumID:  rand.Uint64(),
+		clients:    make(map[string]*Client),
 	}
 	// TODO: Look at errors.go in modules/host directory for hints
 	// Call stop in the event of a partial startup.
@@ -323,7 +336,35 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, errors.New("Failed to update block count: " + err.Error())
 	}
+	err = p.setShiftIDFromDB()
+	if err != nil {
+		return nil, errors.New("Failed to update shiftID: " + err.Error())
+	}
+	// spin up a go routine to handle shift changes.
+	p.shiftChan = make(chan bool, 1)
+	go func() {
+		for {
+			time.Sleep(time.Minute * 10)
+			p.shiftChan <- true
+		}
+	}()
 
+	go func() {
+		for {
+			select {
+			case <-p.shiftChan:
+			case <-time.After(time.Minute * 10):
+			}
+			atomic.AddUint64(&p.shiftID, 1)
+			p.dispatcher.mu.RLock()
+			for _, h := range p.dispatcher.handlers {
+				h.s.CurrentShift.EndOldShift()
+				sh := p.newShift(h.s.CurrentWorker)
+				h.s.addShift(sh)
+			}
+			p.dispatcher.mu.RUnlock()
+		}
+	}()
 	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())
 	if err == modules.ErrInvalidConsensusChangeID {
 		// Perform a rescan of the consensus set if the change id is not found.
@@ -356,13 +397,20 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	p.tg.OnStop(func() {
 		p.dispatcher.ln.Close()
 	})
-
+	// pause for a while to get a valid netaddr
+	var count uint64
+	for p.gw.Address().IsStdValid() != nil && count < 20 {
+		time.Sleep(time.Second * 1)
+		count++
+	}
+	p.id = fmt.Sprintf("%s:%s", p.gw.Address().Host(), port)
+	fmt.Printf("        listening on %s\n", p.id)
 	return p, nil
 }
 
 // New returns an initialized Pool.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, wallet modules.Wallet, address string, persistDir string) (*Pool, error) {
-	return newPool(productionDependencies{}, cs, tpool, wallet, address, persistDir)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, address string, persistDir string) (*Pool, error) {
+	return newPool(productionDependencies{}, cs, tpool, gw, wallet, address, persistDir)
 }
 
 // Close shuts down the pool.
@@ -470,4 +518,12 @@ func (p *Pool) checkAddress() error {
 		return nil
 	}
 	return errNoAddressSet
+}
+
+func (p *Pool) Client(name string) *Client {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return p.clients[name]
+
 }

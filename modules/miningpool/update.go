@@ -251,7 +251,9 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 	// the stale rate as low as possible.
 	if cc.Synced {
 		p.log.Printf("Consensus change detected\n")
+		p.mu.Unlock()
 		p.setBlockCounterFromDB()
+		p.mu.Lock()
 		p.newSourceBlock()
 		if p.dispatcher != nil {
 			p.log.Printf("Notifying clients\n")

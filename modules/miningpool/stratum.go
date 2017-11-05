@@ -89,9 +89,18 @@ func (h *Handler) Listen() { // listen connection for incomming data
 		default:
 			err := dec.Decode(&m)
 			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-				// fmt.Printf("%s: Harmless timeout occurred\n", h.s.printID())
+				//				fmt.Printf("%s: Harmless timeout occurred\n", h.s.printID())
 				h.conn.SetReadDeadline(time.Time{})
 				dec = json.NewDecoder(h.conn)
+				// check last job time and if over 25 seconds, send a new job.
+				if time.Now().Sub(h.s.lastJobTimestamp) > (time.Second * 25) {
+					m.Method = "mining.notify"
+					break
+				}
+				if h.s.checkDiffOnNewShare() {
+					h.sendSetDifficulty(h.s.CurrentDifficulty())
+				}
+
 				continue
 			} else if err != nil {
 				if err == io.EOF {
@@ -206,7 +215,7 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 			client = s[0]
 			worker = s[1]
 		}
-		c := h.p.findClient(client)
+		c := h.p.findClientDB(client)
 		if c == nil {
 			c, _ = newClient(h.p, client)
 			h.p.log.Printf("Adding new client: %s\n", client)
@@ -214,21 +223,13 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 			if err != nil {
 				h.p.log.Printf("Failed to add client: %s\n", err)
 			}
-			//
-			// There is a race condition here which we can reduce/avoid by re-searching for the client once we
-			// have added it.
-			//
-			c = h.p.findClient(client)
-			if c == nil {
-				h.p.log.Printf("Failed to find client\n")
-			}
 		}
-		err = c.findWorker(worker)
+		err = c.findWorker(worker, h.s)
 		if err != nil { // returns error on new workers
 			if err != sql.ErrNoRows {
 				c.log.Printf("Failed to find worker %s: %s\n", worker, err)
 			}
-			w, _ := newWorker(c, worker)
+			w, _ := newWorker(c, worker, h.s)
 			err = c.addWorker(w)
 			if err != nil {
 				c.log.Printf("Failed to add worker: %s\n", err)
@@ -247,6 +248,7 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 		} else {
 			h.s.addClient(c)
 			h.s.addWorker(c.Worker(worker))
+			h.s.addShift(h.p.newShift(h.s.CurrentWorker))
 			h.s.CurrentWorker.log.Printf("Clearing share stats\n")
 			h.sendSetDifficulty(h.s.CurrentDifficulty())
 		}
@@ -314,7 +316,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	h.log.Debugln("name = " + name + ", jobID = " + fmt.Sprintf("%X", jobID) + ", extraNonce2 = " + extraNonce2 + ", nTime = " + nTime + ", nonce = " + nonce)
 
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
-	h.s.CurrentWorker.IncrementSharesThisBlock(h.s.CurrentDifficulty())
+	h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
 	var b types.Block
@@ -327,8 +329,8 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	if len(b.MinerPayouts) == 0 {
 		r.Error = json.RawMessage(`["21","Stale - old/unknown job"]`)
 		h.s.CurrentWorker.log.Printf("Stale Share rejected - old/unknown job\n")
-		h.s.CurrentWorker.IncrementStaleSharesThisBlock()
-		h.s.CurrentWorker.IncrementInvalidSharesThisBlock()
+		h.s.CurrentWorker.IncrementStaleShares()
+		h.s.CurrentWorker.IncrementInvalidShares()
 		h.sendResponse(r)
 		return
 	}
@@ -364,8 +366,8 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		h.log.Printf("Failed to SubmitBlock(): %v\n", err)
 		r.Result = json.RawMessage(`false`)
 		r.Error = json.RawMessage(`["20","Stale share"]`)
-		h.s.CurrentWorker.IncrementStaleSharesThisBlock()
-		h.s.CurrentWorker.IncrementInvalidSharesThisBlock()
+		h.s.CurrentWorker.IncrementStaleShares()
+		h.s.CurrentWorker.IncrementInvalidShares()
 		h.sendResponse(r)
 		// fmt.Printf("%s: %s Handle submit - done - unknown\n", time.Now(), h.s.printID())
 		return
@@ -381,6 +383,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		}
 		ac, _ := newAccounting(h.p, b.ID())
 		h.p.BlocksFound = append(h.p.BlocksFound, ac)
+		h.p.shiftChan <- true
 		fmt.Printf("%v\n", ac)
 	}
 	h.sendResponse(r)

@@ -8,29 +8,45 @@ import (
 	"github.com/NebulousLabs/Sia/persist"
 )
 
+type WorkerRecord struct {
+	workerID          uint64
+	name              string
+	averageDifficulty float64
+	blocksFound       uint64
+	parent            *Client
+}
+
 //
 // A Worker is an instance of one miner.  A Client often represents a user and the worker represents a single miner.  There
 // is a one to many client worker relationship
 //
 type Worker struct {
-	mu       sync.RWMutex
-	workerID uint64
-	name     string
-	parent   *Client
+	mu sync.RWMutex
+	wr WorkerRecord
+	s  *Session
 	// utility
 	log *persist.Logger
 }
 
-func newWorker(c *Client, name string) (*Worker, error) {
+func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 	p := c.Pool()
 	id := p.newStratumID()
 	w := &Worker{
-		workerID: id(),
-		name:     name,
-		parent:   c,
+		wr: WorkerRecord{
+			workerID: id(),
+			name:     name,
+			parent:   c,
+		},
+		s: s,
+	}
+
+	// check if this worker instance is an oiginal or copy
+	if c.Worker(name) != nil {
+		return w, nil
 	}
 
 	var err error
+
 	// Create the perist directory if it does not yet exist.
 	dirname := filepath.Join(p.persistDir, "clients", c.Name())
 	err = p.dependencies.mkdirAll(dirname, 0700)
@@ -49,76 +65,68 @@ func (w *Worker) printID() string {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	return sPrintID(w.workerID)
+	return sPrintID(w.wr.workerID)
 }
 
 func (w *Worker) Name() string {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	return w.name
+	return w.wr.name
 }
 
 func (w *Worker) SetName(n string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.name = n
+	w.wr.name = n
 }
 
 func (w *Worker) Parent() *Client {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	return w.parent
+	return w.wr.parent
 }
 
 func (w *Worker) SetParent(p *Client) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	w.parent = p
+	w.wr.parent = p
 }
 
 func (w *Worker) SharesThisBlock() uint64 {
-	return w.getUint64Field("SharesThisBlock")
+	return w.getUint64Field("Shares")
 }
 
-func (w *Worker) ClearSharesThisBlock() {
-	w.setFieldValue("SharesThisBlock", 0)
+func (w *Worker) IncrementShares(currentDifficulty float64) {
+	w.s.mu.Lock()
+	defer w.s.mu.Unlock()
+	w.s.CurrentShift.IncrementShares()
+	w.s.CurrentShift.IncrementCumulativeDifficulty(currentDifficulty)
 }
 
-func (w *Worker) IncrementSharesThisBlock(currentDifficulty float64) {
-	w.incrementFieldValue("SharesThisBlock")
-	value := w.getFloatField("CumulativeDifficulty")
-	value += currentDifficulty
-	w.setFieldValue("CumulativeDifficulty", value)
+func (w *Worker) InvalidShares() uint64 {
+	return w.getUint64Field("InvalidShares")
 }
 
-func (w *Worker) InvalidSharesThisBlock() uint64 {
-	return w.getUint64Field("InvalidSharesThisBlock")
+func (w *Worker) IncrementInvalidShares() {
+	w.s.mu.Lock()
+	defer w.s.mu.Unlock()
+	w.s.CurrentShift.IncrementInvalid()
 }
 
-func (w *Worker) ClearInvalidSharesThisBlock() {
-	w.setFieldValue("InvalidSharesThisBlock", 0)
+func (w *Worker) StaleShares() uint64 {
+	return w.getUint64Field("StaleShares")
 }
 
-func (w *Worker) IncrementInvalidSharesThisBlock() {
-	w.incrementFieldValue("InvalidSharesThisBlock")
-}
-
-func (w *Worker) StaleSharesThisBlock() uint64 {
-	return w.getUint64Field("StaleSharesThisBlock")
-}
-
-func (w *Worker) ClearStaleSharesThisBlock() {
-	w.setFieldValue("StaleSharesThisBlock", 0)
-}
-
-func (w *Worker) IncrementStaleSharesThisBlock() {
-	w.incrementFieldValue("StaleSharesThisBlock")
+func (w *Worker) IncrementStaleShares() {
+	w.s.mu.Lock()
+	defer w.s.mu.Unlock()
+	w.s.CurrentShift.IncrementStale()
 }
 
 func (w *Worker) SetLastShareTime(t time.Time) {
-	w.setFieldValue("LastShareTime", t.Unix())
+	w.s.CurrentShift.SetLastShareTime(t)
 }
 
 func (w *Worker) LastShareTime() time.Time {
@@ -127,28 +135,21 @@ func (w *Worker) LastShareTime() time.Time {
 }
 
 func (w *Worker) BlocksFound() uint64 {
-	return w.getUint64Field("BlocksFound")
-}
-
-func (w *Worker) ClearBlocksFound() {
-	w.setFieldValue("BlocksFound", 0)
+	return w.wr.blocksFound
 }
 
 func (w *Worker) IncrementBlocksFound() {
-	w.incrementFieldValue("BlocksFound")
+	w.wr.blocksFound++
+	w.updateWorkerRecord()
 }
 
 func (w *Worker) CumulativeDifficulty() float64 {
 	return w.getFloatField("CumulativeDifficulty")
 }
 
-func (w *Worker) ClearCumulativeDifficulty() {
-	w.setFieldValue("CumulativeDifficulty", 0.0)
-}
-
 // CurrentDifficulty returns the average difficulty of all instances of this worker
 func (w *Worker) CurrentDifficulty() float64 {
-	pool := w.parent.Pool()
+	pool := w.wr.parent.Pool()
 	d := pool.dispatcher
 	d.mu.Lock()
 	defer d.mu.Unlock()

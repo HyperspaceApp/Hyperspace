@@ -314,7 +314,7 @@ func startDaemon(config Config) (err error) {
 	if strings.Contains(config.Siad.Modules, "p") {
 		i++
 		fmt.Printf("(%d/%d) Loading pool...\n", i, len(config.Siad.Modules))
-		p, err = pool.New(cs, tpool, w, config.Siad.HostAddr, filepath.Join(config.Siad.SiaDir, modules.PoolDir))
+		p, err = pool.New(cs, tpool, g, w, config.Siad.HostAddr, filepath.Join(config.Siad.SiaDir, modules.PoolDir))
 		if err != nil {
 			return err
 		}

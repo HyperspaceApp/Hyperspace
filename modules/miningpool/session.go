@@ -3,6 +3,7 @@ package pool
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"sync"
 	"time"
 
 	"github.com/NebulousLabs/Sia/persist"
@@ -17,11 +18,14 @@ const (
 // closed.  A session is tied to a single client and has many jobs associated with it
 //
 type Session struct {
-	SessionID     uint64
-	CurrentJobs   []*Job
-	Client        *Client
-	CurrentWorker *Worker
-	ExtraNonce1   uint32
+	mu               sync.RWMutex
+	SessionID        uint64
+	CurrentJobs      []*Job
+	lastJobTimestamp time.Time
+	Client           *Client
+	CurrentWorker    *Worker
+	CurrentShift     *Shift
+	ExtraNonce1      uint32
 	// vardiff
 	currentDifficulty    float64
 	vardiff              Vardiff
@@ -49,32 +53,53 @@ func newSession(p *Pool) (*Session, error) {
 }
 
 func (s *Session) addClient(c *Client) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.Client = c
 }
 
 func (s *Session) addWorker(w *Worker) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.CurrentWorker = w
 }
 
 func (s *Session) addJob(j *Job) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.CurrentJobs = append(s.CurrentJobs, j)
+	s.lastJobTimestamp = time.Now()
+}
+
+func (s *Session) addShift(shift *Shift) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.CurrentShift = shift
 }
 
 func (s *Session) printID() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return sPrintID(s.SessionID)
 }
 
 func (s *Session) printNonce() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	ex1 := make([]byte, 4)
 	binary.LittleEndian.PutUint32(ex1, s.ExtraNonce1)
 	return hex.EncodeToString(ex1)
 }
 
 func (s *Session) LastShareDuration() float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.shareTimes[s.lastShareSpot]
 }
 
 func (s *Session) SetLastShareDuration(seconds float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.lastShareSpot++
 	if s.lastShareSpot == s.vardiff.bufSize {
 		s.lastShareSpot = 0
@@ -84,6 +109,8 @@ func (s *Session) SetLastShareDuration(seconds float64) {
 }
 
 func (s *Session) ShareDurationAverage() float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var average float64
 	for i := uint64(0); i < s.vardiff.bufSize; i++ {
 		average += s.shareTimes[i]
@@ -92,9 +119,13 @@ func (s *Session) ShareDurationAverage() float64 {
 }
 
 func (s *Session) CurrentDifficulty() float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.currentDifficulty
 }
 
 func (s *Session) SetCurrentDifficulty(d float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.currentDifficulty = d
 }

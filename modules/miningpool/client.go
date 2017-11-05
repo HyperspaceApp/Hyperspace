@@ -9,17 +9,24 @@ import (
 )
 
 //
+// A ClientRecord represents the persistent data portion of the Client record
+//
+type ClientRecord struct {
+	clientID uint64
+	name     string
+	wallet   types.UnlockHash
+}
+
+//
 // A Client represents a user and may have one or more workers associated with it.  It is primarily used for
 // accounting and statistics.
 //
 type Client struct {
-	mu       sync.RWMutex
-	clientID uint64
-	name     string
-	wallet   types.UnlockHash
-	pool     *Pool
-	log      *persist.Logger
-	workers  map[string]*Worker //worker name to worker pointer mapping
+	cr      ClientRecord
+	mu      sync.RWMutex
+	pool    *Pool
+	log     *persist.Logger
+	workers map[string]*Worker //worker name to worker pointer mapping
 }
 
 // newClient creates a new Client record
@@ -27,11 +34,18 @@ func newClient(p *Pool, name string) (*Client, error) {
 	var err error
 	id := p.newStratumID()
 	c := &Client{
-		clientID: id(),
-		name:     name,
-		pool:     p,
-		workers:  make(map[string]*Worker),
+		cr: ClientRecord{
+			clientID: id(),
+			name:     name,
+		},
+		pool:    p,
+		workers: make(map[string]*Worker),
 	}
+	// check if this worker instance is an oiginal or copy
+	if p.Client(name) != nil {
+		return c, nil
+	}
+
 	// Create the perist directory if it does not yet exist.
 	dirname := filepath.Join(p.persistDir, "clients", name)
 	err = p.dependencies.mkdirAll(dirname, 0700)
@@ -50,13 +64,13 @@ func (c *Client) Name() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return c.name
+	return c.cr.name
 }
 
 func (c *Client) SetName(n string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.name = n
+	c.cr.name = n
 
 }
 
@@ -64,13 +78,13 @@ func (c *Client) Wallet() *types.UnlockHash {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return &c.wallet
+	return &c.cr.wallet
 }
 
 func (c *Client) addWallet(w types.UnlockHash) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.wallet = w
+	c.cr.wallet = w
 }
 
 func (c *Client) Pool() *Pool {
@@ -99,5 +113,5 @@ func (c *Client) printID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	return sPrintID(c.clientID)
+	return sPrintID(c.cr.clientID)
 }

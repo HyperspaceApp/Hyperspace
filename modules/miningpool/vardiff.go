@@ -6,8 +6,8 @@ import (
 
 const (
 	targetDuration   = float64(4)  // targeted seconds between shares
-	retargetDuration = float64(90) // how often do we consider changing difficulty
-	variancePercent  = 25          // how much we let the share duration vary between retargetting
+	retargetDuration = float64(60) // how often do we consider changing difficulty
+	variancePercent  = 15          // how much we let the share duration vary between retargetting
 )
 
 type Vardiff struct {

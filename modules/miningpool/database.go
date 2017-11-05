@@ -6,7 +6,6 @@ import (
 
 	"github.com/NebulousLabs/Sia/modules"
 	"github.com/NebulousLabs/Sia/types"
-	sqlite3 "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -40,7 +39,7 @@ func (p *Pool) AddClient(c *Client) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(c.clientID, c.name, c.name)
+	_, err = stmt.Exec(c.cr.clientID, c.cr.name, c.cr.name)
 	if err != nil {
 		return err
 	}
@@ -49,11 +48,11 @@ func (p *Pool) AddClient(c *Client) error {
 	if err != nil {
 		return err
 	}
-
+	p.clients[c.Name()] = c
 	return nil
 }
 
-func (p *Pool) findClient(name string) *Client {
+func (p *Pool) findClientDB(name string) *Client {
 	var clientID uint64
 	var Name, Wallet string
 	// p.log.Printf("Searching database for client: %s\n", name)
@@ -62,14 +61,15 @@ func (p *Pool) findClient(name string) *Client {
 		p.log.Debugf("Search failed: %s\n", err)
 		return nil
 	}
-	c, err := newClient(p, Name)
-	if err != nil {
-		return nil
+	c := p.Client(Name)
+	if c != nil {
+		return c
 	}
+	c, err = newClient(p, name)
 	var wallet types.UnlockHash
 	wallet.LoadString(Wallet)
 	c.addWallet(wallet)
-	c.clientID = clientID
+	c.cr.clientID = clientID
 	qs := fmt.Sprintf("SELECT [Name] FROM [Worker] WHERE [Parent] = %d;", clientID)
 	stmt, err := p.sqldb.Prepare(qs)
 	if err != nil {
@@ -91,7 +91,7 @@ func (p *Pool) findClient(name string) *Client {
 			return nil
 		}
 		if c.Worker(value) == nil {
-			w, _ := newWorker(c, value)
+			w, _ := newWorker(c, value, nil)
 			c.addWorker(w)
 		}
 	}
@@ -100,189 +100,100 @@ func (p *Pool) findClient(name string) *Client {
 		p.log.Printf("Error finding workers for client %s: %s\n", name, err)
 		return nil
 	}
+	err = p.AddClient(c)
+	if err != nil {
+		p.log.Printf("Error adding client %s to pool: %s\n", name, err)
+		return nil
+	}
 
 	return c
 }
 
-func (w *Worker) setFieldValue(field string, value interface{}) {
-	err := w.parent.pool.addIfNeededBlockCounter()
-	if err != nil {
-		w.log.Printf("Failed to add block record: %s\n", err)
-		return
-	}
-	err = w.addIfNeededWorkerRecord()
-	if err != nil {
-		w.log.Printf("Failed to add worker record: %s\n", err)
-		return
-	}
-	tx, err := w.parent.pool.sqldb.Begin()
-	if err != nil {
-		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
-		return
-	}
-	defer tx.Rollback()
-	query := fmt.Sprintf("UPDATE [Worker] SET [%s] = %v WHERE [WorkerID] = $1 AND [Blocks] = $2;",
-		field, value)
-	stmt, err := tx.Prepare(query)
-	if err != nil {
-		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
-		return
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
-	if err != nil {
-		driverErr := err.(sqlite3.Error)
-		count := 0
-		for driverErr.Code == sqlite3.ErrLocked && count < sqlLockRetry {
-
-			time.Sleep(time.Millisecond * sqlRetryDelay)
-			res, err = stmt.Exec(w.workerID, w.parent.pool.blockCounter)
-			if err != nil {
-				driverErr = err.(sqlite3.Error)
-			} else {
-				driverErr.Code = 0
-			}
-			count++
-		}
-		w.log.Printf("SQLite Error count is %d\n", count)
-		if err != nil {
-			w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
-			return
-		}
-	}
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
-		return
-	}
-	if rowCnt != 1 {
-		w.log.Printf("Failed to set field %s to %v: %s\n", field, value, err)
-		return
-	}
-
-	tx.Commit()
-
-}
-
-func (w *Worker) incrementFieldValue(field string) {
-	err := w.parent.pool.addIfNeededBlockCounter()
-	if err != nil {
-		w.log.Printf("Failed to add block record: %s\n", err)
-		return
-	}
-	err = w.addIfNeededWorkerRecord()
-	if err != nil {
-		w.log.Printf("Failed to add worker record: %s\n", err)
-		return
-	}
-
-	tx, err := w.parent.pool.sqldb.Begin()
-	if err != nil {
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
-		return
-	}
-	defer tx.Rollback()
-	query := fmt.Sprintf("SELECT [%s] FROM [Worker] WHERE [WorkerID] = $1 AND [Blocks] = $2;", field)
-
-	var value uint64
-	err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
-	if err != nil {
-		driverErr := err.(sqlite3.Error)
-		count := 0
-		for driverErr.Code == sqlite3.ErrLocked && count < sqlLockRetry {
-
-			time.Sleep(time.Millisecond * sqlRetryDelay)
-			err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
-			if err != nil {
-				driverErr = err.(sqlite3.Error)
-			} else {
-				driverErr.Code = 0
-			}
-			count++
-		}
-		w.log.Printf("SQLite Error count is %d\n", count)
-		if err != nil {
-			w.log.Printf("Failed to increment field %s: %s\n", field, err)
-			return
-		}
-	}
-	query = fmt.Sprintf("UPDATE [Worker] SET [%s] = %d WHERE [WorkerID] = $1 AND [Blocks] = $2;",
-		field, value+1)
-	stmt, err := tx.Prepare(query)
-	if err != nil {
-		w.log.Printf("Failed to prepare query %s: %s\n", query, err)
-		return
-	}
-	defer stmt.Close()
-	res, err := stmt.Exec(w.workerID, w.parent.pool.blockCounter)
-	if err != nil {
-		driverErr := err.(sqlite3.Error)
-		count := 0
-		for driverErr.Code == sqlite3.ErrLocked && count < sqlLockRetry {
-
-			time.Sleep(time.Millisecond * sqlRetryDelay)
-			err = tx.QueryRow(query, w.workerID, w.parent.pool.blockCounter).Scan(&value)
-			if err != nil {
-				driverErr = err.(sqlite3.Error)
-			} else {
-				driverErr.Code = 0
-			}
-			count++
-		}
-		w.log.Printf("SQLite Error count is %d\n", count)
-		if err != nil {
-			w.log.Printf("Failed to increment field %s: %s\n", field, err)
-			return
-		}
-	}
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		w.log.Printf("Failed to increment field %s: %s\n", field, err)
-		return
-	}
-	if rowCnt != 1 {
-		w.log.Printf("Failed to increment field - rows affected: %d\n", rowCnt)
-		return
-	}
-	tx.Commit()
-}
-
 func (w *Worker) getUint64Field(field string) uint64 {
-	err := w.parent.pool.addIfNeededBlockCounter()
-	if err != nil {
-		w.log.Printf("Failed to get uint64 field %s: %s\n", field, err)
-		return 0
-	}
-
-	query := fmt.Sprintf("SELECT [%s] FROM [Worker] WHERE [WorkerID] = $1 AND [Blocks] = %d;", field, w.parent.pool.blockCounter)
+	query := fmt.Sprintf("SELECT [%s] FROM [ShiftInfo] WHERE [Parent] = $1 AND [Blocks] = %d AND [Pool] = $2;", field, w.wr.parent.pool.blockCounter)
 
 	var value uint64
-	err = w.parent.pool.sqldb.QueryRow(query, w.workerID).Scan(&value)
+	value = 0
+	stmt, err := w.wr.parent.pool.sqldb.Prepare(query)
 	if err != nil {
-		value = 0
+		return value
 	}
-	return value
+	defer stmt.Close()
+	rows, err := stmt.Query(w.wr.workerID, w.wr.parent.pool.id)
+	if err != nil {
+		return value
+	}
+	defer rows.Close()
+	var sum uint64
+	sum = 0
+	for rows.Next() {
+		err = rows.Scan(&value)
+		if err != nil {
+			return sum
+		}
+		sum += value
+	}
+	err = rows.Err()
+	if err != nil {
+		w.log.Printf("Error getting field %s: %s\n", field, err)
+		return sum
+	}
+	return sum
 }
 
 func (w *Worker) getFloatField(field string) float64 {
-	err := w.parent.pool.addIfNeededBlockCounter()
-	if err != nil {
-		w.log.Printf("Failed to get float field %s: %s\n", field, err)
-		return 0.0
-	}
-
-	query := fmt.Sprintf("SELECT [%s] FROM [Worker] WHERE [WorkerID] = $1 AND [Blocks] = %d;", field, w.parent.pool.blockCounter)
+	query := fmt.Sprintf("SELECT [%s] FROM [ShiftInfo] WHERE [Parent] = $1 AND [Blocks] = %d AND [Pool] = $2;", field, w.wr.parent.pool.blockCounter)
 
 	var value float64
-	err = w.parent.pool.sqldb.QueryRow(query, w.workerID).Scan(&value)
+	value = 0.0
+	stmt, err := w.wr.parent.pool.sqldb.Prepare(query)
 	if err != nil {
-		value = 0.0
+		return value
 	}
-	return value
+	defer stmt.Close()
+	rows, err := stmt.Query(w.wr.workerID, w.wr.parent.pool.id)
+	if err != nil {
+		return value
+	}
+	defer rows.Close()
+	var sum float64
+	sum = 0.0
+	for rows.Next() {
+		err = rows.Scan(&value)
+		if err != nil {
+			return sum
+		}
+		sum += value
+	}
+	err = rows.Err()
+	if err != nil {
+		w.log.Printf("Error getting field %s: %s\n", field, err)
+		return sum
+	}
+	return sum
+}
+
+func (w *Worker) updateWorkerRecord() error {
+	stmt, err := w.Parent().pool.sqldb.Prepare(`
+		UPDATE [Worker]
+		SET [AverageDifficulty] = $1, [BlocksFound] = $2
+		WHERE [WorkerID] = $3
+		`)
+	if err != nil {
+		w.log.Printf("Error preparing to update worker: %s\n", err)
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(w.CurrentDifficulty(), w.BlocksFound(), w.wr.workerID)
+	if err != nil {
+		w.log.Printf("Error updating record: %s\n", err)
+		return err
+	}
+	return nil
 }
 
 func (w *Worker) addFoundBlock(b *types.Block) error {
-	tx, err := w.parent.pool.sqldb.Begin()
+	tx, err := w.wr.parent.pool.sqldb.Begin()
 	if err != nil {
 		return err
 	}
@@ -298,13 +209,19 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	}
 	defer stmt.Close()
 
-	bh := w.parent.pool.persist.GetBlockHeight()
+	bh := w.wr.parent.pool.persist.GetBlockHeight()
 	sub := b.CalculateSubsidy(bh).String()
-	w.log.Printf("Adding found block %d, height %d, subsidy %s: err %v\n", w.parent.pool.blockCounter, bh, sub, err)
-	_, err = stmt.Exec(bh, sub, time.Now().Unix(), w.parent.pool.blockCounter)
+	w.log.Printf("Adding found block %d, height %d, subsidy %s: err %v\n", w.wr.parent.pool.blockCounter, bh, sub, err)
+	_, err = stmt.Exec(bh, sub, time.Now().Unix(), w.wr.parent.pool.blockCounter)
 	if err != nil {
 		return err
 	}
+	w.wr.parent.pool.blockCounter++
+	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, w.wr.parent.pool.blockCounter)
+	if err != nil {
+		return err
+	}
+	w.log.Printf("New candidate block added %d\n", w.wr.parent.pool.blockCounter)
 
 	err = tx.Commit()
 	if err != nil {
@@ -312,70 +229,6 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	}
 
 	return nil
-}
-
-func (p *Pool) addIfNeededBlockCounter() error {
-	var count uint64
-	err := p.sqldb.QueryRow("SELECT [BlockID] FROM [Block] WHERE [BlockID] = $1;", p.blockCounter).Scan(&count)
-	if err == nil {
-		return err
-	}
-	tx, err := p.sqldb.Begin()
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-
-	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, p.blockCounter)
-	if err != nil {
-		return err
-	}
-	p.log.Printf("New candidate block added %d\n", p.blockCounter)
-	tx.Commit()
-	return nil
-}
-
-func (w *Worker) addIfNeededWorkerRecord() error {
-
-	var id uint64
-	err := w.parent.pool.sqldb.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [WorkerID] = $1 AND [Blocks] = $2;",
-		w.workerID, w.parent.pool.blockCounter).Scan(&id)
-	if err == nil {
-		return err
-	}
-	err = w.parent.pool.addIfNeededBlockCounter()
-	if err != nil {
-		w.log.Printf("Failed to add new block: %s\n", err)
-		return err
-	}
-
-	// At this point we need the record
-	tx, err := w.parent.pool.sqldb.Begin()
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-
-	w.log.Debugf("Need new worker record for %s, %d\n", w.name, w.parent.pool.blockCounter)
-	stmt, err := tx.Prepare(`
-			INSERT INTO [Worker]([WorkerID], [Name], [Parent], [Blocks], [SharesThisBlock], 
-				[InvalidSharesThisBlock], [StaleSharesThisBlock], 
-				[CumulativeDifficulty], [BlocksFound], [LastShareTime])
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-		`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.Exec(w.workerID, w.name, w.parent.clientID, w.parent.pool.blockCounter, 0, 0, 0, 0.0, 0, 0)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Commit()
-	return err
 }
 
 func (p *Pool) setBlockCounterFromDB() error {
@@ -401,19 +254,69 @@ func (p *Pool) setBlockCounterFromDB() error {
 	if err != nil {
 		return err
 	}
+	p.mu.Lock()
 	p.blockCounter = uint64(value)
+	p.mu.Unlock()
 	p.log.Debugf("setBlockCounterFromDB, Count = %d\n", value)
 	return nil
 }
 
+func (p *Pool) setShiftIDFromDB() error {
+	stmt, err := p.sqldb.Prepare(`SELECT [ShiftID] FROM [ShiftInfo] WHERE [Pool] = $1 ORDER BY [ShiftID] DESC;`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(p.id)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	var value int64
+	for rows.Next() {
+		err = rows.Scan(&value)
+		if err != nil {
+			return err
+		}
+		break
+	}
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+	p.shiftID = uint64(value)
+	p.log.Debugf("setshiftIDFromDB, Count = %d\n", value)
+	return nil
+}
+
+// EndOldShift ends the old shift by committing the current shift data to the database
+func (s *Shift) EndOldShift() error {
+
+	stmt, err := s.worker.Parent().pool.sqldb.Prepare(`
+		INSERT INTO 
+		[ShiftInfo]([ShiftID], [Pool], [Parent], [Blocks], [Shares], [InvalidShares], [StaleShares], [CummulativeDifficulty], [LastShareTime])
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`)
+	if err != nil {
+		s.worker.log.Printf("Error preparing to end shift: %s\n", err)
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(s.ShiftID(), s.Pool(), s.worker.wr.workerID, s.BlockID(),
+		s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime())
+	if err != nil {
+		s.worker.log.Printf("%d,%s,%d,%d,%d,%d,%d,%f,%v\n", s.ShiftID(), s.Pool(), s.worker.wr.workerID, s.BlockID(),
+			s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime())
+		s.worker.log.Printf("Error adding record of last shift: %s\n", err)
+		return err
+	}
+	return nil
+}
 func (c *Client) addWorker(w *Worker) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	c.workers[w.Name()] = w
-	c.log.Printf("Adding client %s worker %s to database\n", c.name, w.Name())
-	//	p.clients[c.Name()] = c
-	c.pool.addIfNeededBlockCounter()
+	c.log.Printf("Adding client %s worker %s to database\n", c.cr.name, w.Name())
 	tx, err := c.pool.sqldb.Begin()
 	if err != nil {
 		return err
@@ -421,17 +324,15 @@ func (c *Client) addWorker(w *Worker) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO [Worker]([WorkerID], [Name], [Parent], [Blocks], 
-			[SharesThisBlock], [InvalidSharesThisBlock], [StaleSharesThisBlock], 
-			[CumulativeDifficulty], [BlocksFound], [LastShareTime])
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+		INSERT INTO [Worker]([WorkerID], [Name], [Parent], [AverageDifficulty], [BlocksFound])
+		VALUES (?, ?, ?, ?, ?);
 	`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(w.workerID, w.name, c.clientID, c.pool.blockCounter, 0, 0, 0, 0.0, 0, 0)
+	_, err = stmt.Exec(w.wr.workerID, w.wr.name, c.cr.clientID, 0.0, 0)
 	if err != nil {
 		return err
 	}
@@ -444,16 +345,16 @@ func (c *Client) addWorker(w *Worker) error {
 	return nil
 }
 
-func (c *Client) findWorker(worker string) error {
+func (c *Client) findWorker(worker string, s *Session) error {
 	var id uint64
-	err := c.pool.sqldb.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [Name] = $1 AND [Blocks] = $2;",
+	err := c.pool.sqldb.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [Name] = $1;",
 		worker, c.pool.blockCounter).Scan(&id)
 	if err == nil {
-		w, err := newWorker(c, worker)
+		w, err := newWorker(c, worker, s)
 		if err == nil {
 			c.mu.Lock()
 			defer c.mu.Unlock()
-			w.workerID = id
+			w.wr.workerID = id
 			c.workers[worker] = w
 		}
 	}
@@ -469,14 +370,16 @@ func (p *Pool) ClientData() []modules.PoolClients {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		SELECT [Clients].[Name], [Worker].[Name], [Worker].[Blocks], [Worker].[SharesThisBlock], 
-		[Worker].[InvalidSharesThisBlock], [Worker].[StaleSharesThisBlock], [Worker].[CumulativeDifficulty], 
-		[Worker].[BlocksFound], [Worker].[LastShareTime] 
-		FROM [Worker] 
-		INNER JOIN [Clients] ON [Worker].[Parent]=[Clients].[ClientID]
-		ORDER BY [Clients].[Name], [Worker].[Name], [Worker].[Blocks];
+		SELECT [Clients].[Name], [Worker].[Name], [ShiftInfo].[Shares], [Worker].[AverageDifficulty],
+		[ShiftInfo].[InvalidShares], [ShiftInfo].[StaleShares], [ShiftInfo].[CummulativeDifficulty], 
+		[Worker].[BlocksFound], [ShiftInfo].[LastShareTime] 
+		FROM (([Worker] 
+		INNER JOIN [Clients] ON [Worker].[Parent]=[Clients].[ClientID])
+		INNER JOIN [ShiftInfo] ON [Worker].[WorkerID]=[ShiftInfo].[Parent])
+		ORDER BY [Clients].[Name], [Worker].[Name], [ShiftInfo].[ShiftID];
 	`)
 	if err != nil {
+		p.log.Printf("Prepare failed: %s\n", err)
 		return nil
 	}
 	defer stmt.Close()
@@ -493,14 +396,14 @@ func (p *Pool) ClientData() []modules.PoolClients {
 	var worker modules.PoolWorkers
 	var c *Client
 	var w *Worker
+	var sharesThisBlock, invalidSharesThisBlock, staleSharesThisBlock, blocksFound uint64
+	var averageDifficulty, cumulativeDifficulty float64
+	var clientName, workerName string
+	var shareTime time.Time
 
 	defer rows.Close()
 	for rows.Next() {
-		var blocks, sharesThisBlock, invalidSharesThisBlock, staleSharesThisBlock, blocksFound uint64
-		var cumulativeDifficulty float64
-		var clientName, workerName string
-		var shareTime time.Time
-		err = rows.Scan(&clientName, &workerName, &blocks, &sharesThisBlock, &invalidSharesThisBlock,
+		err = rows.Scan(&clientName, &workerName, &sharesThisBlock, &averageDifficulty, &invalidSharesThisBlock,
 			&staleSharesThisBlock, &cumulativeDifficulty, &blocksFound, &shareTime)
 		if err != nil {
 			p.log.Printf("Row scan failed: %s\n", err)
@@ -517,20 +420,30 @@ func (p *Pool) ClientData() []modules.PoolClients {
 			cbf = 0
 		}
 		if currentClient != clientName {
-			c = p.findClient(clientName)
-			if c == nil {
-				continue
-			}
+			c = p.Client(clientName)
 		}
 		if currentWorker != workerName {
 			if len(currentWorker) != 0 {
 				cbf += worker.BlocksFound
-				worker.CurrentDifficulty = w.CurrentDifficulty()
+				worker.CurrentDifficulty = averageDifficulty
+				if w != nil {
+					// add current shift if online
+					worker.CumulativeDifficulty += w.CumulativeDifficulty()
+					if shareTime.Unix() > worker.LastShareTime.Unix() {
+						worker.LastShareTime = w.LastShareTime()
+					}
+					worker.CurrentDifficulty = w.CurrentDifficulty()
+					worker.SharesThisBlock += w.SharesThisBlock()
+					worker.InvalidSharesThisBlock += w.InvalidShares()
+					worker.StaleSharesThisBlock += w.StaleShares()
+
+				}
 				pw = append(pw, worker)
 			}
 			worker = modules.PoolWorkers{
 				WorkerName:             workerName,
 				LastShareTime:          shareTime,
+				CurrentDifficulty:      averageDifficulty,
 				CumulativeDifficulty:   cumulativeDifficulty,
 				SharesThisBlock:        sharesThisBlock,
 				InvalidSharesThisBlock: invalidSharesThisBlock,
@@ -538,26 +451,44 @@ func (p *Pool) ClientData() []modules.PoolClients {
 				BlocksFound:            blocksFound,
 			}
 			currentWorker = workerName
-			w = c.Worker(workerName)
+			if c != nil {
+				w = c.Worker(workerName)
+			} else {
+				w = nil
+			}
 		} else {
 			if shareTime.Unix() > worker.LastShareTime.Unix() {
 				worker.LastShareTime = shareTime
 			}
+			worker.CurrentDifficulty = averageDifficulty
 			worker.CumulativeDifficulty += cumulativeDifficulty
-			worker.SharesThisBlock = sharesThisBlock // last block will be current block
-			worker.InvalidSharesThisBlock = invalidSharesThisBlock
-			worker.StaleSharesThisBlock = staleSharesThisBlock
-			worker.BlocksFound += blocksFound
+			worker.SharesThisBlock += sharesThisBlock
+			worker.InvalidSharesThisBlock += invalidSharesThisBlock
+			worker.StaleSharesThisBlock += staleSharesThisBlock
+			worker.BlocksFound = blocksFound
 		}
 		currentClient = clientName
 
 	}
 	if rows.Err() != nil || len(currentClient) == 0 {
+		p.log.Printf("Rows.Err failed: %s\n", err)
 		return nil
 	}
 	// finished with last worker
 	cbf += worker.BlocksFound
-	worker.CurrentDifficulty = w.CurrentDifficulty()
+	worker.CurrentDifficulty = averageDifficulty
+	if w != nil {
+		// add current shift if online
+		worker.CumulativeDifficulty += w.CumulativeDifficulty()
+		if w.LastShareTime().Unix() > worker.LastShareTime.Unix() {
+			worker.LastShareTime = w.LastShareTime()
+		}
+		worker.CurrentDifficulty = w.CurrentDifficulty()
+		worker.SharesThisBlock += w.SharesThisBlock()
+		worker.InvalidSharesThisBlock += w.InvalidShares()
+		worker.StaleSharesThisBlock += w.StaleShares()
+
+	}
 	pw = append(pw, worker)
 	// finished with last client
 	client := modules.PoolClients{

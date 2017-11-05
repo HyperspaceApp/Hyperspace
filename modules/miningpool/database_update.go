@@ -99,65 +99,99 @@ func (p *Pool) updateFrom0_0To0_1() error {
 	}
 	defer tx.Rollback()
 
+	//
+	// Client table represents each individual client.
+	//
 	_, err = tx.Exec(`
 		CREATE TABLE [Clients]
 		(
 			[ClientID] INT PRIMARY KEY,
-			[Name] VARCHAR NOT NULL,
-			[Wallet] VARCHAR NOT NULL
+			[Name]     VARCHAR NOT NULL,
+			[Wallet]   VARCHAR NOT NULL
 		);
 	`)
 	if err != nil {
+		p.log.Printf("Failed to create table [Clients]: %s\n", err)
 		return err
 	}
 
+	//
+	// Block table represents completed blocks (with the inprogess one being updated on completion)
+	//
 	_, err = tx.Exec(`
 		CREATE TABLE [Block]
 		(
 			[BlockID] INT PRIMARY KEY,
-			[Height] VARCHAR NOT NULL,
-			[Reward] VARCHAR NOT NULL,
-			[Time] TIMESTAMP
-			);
+			[Height]  VARCHAR NOT NULL,
+			[Reward]  VARCHAR NOT NULL,
+			[Time]    TIMESTAMP
+		);
 	`)
 	if err != nil {
+		p.log.Printf("Failed to create table [Block]: %s\n", err)
 		return err
 	}
+	// Create the first, in progress, block
 	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES (1, 0, "0", 0);`)
 	if err != nil {
 		return err
 	}
 
+	//
+	// Worker table represents the worker
+	//
 	_, err = tx.Exec(`
 		CREATE TABLE [Worker]
 		(
-			[WorkerID] INT,
-			[Name] VARCHAR NOT NULL,
-			[Parent] REFERENCES [Clients]([ClientID]),
-			[Blocks] REFERENCES [Block]([BlockID]),
-			[SharesThisBlock]        INT,
-			[InvalidSharesThisBlock] INT,
-			[StaleSharesThisBlock]   INT,
-			[CumulativeDifficulty]   FLOAT,
-			[BlocksFound]            INT,
-			[LastShareTime]          TIMESTAMP		
-			);
-	`)
-	if err != nil {
-		return err
-	}
-	_, err = tx.Exec(`
-		CREATE TABLE [Shares]
-		(
-			[ShareID] INT PRIMARY KEY,
-			[Diff] FLOAT NOT NULL,
-			[DateTime] TIMESTAMP NOT NULL,
-			[Worker] REFERENCES [Worker]([WorkerID])
+			[WorkerID]          INT PRIMARY KEY,
+			[Name]              VARCHAR NOT NULL,
+			[Parent]            REFERENCES [Clients]([ClientID]),
+			[AverageDifficulty] FLOAT,
+			[BlocksFound]       INT
 		);
 	`)
 	if err != nil {
+		p.log.Printf("Failed to create table [Worker]: %s\n", err)
 		return err
 	}
+
+	//
+	// Since this table gets updated a lot, and it may be different instances of the pool doing it,
+	// we have the pool instance name (probably the ip:port) to keep the records separate and results
+	// are merged on reporting, rather than on updating.
+	//
+	_, err = tx.Exec(`
+		CREATE TABLE [ShiftInfo]
+		(
+			[ShiftID]               INT NOT NULL,
+			[Pool]                  VARCHAR NOT NULL,
+			[Parent]                REFERENCES [Worker]([WorkerID]),
+			[Blocks]                REFERENCES [Block]([BlockID]),
+			[Shares]                INT,
+			[InvalidShares]         INT,
+			[StaleShares]           INT,
+			[CummulativeDifficulty] FLOAT,
+			[LastShareTime]         TIMESTAMP,
+			PRIMARY KEY ([ShiftID],[Pool],[Parent])
+		);
+		CREATE UNIQUE INDEX [WorkerBlock] ON [ShiftInfo]([ShiftID],[Pool],[Parent],[Blocks]);
+	`)
+	if err != nil {
+		p.log.Printf("Failed to create table [ShiftInfo]: %s\n", err)
+		return err
+	}
+	// _, err = tx.Exec(`
+	// 	CREATE TABLE [Shares]
+	// 	(
+	// 		[ShareID] INT PRIMARY KEY,
+	// 		[Diff] FLOAT NOT NULL,
+	// 		[DateTime] TIMESTAMP NOT NULL,
+	// 		[Worker] REFERENCES [Worker]([WorkerID])
+	// 	);
+	// `)
+	// if err != nil {
+	// 	return err
+	// }
 
 	err = p.setSchemaVersion(tx, 0, 1)
 	if err != nil {
