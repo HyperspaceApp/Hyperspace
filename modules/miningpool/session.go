@@ -11,6 +11,7 @@ import (
 
 const (
 	numSharesToAverage = 20
+	initialDifficulty  = 6.0
 )
 
 //
@@ -42,7 +43,7 @@ func newSession(p *Pool) (*Session, error) {
 	s := &Session{
 		SessionID:            id(),
 		ExtraNonce1:          uint32(id() & 0xffffffff),
-		currentDifficulty:    4.0,
+		currentDifficulty:    initialDifficulty,
 		lastVardiffRetarget:  time.Now(),
 		lastVardiffTimestamp: time.Now(),
 	}

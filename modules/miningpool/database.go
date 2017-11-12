@@ -439,7 +439,7 @@ func (c *Client) findWorkerDB(worker string, s *Session) error {
 			//			c.workers[worker] = w
 		}
 	}
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		c.log.Printf("Error finding worker %s: %s\n", worker, err)
 	}
 	return err
@@ -557,8 +557,11 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		currentClient = clientName
 
 	}
-	if rows.Err() != nil || len(currentClient) == 0 {
+	if rows.Err() != nil {
 		p.log.Printf("Rows.Err failed: %s\n", err)
+		return nil
+	}
+	if len(currentClient) == 0 {
 		return nil
 	}
 	// finished with last worker
