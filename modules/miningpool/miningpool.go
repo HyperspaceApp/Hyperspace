@@ -336,10 +336,6 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, errors.New("Failed to update block count: " + err.Error())
 	}
-	err = p.setShiftIDFromDB()
-	if err != nil {
-		return nil, errors.New("Failed to update shiftID: " + err.Error())
-	}
 	// spin up a go routine to handle shift changes.
 	p.shiftChan = make(chan bool, 1)
 	go func() {
@@ -358,7 +354,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			atomic.AddUint64(&p.shiftID, 1)
 			p.dispatcher.mu.RLock()
 			for _, h := range p.dispatcher.handlers {
-				h.s.CurrentShift.EndOldShift()
+				h.s.Shift().UpdateOrSaveShift()
 				sh := p.newShift(h.s.CurrentWorker)
 				h.s.addShift(sh)
 			}
@@ -404,6 +400,10 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		count++
 	}
 	p.id = fmt.Sprintf("%s:%s", p.gw.Address().Host(), port)
+	err = p.setShiftIDFromDB()
+	if err != nil {
+		return nil, errors.New("Failed to update shiftID: " + err.Error())
+	}
 	fmt.Printf("        listening on %s\n", p.id)
 	return p, nil
 }
@@ -525,5 +525,12 @@ func (p *Pool) Client(name string) *Client {
 	defer p.mu.RUnlock()
 
 	return p.clients[name]
+
+}
+func (p *Pool) AddClient(c *Client) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.clients[c.Name()] = c
 
 }

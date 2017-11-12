@@ -94,44 +94,55 @@ func (w *Worker) SetParent(p *Client) {
 	w.wr.parent = p
 }
 
+func (w *Worker) Session() *Session {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	return w.s
+}
+
+func (w *Worker) SetSession(s *Session) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.s = s
+}
+
 func (w *Worker) SharesThisBlock() uint64 {
-	return w.getUint64Field("Shares")
+	return w.s.Shift().Shares()
+	// return w.getUint64Field("Shares")
 }
 
 func (w *Worker) IncrementShares(currentDifficulty float64) {
-	w.s.mu.Lock()
-	defer w.s.mu.Unlock()
-	w.s.CurrentShift.IncrementShares()
-	w.s.CurrentShift.IncrementCumulativeDifficulty(currentDifficulty)
+	w.s.Shift().IncrementShares()
+	w.s.Shift().IncrementCumulativeDifficulty(currentDifficulty)
 }
 
 func (w *Worker) InvalidShares() uint64 {
-	return w.getUint64Field("InvalidShares")
+	return w.s.Shift().Invalid()
+	// return w.getUint64Field("InvalidShares")
 }
 
 func (w *Worker) IncrementInvalidShares() {
-	w.s.mu.Lock()
-	defer w.s.mu.Unlock()
-	w.s.CurrentShift.IncrementInvalid()
+	w.s.Shift().IncrementInvalid()
 }
 
 func (w *Worker) StaleShares() uint64 {
-	return w.getUint64Field("StaleShares")
+	return w.s.Shift().Stale()
+	// return w.getUint64Field("StaleShares")
 }
 
 func (w *Worker) IncrementStaleShares() {
-	w.s.mu.Lock()
-	defer w.s.mu.Unlock()
-	w.s.CurrentShift.IncrementStale()
+	w.s.Shift().IncrementStale()
 }
 
 func (w *Worker) SetLastShareTime(t time.Time) {
-	w.s.CurrentShift.SetLastShareTime(t)
+	w.s.Shift().SetLastShareTime(t)
 }
 
 func (w *Worker) LastShareTime() time.Time {
-	unixTime := w.getUint64Field("LastShareTime")
-	return time.Unix(int64(unixTime), 0)
+	return w.s.Shift().LastShareTime()
+	// unixTime := w.getUint64Field("LastShareTime")
+	// return time.Unix(int64(unixTime), 0)
 }
 
 func (w *Worker) BlocksFound() uint64 {
@@ -144,7 +155,8 @@ func (w *Worker) IncrementBlocksFound() {
 }
 
 func (w *Worker) CumulativeDifficulty() float64 {
-	return w.getFloatField("CumulativeDifficulty")
+	return w.s.Shift().CumulativeDifficulty()
+	// return w.getFloatField("CumulativeDifficulty")
 }
 
 // CurrentDifficulty returns the average difficulty of all instances of this worker
@@ -165,4 +177,8 @@ func (w *Worker) CurrentDifficulty() float64 {
 		return 0.0
 	}
 	return currentDiff / float64(workerCount)
+}
+
+func (w *Worker) Online() bool {
+	return w.s != nil
 }

@@ -62,6 +62,7 @@ func (s *Session) addWorker(w *Worker) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.CurrentWorker = w
+	w.SetSession(s)
 }
 
 func (s *Session) addJob(j *Job) {
@@ -75,6 +76,12 @@ func (s *Session) addShift(shift *Shift) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.CurrentShift = shift
+}
+
+func (s *Session) Shift() *Shift {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.CurrentShift
 }
 
 func (s *Session) printID() string {

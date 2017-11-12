@@ -92,11 +92,18 @@ func (c *Client) Pool() *Pool {
 	defer c.mu.RUnlock()
 	return c.pool
 }
+
 func (c *Client) Worker(wn string) *Worker {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	return c.workers[wn]
+}
+
+func (c *Client) AddWorker(w *Worker) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.workers[w.Name()] = w
 }
 
 //

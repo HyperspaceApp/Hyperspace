@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -13,7 +14,7 @@ const (
 	sqlRetryDelay = 100 // milliseconds
 )
 
-func (p *Pool) AddClient(c *Client) error {
+func (p *Pool) AddClientDB(c *Client) error {
 	//	p.log.Debugf("Waiting to lock pool\n")
 	p.mu.Lock()
 	defer func() {
@@ -48,7 +49,6 @@ func (p *Pool) AddClient(c *Client) error {
 	if err != nil {
 		return err
 	}
-	p.clients[c.Name()] = c
 	return nil
 }
 
@@ -61,48 +61,50 @@ func (p *Pool) findClientDB(name string) *Client {
 		p.log.Debugf("Search failed: %s\n", err)
 		return nil
 	}
+	// found client in database
 	c := p.Client(Name)
 	if c != nil {
 		return c
 	}
+	// client was in database but not in memory - find workers and connect them to the in memory copy
 	c, err = newClient(p, name)
 	var wallet types.UnlockHash
 	wallet.LoadString(Wallet)
 	c.addWallet(wallet)
 	c.cr.clientID = clientID
-	qs := fmt.Sprintf("SELECT [Name] FROM [Worker] WHERE [Parent] = %d;", clientID)
-	stmt, err := p.sqldb.Prepare(qs)
+	stmt, err := p.sqldb.Prepare("SELECT [WorkerID],[Name],[AverageDifficulty],[BlocksFound] FROM [Worker] WHERE [Parent] = ?;")
 	if err != nil {
 		p.log.Printf("Error finding workers for client %s: %s\n", name, err)
 		return nil
 	}
 	defer stmt.Close()
-	rows, err := stmt.Query()
+	rows, err := stmt.Query(clientID)
 	if err != nil {
 		p.log.Printf("Error finding workers for client %s: %s\n", name, err)
 		return nil
 	}
 	defer rows.Close()
-	var value string
+	var id, blocks uint64
+	var diff float64
+	var wname string
 	for rows.Next() {
-		err = rows.Scan(&value)
+		err = rows.Scan(&id, &wname, &diff, &blocks)
 		if err != nil {
-			p.log.Printf("Error finding workers for client %s: %s\n", name, err)
+			p.log.Printf("Error finding workers for client %s: %s\n", wname, err)
 			return nil
 		}
-		if c.Worker(value) == nil {
-			w, _ := newWorker(c, value, nil)
-			c.addWorker(w)
+		if c.Worker(wname) == nil {
+			p.log.Debug("Adding worker %s to memory\n", wname)
+			w, _ := newWorker(c, wname, nil)
+			w.wr.workerID = id
+			w.wr.averageDifficulty = diff
+			w.wr.blocksFound = blocks
+			c.AddWorker(w)
 		}
 	}
 	err = rows.Err()
 	if err != nil {
 		p.log.Printf("Error finding workers for client %s: %s\n", name, err)
-		return nil
-	}
-	err = p.AddClient(c)
-	if err != nil {
-		p.log.Printf("Error adding client %s to pool: %s\n", name, err)
 		return nil
 	}
 
@@ -289,13 +291,84 @@ func (p *Pool) setShiftIDFromDB() error {
 	return nil
 }
 
+func (p *Pool) GetShift(w *Worker) *Shift {
+	var blockID uint64
+	var shares uint64
+	var invalidShares uint64
+	var staleShares uint64
+	var cumulativeDifficulty float64
+	var lastShareTime time.Time
+	err := p.sqldb.QueryRow(`
+		SELECT [Blocks],[Shares],[InvalidShares],[StaleShares],[CummulativeDifficulty],[LastShareTime]
+		FROM [ShiftInfo] WHERE [ShiftID] = ? AND [Pool] = ? AND [Parent] = ?
+		`, p.shiftID, p.id, w.wr.workerID).Scan(&blockID, &shares, &invalidShares, &staleShares, &cumulativeDifficulty, &lastShareTime)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			p.log.Debugf("Search failed: %s\n", err)
+			return nil
+		}
+		// This is a new shift, save it
+		return p.newShift(w)
+	}
+	return &Shift{
+		shiftID:              p.shiftID,
+		pool:                 p.id,
+		worker:               w,
+		blockID:              p.blockCounter,
+		shares:               shares,
+		invalidShares:        invalidShares,
+		staleShares:          staleShares,
+		cumulativeDifficulty: cumulativeDifficulty,
+		lastShareTime:        lastShareTime,
+	}
+
+}
+
+// UpdateOrSaveShift updates (if existing) or saves (if new) the shift data
+func (s *Shift) UpdateOrSaveShift() error {
+	var id uint64
+	pool := s.worker.Parent().Pool()
+	err := pool.sqldb.QueryRow("SELECT [ShiftID] FROM [ShiftInfo] WHERE [Pool] = ? AND [ShiftID] = ?", pool.id, s.shiftID).Scan(&id)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			pool.log.Debugf("Search failed: %s\n", err)
+			return nil
+		}
+		// This is a new shift, save it
+		return s.saveShift()
+	}
+	// existing shift - update it
+	return s.updateShift()
+}
+
+func (s *Shift) updateShift() error {
+	pool := s.worker.Parent().Pool()
+	stmt, err := pool.sqldb.Prepare(`
+		UPDATE [ShiftInfo]
+		SET [Shares] ?, [InvalidShares] = ?, [StaleShares] = ?, [CummulativeDifficulty] = ?, [LastShareTime] = ?
+		WHERE [ShiftID] = ? AND [Pool] = ?
+		`)
+	if err != nil {
+		s.worker.log.Printf("Error preparing to update shift: %s\n", err)
+		return err
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime(), s.ShiftID(), pool.id)
+	if err != nil {
+		s.worker.log.Printf("Error updating record: %s\n", err)
+		return err
+	}
+	return nil
+}
+
 // EndOldShift ends the old shift by committing the current shift data to the database
-func (s *Shift) EndOldShift() error {
+func (s *Shift) saveShift() error {
 
 	stmt, err := s.worker.Parent().pool.sqldb.Prepare(`
 		INSERT INTO 
 		[ShiftInfo]([ShiftID], [Pool], [Parent], [Blocks], [Shares], [InvalidShares], [StaleShares], [CummulativeDifficulty], [LastShareTime])
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+		`)
 	if err != nil {
 		s.worker.log.Printf("Error preparing to end shift: %s\n", err)
 		return err
@@ -311,7 +384,7 @@ func (s *Shift) EndOldShift() error {
 	}
 	return nil
 }
-func (c *Client) addWorker(w *Worker) error {
+func (c *Client) addWorkerDB(w *Worker) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -332,7 +405,7 @@ func (c *Client) addWorker(w *Worker) error {
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(w.wr.workerID, w.wr.name, c.cr.clientID, 0.0, 0)
+	_, err = stmt.Exec(w.wr.workerID, w.wr.name, c.cr.clientID, w.wr.averageDifficulty, w.wr.blocksFound)
 	if err != nil {
 		return err
 	}
@@ -345,17 +418,25 @@ func (c *Client) addWorker(w *Worker) error {
 	return nil
 }
 
-func (c *Client) findWorker(worker string, s *Session) error {
-	var id uint64
-	err := c.pool.sqldb.QueryRow("SELECT [WorkerID] FROM [Worker] WHERE [Name] = $1;",
-		worker).Scan(&id)
+func (c *Client) findWorkerDB(worker string, s *Session) error {
+	var id, blocks uint64
+	var diff float64
+	err := c.pool.sqldb.QueryRow(`
+		SELECT [Worker].[WorkerID], [Worker].[AverageDifficulty], [Worker].[BlocksFound] 
+		FROM ([Worker] 
+		INNER JOIN [Clients] ON [Worker].[Parent]=[Clients].[ClientID])
+		WHERE [Worker].[Name] = $1 AND [Clients].[Name] = $2;
+		`,
+		worker, c.Name()).Scan(&id, &diff, &blocks)
 	if err == nil {
 		w, err := newWorker(c, worker, s)
 		if err == nil {
 			c.mu.Lock()
 			defer c.mu.Unlock()
 			w.wr.workerID = id
-			c.workers[worker] = w
+			w.wr.averageDifficulty = diff
+			w.wr.blocksFound = blocks
+			//			c.workers[worker] = w
 		}
 	}
 	if err != nil {
@@ -427,12 +508,11 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		}
 		if currentWorker != workerName {
 			if len(currentWorker) != 0 {
-				cbf += worker.BlocksFound
 				worker.CurrentDifficulty = averageDifficulty
-				if w != nil {
+				if w != nil && w.Online() {
 					// add current shift if online
 					worker.CumulativeDifficulty += w.CumulativeDifficulty()
-					if shareTime.Unix() > worker.LastShareTime.Unix() {
+					if w.LastShareTime().Unix() > worker.LastShareTime.Unix() {
 						worker.LastShareTime = w.LastShareTime()
 					}
 					worker.CurrentDifficulty = w.CurrentDifficulty()
@@ -441,7 +521,11 @@ func (p *Pool) ClientData() []modules.PoolClients {
 					worker.StaleSharesThisBlock += w.StaleShares()
 
 				}
+				cbf += worker.BlocksFound
 				pw = append(pw, worker)
+			}
+			if c != nil {
+				w = c.Worker(workerName)
 			}
 			worker = modules.PoolWorkers{
 				WorkerName:             workerName,
@@ -478,9 +562,8 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		return nil
 	}
 	// finished with last worker
-	cbf += worker.BlocksFound
 	worker.CurrentDifficulty = averageDifficulty
-	if w != nil {
+	if w != nil && w.Online() {
 		// add current shift if online
 		worker.CumulativeDifficulty += w.CumulativeDifficulty()
 		if w.LastShareTime().Unix() > worker.LastShareTime.Unix() {
@@ -492,7 +575,9 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		worker.StaleSharesThisBlock += w.StaleShares()
 
 	}
+	cbf += worker.BlocksFound
 	pw = append(pw, worker)
+
 	// finished with last client
 	client := modules.PoolClients{
 		ClientName:  currentClient,

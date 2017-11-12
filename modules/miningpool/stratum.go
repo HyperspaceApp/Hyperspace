@@ -63,7 +63,12 @@ const (
 
 // Listen listens on a connection for incoming data and acts on it
 func (h *Handler) Listen() { // listen connection for incomming data
-	defer h.conn.Close()
+	defer func() {
+		h.conn.Close()
+		if h.s != nil && h.s.CurrentWorker != nil {
+			h.s.CurrentWorker.updateWorkerRecord() // update record as worker disconnects
+		}
+	}()
 	err := h.p.tg.Add()
 	if err != nil {
 		// If this goroutine is not run before shutdown starts, this
@@ -218,25 +223,33 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 		c := h.p.findClientDB(client)
 		if c == nil {
 			c, _ = newClient(h.p, client)
-			h.p.log.Printf("Adding new client: %s\n", client)
-			err = h.p.AddClient(c)
+			err = h.p.AddClientDB(c)
 			if err != nil {
-				h.p.log.Printf("Failed to add client: %s\n", err)
+				h.p.log.Printf("Failed to add client to DB: %s\n", err)
 			}
 		}
-		err = c.findWorker(worker, h.s)
-		if err != nil { // returns error on new workers
-			if err != sql.ErrNoRows {
-				c.log.Printf("Failed to find worker %s: %s\n", worker, err)
-			}
-			w, _ := newWorker(c, worker, h.s)
-			err = c.addWorker(w)
-			if err != nil {
-				c.log.Printf("Failed to add worker: %s\n", err)
-			} else {
-				h.s.log = w.log
-				c.log.Printf("Adding new worker: %s\n", worker)
-				w.log.Printf("Adding new worker: %s\n", worker)
+		if h.p.Client(client) == nil {
+			h.p.log.Printf("Adding client in memory: %s\n", client)
+			h.p.AddClient(c)
+		}
+		w := c.Worker(worker)
+		if w == nil {
+			c.log.Printf("New worker %s\n", worker)
+			err = c.findWorkerDB(worker, h.s) // expect this to fail
+			if err != nil {                   // returns error on new workers
+				if err != sql.ErrNoRows {
+					c.log.Printf("Failed to find worker %s: %s\n", worker, err)
+				}
+				w, _ = newWorker(c, worker, h.s)
+				c.AddWorker(w)
+				err = c.addWorkerDB(w)
+				if err != nil {
+					c.log.Printf("Failed to add worker: %s\n", err)
+				} else {
+					h.s.log = w.log
+					c.log.Printf("Adding new worker: %s\n", worker)
+					w.log.Printf("Adding new worker: %s\n", worker)
+				}
 			}
 		}
 		h.log.Debugln("client = " + client + ", worker = " + worker)
@@ -248,7 +261,7 @@ func (h *Handler) handleStatumAuthorize(m StratumRequestMsg) error {
 		} else {
 			h.s.addClient(c)
 			h.s.addWorker(c.Worker(worker))
-			h.s.addShift(h.p.newShift(h.s.CurrentWorker))
+			h.s.addShift(h.p.GetShift(h.s.CurrentWorker))
 			if h.s.CurrentWorker == nil {
 				h.p.log.Printf("Missing current worker!\n")
 			} else {
