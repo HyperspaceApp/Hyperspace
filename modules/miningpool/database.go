@@ -345,7 +345,7 @@ func (s *Shift) updateShift() error {
 	pool := s.worker.Parent().Pool()
 	stmt, err := pool.sqldb.Prepare(`
 		UPDATE [ShiftInfo]
-		SET [Shares] ?, [InvalidShares] = ?, [StaleShares] = ?, [CummulativeDifficulty] = ?, [LastShareTime] = ?
+		SET [Shares] = ?, [InvalidShares] = ?, [StaleShares] = ?, [CummulativeDifficulty] = ?, [LastShareTime] = ?
 		WHERE [ShiftID] = ? AND [Pool] = ?
 		`)
 	if err != nil {
