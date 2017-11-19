@@ -85,6 +85,14 @@ var (
 		Dev:      5 * time.Second,
 		Testing:  1 * time.Second,
 	}).(time.Duration)
+
+	// ShiftDuration is how often we commit mining data to persistent
+	// storage when a block hasn't been found.
+	ShiftDuration = build.Select(build.Var{
+		Standard: 10 * time.Minute,
+		Dev:      2 * time.Minute,
+		Testing:  1 * time.Minute,
+	}).(time.Duration)
 )
 
 // splitSet defines a transaction set that can be added componenet-wise to a
@@ -340,16 +348,9 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	p.shiftChan = make(chan bool, 1)
 	go func() {
 		for {
-			time.Sleep(time.Minute * 10)
-			p.shiftChan <- true
-		}
-	}()
-
-	go func() {
-		for {
 			select {
 			case <-p.shiftChan:
-			case <-time.After(time.Minute * 10):
+			case <-time.After(ShiftDuration):
 			}
 			atomic.AddUint64(&p.shiftID, 1)
 			p.dispatcher.mu.RLock()

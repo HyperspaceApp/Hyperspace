@@ -2,7 +2,6 @@ package pool
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"github.com/NebulousLabs/Sia/modules"
@@ -94,7 +93,7 @@ func (p *Pool) findClientDB(name string) *Client {
 			return nil
 		}
 		if c.Worker(wname) == nil {
-			p.log.Debug("Adding worker %s to memory\n", wname)
+			p.log.Debugf("Adding worker %s to memory\n", wname)
 			w, _ := newWorker(c, wname, nil)
 			w.wr.workerID = id
 			w.wr.averageDifficulty = diff
@@ -109,70 +108,6 @@ func (p *Pool) findClientDB(name string) *Client {
 	}
 
 	return c
-}
-
-func (w *Worker) getUint64Field(field string) uint64 {
-	query := fmt.Sprintf("SELECT [%s] FROM [ShiftInfo] WHERE [Parent] = $1 AND [Blocks] = %d AND [Pool] = $2;", field, w.wr.parent.pool.blockCounter)
-
-	var value uint64
-	value = 0
-	stmt, err := w.wr.parent.pool.sqldb.Prepare(query)
-	if err != nil {
-		return value
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(w.wr.workerID, w.wr.parent.pool.id)
-	if err != nil {
-		return value
-	}
-	defer rows.Close()
-	var sum uint64
-	sum = 0
-	for rows.Next() {
-		err = rows.Scan(&value)
-		if err != nil {
-			return sum
-		}
-		sum += value
-	}
-	err = rows.Err()
-	if err != nil {
-		w.log.Printf("Error getting field %s: %s\n", field, err)
-		return sum
-	}
-	return sum
-}
-
-func (w *Worker) getFloatField(field string) float64 {
-	query := fmt.Sprintf("SELECT [%s] FROM [ShiftInfo] WHERE [Parent] = $1 AND [Blocks] = %d AND [Pool] = $2;", field, w.wr.parent.pool.blockCounter)
-
-	var value float64
-	value = 0.0
-	stmt, err := w.wr.parent.pool.sqldb.Prepare(query)
-	if err != nil {
-		return value
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(w.wr.workerID, w.wr.parent.pool.id)
-	if err != nil {
-		return value
-	}
-	defer rows.Close()
-	var sum float64
-	sum = 0.0
-	for rows.Next() {
-		err = rows.Scan(&value)
-		if err != nil {
-			return sum
-		}
-		sum += value
-	}
-	err = rows.Err()
-	if err != nil {
-		w.log.Printf("Error getting field %s: %s\n", field, err)
-		return sum
-	}
-	return sum
 }
 
 func (w *Worker) updateWorkerRecord() error {
@@ -195,7 +130,8 @@ func (w *Worker) updateWorkerRecord() error {
 }
 
 func (w *Worker) addFoundBlock(b *types.Block) error {
-	tx, err := w.wr.parent.pool.sqldb.Begin()
+	pool := w.wr.parent.pool
+	tx, err := pool.sqldb.Begin()
 	if err != nil {
 		return err
 	}
@@ -211,19 +147,21 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	}
 	defer stmt.Close()
 
-	bh := w.wr.parent.pool.persist.GetBlockHeight()
+	bh := pool.persist.GetBlockHeight()
 	sub := b.CalculateSubsidy(bh).String()
-	w.log.Printf("Adding found block %d, height %d, subsidy %s: err %v\n", w.wr.parent.pool.blockCounter, bh, sub, err)
-	_, err = stmt.Exec(bh, sub, time.Now().Unix(), w.wr.parent.pool.blockCounter)
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+	w.log.Printf("Adding found block %d, height %d, subsidy %s: err %v\n", pool.blockCounter, bh, sub, err)
+	_, err = stmt.Exec(bh, sub, time.Now().Unix(), pool.blockCounter)
 	if err != nil {
 		return err
 	}
-	w.wr.parent.pool.blockCounter++
-	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, w.wr.parent.pool.blockCounter)
+	pool.blockCounter++
+	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, pool.blockCounter)
 	if err != nil {
 		return err
 	}
-	w.log.Printf("New candidate block added %d\n", w.wr.parent.pool.blockCounter)
+	w.log.Printf("New candidate block added %d\n", pool.blockCounter)
 
 	err = tx.Commit()
 	if err != nil {
@@ -286,8 +224,10 @@ func (p *Pool) setShiftIDFromDB() error {
 	if err != nil {
 		return err
 	}
-	p.shiftID = uint64(value)
-	p.log.Debugf("setshiftIDFromDB, Count = %d\n", value)
+	p.mu.Lock()
+	p.shiftID = uint64(value) + 1
+	p.mu.Unlock()
+	p.log.Debugf("setshiftIDFromDB, Count = %d\n", p.shiftID)
 	return nil
 }
 
@@ -298,10 +238,11 @@ func (p *Pool) GetShift(w *Worker) *Shift {
 	var staleShares uint64
 	var cumulativeDifficulty float64
 	var lastShareTime time.Time
+	var shiftDuration int64
 	err := p.sqldb.QueryRow(`
-		SELECT [Blocks],[Shares],[InvalidShares],[StaleShares],[CummulativeDifficulty],[LastShareTime]
+		SELECT [Blocks],[Shares],[InvalidShares],[StaleShares],[CummulativeDifficulty],[LastShareTime],[ShiftDuration]
 		FROM [ShiftInfo] WHERE [ShiftID] = ? AND [Pool] = ? AND [Parent] = ?
-		`, p.shiftID, p.id, w.wr.workerID).Scan(&blockID, &shares, &invalidShares, &staleShares, &cumulativeDifficulty, &lastShareTime)
+		`, p.shiftID, p.id, w.wr.workerID).Scan(&blockID, &shares, &invalidShares, &staleShares, &cumulativeDifficulty, &lastShareTime, &shiftDuration)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			p.log.Debugf("Search failed: %s\n", err)
@@ -310,16 +251,18 @@ func (p *Pool) GetShift(w *Worker) *Shift {
 		// This is a new shift, save it
 		return p.newShift(w)
 	}
+	startTime := time.Now().Add(time.Duration(-shiftDuration))
 	return &Shift{
 		shiftID:              p.shiftID,
 		pool:                 p.id,
 		worker:               w,
-		blockID:              p.blockCounter,
+		blockID:              p.BlockCount(),
 		shares:               shares,
 		invalidShares:        invalidShares,
 		staleShares:          staleShares,
 		cumulativeDifficulty: cumulativeDifficulty,
 		lastShareTime:        lastShareTime,
+		startShiftTime:       startTime,
 	}
 
 }
@@ -328,16 +271,18 @@ func (p *Pool) GetShift(w *Worker) *Shift {
 func (s *Shift) UpdateOrSaveShift() error {
 	var id uint64
 	pool := s.worker.Parent().Pool()
-	err := pool.sqldb.QueryRow("SELECT [ShiftID] FROM [ShiftInfo] WHERE [Pool] = ? AND [ShiftID] = ?", pool.id, s.shiftID).Scan(&id)
+	err := pool.sqldb.QueryRow("SELECT [ShiftID] FROM [ShiftInfo] WHERE [Pool] = ? AND [ShiftID] = ? AND [Parent] = ?", pool.id, s.shiftID, s.worker.wr.workerID).Scan(&id)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			pool.log.Debugf("Search failed: %s\n", err)
 			return nil
 		}
 		// This is a new shift, save it
+		s.worker.log.Debugf("saving new shift\n")
 		return s.saveShift()
 	}
 	// existing shift - update it
+	s.worker.log.Debugf("updating existing shift\n")
 	return s.updateShift()
 }
 
@@ -345,15 +290,16 @@ func (s *Shift) updateShift() error {
 	pool := s.worker.Parent().Pool()
 	stmt, err := pool.sqldb.Prepare(`
 		UPDATE [ShiftInfo]
-		SET [Shares] = ?, [InvalidShares] = ?, [StaleShares] = ?, [CummulativeDifficulty] = ?, [LastShareTime] = ?
-		WHERE [ShiftID] = ? AND [Pool] = ?
+		SET [Shares] = ?, [InvalidShares] = ?, [StaleShares] = ?, [CummulativeDifficulty] = ?, [LastShareTime] = ?, [ShiftDuration] = ?
+		WHERE [ShiftID] = ? AND [Pool] = ? AND [Parent] = ?
 		`)
 	if err != nil {
 		s.worker.log.Printf("Error preparing to update shift: %s\n", err)
 		return err
 	}
 	defer stmt.Close()
-	_, err = stmt.Exec(s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime(), s.ShiftID(), pool.id)
+	_, err = stmt.Exec(s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime(), int(time.Now().Sub(s.StartShiftTime()).Seconds()),
+		s.ShiftID(), pool.id, s.worker.wr.workerID)
 	if err != nil {
 		s.worker.log.Printf("Error updating record: %s\n", err)
 		return err
@@ -366,8 +312,8 @@ func (s *Shift) saveShift() error {
 
 	stmt, err := s.worker.Parent().pool.sqldb.Prepare(`
 		INSERT INTO 
-		[ShiftInfo]([ShiftID], [Pool], [Parent], [Blocks], [Shares], [InvalidShares], [StaleShares], [CummulativeDifficulty], [LastShareTime])
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+		[ShiftInfo]([ShiftID], [Pool], [Parent], [Blocks], [Shares], [InvalidShares], [StaleShares], [CummulativeDifficulty], [LastShareTime], [ShiftDuration])
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 		`)
 	if err != nil {
 		s.worker.log.Printf("Error preparing to end shift: %s\n", err)
@@ -375,13 +321,15 @@ func (s *Shift) saveShift() error {
 	}
 	defer stmt.Close()
 	_, err = stmt.Exec(s.ShiftID(), s.Pool(), s.worker.wr.workerID, s.BlockID(),
-		s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime())
+		s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime(), int(time.Now().Sub(s.StartShiftTime()).Seconds()))
 	if err != nil {
-		s.worker.log.Printf("%d,%s,%d,%d,%d,%d,%d,%f,%v\n", s.ShiftID(), s.Pool(), s.worker.wr.workerID, s.BlockID(),
-			s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime())
+		s.worker.log.Printf("%d,%s,%d,%d,%d,%d,%d,%f,%v, %d\n", s.ShiftID(), s.Pool(), s.worker.wr.workerID, s.BlockID(),
+			s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime(), int(time.Now().Sub(s.StartShiftTime()).Seconds()))
 		s.worker.log.Printf("Error adding record of last shift: %s\n", err)
 		return err
 	}
+	s.worker.log.Debugf("%d,%s,%d,%d,%d,%d,%d,%f,%v, %d\n", s.ShiftID(), s.Pool(), s.worker.wr.workerID, s.BlockID(),
+		s.Shares(), s.Invalid(), s.Stale(), s.CumulativeDifficulty(), s.LastShareTime(), int(time.Now().Sub(s.StartShiftTime()).Seconds()))
 	return nil
 }
 func (c *Client) addWorkerDB(w *Worker) error {

@@ -17,19 +17,22 @@ type Shift struct {
 	staleShares          uint64
 	cumulativeDifficulty float64
 	lastShareTime        time.Time
+	startShiftTime       time.Time
 }
 
 func (p *Pool) newShift(w *Worker) *Shift {
 	currentShiftID := atomic.LoadUint64(&p.shiftID)
 	p.mu.RLock()
+	defer p.mu.RUnlock()
 	currentBlock := p.blockCounter
-	p.mu.RUnlock()
 	s := &Shift{
-		shiftID: currentShiftID,
-		pool:    p.id,
-		worker:  w,
-		blockID: currentBlock,
+		shiftID:        currentShiftID,
+		pool:           p.id,
+		worker:         w,
+		blockID:        currentBlock,
+		startShiftTime: time.Now(),
 	}
+	// fmt.Printf("New Shift: %s, block %d, shift %d\n", w.Name(), currentBlock, currentShiftID)
 	return s
 }
 
@@ -109,4 +112,10 @@ func (s *Shift) SetLastShareTime(t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastShareTime = t
+}
+
+func (s *Shift) StartShiftTime() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.startShiftTime
 }

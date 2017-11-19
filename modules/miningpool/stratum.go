@@ -401,7 +401,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		ac, _ := newAccounting(h.p, b.ID())
 		h.p.BlocksFound = append(h.p.BlocksFound, ac)
 		h.p.shiftChan <- true
-		fmt.Printf("%v\n", ac)
+		fmt.Printf("%d %s\n", ac.blockCounter, h.s.CurrentWorker.Name())
 	}
 	h.sendResponse(r)
 }

@@ -106,7 +106,7 @@ func (p *Pool) updateFrom0_0To0_1() error {
 		CREATE TABLE [Clients]
 		(
 			[ClientID] INT PRIMARY KEY,
-			[Name]     VARCHAR NOT NULL,
+			[Name]     VARCHAR NOT NULL UNIQUE,
 			[Wallet]   VARCHAR NOT NULL
 		);
 	`)
@@ -147,7 +147,8 @@ func (p *Pool) updateFrom0_0To0_1() error {
 			[Name]              VARCHAR NOT NULL,
 			[Parent]            REFERENCES [Clients]([ClientID]),
 			[AverageDifficulty] FLOAT,
-			[BlocksFound]       INT
+			[BlocksFound]       INT,
+			UNIQUE ([NAME],[Parent])
 		);
 	`)
 	if err != nil {
@@ -172,7 +173,8 @@ func (p *Pool) updateFrom0_0To0_1() error {
 			[StaleShares]           INT,
 			[CummulativeDifficulty] FLOAT,
 			[LastShareTime]         TIMESTAMP,
-			PRIMARY KEY ([ShiftID],[Pool],[Parent])
+			[ShiftDuration]         INT,
+			UNIQUE ([ShiftID],[Pool],[Parent])
 		);
 		CREATE UNIQUE INDEX [WorkerBlock] ON [ShiftInfo]([ShiftID],[Pool],[Parent],[Blocks]);
 	`)
