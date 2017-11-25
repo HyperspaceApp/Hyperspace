@@ -595,6 +595,10 @@ func (p *Pool) BlocksInfo() []modules.PoolBlocks {
 
 func (p *Pool) BlockInfo(b uint64) []modules.PoolBlock {
 	var pb []modules.PoolBlock
+	if b == 0 {
+		// current block
+		b = p.blockCounter
+	}
 	tx, err := p.sqldb.Begin()
 	if err != nil {
 		return nil
