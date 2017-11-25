@@ -165,15 +165,17 @@ func poolclientscmd() {
 	}
 	fmt.Printf("Clients List:\n\n")
 	fmt.Printf("Number of Clients: %d\nNumber of Workers: %d\n\n", clients.NumberOfClients, clients.NumberOfWorkers)
-	fmt.Printf("                         Client Name                                         Blocks Mined\n")
+	fmt.Printf("Client Name                                                                  Blocks Mined Last Share Submitted\n")
+	fmt.Printf("---------------------------------------------------------------------------- ------------ --------------------\n")
 	sort.Sort(ByClientName(clients.Clients))
 	for _, c := range clients.Clients {
-		fmt.Printf("% 76.76s %d\n", c.ClientName, c.BlocksMined)
-		fmt.Printf("     Worker Name      Last Share Time\n")
-		sort.Sort(ByWorkerName(c.Workers))
+		var latest time.Time
 		for _, w := range c.Workers {
-			fmt.Printf(" % -16s     %v\n", w.WorkerName, shareTime(w.LastShareTime))
+			if w.LastShareTime.Unix() > latest.Unix() {
+				latest = w.LastShareTime
+			}
 		}
+		fmt.Printf("% 76.76s %12d %v\n", c.ClientName, c.BlocksMined, shareTime(latest))
 	}
 }
 
@@ -188,7 +190,7 @@ func poolclientcmd(name string) {
 	currency := types.NewCurrency(reward)
 	fmt.Printf("\nClient Name: % 76.76s\nBlocks Mined: % -10d   Balance: %s\n\n", client.ClientName, client.BlocksMined, currencyUnits(currency))
 	fmt.Printf("                    Per Current Block\n")
-	fmt.Println("Worker Name         Work Diff  Shares   Share*Diff   Stale(%) Invalid(%)   Blocks Found   Last Share Time")
+	fmt.Printf("Worker Name         Work Diff  Shares   Share*Diff   Stale(%) Invalid(%)   Blocks Found   Last Share Time\n")
 	fmt.Printf("----------------    --------   -------   ---------   --------   --------       --------   ----------------\n")
 	sort.Sort(ByWorkerName(client.Workers))
 	for _, w := range client.Workers {
