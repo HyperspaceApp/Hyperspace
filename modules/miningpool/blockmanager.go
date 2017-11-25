@@ -36,7 +36,7 @@ func (p *Pool) newSourceBlock() {
 
 	block.MinerPayouts = []types.SiacoinOutput{{
 		Value:      block.CalculateSubsidy(p.persist.BlockHeight + 1),
-		UnlockHash: p.persist.Settings.PoolOperatorWallet,
+		UnlockHash: p.persist.Settings.PoolWallet,
 	}}
 	p.persist.mu.Unlock()
 	p.saveSync()

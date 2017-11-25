@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/NebulousLabs/Sia/modules"
@@ -251,10 +252,26 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 	// the stale rate as low as possible.
 	if cc.Synced {
 		p.log.Printf("Consensus change detected\n")
+		// we do this because the new block could have come from us
 		p.mu.Unlock()
 		p.setBlockCounterFromDB()
 		p.mu.Lock()
+
 		p.newSourceBlock()
+		if p.wallet != nil && p.wallet.Unlocked() == true {
+			addrs := p.wallet.AllAddresses()
+			fmt.Printf("length is %d\n", len(addrs))
+			p.mu.Unlock()
+			func() {
+				for _, uh := range addrs {
+					if uh == p.InternalSettings().PoolWallet {
+						p.processPayouts()
+						break
+					}
+				}
+			}()
+			p.mu.Lock()
+		}
 		if p.dispatcher != nil {
 			p.log.Printf("Notifying clients\n")
 			p.dispatcher.NotifyClients()

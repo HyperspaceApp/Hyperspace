@@ -23,16 +23,25 @@ type (
 	// PoolInternalSettings contains a list of settings that can be changed.
 	PoolInternalSettings struct {
 		AcceptingShares        bool             `json:"acceptingshares"`
-		PoolOperatorPercentage float32          `json:"operatorpercentage"`
+		PoolOperatorPercentage float64          `json:"operatorpercentage"`
 		PoolNetworkPort        uint16           `json:"networkport"`
 		PoolName               string           `json:"name"`
+		PoolID                 string           `json:"poolid"`
 		PoolOperatorWallet     types.UnlockHash `json:"operatorwallet"`
+		PoolWallet             types.UnlockHash `json:"poolwallet"`
 	}
 
 	PoolClients struct {
 		ClientName  string        `json:"clientname"`
+		Balance     string        `json:"balance"`
 		BlocksMined uint64        `json:"blocksminer"`
 		Workers     []PoolWorkers `json:"workers"`
+	}
+
+	PoolClientTransactions struct {
+		BalanceChange string    `json:"balancechange"`
+		TxTime        time.Time `json:"txtime"`
+		Memo          string    `json:"memo"`
 	}
 
 	PoolWorkers struct {
@@ -44,6 +53,19 @@ type (
 		InvalidSharesThisBlock uint64    `json:"invalidsharesthisblock"`
 		StaleSharesThisBlock   uint64    `json:"stalesharesthisblock"`
 		BlocksFound            uint64    `json:"blocksfound"`
+	}
+
+	PoolBlocks struct {
+		BlockNumber uint64    `json:"blocknumber"`
+		BlockHeight uint64    `json:"blockheight"`
+		BlockReward string    `json:"blockreward"`
+		BlockTime   time.Time `json:"blocktime"`
+		BlockStatus string    `json:"blockstatus"`
+	}
+	PoolBlock struct {
+		ClientName       string  `json:"clientname"`
+		ClientPercentage float64 `json:"clientpercentage"`
+		ClientReward     string  `json:"clientreward"`
 	}
 
 	// PoolWorkingStatus reports the working state of a pool. Can be one of
@@ -74,6 +96,14 @@ type (
 
 		// FindClient returns a Client pointer or nil if the client name doesn't exist
 		FindClient(name string) *PoolClients
+
+		ClientTransactions(name string) []PoolClientTransactions
+
+		// BlocksInfo returns a list of blocks information
+		BlocksInfo() []PoolBlocks
+
+		// BlockInfo returns a list of blocks information
+		BlockInfo(block uint64) []PoolBlock
 
 		// Close closes the Pool.
 		Close() error

@@ -27,7 +27,7 @@ func (p *Pool) newShift(w *Worker) *Shift {
 	currentBlock := p.blockCounter
 	s := &Shift{
 		shiftID:        currentShiftID,
-		pool:           p.id,
+		pool:           p.InternalSettings().PoolID,
 		worker:         w,
 		blockID:        currentBlock,
 		startShiftTime: time.Now(),

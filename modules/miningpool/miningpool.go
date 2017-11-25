@@ -147,7 +147,6 @@ type Pool struct {
 	// transactions.
 	announceConfirmed bool
 	secretKey         crypto.SecretKey
-	BlocksFound       []*Accounting
 	// Pool transient fields - these fields are either determined at startup or
 	// otherwise are not critical to always be correct.
 	workingStatus        modules.PoolWorkingStatus
@@ -163,7 +162,6 @@ type Pool struct {
 	tg             siasync.ThreadGroup
 	persist        persistence
 	dispatcher     *Dispatcher
-	id             string // uniquely identify this pool instance - intially ip:port will be used
 	stratumID      uint64
 	shiftID        uint64
 	shiftChan      chan bool
@@ -249,16 +247,13 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if gw == nil {
 		return nil, errNilGW
 	}
-	// if wallet == nil {
-	// 	return nil, errNilWallet
-	// }
 
 	// Create the pool object.
 	p := &Pool{
-		cs:    cs,
-		tpool: tpool,
-		gw:    gw,
-		//		wallet:       wallet,
+		cs:           cs,
+		tpool:        tpool,
+		gw:           gw,
+		wallet:       wallet,
 		dependencies: dependencies,
 		blockMem:     make(map[types.BlockHeader]*types.Block),
 		arbDataMem:   make(map[types.BlockHeader][crypto.EntropySize]byte),
@@ -352,10 +347,16 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			case <-p.shiftChan:
 			case <-time.After(ShiftDuration):
 			}
+			p.log.Debugf("Shift change - end of shift %d\n", p.shiftID)
 			atomic.AddUint64(&p.shiftID, 1)
 			p.dispatcher.mu.RLock()
 			for _, h := range p.dispatcher.handlers {
-				h.s.Shift().UpdateOrSaveShift()
+				h.mu.RLock()
+				s := h.s.Shift()
+				h.mu.RUnlock()
+				if s != nil {
+					s.UpdateOrSaveShift()
+				}
 				sh := p.newShift(h.s.CurrentWorker)
 				h.s.addShift(sh)
 			}
@@ -382,7 +383,27 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	p.tg.OnStop(func() {
 		p.tpool.Unsubscribe(p)
 	})
-	fmt.Println("      Starting Stratum Server")
+
+	//
+	// If our pool wallet is one of our (this node's) wallet, we are the main node and will
+	// do the payout processing when it is needed.
+	//
+	//	p.mainNode = wallet.isWalletAddress(p.InternalSettings().PoolWallet)
+	// if wallet != nil {
+	// 	addrs := wallet.AllAddresses()
+	// 	fmt.Printf("length is %d\n", len(addrs))
+	// 	for _, uh := range addrs {
+	// 		if uh == p.InternalSettings().PoolWallet {
+	// 			p.mainNode = true
+	// 			break
+	// 		}
+	// 	}
+	// }
+	// node := ""
+	// if p.mainNode {
+	// 	node = "main "
+	// }
+	fmt.Printf("      Starting Stratum Server\n")
 
 	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: sync.RWMutex{}, p: p}
 	p.dispatcher.log, err = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
@@ -394,18 +415,10 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	p.tg.OnStop(func() {
 		p.dispatcher.ln.Close()
 	})
-	// pause for a while to get a valid netaddr
-	var count uint64
-	for p.gw.Address().IsStdValid() != nil && count < 60 {
-		time.Sleep(time.Second * 1)
-		count++
-	}
-	p.id = fmt.Sprintf("%s:%s", p.gw.Address().Host(), port)
 	err = p.setShiftIDFromDB()
 	if err != nil {
 		return nil, errors.New("Failed to update shiftID: " + err.Error())
 	}
-	fmt.Printf("        listening on %s\n", p.id)
 	return p, nil
 }
 
@@ -465,10 +478,8 @@ func (p *Pool) MiningMetrics() modules.PoolMiningMetrics {
 
 // SetInternalSettings updates the pool's internal PoolInternalSettings object.
 func (p *Pool) SetInternalSettings(settings modules.PoolInternalSettings) error {
-	p.log.Debugf("Waiting to lock pool\n")
 	p.mu.Lock()
 	defer func() {
-		p.log.Debugf("Unlocking pool\n")
 		p.mu.Unlock()
 	}()
 	err := p.tg.Add()
@@ -485,6 +496,7 @@ func (p *Pool) SetInternalSettings(settings modules.PoolInternalSettings) error 
 			return errors.New("internal settings not updated, no operator wallet set: " + err.Error())
 		}
 	}
+	p.modifyClientWallet(0, settings.PoolOperatorWallet.String())
 
 	p.persist.SetSettings(settings)
 	p.persist.SetRevisionNumber(p.persist.GetRevisionNumber() + 1)
@@ -515,10 +527,10 @@ func (p *Pool) FindClient(name string) *modules.PoolClients {
 // checkAddress checks that the miner has an address, fetching an address from
 // the wallet if not.
 func (p *Pool) checkAddress() error {
-	if p.InternalSettings().PoolOperatorWallet != (types.UnlockHash{}) {
-		return nil
+	if p.InternalSettings().PoolWallet == (types.UnlockHash{}) {
+		return errNoAddressSet
 	}
-	return errNoAddressSet
+	return nil
 }
 
 func (p *Pool) Client(name string) *Client {

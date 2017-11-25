@@ -3,11 +3,12 @@ package pool
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 const (
 	SCHEMA_VERSION_MAJOR = 0
-	SCHEMA_VERSION_MINOR = 1
+	SCHEMA_VERSION_MINOR = 2
 )
 
 func (p *Pool) createOrUpdateDatabase() error {
@@ -32,6 +33,8 @@ func (p *Pool) createOrUpdateDatabase() error {
 	for !(major == SCHEMA_VERSION_MAJOR && minor == SCHEMA_VERSION_MINOR) {
 		if major == 0 && minor == 0 {
 			err = p.updateFrom0_0To0_1()
+		} else if major == 0 && minor == 1 {
+			err = p.updateFrom0_1To0_2()
 		} else {
 			p.log.Panicf("Unsupport database upgrade needed: Major = %d, Minor = %d\n", major, minor)
 		}
@@ -182,20 +185,86 @@ func (p *Pool) updateFrom0_0To0_1() error {
 		p.log.Printf("Failed to create table [ShiftInfo]: %s\n", err)
 		return err
 	}
-	// _, err = tx.Exec(`
-	// 	CREATE TABLE [Shares]
-	// 	(
-	// 		[ShareID] INT PRIMARY KEY,
-	// 		[Diff] FLOAT NOT NULL,
-	// 		[DateTime] TIMESTAMP NOT NULL,
-	// 		[Worker] REFERENCES [Worker]([WorkerID])
-	// 	);
-	// `)
-	// if err != nil {
-	// 	return err
-	// }
 
 	err = p.setSchemaVersion(tx, 0, 1)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *Pool) updateFrom0_1To0_2() error {
+	p.log.Printf("Updating sql database 'miningpool' from version 0.1 to 0.2\n")
+	tx, err := p.sqldb.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	//
+	// Add paid and timestamp to Block table
+	//
+	_, err = tx.Exec(`
+		ALTER TABLE [Block]
+			ADD [Paid]  BOOLEAN DEFAULT FALSE NOT NULL;
+	`)
+	if err != nil {
+		p.log.Printf("Failed to alter table [Block]: %s\n", err)
+		return err
+	}
+
+	_, err = tx.Exec(`
+		ALTER TABLE [Block]
+			ADD [PaidTime]  TIMESTAMP DEFAULT 0 NOT NULL;
+	`)
+	if err != nil {
+		p.log.Printf("Failed to alter table [Block]: %s\n", err)
+		return err
+	}
+
+	//
+	// Add account balance to Client table.
+	//
+	_, err = tx.Exec(`
+		ALTER TABLE [Clients]
+			ADD [Balance]  VARCHAR DEFAULT "0" NOT NULL;
+	`)
+	if err != nil {
+		p.log.Printf("Failed to alter table [Clients]: %s\n", err)
+		return err
+	}
+
+	operatorClient := fmt.Sprintf("INSERT INTO [Clients]([ClientID], [Name], [Wallet]) VALUES (0, \"Operator\", \"%s\");",
+		p.InternalSettings().PoolOperatorWallet.String())
+	_, err = tx.Exec(operatorClient)
+
+	if err != nil {
+		p.log.Printf("Failed to add Operator to [Clients]: %s\n", err)
+		return err
+	}
+	//
+	// Ledger table represents the client balance transactions
+	//
+	_, err = tx.Exec(`
+		CREATE TABLE [Ledger]
+		(
+			[LedgerID]    INTEGER PRIMARY KEY AUTOINCREMENT,
+			[Parent]      REFERENCES [Clients]([ClientID]),
+			[Transaction] VARCHAR NOT NULL,
+			[TimeStamp]   TIMESTAMP,
+			[Memo]        VARCHAR
+		);
+	`)
+	if err != nil {
+		p.log.Printf("Failed to create table [Ledger]: %s\n", err)
+		return err
+	}
+
+	err = p.setSchemaVersion(tx, 0, 2)
 	if err != nil {
 		return err
 	}

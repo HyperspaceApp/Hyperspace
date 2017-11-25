@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"sort"
 	"time"
 
 	"github.com/NebulousLabs/Sia/api"
+	"github.com/NebulousLabs/Sia/types"
 
 	"net/url"
 
@@ -62,6 +64,20 @@ Available settings:
 		Long:  "Get Client details by name",
 		Run:   wrap(poolclientcmd),
 	}
+
+	poolBlocksCmd = &cobra.Command{
+		Use:   "blocks",
+		Short: "Get blocks info",
+		Long:  "Get list of found blocks",
+		Run:   wrap(poolblockscmd),
+	}
+
+	poolBlockCmd = &cobra.Command{
+		Use:   "block <blocknum>",
+		Short: "Get Block details",
+		Long:  "Get Block specific details by block number",
+		Run:   wrap(poolblockcmd),
+	}
 )
 
 // poolstartcmd is the handler for the command `siac pool start`.
@@ -98,13 +114,16 @@ Blocks Mined: %d
 
 Pool config:
 Pool Name:              %s
+Pool ID:                %s
 Pool Accepting Shares   %t
 Pool Stratum Port       %d
 Operator Percentage     %.02f %%
 Operator Wallet:        %s
+Pool Wallet:            %s
 `,
 		poolStr, status.PoolHashrate/1000000000, status.BlocksMined,
-		config.Name, config.AcceptingShares, config.NetworkPort, config.OperatorPercentage, config.OperatorWallet)
+		config.Name, config.PoolID, config.AcceptingShares, config.NetworkPort,
+		config.OperatorPercentage, config.OperatorWallet, config.PoolWallet)
 }
 
 // poolstopcmd is the handler for the command `siac pool stop`.
@@ -126,6 +145,8 @@ func poolconfigcmd(param, value string) {
 	case "operatorpercentage":
 	case "acceptingshares":
 	case "networkport":
+	case "poolid":
+	case "poolwallet":
 	default:
 		die("Unknown pool config parameter: ", param)
 	}
@@ -160,9 +181,12 @@ func poolclientcmd(name string) {
 	client := new(api.PoolClientInfo)
 	err := getAPI("/pool/client?name="+name, client)
 	if err != nil {
-		die("Could not get pool client:", err)
+		die("Could not get pool client: ", err)
 	}
-	fmt.Printf("\nClient Name: % 76.76s\nBlocks Mined: %d\n\n", client.ClientName, client.BlocksMined)
+	reward := big.NewInt(0)
+	reward.SetString(client.Balance, 10)
+	currency := types.NewCurrency(reward)
+	fmt.Printf("\nClient Name: % 76.76s\nBlocks Mined: % -10d   Balance: %s\n\n", client.ClientName, client.BlocksMined, currencyUnits(currency))
 	fmt.Printf("                    Per Current Block\n")
 	fmt.Println("Worker Name         Work Diff  Shares   Share*Diff   Stale(%) Invalid(%)   Blocks Found   Last Share Time")
 	fmt.Printf("----------------    --------   -------   ---------   --------   --------       --------   ----------------\n")
@@ -181,6 +205,20 @@ func poolclientcmd(name string) {
 			stale, invalid, w.BlocksFound, shareTime(w.LastShareTime))
 	}
 
+	txs := new([]api.PoolClientTransactions)
+	err = getAPI("/pool/clienttx?name="+name, txs)
+	if err != nil {
+		return
+	}
+	fmt.Printf("\nTransactions:\n")
+	fmt.Printf("%-19s    %-10s   %s\n", "Timestamp", "Change", "Memo")
+	fmt.Printf("-------------------    ----------   --------------------------------------------\n")
+	for _, t := range *txs {
+		change := big.NewInt(0)
+		change.SetString(t.BalanceChange, 10)
+		currency := types.NewCurrency(change)
+		fmt.Printf("%-19s    %-10s   %s\n", t.TxTime.Format(time.RFC822), currencyUnits(currency), t.Memo)
+	}
 }
 
 func shareTime(t time.Time) string {
@@ -199,6 +237,64 @@ func shareTime(t time.Time) string {
 		return fmt.Sprintf(" %.2f minutes ago", time.Now().Sub(t).Minutes())
 	default:
 		return fmt.Sprintf(" %.2f seconds ago", time.Now().Sub(t).Seconds())
+	}
+}
+
+func poolblockscmd() {
+	blocks := new([]api.PoolBlocksInfo)
+	err := getAPI("/pool/blocks", blocks)
+	if err != nil {
+		die("Could not get pool blocks: ", err)
+	}
+	fmt.Printf("Blocks List:\n")
+	fmt.Printf("%-10s %-10s   %-19s   %-10s   %s\n", "Blocks", "Height", "Timestamp", "Reward", "Status")
+	fmt.Printf("---------- ----------   -------------------   ------   -------------------\n")
+	for _, b := range *blocks {
+		reward := big.NewInt(0)
+		reward.SetString(b.BlockReward, 10)
+		currency := types.NewCurrency(reward)
+		fmt.Printf("% 10d % 10d   %19s   %-10s   %s\n", b.BlockNumber, b.BlockHeight,
+			b.BlockTime.Format(time.RFC822), currencyUnits(currency), b.BlockStatus)
+	}
+}
+
+func poolblockcmd(name string) {
+	blocks := new([]api.PoolBlocksInfo)
+	err := getAPI("/pool/blocks", blocks)
+	if err != nil {
+		die("Could not get pool blocks: ", err)
+	}
+	var blockID uint64
+	var blocksInfo api.PoolBlocksInfo
+	fmt.Sscanf(name, "%d", &blockID)
+	for _, blocksInfo = range *blocks {
+		if blocksInfo.BlockNumber == blockID {
+			break
+		}
+	}
+	block := new([]api.PoolBlockInfo)
+	err = getAPI("/pool/block?block="+name, block)
+	if err != nil {
+		die("Could not get pool block:", err)
+	}
+	if blocksInfo.BlockHeight == 0 {
+		fmt.Printf("Current Block\n\n")
+	} else {
+		reward := big.NewInt(0)
+		reward.SetString(blocksInfo.BlockReward, 10)
+		currency := types.NewCurrency(reward)
+		fmt.Printf("%-10s %-10s   %-19s   %-10s   %s\n", "Blocks", "Height", "Timestamp", "Reward", "Status")
+		fmt.Printf("%-10d %-10d   %-19s   %-10s   %s\n\n", blocksInfo.BlockNumber, blocksInfo.BlockHeight,
+			blocksInfo.BlockTime.Format(time.RFC822), currencyUnits(currency), blocksInfo.BlockStatus)
+	}
+
+	fmt.Printf("Client Name                                                                   Reward %% Block Reward\n")
+	fmt.Printf("----------------------------------------------------------------------------  -------- ------------\n")
+	for _, b := range *block {
+		reward := big.NewInt(0)
+		reward.SetString(b.ClientReward, 10)
+		currency := types.NewCurrency(reward)
+		fmt.Printf("%-76.76s %9.2f %12.12s\n", b.ClientName, b.ClientPercentage, currencyUnits(currency))
 	}
 }
 

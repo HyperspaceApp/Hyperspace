@@ -46,6 +46,7 @@ type StratumResponseMsg struct {
 
 // Handler represents the status (open/closed) of each connection
 type Handler struct {
+	mu     sync.RWMutex
 	conn   net.Conn
 	closed chan bool
 	notify chan bool
@@ -78,7 +79,9 @@ func (h *Handler) Listen() { // listen connection for incomming data
 	defer h.p.tg.Done()
 
 	h.log.Println("New connection from " + h.conn.RemoteAddr().String())
+	h.mu.Lock()
 	h.s, _ = newSession(h.p)
+	h.mu.Unlock()
 	h.log.Println("New sessioon: " + sPrintID(h.s.SessionID))
 	dec := json.NewDecoder(h.conn)
 	for {
@@ -316,7 +319,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 	needNewJob := false
 	defer func() {
 		if needNewJob == true {
-			h.sendStratumNotify(false)
+			h.sendStratumNotify(true)
 		}
 	}()
 
@@ -398,10 +401,7 @@ func (h *Handler) handleStratumSubmit(m StratumRequestMsg) {
 		if err != nil {
 			h.s.CurrentWorker.log.Printf("Failed to update block in database: %s\n", err)
 		}
-		ac, _ := newAccounting(h.p, b.ID())
-		h.p.BlocksFound = append(h.p.BlocksFound, ac)
 		h.p.shiftChan <- true
-		fmt.Printf("%d %s\n", ac.blockCounter, h.s.CurrentWorker.Name())
 	}
 	h.sendResponse(r)
 }
@@ -501,7 +501,13 @@ type Dispatcher struct {
 //AddHandler connects the incoming connection to the handler which will handle it
 func (d *Dispatcher) AddHandler(conn net.Conn) {
 	addr := conn.RemoteAddr().String()
-	handler := &Handler{conn, make(chan bool, 2), make(chan bool, numPendingNotifies), d.p, d.log, nil}
+	handler := &Handler{
+		conn:   conn,
+		closed: make(chan bool, 2),
+		notify: make(chan bool, numPendingNotifies),
+		p:      d.p,
+		log:    d.log,
+	}
 	d.mu.Lock()
 	d.handlers[addr] = handler
 	d.mu.Unlock()

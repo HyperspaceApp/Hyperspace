@@ -168,7 +168,7 @@ func (w *Worker) CurrentDifficulty() float64 {
 	workerCount := uint64(0)
 	currentDiff := float64(0.0)
 	for _, h := range d.handlers {
-		if h.s.Client.Name() == w.Parent().Name() && h.s.CurrentWorker.Name() == w.Name() {
+		if h.s.Client != nil && h.s.Client.Name() == w.Parent().Name() && h.s.CurrentWorker.Name() == w.Name() {
 			currentDiff += h.s.CurrentDifficulty()
 			workerCount++
 		}

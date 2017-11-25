@@ -21,9 +21,11 @@ type (
 	// PoolConfig contains the parameters you can set to config your pool
 	PoolConfig struct {
 		AcceptingShares    bool             `json:"acceptingshares"`
-		OperatorPercentage float32          `json:"operatorpercentage"`
+		OperatorPercentage float64          `json:"operatorpercentage"`
 		NetworkPort        uint16           `json:"networkport"`
 		Name               string           `json:"name"`
+		PoolID             string           `json:"poolid"`
+		PoolWallet         types.UnlockHash `json:"poolwallet"`
 		OperatorWallet     types.UnlockHash `json:"operatorwallet"`
 	}
 	PoolClientsInfo struct {
@@ -34,8 +36,15 @@ type (
 	PoolClientInfo struct {
 		ClientName  string           `json:"clientname"`
 		BlocksMined uint64           `json:"blocksminer"`
+		Balance     string           `json:"balance"`
 		Workers     []PoolWorkerInfo `json:"workers"`
 	}
+	PoolClientTransactions struct {
+		BalanceChange string    `json:"balancechange"`
+		TxTime        time.Time `json:"txtime"`
+		Memo          string    `json:"memo"`
+	}
+
 	PoolWorkerInfo struct {
 		WorkerName             string    `json:"workername"`
 		LastShareTime          time.Time `json:"lastsharetime"`
@@ -45,6 +54,18 @@ type (
 		InvalidSharesThisBlock uint64    `json:"invalidsharesthisblock"`
 		StaleSharesThisBlock   uint64    `json:"stalesharesthisblock"`
 		BlocksFound            uint64    `json:"blocksfound"`
+	}
+	PoolBlocksInfo struct {
+		BlockNumber uint64    `json:"blocknumber"`
+		BlockHeight uint64    `json:"blockheight"`
+		BlockReward string    `json:"blockreward"`
+		BlockTime   time.Time `json:"blocktime"`
+		BlockStatus string    `json:"blockstatus"`
+	}
+	PoolBlockInfo struct {
+		ClientName       string  `json:"clientname"`
+		ClientPercentage float64 `json:"clientpercentage"`
+		ClientReward     string  `json:"clientreward"`
 	}
 )
 
@@ -86,6 +107,8 @@ func (api *API) poolConfigHandler(w http.ResponseWriter, req *http.Request, _ ht
 		AcceptingShares:    settings.AcceptingShares,
 		OperatorPercentage: settings.PoolOperatorPercentage,
 		NetworkPort:        settings.PoolNetworkPort,
+		PoolID:             settings.PoolID,
+		PoolWallet:         settings.PoolWallet,
 		OperatorWallet:     settings.PoolOperatorWallet,
 	}
 	WriteJSON(w, pg)
@@ -106,6 +129,15 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 		}
 		settings.PoolOperatorWallet = x
 	}
+	if req.FormValue("poolwallet") != "" {
+		var x types.UnlockHash
+		x, err := scanAddress(req.FormValue("poolwallet"))
+		if err != nil {
+			fmt.Println(err)
+			return modules.PoolInternalSettings{}, nil
+		}
+		settings.PoolWallet = x
+	}
 	if req.FormValue("acceptingshares") != "" {
 		var x bool
 		_, err := fmt.Sscan(req.FormValue("acceptingshares"), &x)
@@ -115,7 +147,7 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 		settings.AcceptingShares = x
 	}
 	if req.FormValue("operatorpercentage") != "" {
-		var x float32
+		var x float64
 		_, err := fmt.Sscan(req.FormValue("operatorpercentage"), &x)
 		if err != nil {
 			return modules.PoolInternalSettings{}, nil
@@ -135,8 +167,11 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 	if req.FormValue("name") != "" {
 		settings.PoolName = req.FormValue("name")
 	}
-
-	return settings, nil
+	if req.FormValue("poolid") != "" {
+		settings.PoolID = req.FormValue("poolid")
+	}
+	err := api.pool.SetInternalSettings(settings)
+	return settings, err
 }
 
 func (api *API) poolGetClientsInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
@@ -155,6 +190,7 @@ func (api *API) poolGetClientsInfo(w http.ResponseWriter, req *http.Request, _ h
 		client := PoolClientInfo{
 			ClientName:  c.ClientName,
 			Workers:     pw,
+			Balance:     c.Balance,
 			BlocksMined: c.BlocksMined,
 		}
 		pc = append(pc, client)
@@ -192,10 +228,48 @@ func (api *API) poolGetClientInfo(w http.ResponseWriter, req *http.Request, _ ht
 
 	pci := PoolClientInfo{
 		ClientName:  client.ClientName,
+		Balance:     client.Balance,
 		BlocksMined: client.BlocksMined,
 		Workers:     pw,
 	}
 	WriteJSON(w, pci)
+}
+
+func (api *API) poolGetClientTransactions(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	client := api.pool.ClientTransactions(req.FormValue("name"))
+	if client == nil {
+		WriteError(w, Error{"error could not find client " + req.FormValue("name")}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, client)
+}
+
+func (api *API) poolGetBlocksInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	bi := api.pool.BlocksInfo()
+	var pb []PoolBlocksInfo
+	for _, b := range bi {
+		block := PoolBlocksInfo{
+			BlockHeight: b.BlockHeight,
+			BlockNumber: b.BlockNumber,
+			BlockReward: b.BlockReward,
+			BlockTime:   b.BlockTime,
+			BlockStatus: b.BlockStatus,
+		}
+		pb = append(pb, block)
+	}
+	WriteJSON(w, bi)
+}
+
+func (api *API) poolGetBlockInfo(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var block uint64
+	fmt.Sscanf(req.FormValue("block"), "%d", &block)
+	bi := api.pool.BlockInfo(block)
+	if bi == nil {
+		WriteError(w, Error{"error could not find block " + req.FormValue("block")}, http.StatusBadRequest)
+		return
+	}
+
+	WriteJSON(w, bi)
 }
 
 // poolStartHandler handles the API call that starts the pool.
