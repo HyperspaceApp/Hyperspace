@@ -34,7 +34,7 @@ func (p *Pool) AddClientDB(c *Client) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO [Clients]([ClientID], [Name], [Wallet])
+		INSERT INTO Clients(ClientID, Name, Wallet)
 		VALUES (?, ?, ?);
 	`)
 	if err != nil {
@@ -58,7 +58,7 @@ func (p *Pool) findClientDB(name string) *Client {
 	var clientID uint64
 	var Name, Wallet string
 	// p.log.Printf("Searching database for client: %s\n", name)
-	err := p.sqldb.QueryRow("SELECT [ClientID], [Name], [Wallet] FROM [Clients] WHERE [Name] = ?", name).Scan(&clientID, &Name, &Wallet)
+	err := p.sqldb.QueryRow("SELECT ClientID, Name, Wallet FROM Clients WHERE Name = ?", name).Scan(&clientID, &Name, &Wallet)
 	if err != nil {
 		p.log.Debugf("Search failed: %s\n", err)
 		return nil
@@ -74,7 +74,7 @@ func (p *Pool) findClientDB(name string) *Client {
 	wallet.LoadString(Wallet)
 	c.addWallet(wallet)
 	c.cr.clientID = clientID
-	stmt, err := p.sqldb.Prepare("SELECT [WorkerID],[Name],[AverageDifficulty],[BlocksFound] FROM [Worker] WHERE [Parent] = ?;")
+	stmt, err := p.sqldb.Prepare("SELECT WorkerID,Name,AverageDifficulty,BlocksFound FROM Worker WHERE Parent = ?;")
 	if err != nil {
 		p.log.Printf("Error finding workers for client %s: %s\n", name, err)
 		return nil
@@ -115,9 +115,9 @@ func (p *Pool) findClientDB(name string) *Client {
 
 func (w *Worker) updateWorkerRecord() error {
 	stmt, err := w.Parent().pool.sqldb.Prepare(`
-		UPDATE [Worker]
-		SET [AverageDifficulty] = $1, [BlocksFound] = $2
-		WHERE [WorkerID] = $3
+		UPDATE Worker
+		SET AverageDifficulty = ?, BlocksFound = ?
+		WHERE WorkerID = ?
 		`)
 	if err != nil {
 		w.log.Printf("Error preparing to update worker: %s\n", err)
@@ -140,28 +140,19 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	}
 	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`
-		UPDATE [Block]
-		SET [Height] = $1, [Reward] = $2, [Time] = $3
-		WHERE [BlockID] = $4
-	`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
 	bh := pool.persist.GetBlockHeight()
 	sub := b.CalculateSubsidy(bh).String()
-
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
-	w.log.Printf("Adding found block %d, height %d, subsidy %s: err %v\n", pool.blockCounter, bh, sub, err)
-	_, err = stmt.Exec(bh, sub, time.Now().Unix(), pool.blockCounter)
+	timeStamp := time.Now().Format("2006-01-02 15:04:05 -700")
+	update := fmt.Sprintf("UPDATE Block SET Height = %d, Reward = '%s', Time = '%s' WHERE BlockID = %d;", bh, sub, timeStamp, pool.blockCounter)
+	w.log.Printf("Adding %s\n", update)
+	_, err = tx.Exec(`UPDATE Block SET Height = ?, Reward = ?, Time = ? WHERE BlockID = ?;`, bh, sub, time.Now(), pool.blockCounter)
 	if err != nil {
 		return err
 	}
 	pool.blockCounter++
-	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES ($1, 0, "0", 0);`, pool.blockCounter)
+	_, err = tx.Exec(`INSERT INTO Block(BlockID, Height, Reward, Time) VALUES (?, 0, '0', 0);`, pool.blockCounter)
 	if err != nil {
 		return err
 	}
@@ -176,7 +167,7 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 }
 
 func (p *Pool) setBlockCounterFromDB() error {
-	stmt, err := p.sqldb.Prepare(`SELECT [BlockID] FROM [Block] ORDER BY [BlockID] DESC;`)
+	stmt, err := p.sqldb.Prepare(`SELECT BlockID FROM Block ORDER BY BlockID DESC;`)
 	if err != nil {
 		return err
 	}
@@ -206,7 +197,7 @@ func (p *Pool) setBlockCounterFromDB() error {
 }
 
 func (p *Pool) setShiftIDFromDB() error {
-	stmt, err := p.sqldb.Prepare(`SELECT [ShiftID] FROM [ShiftInfo] WHERE [Pool] = $1 ORDER BY [ShiftID] DESC;`)
+	stmt, err := p.sqldb.Prepare(`SELECT ShiftID FROM ShiftInfo WHERE Pool = ? ORDER BY ShiftID DESC;`)
 	if err != nil {
 		return err
 	}
@@ -244,8 +235,9 @@ func (p *Pool) GetShift(w *Worker) *Shift {
 	var lastShareTime time.Time
 	var shiftDuration int64
 	err := p.sqldb.QueryRow(`
-		SELECT [Blocks],[Shares],[InvalidShares],[StaleShares],[CummulativeDifficulty],[LastShareTime],[ShiftDuration]
-		FROM [ShiftInfo] WHERE [ShiftID] = ? AND [Pool] = ? AND [Parent] = ?
+		SELECT Blocks,Shares,InvalidShares,StaleShares,CummulativeDifficulty,LastShareTime,ShiftDuration
+		FROM ShiftInfo 
+		WHERE ShiftID = ? AND Pool = ? AND Parent = ?;
 		`, p.shiftID, p.InternalSettings().PoolID, w.wr.workerID).Scan(&blockID, &shares, &invalidShares, &staleShares, &cumulativeDifficulty, &lastShareTime, &shiftDuration)
 	if err != nil {
 		if err != sql.ErrNoRows {
@@ -275,7 +267,7 @@ func (p *Pool) GetShift(w *Worker) *Shift {
 func (s *Shift) UpdateOrSaveShift() error {
 	var id uint64
 	pool := s.worker.Parent().Pool()
-	err := pool.sqldb.QueryRow("SELECT [ShiftID] FROM [ShiftInfo] WHERE [Pool] = ? AND [ShiftID] = ? AND [Parent] = ?", pool.InternalSettings().PoolID, s.shiftID, s.worker.wr.workerID).Scan(&id)
+	err := pool.sqldb.QueryRow("SELECT ShiftID FROM ShiftInfo WHERE Pool = ? AND ShiftID = ? AND Parent = ?", pool.InternalSettings().PoolID, s.shiftID, s.worker.wr.workerID).Scan(&id)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			pool.log.Debugf("Search failed: %s\n", err)
@@ -293,9 +285,9 @@ func (s *Shift) UpdateOrSaveShift() error {
 func (s *Shift) updateShift() error {
 	pool := s.worker.Parent().Pool()
 	stmt, err := pool.sqldb.Prepare(`
-		UPDATE [ShiftInfo]
-		SET [Shares] = ?, [InvalidShares] = ?, [StaleShares] = ?, [CummulativeDifficulty] = ?, [LastShareTime] = ?, [ShiftDuration] = ?
-		WHERE [ShiftID] = ? AND [Pool] = ? AND [Parent] = ?
+		UPDATE ShiftInfo
+		SET Shares = ?, InvalidShares = ?, StaleShares = ?, CummulativeDifficulty = ?, LastShareTime = ?, ShiftDuration = ?
+		WHERE ShiftID = ? AND Pool = ? AND Parent = ?
 		`)
 	if err != nil {
 		s.worker.log.Printf("Error preparing to update shift: %s\n", err)
@@ -316,7 +308,7 @@ func (s *Shift) saveShift() error {
 
 	stmt, err := s.worker.Parent().pool.sqldb.Prepare(`
 		INSERT INTO 
-		[ShiftInfo]([ShiftID], [Pool], [Parent], [Blocks], [Shares], [InvalidShares], [StaleShares], [CummulativeDifficulty], [LastShareTime], [ShiftDuration])
+		ShiftInfo(ShiftID, Pool, Parent, Blocks, Shares, InvalidShares, StaleShares, CummulativeDifficulty, LastShareTime, ShiftDuration)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 		`)
 	if err != nil {
@@ -350,7 +342,7 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO [Worker]([WorkerID], [Name], [Parent], [AverageDifficulty], [BlocksFound])
+		INSERT INTO Worker(WorkerID, Name, Parent, AverageDifficulty, BlocksFound)
 		VALUES (?, ?, ?, ?, ?);
 	`)
 	if err != nil {
@@ -375,10 +367,10 @@ func (c *Client) findWorkerDB(worker string, s *Session) error {
 	var id, blocks uint64
 	var diff float64
 	err := c.pool.sqldb.QueryRow(`
-		SELECT [Worker].[WorkerID], [Worker].[AverageDifficulty], [Worker].[BlocksFound] 
-		FROM ([Worker] 
-		INNER JOIN [Clients] ON [Worker].[Parent]=[Clients].[ClientID])
-		WHERE [Worker].[Name] = $1 AND [Clients].[Name] = $2;
+		SELECT Worker.WorkerID, Worker.AverageDifficulty, Worker.BlocksFound 
+		FROM (Worker 
+		INNER JOIN Clients ON Worker.Parent=Clients.ClientID)
+		WHERE Worker.Name = ? AND Clients.Name = ?;
 		`,
 		worker, c.Name()).Scan(&id, &diff, &blocks)
 	if err == nil {
@@ -389,7 +381,7 @@ func (c *Client) findWorkerDB(worker string, s *Session) error {
 			w.wr.workerID = id
 			w.wr.averageDifficulty = diff
 			w.wr.blocksFound = blocks
-			//			c.workers[worker] = w
+			//			c.workersWorker = w
 		}
 	}
 	if err != nil && err != sql.ErrNoRows {
@@ -407,13 +399,13 @@ func (p *Pool) ClientData() []modules.PoolClients {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		SELECT DISTINCT[Clients].[Name], [Clients].[Balance],[Worker].[Name], SUM([ShiftInfo].[Shares]), AVG([Worker].[AverageDifficulty]),
-		SUM([ShiftInfo].[InvalidShares]), SUM([ShiftInfo].[StaleShares]), SUM([ShiftInfo].[CummulativeDifficulty]), 
-		MAX([ShiftInfo].[LastShareTime])
-		FROM (([Worker] 
-		INNER JOIN [Clients] ON [Worker].[Parent]=[Clients].[ClientID])
-		INNER JOIN [ShiftInfo] ON [Worker].[WorkerID]=[ShiftInfo].[Parent])
-		GROUP BY [Clients].[Name], [Worker].[Name];
+		SELECT DISTINCT Clients.Name, Clients.Balance, Worker.Name, SUM(ShiftInfo.Shares), AVG(Worker.AverageDifficulty),
+		SUM(ShiftInfo.InvalidShares), SUM(ShiftInfo.StaleShares), SUM(ShiftInfo.CummulativeDifficulty), 
+		MAX(ShiftInfo.LastShareTime)
+		FROM ((Worker 
+		INNER JOIN Clients ON Worker.Parent=Clients.ClientID)
+		INNER JOIN ShiftInfo ON Worker.WorkerID=ShiftInfo.Parent)
+		GROUP BY Clients.Name, Worker.Name, Clients.Balance;
 	`)
 	if err != nil {
 		p.log.Printf("Prepare failed: %s\n", err)
@@ -446,7 +438,12 @@ func (p *Pool) ClientData() []modules.PoolClients {
 			p.log.Printf("Row scan failed: %s\n", err)
 			return nil
 		}
-		shareTime, err := time.Parse("2006-01-02 15:04:05-07:00", shareTimeString)
+		var shareTime time.Time
+		//		if p.InternalSettings().PoolDBConnection == "" || p.InternalSettings().PoolDBConnection == "internal" {
+		shareTime, err = time.Parse("2006-01-02 15:04:05", shareTimeString)
+		// } else {
+		// 	shareTime, err = time.Parse(time.RFC3339, shareTimeString)
+		// }
 		if err != nil {
 			p.log.Printf("Date conversion failed: %s\n", err)
 		}
@@ -505,10 +502,10 @@ func (p *Pool) ClientData() []modules.PoolClients {
 		for windex := range pc[index].Workers {
 			var mined uint64
 			err := p.sqldb.QueryRow(`
-			SELECT SUM([Worker].[BlocksFound])
-			FROM ([Clients] 
-				INNER JOIN [Worker] ON [Worker].[Parent]=[Clients].[ClientID])
-			WHERE [Clients].[Name] = ? AND [Worker].[Name] = ?;
+			SELECT SUM(Worker.BlocksFound)
+			FROM (Clients 
+				INNER JOIN Worker ON Worker.Parent=Clients.ClientID)
+			WHERE Clients.Name = ? AND Worker.Name = ?;
 		`, pc[index].ClientName, pc[index].Workers[windex].WorkerName).Scan(&mined)
 			if err != nil {
 				if err != sql.ErrNoRows {
@@ -534,10 +531,10 @@ func (p *Pool) BlocksInfo() []modules.PoolBlocks {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		SELECT [BlockId], [Height], [Reward], [Time], [Paid], [PaidTime] 
-		FROM [Block] 
-		WHERE [Height] != 0
-		ORDER BY [BlockID] DESC;
+		SELECT BlockId, Height, Reward, Time, Paid, PaidTime 
+		FROM Block 
+		WHERE Height != '0'
+		ORDER BY BlockId DESC;
 	`)
 	if err != nil {
 		p.log.Printf("Prepare failed: %s\n", err)
@@ -554,16 +551,27 @@ func (p *Pool) BlocksInfo() []modules.PoolBlocks {
 	var blockNumber uint64
 	var blockHeight uint64
 	var blockReward string
-	var blockTime time.Time
+	var blockTimeString string
 	var paid bool
-	var paidTime time.Time
+	var paidTimeString string
 
 	defer rows.Close()
 	for rows.Next() {
-		err = rows.Scan(&blockNumber, &blockHeight, &blockReward, &blockTime, &paid, &paidTime)
+		err = rows.Scan(&blockNumber, &blockHeight, &blockReward, &blockTimeString, &paid, &paidTimeString)
 		if err != nil {
 			p.log.Printf("Row scan failed: %s\n", err)
 			return nil
+		}
+		blockTime, err := time.Parse("2006-01-02 15:04:05", blockTimeString)
+		if err != nil {
+			p.log.Printf("blockTime parse failed: %s\n", err)
+		}
+		var paidTime time.Time
+		if paid == true {
+			paidTime, err = time.Parse("2006-01-02 15:04:05", paidTimeString)
+			if err != nil {
+				p.log.Printf("paidTime parse failed: %s\n", err)
+			}
 		}
 		block := modules.PoolBlocks{
 			BlockHeight: blockHeight,
@@ -606,13 +614,13 @@ func (p *Pool) BlockInfo(b uint64) []modules.PoolBlock {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		SELECT [Clients].[Name], SUM([ShiftInfo].[CummulativeDifficulty]),[Block].[Height], [Block].[Reward]
-		FROM ((([Worker] 
-			INNER JOIN [Clients] ON [Worker].[Parent]=[Clients].[ClientID])
-			INNER JOIN [ShiftInfo] ON [Worker].[WorkerID]=[ShiftInfo].[Parent])
-			INNER JOIN [Block] ON [ShiftInfo].[Blocks]=[Block].[BlockID])
-		WHERE [ShiftInfo].[Blocks] = ?
-		GROUP BY [Clients].[Name]
+		SELECT Clients.Name, SUM(ShiftInfo.CummulativeDifficulty),Block.Height, Block.Reward
+		FROM (((Worker 
+			INNER JOIN Clients ON Worker.Parent=Clients.ClientID)
+			INNER JOIN ShiftInfo ON Worker.WorkerID=ShiftInfo.Parent)
+			INNER JOIN Block ON ShiftInfo.Blocks=Block.BlockId)
+		WHERE ShiftInfo.Blocks = ?
+		GROUP BY Clients.Name, Block.Height, Block.Reward
 		;
 		`)
 	if err != nil {
@@ -635,12 +643,14 @@ func (p *Pool) BlockInfo(b uint64) []modules.PoolBlock {
 	var totalShares float64
 
 	defer rows.Close()
+
 	for rows.Next() {
 		err = rows.Scan(&clientName, &diffShares, &blockHeight, &blockReward)
 		if err != nil {
 			p.log.Printf("Row scan failed: %s\n", err)
 			return nil
 		}
+		fmt.Printf("%s: %g %d %s\n", clientName, diffShares, blockHeight, blockReward)
 		if diffShares < 0.0000001 {
 			// really small shares are discarded to prevent dividing by zero below.
 			// this can only really happen when there is a shiftinfo entry for a block,
@@ -685,9 +695,9 @@ func (p *Pool) markBlockPaid(block uint64) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		UPDATE [Block]
-		SET [Paid] = $1, [PaidTime] = $2
-		WHERE [BlockID] = $3
+		UPDATE Block
+		SET Paid = ?, PaidTime = ?
+		WHERE BlockId = ?
 	`)
 	if err != nil {
 		return err
@@ -717,7 +727,7 @@ func (p *Pool) makeClientTransaction(clientID uint64, transaction string, memo s
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO [Ledger]([Parent], [Transaction], [Timestamp], [Memo])
+		INSERT INTO Ledger(Parent, Transaction, Timestamp, Memo)
 		VALUES (?, ?, ?, ?);
 	`)
 	if err != nil {
@@ -744,11 +754,11 @@ func (p *Pool) ClientTransactions(name string) []modules.PoolClientTransactions 
 	var ct []modules.PoolClientTransactions
 
 	rows, err := p.sqldb.Query(`
-		SELECT [Ledger].[Transaction],[Ledger].[Timestamp],[Ledger].[Memo]
-		FROM ([Ledger]
-			INNER JOIN [Clients] ON [Ledger].[Parent]=[Clients].[ClientID])
-		WHERE [Clients].[Name] = ?
-		ORDER BY [Ledger].[LedgerID] ASC;
+		SELECT Ledger.Transaction,Ledger.Timestamp,Ledger.Memo
+		FROM (Ledger
+			INNER JOIN Clients ON Ledger.Parent=Clients.ClientID)
+		WHERE Clients.Name = ?
+		ORDER BY Ledger.LedgerID ASC;
 		`, name)
 	if err != nil {
 		p.log.Debugf("Search failed: %s\n", err)
@@ -773,7 +783,7 @@ func (p *Pool) ClientTransactions(name string) []modules.PoolClientTransactions 
 
 func (p *Pool) modifyClientBalance(clientID uint64, change string) error {
 	var balance string
-	err := p.sqldb.QueryRow("SELECT [Balance] FROM [Clients] WHERE [ClientID] = ?;", clientID).Scan(&balance)
+	err := p.sqldb.QueryRow("SELECT Balance FROM Clients WHERE ClientID = ?;", clientID).Scan(&balance)
 	if err != nil {
 		p.log.Debugf("Search failed: %s\n", err)
 		return err
@@ -789,9 +799,9 @@ func (p *Pool) modifyClientBalance(clientID uint64, change string) error {
 	balanceC = balanceC.Add(changeC)
 
 	stmt, err := p.sqldb.Prepare(`
-		UPDATE [Clients]
-		SET [Balance] = ?
-		WHERE [ClientID] = ?;
+		UPDATE Clients
+		SET Balance = ?
+		WHERE ClientID = ?;
 		`)
 	if err != nil {
 		p.log.Printf("Error preparing to update client: %s\n", err)
@@ -809,9 +819,9 @@ func (p *Pool) modifyClientBalance(clientID uint64, change string) error {
 
 func (p *Pool) modifyClientWallet(clientID uint64, wallet string) error {
 	stmt, err := p.sqldb.Prepare(`
-		UPDATE [Clients]
-		SET [Wallet] = ?
-		WHERE [ClientID] = ?;
+		UPDATE Clients
+		SET Wallet = ?
+		WHERE ClientID = ?;
 		`)
 	if err != nil {
 		p.log.Printf("Error preparing to update client: %s\n", err)
@@ -829,9 +839,9 @@ func (p *Pool) modifyClientWallet(clientID uint64, wallet string) error {
 
 func (p *Pool) modifyClientName(clientID uint64, name string) error {
 	stmt, err := p.sqldb.Prepare(`
-		UPDATE [Clients]
-		SET [Name] = ?
-		WHERE [ClientID] = ?;
+		UPDATE Clients
+		SET Name = ?
+		WHERE ClientID = ?;
 		`)
 	if err != nil {
 		p.log.Printf("Error preparing to update client: %s\n", err)

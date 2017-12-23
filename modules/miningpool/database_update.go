@@ -13,10 +13,18 @@ const (
 
 func (p *Pool) createOrUpdateDatabase() error {
 	p.log.Debugf("Checking sql database version\n")
-	err := p.setSqliteForeignKey()
-	if err != nil {
-		return err
+	if p.InternalSettings().PoolDBConnection == "internal" {
+		err := p.setSqliteForeignKey()
+		if err != nil {
+			return err
+		}
+	} else {
+		err := p.setMySqlSqlMode()
+		if err != nil {
+			return err
+		}
 	}
+
 	major, minor, err := p.getSchemaVersion()
 	if err != nil {
 		// assume an error means the database doesn't exist
@@ -65,18 +73,36 @@ func (p *Pool) createDatabase() error {
 	defer tx.Rollback()
 
 	_, err = tx.Exec(`
-		CREATE TABLE [SchemaVersion]
+		DROP DATABASE miningpool;
+	`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+		CREATE DATABASE miningpool;
+	`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+		USE miningpool;
+	`)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(`
+		CREATE TABLE SchemaVersion
 		(
-			[Major] INT NOT NULL,
-			[Minor] INT NOT NULL
+			Major BIGINT NOT NULL,
+			Minor BIGINT NOT NULL
 		);
 	`)
 	if err != nil {
 		return err
 	}
 	_, err = tx.Exec(`
-		INSERT INTO [SchemaVersion]
-		([MAJOR], [MINOR])
+		INSERT INTO SchemaVersion
+		(Major, Minor)
 		VALUES
 		(0, 0);
 	`)
@@ -106,11 +132,12 @@ func (p *Pool) updateFrom0_0To0_1() error {
 	// Client table represents each individual client.
 	//
 	_, err = tx.Exec(`
-		CREATE TABLE [Clients]
+		CREATE TABLE Clients
 		(
-			[ClientID] INT PRIMARY KEY,
-			[Name]     VARCHAR NOT NULL UNIQUE,
-			[Wallet]   VARCHAR NOT NULL
+			ClientID BIGINT PRIMARY KEY,
+			Name     VARCHAR(255) NOT NULL,
+			Wallet   VARCHAR(255) NOT NULL,
+			UNIQUE (Name)
 		);
 	`)
 	if err != nil {
@@ -122,12 +149,12 @@ func (p *Pool) updateFrom0_0To0_1() error {
 	// Block table represents completed blocks (with the inprogess one being updated on completion)
 	//
 	_, err = tx.Exec(`
-		CREATE TABLE [Block]
+		CREATE TABLE Block
 		(
-			[BlockID] INT PRIMARY KEY,
-			[Height]  VARCHAR NOT NULL,
-			[Reward]  VARCHAR NOT NULL,
-			[Time]    TIMESTAMP
+			BlockID BIGINT PRIMARY KEY,
+			Height  VARCHAR(255) NOT NULL,
+			Reward  VARCHAR(255) NOT NULL,
+			Time    TIMESTAMP
 		);
 	`)
 	if err != nil {
@@ -135,7 +162,7 @@ func (p *Pool) updateFrom0_0To0_1() error {
 		return err
 	}
 	// Create the first, in progress, block
-	_, err = tx.Exec(`INSERT INTO [Block]([BlockID], [Height], [Reward], [Time]) VALUES (1, 0, "0", 0);`)
+	_, err = tx.Exec(`INSERT INTO Block(BlockID, Height, Reward) VALUES (1, 0, 0);`)
 	if err != nil {
 		return err
 	}
@@ -144,14 +171,14 @@ func (p *Pool) updateFrom0_0To0_1() error {
 	// Worker table represents the worker
 	//
 	_, err = tx.Exec(`
-		CREATE TABLE [Worker]
+		CREATE TABLE Worker
 		(
-			[WorkerID]          INT PRIMARY KEY,
-			[Name]              VARCHAR NOT NULL,
-			[Parent]            REFERENCES [Clients]([ClientID]),
-			[AverageDifficulty] FLOAT,
-			[BlocksFound]       INT,
-			UNIQUE ([NAME],[Parent])
+			WorkerID          BIGINT PRIMARY KEY,
+			Name              VARCHAR(255) NOT NULL,
+			Parent            BIGINT,
+			AverageDifficulty FLOAT,
+			BlocksFound       BIGINT,
+			UNIQUE (Name,Parent)
 		);
 	`)
 	if err != nil {
@@ -165,24 +192,30 @@ func (p *Pool) updateFrom0_0To0_1() error {
 	// are merged on reporting, rather than on updating.
 	//
 	_, err = tx.Exec(`
-		CREATE TABLE [ShiftInfo]
+		CREATE TABLE ShiftInfo
 		(
-			[ShiftID]               INT NOT NULL,
-			[Pool]                  VARCHAR NOT NULL,
-			[Parent]                REFERENCES [Worker]([WorkerID]),
-			[Blocks]                REFERENCES [Block]([BlockID]),
-			[Shares]                INT,
-			[InvalidShares]         INT,
-			[StaleShares]           INT,
-			[CummulativeDifficulty] FLOAT,
-			[LastShareTime]         TIMESTAMP,
-			[ShiftDuration]         INT,
-			UNIQUE ([ShiftID],[Pool],[Parent])
+			ShiftID               BIGINT NOT NULL,
+			Pool                  VARCHAR(255) NOT NULL,
+			Parent                BIGINT,
+			Blocks                BIGINT,
+			Shares                BIGINT,
+			InvalidShares         BIGINT,
+			StaleShares           BIGINT,
+			CummulativeDifficulty FLOAT,
+			LastShareTime         TIMESTAMP,
+			ShiftDuration         BIGINT,
+			UNIQUE (ShiftID,Pool,Parent)
 		);
-		CREATE UNIQUE INDEX [WorkerBlock] ON [ShiftInfo]([ShiftID],[Pool],[Parent],[Blocks]);
-	`)
+		`)
 	if err != nil {
 		p.log.Printf("Failed to create table [ShiftInfo]: %s\n", err)
+		return err
+	}
+	_, err = tx.Exec(`
+			CREATE UNIQUE INDEX WorkerBlock ON ShiftInfo(ShiftID,Pool,Parent,Blocks);
+	`)
+	if err != nil {
+		p.log.Printf("Failed to create index WorkerBlock ON [ShiftInfo]: %s\n", err)
 		return err
 	}
 
@@ -209,8 +242,8 @@ func (p *Pool) updateFrom0_1To0_2() error {
 	// Add paid and timestamp to Block table
 	//
 	_, err = tx.Exec(`
-		ALTER TABLE [Block]
-			ADD [Paid]  BOOLEAN DEFAULT FALSE NOT NULL;
+		ALTER TABLE Block
+			ADD Paid  BOOLEAN DEFAULT FALSE NOT NULL;
 	`)
 	if err != nil {
 		p.log.Printf("Failed to alter table [Block]: %s\n", err)
@@ -218,8 +251,8 @@ func (p *Pool) updateFrom0_1To0_2() error {
 	}
 
 	_, err = tx.Exec(`
-		ALTER TABLE [Block]
-			ADD [PaidTime]  TIMESTAMP DEFAULT 0 NOT NULL;
+		ALTER TABLE Block
+			ADD PaidTime  TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00';
 	`)
 	if err != nil {
 		p.log.Printf("Failed to alter table [Block]: %s\n", err)
@@ -230,15 +263,15 @@ func (p *Pool) updateFrom0_1To0_2() error {
 	// Add account balance to Client table.
 	//
 	_, err = tx.Exec(`
-		ALTER TABLE [Clients]
-			ADD [Balance]  VARCHAR DEFAULT "0" NOT NULL;
+		ALTER TABLE Clients
+			ADD Balance  VARCHAR(255) DEFAULT '0' NOT NULL;
 	`)
 	if err != nil {
 		p.log.Printf("Failed to alter table [Clients]: %s\n", err)
 		return err
 	}
 
-	operatorClient := fmt.Sprintf("INSERT INTO [Clients]([ClientID], [Name], [Wallet]) VALUES (0, \"Operator\", \"%s\");",
+	operatorClient := fmt.Sprintf("INSERT INTO Clients(ClientID, Name, Wallet) VALUES (0, 'Operator', '%s');",
 		p.InternalSettings().PoolOperatorWallet.String())
 	_, err = tx.Exec(operatorClient)
 
@@ -249,16 +282,41 @@ func (p *Pool) updateFrom0_1To0_2() error {
 	//
 	// Ledger table represents the client balance transactions
 	//
+	if p.InternalSettings().PoolDBConnection == "" || p.InternalSettings().PoolDBConnection == "internal" {
+		_, err = tx.Exec(`
+			CREATE TABLE Ledger
+			(
+				LedgerID    INTEGER PRIMARY KEY AUTOINCREMENT,
+				Transaction VARCHAR(255) NOT NULL,
+				Timestamp   TIMESTAMP NOT NULL,
+				Memo        VARCHAR(255),
+				Parent REFERENCES Clients(ClientID)
+				);
+		`)
+	} else {
+		_, err = tx.Exec(`
+			CREATE TABLE Ledger
+			(
+				LedgerID    SERIAL PRIMARY KEY,
+				Parent      BIGINT,
+				Transaction VARCHAR(255) NOT NULL,
+				TimeStamp   TIMESTAMP,
+				Memo        VARCHAR(255)
+			);
+		`)
+	}
+	/* Postgres
 	_, err = tx.Exec(`
-		CREATE TABLE [Ledger]
+		CREATE TABLE Ledger
 		(
-			[LedgerID]    INTEGER PRIMARY KEY AUTOINCREMENT,
-			[Parent]      REFERENCES [Clients]([ClientID]),
-			[Transaction] VARCHAR NOT NULL,
-			[TimeStamp]   TIMESTAMP,
-			[Memo]        VARCHAR
+			LedgerID    SERIAL,
+			Parent      INT,
+			Transaction VARCHAR NOT NULL,
+			TimeStamp   TIMESTAMP,
+			Memo        VARCHAR
 		);
 	`)
+	*/
 	if err != nil {
 		p.log.Printf("Failed to create table [Ledger]: %s\n", err)
 		return err
@@ -278,8 +336,8 @@ func (p *Pool) updateFrom0_1To0_2() error {
 func (p *Pool) setSchemaVersion(tx *sql.Tx, major, minor int) error {
 	p.log.Debugf("Setting sql database version to %d.%d\n", major, minor)
 	stmt, err := tx.Prepare(`
-		UPDATE [SchemaVersion]
-		SET [Major] = $1, [Minor] = $2;
+		UPDATE SchemaVersion
+		SET Major = ?, Minor = ?;
 		`)
 	if err != nil {
 		return err
@@ -301,7 +359,7 @@ func (p *Pool) setSchemaVersion(tx *sql.Tx, major, minor int) error {
 
 func (p *Pool) getSchemaVersion() (major int, minor int, err error) {
 
-	stmt, err := p.sqldb.Prepare(`SELECT [Major], [Minor] from [SchemaVersion];`)
+	stmt, err := p.sqldb.Prepare(`SELECT Major, Minor from SchemaVersion;`)
 	if err != nil {
 		return -1, -1, err
 	}
@@ -340,6 +398,14 @@ func (p *Pool) setSqliteForeignKey() error {
 	}
 	if value != 1 {
 		return errors.New("Unable to turn on foreign_keys")
+	}
+	return nil
+}
+
+func (p *Pool) setMySqlSqlMode() error {
+	_, err := p.sqldb.Exec("SET SQL_MODE = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';")
+	if err != nil {
+		return err
 	}
 	return nil
 }

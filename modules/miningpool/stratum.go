@@ -484,6 +484,7 @@ func (h *Handler) sendStratumNotify(cleanJobs bool) {
 	raw := fmt.Sprintf(`[ "%s", %s, "%s", "%s", %s, "%s", "%s", "%s", %t ]`,
 		jobid, string(bpm), h.p.coinB1Txn(), h.p.coinB2(), mbj, version, nbits, ntime, cleanJobs)
 	r.Params = json.RawMessage(raw)
+	h.log.Debugf("send.notify: %s\n", raw)
 	// fmt.Printf("%s: %s Send notify - sending request\n", time.Now(), h.s.printID())
 	h.sendRequest(r)
 	// fmt.Printf("%s: %s Send notify - done\n", time.Now(), h.s.printID())
@@ -592,7 +593,7 @@ func sPrintID(id uint64) string {
 }
 
 func (p *Pool) coinB1() types.Transaction {
-	s := fmt.Sprintf("\000     \"%s\"     \000", p.InternalSettings().PoolName)
+	s := fmt.Sprintf("\000     Software: siad-miningpool-module v%d.%02d\nPool name: \"%s\"     \000", MajorVersion, MinorVersion, p.InternalSettings().PoolName)
 	if ((len(modules.PrefixNonSia[:]) + len(s)) % 2) != 0 {
 		// odd length, add extra null
 		s = s + "\000"

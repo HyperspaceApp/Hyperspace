@@ -863,6 +863,7 @@ lists the status of all files.
       "available":      true,
       "renewing":       true,
       "redundancy":     5,
+      "bytesuploaded":  209715200, // total bytes uploaded
       "uploadprogress": 100, // percent
       "expiration":     60000
     }
@@ -1078,7 +1079,7 @@ locked or unlocked.
   "siafundbalance":      "1",    // siafunds, big int
   "siacoinclaimbalance": "9001", // hastings, big int
 
-  "dustthreshold": "1234", // hastings, big int
+  "dustthreshold": "1234", // hastings / byte, big int
 }
 ```
 

@@ -212,7 +212,9 @@ func (mp *Pool) establishDefaults() error {
 		AcceptingShares:        false,
 		PoolOperatorPercentage: 0.0,
 		PoolOperatorWallet:     types.UnlockHash{},
+		PoolWallet:             types.UnlockHash{},
 		PoolNetworkPort:        3333,
+		PoolDBConnection:       "internal",
 	})
 	mp.newSourceBlock()
 	return nil

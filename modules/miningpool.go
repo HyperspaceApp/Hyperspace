@@ -27,6 +27,7 @@ type (
 		PoolNetworkPort        uint16           `json:"networkport"`
 		PoolName               string           `json:"name"`
 		PoolID                 string           `json:"poolid"`
+		PoolDBConnection       string           `json:"dbconnection"`
 		PoolOperatorWallet     types.UnlockHash `json:"operatorwallet"`
 		PoolWallet             types.UnlockHash `json:"poolwallet"`
 	}

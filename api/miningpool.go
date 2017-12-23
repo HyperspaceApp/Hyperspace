@@ -23,6 +23,7 @@ type (
 		AcceptingShares    bool             `json:"acceptingshares"`
 		OperatorPercentage float64          `json:"operatorpercentage"`
 		NetworkPort        uint16           `json:"networkport"`
+		DBConnection       string           `json:"dbconnection"`
 		Name               string           `json:"name"`
 		PoolID             string           `json:"poolid"`
 		PoolWallet         types.UnlockHash `json:"poolwallet"`
@@ -107,6 +108,7 @@ func (api *API) poolConfigHandler(w http.ResponseWriter, req *http.Request, _ ht
 		AcceptingShares:    settings.AcceptingShares,
 		OperatorPercentage: settings.PoolOperatorPercentage,
 		NetworkPort:        settings.PoolNetworkPort,
+		DBConnection:       settings.PoolDBConnection,
 		PoolID:             settings.PoolID,
 		PoolWallet:         settings.PoolWallet,
 		OperatorWallet:     settings.PoolOperatorWallet,
@@ -169,6 +171,9 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 	}
 	if req.FormValue("poolid") != "" {
 		settings.PoolID = req.FormValue("poolid")
+	}
+	if req.FormValue("dbconnection") != "" {
+		settings.PoolDBConnection = req.FormValue("dbconnection")
 	}
 	err := api.pool.SetInternalSettings(settings)
 	return settings, err

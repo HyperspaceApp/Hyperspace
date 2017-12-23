@@ -28,11 +28,14 @@ var (
 		Long: `Read/Modify pool settings.
 
 Available settings:
-    name:               Name you select for your pool
+	name:               Name you select for your pool
+	poolid              Unique string for this pool (needed when sharing database)
     acceptingshares:    Is your pool accepting shares
-    networkport:        Stratum port for your pool
+	networkport:        Stratum port for your pool
+	dbconnection:       "internal" or connection string for shared database (pgsql only for now)
     operatorpercentage: What percentage of the block reward goes to the pool operator
-    operatorwallet:     Pool operator sia wallet address
+	operatorwallet:     Pool operator sia wallet address <required if percentage is not 0>
+	poolwallet:         Operating account for the pool <required>
  `,
 		Run: wrap(poolconfigcmd),
 	}
@@ -117,12 +120,14 @@ Pool Name:              %s
 Pool ID:                %s
 Pool Accepting Shares   %t
 Pool Stratum Port       %d
+DB Connection           %s
 Operator Percentage     %.02f %%
 Operator Wallet:        %s
 Pool Wallet:            %s
 `,
 		poolStr, status.PoolHashrate/1000000000, status.BlocksMined,
 		config.Name, config.PoolID, config.AcceptingShares, config.NetworkPort,
+		config.DBConnection,
 		config.OperatorPercentage, config.OperatorWallet, config.PoolWallet)
 }
 
@@ -145,6 +150,7 @@ func poolconfigcmd(param, value string) {
 	case "operatorpercentage":
 	case "acceptingshares":
 	case "networkport":
+	case "dbconnection":
 	case "poolid":
 	case "poolwallet":
 	default:
@@ -268,9 +274,11 @@ func poolblockcmd(name string) {
 	}
 	var blockID uint64
 	var blocksInfo api.PoolBlocksInfo
+	match := false
 	fmt.Sscanf(name, "%d", &blockID)
 	for _, blocksInfo = range *blocks {
 		if blocksInfo.BlockNumber == blockID {
+			match = true
 			break
 		}
 	}
@@ -279,7 +287,7 @@ func poolblockcmd(name string) {
 	if err != nil {
 		die("Could not get pool block:", err)
 	}
-	if blocksInfo.BlockHeight == 0 {
+	if match == false {
 		fmt.Printf("Current Block\n\n")
 	} else {
 		reward := big.NewInt(0)

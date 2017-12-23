@@ -24,8 +24,8 @@ import (
 	"github.com/NebulousLabs/Sia/types"
 	// blank to load the sql driver for sqlite3
 	_ "github.com/mattn/go-sqlite3"
-	// blank to load the sql driver for postgres
-	_ "github.com/lib/pq"
+	// blank to load the sql driver for mysql
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -33,6 +33,8 @@ const (
 	dbFilename   = modules.PoolDir + ".db"
 	logFile      = modules.PoolDir + ".log"
 	settingsFile = modules.PoolDir + ".json"
+	MajorVersion = 0
+	MinorVersion = 3
 )
 
 var (
@@ -319,13 +321,19 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			p.log.Println("Could not save pool upon shutdown:", err)
 		}
 	})
-
-	optionString := "file:" + filepath.Join(p.persistDir, dbFilename) + "?cache=shared&mode=rwc"
-	p.sqldb, err = sql.Open("sqlite3", optionString)
-	if err != nil {
-		return nil, errors.New("Failed to open database: " + err.Error())
+	dbc := p.InternalSettings().PoolDBConnection
+	if dbc == "" || dbc == "internal" {
+		optionString := "file:" + filepath.Join(p.persistDir, dbFilename) + "?cache=shared&mode=rwc"
+		p.sqldb, err = sql.Open("sqlite3", optionString)
+		if err != nil {
+			return nil, errors.New("Failed to open database: " + err.Error())
+		}
+	} else {
+		p.sqldb, err = sql.Open("mysql", dbc)
+		if err != nil {
+			return nil, errors.New("Failed to open database: " + err.Error())
+		}
 	}
-
 	err = p.sqldb.Ping()
 	if err != nil {
 		return nil, errors.New("Failed to ping database: " + err.Error())
@@ -342,10 +350,14 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	// spin up a go routine to handle shift changes.
 	p.shiftChan = make(chan bool, 1)
 	go func() {
+		p.tg.Add()
+		defer p.tg.Done()
 		for {
 			select {
 			case <-p.shiftChan:
 			case <-time.After(ShiftDuration):
+			case <-p.tg.StopChan():
+				return
 			}
 			p.log.Debugf("Shift change - end of shift %d\n", p.shiftID)
 			atomic.AddUint64(&p.shiftID, 1)
