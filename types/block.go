@@ -139,7 +139,6 @@ func (b Block) MerkleRoot() crypto.Hash {
 			panic("Block MerkleRoot implementation is broken")
 		}
 	}
-
 	return tree.Root()
 }
 
