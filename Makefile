@@ -37,11 +37,10 @@ dependencies:
 # pkgs changes which packages the makefile calls operate on. run changes which
 # tests are run during testing.
 run = .
-pkgs = ./api ./build ./compatibility ./crypto ./encoding ./modules ./modules/consensus                                  \
-       ./modules/explorer ./modules/gateway ./modules/host ./modules/host/contractmanager                               \
-       ./modules/renter ./modules/renter/contractor ./modules/renter/hostdb ./modules/renter/hostdb/hosttree            \
-       ./modules/renter/proto ./modules/miner ./modules/wallet ./modules/transactionpool ./modules/miningpool ./persist \
-	   ./cmd/siac ./cmd/siad ./sync ./types
+pkgs = ./build ./cmd/siac ./cmd/siad ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
+       ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
+       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
+       ./modules/wallet ./modules/transactionpool ./node ./node/api ./persist ./siatest ./node/api/server ./sync ./types
 
 # fmt calls go fmt on all packages.
 fmt:
