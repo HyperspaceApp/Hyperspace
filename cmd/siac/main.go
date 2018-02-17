@@ -247,8 +247,8 @@ func die(args ...interface{}) {
 func main() {
 	root := &cobra.Command{
 		Use:   os.Args[0],
-		Short: "Sia Client v" + build.Version,
-		Long:  "Sia Client v" + build.Version,
+		Short: "Hard Drive Coin Client v" + build.Version,
+		Long:  "Hard Drive Coin Client v" + build.Version,
 		Run:   wrap(consensuscmd),
 	}
 
