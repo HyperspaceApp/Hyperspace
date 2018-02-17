@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 // TestThreadGroupStopEarly tests that a thread group can correctly interrupt

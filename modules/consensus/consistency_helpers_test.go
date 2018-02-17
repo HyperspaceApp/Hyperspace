@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 
 	"github.com/coreos/bbolt"
 )

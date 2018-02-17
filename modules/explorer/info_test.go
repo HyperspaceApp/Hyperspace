@@ -3,8 +3,8 @@ package explorer
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 	"github.com/NebulousLabs/fastrand"
 )
 

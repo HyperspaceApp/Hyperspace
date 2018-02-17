@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 // TestBacktrackToCurrentPath probes the backtrackToCurrentPath method of the

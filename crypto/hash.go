@@ -13,7 +13,7 @@ import (
 	"errors"
 	"hash"
 
-	"github.com/NebulousLabs/Sia/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
 
 	"golang.org/x/crypto/blake2b"
 )

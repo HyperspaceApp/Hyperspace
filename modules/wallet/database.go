@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 	"github.com/NebulousLabs/fastrand"
 
 	"github.com/coreos/bbolt"

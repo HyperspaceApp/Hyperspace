@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"math/big"
 
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 
 	"github.com/NebulousLabs/errors"
 	"github.com/coreos/bbolt"

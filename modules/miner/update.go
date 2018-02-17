@@ -3,8 +3,8 @@ package miner
 import (
 	"sort"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // addMapElementTxns places the splitSet from a mapElement into the correct

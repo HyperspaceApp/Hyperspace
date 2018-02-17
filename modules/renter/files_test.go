@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // TestFileNumChunks checks the numChunks method of the file type.

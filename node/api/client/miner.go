@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // MinerHeaderGet uses the /miner/header endpoint to get a header for work.

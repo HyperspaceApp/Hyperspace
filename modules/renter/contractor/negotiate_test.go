@@ -4,16 +4,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/consensus"
-	"github.com/NebulousLabs/Sia/modules/gateway"
-	"github.com/NebulousLabs/Sia/modules/miner"
-	"github.com/NebulousLabs/Sia/modules/renter/hostdb"
-	"github.com/NebulousLabs/Sia/modules/transactionpool"
-	modWallet "github.com/NebulousLabs/Sia/modules/wallet" // name conflicts with type
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/consensus"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/miner"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/renter/hostdb"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/transactionpool"
+	modWallet "github.com/HardDriveCoin/HardDriveCoin/modules/wallet" // name conflicts with type
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // contractorTester contains all of the modules that are used while testing the contractor.

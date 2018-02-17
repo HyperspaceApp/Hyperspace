@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 // blockingPortForward is a dependency set that causes the host port forward

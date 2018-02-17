@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
 )
 
 var (

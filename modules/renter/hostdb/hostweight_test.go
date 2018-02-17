@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 func calculateWeightFromUInt64Price(price uint64) (weight types.Currency) {

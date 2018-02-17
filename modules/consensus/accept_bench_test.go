@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/gateway"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // BenchmarkAcceptEmptyBlocks measures how quckly empty blocks are integrated

@@ -7,8 +7,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 )
 
 type (

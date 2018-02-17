@@ -1,0 +1,5 @@
+Create dev fund addresses.
+
+Modify newSourceBlock() in modules/miningpool/blockmanager.go
+
+Modify checkMinerPayouts() in modules/consensus/block_validation.go

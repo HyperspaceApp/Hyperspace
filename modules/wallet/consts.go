@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 const (

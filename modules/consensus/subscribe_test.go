@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 // mockSubscriber receives and holds changes to the consensus set, remembering

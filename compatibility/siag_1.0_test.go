@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // KeyPairSiag_1_0 matches the KeyPair struct of the siag 1.0 code.

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 // Download performs a file download using the passed parameters.

@@ -17,7 +17,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // addStorageToAllHosts adds a storage folder with a bunch of storage to each

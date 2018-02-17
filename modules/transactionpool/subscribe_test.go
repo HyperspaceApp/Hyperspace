@@ -3,8 +3,8 @@ package transactionpool
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // mockSubscriber receives transactions from the transaction pool it is

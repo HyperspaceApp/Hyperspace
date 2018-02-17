@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 // Error is a type that is encoded as JSON and returned in an API response in

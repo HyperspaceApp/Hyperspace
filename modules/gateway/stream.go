@@ -3,7 +3,7 @@ package gateway
 import (
 	"net"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 	"github.com/xtaci/smux"
 )
 

@@ -3,7 +3,7 @@ package miner
 import (
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 // threadedMine starts a gothread that does CPU mining. threadedMine is the

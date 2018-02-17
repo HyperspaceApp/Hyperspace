@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 )
 
 // ChunkHeap is a bunch of chunks sorted by percentage-completion for uploading.

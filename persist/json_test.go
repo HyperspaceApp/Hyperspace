@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 // TestSaveLoadJSON creates a simple object and then tries saving and loading

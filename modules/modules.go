@@ -6,7 +6,7 @@ package modules
 import (
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 var (

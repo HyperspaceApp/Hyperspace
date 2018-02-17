@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // TestEstimatedHeightAt tests that the expectedHeightAt function correctly

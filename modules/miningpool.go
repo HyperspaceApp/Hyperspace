@@ -3,12 +3,12 @@ package modules
 import (
 	"time"
 
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 const (
 	// PoolDir names the directory that contains the pool persistence.
-	PoolDir = "pool"
+	PoolDir = "miningpool"
 )
 
 var (

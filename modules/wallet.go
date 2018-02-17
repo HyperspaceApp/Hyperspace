@@ -6,8 +6,8 @@ import (
 
 	"github.com/NebulousLabs/entropy-mnemonics"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 const (

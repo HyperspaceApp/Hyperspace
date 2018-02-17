@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 // TestGrowStorageFolder checks that a storage folder can be successfully

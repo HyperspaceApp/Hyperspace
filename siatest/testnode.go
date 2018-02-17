@@ -5,13 +5,13 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/node"
-	"github.com/NebulousLabs/Sia/node/api/client"
-	"github.com/NebulousLabs/Sia/node/api/server"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/node"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api/client"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api/server"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // TestNode is a helper struct for testing that contains a server and a client

@@ -4,14 +4,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/gateway"
-	"github.com/NebulousLabs/Sia/modules/miner"
-	"github.com/NebulousLabs/Sia/modules/transactionpool"
-	"github.com/NebulousLabs/Sia/modules/wallet"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/miner"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/transactionpool"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/wallet"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // TestIntegrationMinimumValidChildTimestamp probes the

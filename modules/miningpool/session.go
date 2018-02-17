@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NebulousLabs/Sia/persist"
+	"github.com/HardDriveCoin/HardDriveCoin/persist"
 )
 
 const (

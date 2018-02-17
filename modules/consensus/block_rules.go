@@ -3,8 +3,8 @@ package consensus
 import (
 	"sort"
 
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // blockRuleHelper assists with block validity checks by calculating values

@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/node/api"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api"
 	"github.com/NebulousLabs/errors"
 )
 

@@ -21,19 +21,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/consensus"
-	"github.com/NebulousLabs/Sia/modules/explorer"
-	"github.com/NebulousLabs/Sia/modules/gateway"
-	"github.com/NebulousLabs/Sia/modules/host"
-	"github.com/NebulousLabs/Sia/modules/miner"
-	pool "github.com/NebulousLabs/Sia/modules/miningpool"
-	"github.com/NebulousLabs/Sia/modules/renter"
-	"github.com/NebulousLabs/Sia/modules/transactionpool"
-	"github.com/NebulousLabs/Sia/modules/wallet"
-	"github.com/NebulousLabs/Sia/node/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/consensus"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/explorer"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/host"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/miner"
+	pool "github.com/HardDriveCoin/HardDriveCoin/modules/miningpool"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/renter"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/transactionpool"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/wallet"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 
 	"github.com/inconshreveable/go-update"
 	"github.com/julienschmidt/httprouter"
@@ -560,7 +560,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "p") {
 		i++
 		fmt.Printf("(%d/%d) Loading pool...\n", i, len(srv.config.Siad.Modules))
-		p, err = pool.New(cs, tpool, g, w, srv.config.Siad.HostAddr, filepath.Join(srv.config.Siad.SiaDir, modules.PoolDir))
+		p, err = pool.New(cs, tpool, g, w, filepath.Join(srv.config.Siad.SiaDir, modules.PoolDir))
 		if err != nil {
 			return err
 		}

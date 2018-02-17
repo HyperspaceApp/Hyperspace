@@ -3,7 +3,7 @@ package pool
 import (
 	"fmt"
 
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 func (p *Pool) BlockCount() uint64 {

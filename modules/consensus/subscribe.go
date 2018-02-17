@@ -1,10 +1,10 @@
 package consensus
 
 import (
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 
-	siasync "github.com/NebulousLabs/Sia/sync"
+	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
 	"github.com/coreos/bbolt"
 )
 

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/NebulousLabs/Sia/node/api"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api"
 	"github.com/NebulousLabs/errors"
 )
 

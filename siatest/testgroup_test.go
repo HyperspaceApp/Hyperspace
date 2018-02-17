@@ -3,7 +3,7 @@ package siatest
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 // TestCreateTestGroup tests the behavior of NewGroup.

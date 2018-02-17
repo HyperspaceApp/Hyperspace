@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 	"github.com/spf13/cobra"
 )
 

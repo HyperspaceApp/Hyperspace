@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // TestMinerGET checks the GET call to the /miner endpoint.

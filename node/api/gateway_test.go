@@ -3,8 +3,8 @@ package api
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/modules/gateway"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
 )
 
 // TestGatewayStatus checks that the /gateway/status call is returning a corect

@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 
 	"time"
 )

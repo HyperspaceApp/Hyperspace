@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/persist"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/persist"
 )
 
 // These interfaces define the HostDB's dependencies. Using the smallest

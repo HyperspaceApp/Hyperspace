@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 )
 
 // readJSON will try to read a persisted json object from a file.

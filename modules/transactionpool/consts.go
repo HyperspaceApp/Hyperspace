@@ -3,9 +3,9 @@ package transactionpool
 import (
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/persist"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // Consts related to the persisting structures of the transactoin pool.

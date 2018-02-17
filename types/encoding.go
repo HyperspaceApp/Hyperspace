@@ -11,9 +11,9 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
 )
 
 // sanityCheckWriter checks that the bytes written to w exactly match the

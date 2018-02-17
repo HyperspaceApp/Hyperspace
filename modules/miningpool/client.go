@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/NebulousLabs/Sia/persist"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 //

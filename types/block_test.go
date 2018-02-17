@@ -3,8 +3,8 @@ package types
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
 )
 
 // TestCalculateCoinbase probes the CalculateCoinbase function. The test code

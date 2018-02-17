@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/node"
-	"github.com/NebulousLabs/Sia/siatest"
+	"github.com/HardDriveCoin/HardDriveCoin/node"
+	"github.com/HardDriveCoin/HardDriveCoin/siatest"
 )
 
 // TestApiHeight checks if the consensus api endpoint works

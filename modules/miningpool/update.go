@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 // getNewSplitSets creates split sets from a transaction pool diff, returns them

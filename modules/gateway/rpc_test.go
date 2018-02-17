@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/NebulousLabs/Sia/encoding"
-	"github.com/NebulousLabs/Sia/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
 )
 
 func TestRPCID(t *testing.T) {

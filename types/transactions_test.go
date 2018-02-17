@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 )
 
 // TestTransactionIDs probes all of the ID functions of the Transaction type.

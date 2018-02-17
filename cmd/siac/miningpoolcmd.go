@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/NebulousLabs/Sia/api"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 
 	"net/url"
 

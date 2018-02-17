@@ -3,7 +3,7 @@ package node
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 // TestNew is a basic smoke test for New that uses all of the templates to

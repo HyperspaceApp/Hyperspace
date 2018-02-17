@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/modules/renter/proto"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/modules/renter/proto"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
 
 var errInvalidDownloader = errors.New("downloader has been invalidated because its contract is being renewed")

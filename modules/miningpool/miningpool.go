@@ -16,12 +16,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/persist"
-	siasync "github.com/NebulousLabs/Sia/sync"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
+	"github.com/HardDriveCoin/HardDriveCoin/types"
 	// blank to load the sql driver for sqlite3
 	_ "github.com/mattn/go-sqlite3"
 	// blank to load the sql driver for mysql
@@ -238,7 +238,7 @@ func (p *Pool) startupRescan() error {
 // mocked such that the dependencies can return unexpected errors or unique
 // behaviors during testing, enabling easier testing of the failure modes of
 // the Pool.
-func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, listenerAddress string, persistDir string) (*Pool, error) {
+func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, persistDir string) (*Pool, error) {
 	// Check that all the dependencies were provided.
 	if cs == nil {
 		return nil, errNilCS
@@ -435,8 +435,8 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 }
 
 // New returns an initialized Pool.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, address string, persistDir string) (*Pool, error) {
-	return newPool(productionDependencies{}, cs, tpool, gw, wallet, address, persistDir)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, persistDir string) (*Pool, error) {
+	return newPool(productionDependencies{}, cs, tpool, gw, wallet, persistDir)
 }
 
 // Close shuts down the pool.
