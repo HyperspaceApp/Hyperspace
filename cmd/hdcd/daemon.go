@@ -110,7 +110,7 @@ func processConfig(config Config) (Config, error) {
 	return config, nil
 }
 
-// unlockWallet is called on siad startup and attempts to automatically
+// unlockWallet is called on hdcd startup and attempts to automatically
 // unlock the wallet with the given password string.
 func unlockWallet(w modules.Wallet, password string) error {
 	var validKeys []crypto.TwofishKey
@@ -132,7 +132,7 @@ func unlockWallet(w modules.Wallet, password string) error {
 }
 
 // startDaemon uses the config parameters to initialize Sia modules and start
-// siad.
+// hdcd.
 func startDaemon(config Config) (err error) {
 	if config.Siad.AuthenticateAPI {
 		password := os.Getenv("SIA_API_PASSWORD")

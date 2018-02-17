@@ -83,7 +83,7 @@ Available settings:
 	}
 )
 
-// poolstartcmd is the handler for the command `siac pool start`.
+// poolstartcmd is the handler for the command `hdcc pool start`.
 // Starts the mining pool.
 func poolstartcmd() {
 	err := get("/pool/start")
@@ -93,7 +93,7 @@ func poolstartcmd() {
 	fmt.Println("Mining pool is now running.")
 }
 
-// poolcmd is the handler for the command `siac pool`.
+// poolcmd is the handler for the command `hdcc pool`.
 // Prints the status of the pool.
 func poolcmd() {
 	status := new(api.PoolGET)
@@ -131,7 +131,7 @@ Pool Wallet:            %s
 		config.OperatorPercentage, config.OperatorWallet, config.PoolWallet)
 }
 
-// poolstopcmd is the handler for the command `siac pool stop`.
+// poolstopcmd is the handler for the command `hdcc pool stop`.
 // Stops the CPU miner.
 func poolstopcmd() {
 	err := get("/pool/stop")
@@ -141,7 +141,7 @@ func poolstopcmd() {
 	fmt.Println("Stopped mining pool.")
 }
 
-// poolconfigcmd is the handler for the command `siac pool config [parameter] [value]`
+// poolconfigcmd is the handler for the command `hdcc pool config [parameter] [value]`
 func poolconfigcmd(param, value string) {
 	var err error
 	switch param {

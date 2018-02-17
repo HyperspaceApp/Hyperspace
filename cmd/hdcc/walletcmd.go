@@ -102,7 +102,7 @@ By default the wallet encryption / unlock password is the same as the generated 
 		Use:     `siag [filepath,...]`,
 		Short:   "Load siag key(s) into the wallet",
 		Long:    "Load siag key(s) into the wallet - typically used for siafunds.",
-		Example: "siac wallet load siag key1.siakey,key2.siakey",
+		Example: "hdcc wallet load siag key1.siakey,key2.siakey",
 		Run:     wrap(walletloadsiagcmd),
 	}
 

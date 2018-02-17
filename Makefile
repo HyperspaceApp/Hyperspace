@@ -37,7 +37,7 @@ dependencies:
 # pkgs changes which packages the makefile calls operate on. run changes which
 # tests are run during testing.
 run = .
-pkgs = ./build ./cmd/siac ./cmd/siad ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
+pkgs = ./build ./cmd/hdcc ./cmd/hdcd ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
        ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
        ./modules/wallet ./modules/transactionpool ./node ./node/api ./persist ./siatest ./node/api/server ./sync ./types
@@ -52,7 +52,7 @@ vet: release-std
 	go vet $(pkgs)
 
 # will always run on some packages for a while.
-lintpkgs = ./build ./cmd/siac ./cmd/siad ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
+lintpkgs = ./build ./cmd/hdcc ./cmd/hdcd ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
            ./modules/gateway ./modules/host ./modules/renter ./modules/renter/contractor ./modules/renter/hostdb \
            ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/wallet ./modules/transactionpool ./node ./node/api/server ./persist \
            ./siatest

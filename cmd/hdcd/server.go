@@ -86,7 +86,7 @@ type (
 		SiacoinPrecision types.Currency `json:"siacoinprecision"`
 	}
 
-	// DaemonVersion holds the version information for siad
+	// DaemonVersion holds the version information for hdcd
 	DaemonVersion struct {
 		Version string `json:"version"`
 	}
@@ -197,8 +197,8 @@ func fetchLatestRelease() (githubRelease, error) {
 	return latestRelease(releases)
 }
 
-// updateToRelease updates siad and siac to the release specified. siac is
-// assumed to be in the same folder as siad.
+// updateToRelease updates hdcd and hdcc to the release specified. hdcc is
+// assumed to be in the same folder as hdcd.
 func updateToRelease(release githubRelease) error {
 	updateOpts := update.Options{
 		Verifier: update.NewRSAVerifier(),
@@ -247,8 +247,8 @@ func updateToRelease(release githubRelease) error {
 		return err
 	}
 
-	// process zip, finding siad/siac binaries and signatures
-	for _, binary := range []string{"siad", "siac"} {
+	// process zip, finding hdcd/hdcc binaries and signatures
+	for _, binary := range []string{"hdcd", "hdcc"} {
 		var binData io.ReadCloser
 		var signature []byte
 		var binaryName string // needed for TargetPath below
@@ -306,7 +306,7 @@ func (srv *Server) daemonUpdateHandlerGET(w http.ResponseWriter, _ *http.Request
 	})
 }
 
-// daemonUpdateHandlerPOST handles the API call that updates siad and siac.
+// daemonUpdateHandlerPOST handles the API call that updates hdcd and hdcc.
 // There is no safeguard to prevent "updating" to the same release, so callers
 // should always check the latest version via daemonUpdateHandlerGET first.
 // TODO: add support for specifying version to update to.
@@ -398,7 +398,7 @@ func (srv *Server) apiHandler(w http.ResponseWriter, r *http.Request) {
 	isReady := srv.api != nil
 	srv.mu.Unlock()
 	if !isReady {
-		api.WriteError(w, api.Error{Message: "siad is not ready. please wait for siad to finish loading."}, http.StatusServiceUnavailable)
+		api.WriteError(w, api.Error{Message: "hdcd is not ready. please wait for hdcd to finish loading."}, http.StatusServiceUnavailable)
 		return
 	}
 	srv.api.ServeHTTP(w, r)
@@ -417,7 +417,7 @@ func NewServer(config Config) (*Server, error) {
 	l, err := net.Listen("tcp", config.Siad.APIaddr)
 	if err != nil {
 		if isAddrInUseErr(err) {
-			return nil, fmt.Errorf("%v; are you running another instance of siad?", err.Error())
+			return nil, fmt.Errorf("%v; are you running another instance of hdcd?", err.Error())
 		}
 
 		return nil, err
@@ -450,7 +450,7 @@ func NewServer(config Config) (*Server, error) {
 		config: config,
 	}
 
-	// Register siad routes
+	// Register hdcd routes
 	mux.Handle("/daemon/", api.RequireUserAgent(srv.daemonHandler(config.APIPassword), config.Siad.RequiredUserAgent))
 	mux.HandleFunc("/", srv.apiHandler)
 
@@ -471,7 +471,7 @@ func isAddrInUseErr(err error) bool {
 // API routes available.
 func (srv *Server) loadModules() error {
 	// Create the server and start serving daemon routes immediately.
-	fmt.Printf("(0/%d) Loading siad...\n", len(srv.config.Siad.Modules))
+	fmt.Printf("(0/%d) Loading hdcd...\n", len(srv.config.Siad.Modules))
 
 	// Initialize the Sia modules
 	i := 0

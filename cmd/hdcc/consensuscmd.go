@@ -19,7 +19,7 @@ var (
 	}
 )
 
-// consensuscmd is the handler for the command `siac consensus`.
+// consensuscmd is the handler for the command `hdcc consensus`.
 // Prints the current state of consensus.
 func consensuscmd() {
 	var cg api.ConsensusGET

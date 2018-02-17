@@ -47,7 +47,7 @@ var (
 	}
 )
 
-// gatewayconnectcmd is the handler for the command `siac gateway add [address]`.
+// gatewayconnectcmd is the handler for the command `hdcc gateway add [address]`.
 // Adds a new peer to the peer list.
 func gatewayconnectcmd(addr string) {
 	err := post("/gateway/connect/"+addr, "")
@@ -57,7 +57,7 @@ func gatewayconnectcmd(addr string) {
 	fmt.Println("Added", addr, "to peer list.")
 }
 
-// gatewaydisconnectcmd is the handler for the command `siac gateway remove [address]`.
+// gatewaydisconnectcmd is the handler for the command `hdcc gateway remove [address]`.
 // Removes a peer from the peer list.
 func gatewaydisconnectcmd(addr string) {
 	err := post("/gateway/disconnect/"+addr, "")
@@ -67,7 +67,7 @@ func gatewaydisconnectcmd(addr string) {
 	fmt.Println("Removed", addr, "from peer list.")
 }
 
-// gatewayaddresscmd is the handler for the command `siac gateway address`.
+// gatewayaddresscmd is the handler for the command `hdcc gateway address`.
 // Prints the gateway's network address.
 func gatewayaddresscmd() {
 	var info api.GatewayGET
@@ -78,7 +78,7 @@ func gatewayaddresscmd() {
 	fmt.Println("Address:", info.NetAddress)
 }
 
-// gatewaycmd is the handler for the command `siac gateway`.
+// gatewaycmd is the handler for the command `hdcc gateway`.
 // Prints the gateway's network address and number of peers.
 func gatewaycmd() {
 	var info api.GatewayGET
@@ -90,7 +90,7 @@ func gatewaycmd() {
 	fmt.Println("Active peers:", len(info.Peers))
 }
 
-// gatewaylistcmd is the handler for the command `siac gateway list`.
+// gatewaylistcmd is the handler for the command `hdcc gateway list`.
 // Prints a list of all peers.
 func gatewaylistcmd() {
 	var info api.GatewayGET

@@ -22,9 +22,9 @@ var (
 		Long: `Announce yourself as a host on the network.
 Announcing will also configure the host to start accepting contracts.
 You can revert this by running:
-	siac host config acceptingcontracts false
+	hdcc host config acceptingcontracts false
 You may also supply a specific address to be announced, e.g.:
-	siac host announce my-host-domain.com:9001
+	hdcc host announce my-host-domain.com:9001
 Doing so will override the standard connectivity checks.`,
 		Run: hostannouncecmd,
 	}
@@ -58,7 +58,7 @@ Available settings:
      minstorageprice:           currency / TB / Month
      minuploadbandwidthprice:   currency / TB
 
-Currency units can be specified, e.g. 10SC; run 'siac help wallet' for details.
+Currency units can be specified, e.g. 10SC; run 'hdcc help wallet' for details.
 
 Durations (maxduration and windowsize) must be specified in either blocks (b),
 hours (h), days (d), or weeks (w). A block is approximately 10 minutes, so one
@@ -67,7 +67,7 @@ hour is six blocks, a day is 144 blocks, and a week is 1008 blocks.
 For a description of each parameter, see doc/API.md.
 
 To configure the host to accept new contracts, set acceptingcontracts to true:
-	siac host config acceptingcontracts true
+	hdcc host config acceptingcontracts true
 `,
 		Run: wrap(hostconfigcmd),
 	}
@@ -119,7 +119,7 @@ sector may impact host revenue.`,
 	}
 )
 
-// hostcmd is the handler for the command `siac host`.
+// hostcmd is the handler for the command `hdcc host`.
 // Prints info about the host and its storage folders.
 func hostcmd() {
 	hg := new(api.HostGET)
@@ -313,7 +313,7 @@ RPC Stats:
 	w.Flush()
 }
 
-// hostconfigcmd is the handler for the command `siac host config [setting] [value]`.
+// hostconfigcmd is the handler for the command `hdcc host config [setting] [value]`.
 // Modifies host settings.
 func hostconfigcmd(param, value string) {
 	var err error
@@ -387,7 +387,7 @@ func hostconfigcmd(param, value string) {
 	fmt.Printf("Estimated conversion rate: %v%%\n", eg.ConversionRate)
 }
 
-// hostannouncecmd is the handler for the command `siac host announce`.
+// hostannouncecmd is the handler for the command `hdcc host announce`.
 // Announces yourself as a host to the network. Optionally takes an address to
 // announce as.
 func hostannouncecmd(cmd *cobra.Command, args []string) {
@@ -414,7 +414,7 @@ func hostannouncecmd(cmd *cobra.Command, args []string) {
 	fmt.Println(`
 The host has also been configured to accept contracts.
 To revert this, run:
-	siac host config acceptingcontracts false
+	hdcc host config acceptingcontracts false
 `)
 }
 
