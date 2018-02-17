@@ -151,8 +151,8 @@ func startDaemon(config Config) (err error) {
 		}
 	}
 
-	// Print the Siad Version
-	fmt.Println("Sia Daemon v" + build.Version)
+	// Print the hdcd version
+	fmt.Println("Hard Drive Coin Daemon v" + build.Version)
 
 	// Install a signal handler that will catch exceptions thrown by mmap'd
 	// files.
