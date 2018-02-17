@@ -23,7 +23,7 @@ dependencies:
 	go get -u github.com/inconshreveable/go-update
 	go get -u github.com/kardianos/osext
 	go get -u github.com/inconshreveable/mousetrap
-	go get -u github.com/mattn/go-sqlite3
+	go get -u github.com/go-sql-driver/mysql
 	go get -u github.com/lib/pq
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
