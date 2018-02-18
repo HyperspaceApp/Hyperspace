@@ -52,7 +52,7 @@ func (p *Pool) createOrUpdateDatabase() error {
 }
 
 //
-// createDatabase really just creates the SChemaVersion table and populates it with starting
+// createDatabase really just creates the SchemaVersion table and populates it with starting
 // values.  The particular tables and values are created by the schema upgrade function for the
 // version that adds them.  For example the initial values are added in the 0.0 to 0.1 upgrade function
 //
