@@ -564,13 +564,7 @@ func (srv *Server) loadModules() error {
 		if err != nil {
 			return err
 		}
-		defer func() {
-			fmt.Println("Closing pool...")
-			err := p.Close()
-			if err != nil {
-				fmt.Println("Error during pool shutdown:", err)
-			}
-		}()
+		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "pool", Closer: p})
 	}
 
 	// Create the Sia API
