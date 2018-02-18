@@ -13,16 +13,9 @@ const (
 
 func (p *Pool) createOrUpdateDatabase() error {
 	p.log.Debugf("Checking sql database version\n")
-	if p.InternalSettings().PoolDBConnection == "internal" {
-		err := p.setSqliteForeignKey()
-		if err != nil {
-			return err
-		}
-	} else {
-		err := p.setMySqlSqlMode()
-		if err != nil {
-			return err
-		}
+	err := p.setMySqlSqlMode()
+	if err != nil {
+		return err
 	}
 
 	major, minor, err := p.getSchemaVersion()
