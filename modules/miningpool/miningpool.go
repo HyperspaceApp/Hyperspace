@@ -22,8 +22,6 @@ import (
 	"github.com/HardDriveCoin/HardDriveCoin/persist"
 	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
 	"github.com/HardDriveCoin/HardDriveCoin/types"
-	// blank to load the sql driver for sqlite3
-	_ "github.com/mattn/go-sqlite3"
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -322,17 +320,9 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		}
 	})
 	dbc := p.InternalSettings().PoolDBConnection
-	if dbc == "" || dbc == "internal" {
-		optionString := "file:" + filepath.Join(p.persistDir, dbFilename) + "?cache=shared&mode=rwc"
-		p.sqldb, err = sql.Open("sqlite3", optionString)
-		if err != nil {
-			return nil, errors.New("Failed to open database: " + err.Error())
-		}
-	} else {
-		p.sqldb, err = sql.Open("mysql", dbc)
-		if err != nil {
-			return nil, errors.New("Failed to open database: " + err.Error())
-		}
+	p.sqldb, err = sql.Open("mysql", dbc)
+	if err != nil {
+		return nil, errors.New("Failed to open database: " + err.Error())
 	}
 	err = p.sqldb.Ping()
 	if err != nil {
