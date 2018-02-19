@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+
 	"github.com/HardDriveCoin/HardDriveCoin/modules"
 	"github.com/HardDriveCoin/HardDriveCoin/types"
 )
@@ -215,6 +217,7 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		p.mu.Unlock()
 	}()
 
+	p.log.Printf("CCID %v (height %v): %v applied blocks, %v reverted blocks", crypto.Hash(cc.ID).String()[:8], p.persist.GetBlockHeight(), len(cc.AppliedBlocks), len(cc.RevertedBlocks))
 	// Update the pool's understanding of the block height.
 	for _, block := range cc.RevertedBlocks {
 		// Only doing the block check if the height is above zero saves hashing

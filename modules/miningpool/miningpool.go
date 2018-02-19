@@ -360,6 +360,22 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, errors.New("Failed to update block count: " + err.Error())
 	}
+	fmt.Println("starting consensus subscription")
+	fmt.Println("recent change")
+	fmt.Println(p.persist.RecentChange)
+	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())
+	fmt.Println("done subscribing to consensus")
+	if err == modules.ErrInvalidConsensusChangeID {
+		// Perform a rescan of the consensus set if the change id is not found.
+		// The id will only be not found if there has been desynchronization
+		// between the miner and the consensus package.
+		err = p.startupRescan()
+		if err != nil {
+			return nil, errors.New("mining pool startup failed - rescanning failed: " + err.Error())
+		}
+	} else if err != nil {
+		return nil, errors.New("mining pool subscription failed: " + err.Error())
+	}
 	// spin up a go routine to handle shift changes.
 	p.shiftChan = make(chan bool, 1)
 	go func() {
@@ -374,6 +390,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			}
 			p.log.Debugf("Shift change - end of shift %d\n", p.shiftID)
 			atomic.AddUint64(&p.shiftID, 1)
+			// XXX we get a segment violation here after a while
 			p.dispatcher.mu.RLock()
 			for _, h := range p.dispatcher.handlers {
 				h.mu.RLock()
@@ -388,18 +405,6 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			p.dispatcher.mu.RUnlock()
 		}
 	}()
-	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())
-	if err == modules.ErrInvalidConsensusChangeID {
-		// Perform a rescan of the consensus set if the change id is not found.
-		// The id will only be not found if there has been desynchronization
-		// between the miner and the consensus package.
-		err = p.startupRescan()
-		if err != nil {
-			return nil, errors.New("mining pool startup failed - rescanning failed: " + err.Error())
-		}
-	} else if err != nil {
-		return nil, errors.New("mining pool subscription failed: " + err.Error())
-	}
 	p.tg.OnStop(func() {
 		p.cs.Unsubscribe(p)
 	})
