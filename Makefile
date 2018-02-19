@@ -28,6 +28,7 @@ dependencies:
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
+	go get -u github.com/spf13/viper
 	# Developer Dependencies
 	go install -race std
 	go get -u github.com/client9/misspell/cmd/misspell

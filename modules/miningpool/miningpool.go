@@ -17,11 +17,13 @@ import (
 	"time"
 
 	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/config"
 	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 	"github.com/HardDriveCoin/HardDriveCoin/modules"
 	"github.com/HardDriveCoin/HardDriveCoin/persist"
 	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
 	"github.com/HardDriveCoin/HardDriveCoin/types"
+
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -231,12 +233,32 @@ func (p *Pool) startupRescan() error {
 	return nil
 }
 
+func (p *Pool) setPoolSettings(initConfig config.MiningPoolConfig) error {
+	var operatorWallet, poolWallet types.UnlockHash
+
+	operatorWallet.LoadString(initConfig.PoolOperatorWallet)
+	poolWallet.LoadString(initConfig.PoolWallet)
+	internalSettings := modules.PoolInternalSettings{
+		AcceptingShares: initConfig.AcceptingShares,
+		PoolOperatorPercentage: initConfig.PoolOperatorPercentage,
+		PoolNetworkPort: initConfig.PoolNetworkPort,
+		PoolName: initConfig.PoolName,
+		PoolID: initConfig.PoolID,
+		PoolDBConnection: initConfig.PoolDBConnection,
+		PoolDBName: initConfig.PoolDBName,
+		PoolOperatorWallet: operatorWallet,
+		PoolWallet: poolWallet,
+	}
+	p.persist.SetSettings(internalSettings)
+	return nil
+}
+
 // newPool returns an initialized Pool, taking a set of dependencies as input.
 // By making the dependencies an argument of the 'new' call, the pool can be
 // mocked such that the dependencies can return unexpected errors or unique
 // behaviors during testing, enabling easier testing of the failure modes of
 // the Pool.
-func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, persistDir string) (*Pool, error) {
+func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, persistDir string, initConfig config.MiningPoolConfig) (*Pool, error) {
 	// Check that all the dependencies were provided.
 	if cs == nil {
 		return nil, errNilCS
@@ -312,6 +334,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, err
 	}
+	p.setPoolSettings(initConfig)
 
 	p.tg.AfterStop(func() {
 		err = p.saveSync()
@@ -425,8 +448,8 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 }
 
 // New returns an initialized Pool.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, persistDir string) (*Pool, error) {
-	return newPool(productionDependencies{}, cs, tpool, gw, wallet, persistDir)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gateway, wallet modules.Wallet, persistDir string, initConfig config.MiningPoolConfig) (*Pool, error) {
+	return newPool(productionDependencies{}, cs, tpool, gw, wallet, persistDir, initConfig)
 }
 
 // Close shuts down the pool.

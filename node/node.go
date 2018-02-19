@@ -12,6 +12,7 @@ package node
 import (
 	"path/filepath"
 
+	"github.com/HardDriveCoin/HardDriveCoin/config"
 	"github.com/HardDriveCoin/HardDriveCoin/modules"
 	"github.com/HardDriveCoin/HardDriveCoin/modules/consensus"
 	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
@@ -284,7 +285,7 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateMiningPool {
 			return nil, nil
 		}
-		p, err := pool.New(cs, tp, g, w, filepath.Join(dir, modules.PoolDir))
+		p, err := pool.New(cs, tp, g, w, filepath.Join(dir, modules.PoolDir), config.MiningPoolConfig{})
 		if err != nil {
 			return nil, err
 		}

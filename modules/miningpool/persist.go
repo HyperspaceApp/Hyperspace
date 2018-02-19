@@ -214,7 +214,7 @@ func (mp *Pool) establishDefaults() error {
 		PoolOperatorWallet:     types.UnlockHash{},
 		PoolWallet:             types.UnlockHash{},
 		PoolNetworkPort:        3333,
-		PoolDBConnection:       "internal",
+		PoolDBConnection:       "user:pass@127.0.0.1/HDCPool",
 	})
 	mp.newSourceBlock()
 	return nil
@@ -244,6 +244,13 @@ func (mp *Pool) loadPersistObject(p *persistence) {
 	mp.persist.SetUnsolvedBlock(p.GetCopyUnsolvedBlock())
 }
 
+func (mp *Pool) hasSettings() bool {
+    _, err := os.Stat(filepath.Join(mp.persistDir, settingsFile))
+    if err == nil { return true }
+    if os.IsNotExist(err) { return false }
+    return true
+}
+
 // load loads the Hosts's persistent data from disk.
 func (mp *Pool) load() error {
 
@@ -252,12 +259,16 @@ func (mp *Pool) load() error {
 	// more recent structures.
 	p := new(persistence)
 	err := mp.dependencies.loadFile(persistMetadata, p, filepath.Join(mp.persistDir, settingsFile))
+	mp.log.Printf("Loading persistence metadata")
 	if err == nil {
 		// Copy in the persistence.
 		mp.loadPersistObject(p)
 	} else if os.IsNotExist(err) {
+		mp.log.Printf("Persistence metadata not found. Setting up new data.")
+		mp.newSourceBlock()
 		// There is no pool.json file, set up sane defaults.
-		return mp.establishDefaults()
+		// return mp.establishDefaults()
+		return nil
 	} else if err != nil {
 		return err
 	}

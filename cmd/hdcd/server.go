@@ -560,7 +560,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "p") {
 		i++
 		fmt.Printf("(%d/%d) Loading pool...\n", i, len(srv.config.Siad.Modules))
-		p, err = pool.New(cs, tpool, g, w, filepath.Join(srv.config.Siad.SiaDir, modules.PoolDir))
+		p, err = pool.New(cs, tpool, g, w, filepath.Join(srv.config.Siad.SiaDir, modules.PoolDir), srv.config.MiningPoolConfig)
 		if err != nil {
 			return err
 		}

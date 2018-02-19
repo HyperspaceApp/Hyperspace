@@ -307,7 +307,7 @@ func (s *Shift) updateShift() error {
 func (s *Shift) saveShift() error {
 
 	stmt, err := s.worker.Parent().pool.sqldb.Prepare(`
-		INSERT INTO 
+		INSERT INTO
 		ShiftInfo(ShiftID, Pool, Parent, Blocks, Shares, InvalidShares, StaleShares, CummulativeDifficulty, LastShareTime, ShiftDuration)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 		`)

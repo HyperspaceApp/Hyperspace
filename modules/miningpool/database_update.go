@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/go-sql-driver/mysql"
 )
 
 const (
@@ -17,6 +19,12 @@ func (p *Pool) createOrUpdateDatabase() error {
 	if err != nil {
 		return err
 	}
+
+	// try to use the database first - there will be an error if we failed.
+	// but we don't need to bother with it, because in the failure case
+	// the getSchemaVersion() call will also fail, and so we'll create the
+	// database.
+	err = p.useDatabase()
 
 	major, minor, err := p.getSchemaVersion()
 	if err != nil {
@@ -51,13 +59,8 @@ func (p *Pool) createOrUpdateDatabase() error {
 	return nil
 }
 
-//
-// createDatabase really just creates the SchemaVersion table and populates it with starting
-// values.  The particular tables and values are created by the schema upgrade function for the
-// version that adds them.  For example the initial values are added in the 0.0 to 0.1 upgrade function
-//
-func (p *Pool) createDatabase() error {
-	p.log.Printf("Creating sql database 'miningpool'\n")
+func (p *Pool) useDatabase() error {
+	name := p.InternalSettings().PoolDBName
 
 	tx, err := p.sqldb.Begin()
 	if err != nil {
@@ -65,21 +68,41 @@ func (p *Pool) createDatabase() error {
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`
-		DROP DATABASE miningpool;
-	`)
+	_, err = tx.Exec(fmt.Sprintf("USE %s;", name))
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`
-		CREATE DATABASE miningpool;
-	`)
+	return nil
+}
+
+//
+// createDatabase really just creates the SchemaVersion table and populates it with starting
+// values.  The particular tables and values are created by the schema upgrade function for the
+// version that adds them.  For example the initial values are added in the 0.0 to 0.1 upgrade function
+//
+func (p *Pool) createDatabase() error {
+	name := p.InternalSettings().PoolDBName
+	p.log.Printf("Creating sql database '%s'\n", name)
+
+	tx, err := p.sqldb.Begin()
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(`
-		USE miningpool;
-	`)
+	defer tx.Rollback()
+
+	_, err = tx.Exec(fmt.Sprintf("DROP DATABASE %s;", name))
+	// 1008 = ER_DB_DROP_EXISTS
+	// if we had an error on dropping it because the db doesn't exist, that's not a problem.
+	// we just move on and create the new database as planned
+	// full list of errors here: https://github.com/VividCortex/mysqlerr/blob/master/mysqlerr.go
+	if err != nil && err.(*mysql.MySQLError).Number != 1008 {
+		return err
+	}
+	_, err = tx.Exec(fmt.Sprintf("CREATE DATABASE %s;", name))
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(fmt.Sprintf("USE %s;", name))
 	if err != nil {
 		return err
 	}
@@ -377,22 +400,6 @@ func (p *Pool) getSchemaVersion() (major int, minor int, err error) {
 	}
 	p.log.Debugf("getSchemaVersion, Version = %d.%d\n", major, minor)
 	return major, minor, err
-}
-
-func (p *Pool) setSqliteForeignKey() error {
-	_, err := p.sqldb.Exec("PRAGMA foreign_keys = ON;")
-	if err != nil {
-		return err
-	}
-	var value int
-	err = p.sqldb.QueryRow("PRAGMA foreign_keys;").Scan(&value)
-	if err != nil {
-		return err
-	}
-	if value != 1 {
-		return errors.New("Unable to turn on foreign_keys")
-	}
-	return nil
 }
 
 func (p *Pool) setMySqlSqlMode() error {

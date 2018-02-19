@@ -28,6 +28,7 @@ type (
 		PoolName               string           `json:"name"`
 		PoolID                 string           `json:"poolid"`
 		PoolDBConnection       string           `json:"dbconnection"`
+		PoolDBName             string           `json:"dbname"`
 		PoolOperatorWallet     types.UnlockHash `json:"operatorwallet"`
 		PoolWallet             types.UnlockHash `json:"poolwallet"`
 	}
