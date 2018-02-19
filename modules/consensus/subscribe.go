@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"fmt"
 	"github.com/HardDriveCoin/HardDriveCoin/build"
 	"github.com/HardDriveCoin/HardDriveCoin/modules"
 
