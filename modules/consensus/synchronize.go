@@ -551,7 +551,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 	// download as complete even with only one peer. This deadline is helpful
 	// to local-net setups, where a machine will frequently only have one peer
 	// (and that peer will be another machine on the same local network, but
-	// within the local network at least one peer is connected to the braod
+	// within the local network at least one peer is connected to the broad
 	// network).
 	deadline := time.Now().Add(minIBDWaitTime)
 	numOutboundSynced := 0
