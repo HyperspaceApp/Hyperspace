@@ -360,11 +360,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, errors.New("Failed to update block count: " + err.Error())
 	}
-	fmt.Println("starting consensus subscription")
-	fmt.Println("recent change")
-	fmt.Println(p.persist.RecentChange)
 	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())
-	fmt.Println("done subscribing to consensus")
 	if err == modules.ErrInvalidConsensusChangeID {
 		// Perform a rescan of the consensus set if the change id is not found.
 		// The id will only be not found if there has been desynchronization
@@ -390,7 +386,6 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			}
 			p.log.Debugf("Shift change - end of shift %d\n", p.shiftID)
 			atomic.AddUint64(&p.shiftID, 1)
-			// XXX we get a segment violation here after a while
 			p.dispatcher.mu.RLock()
 			for _, h := range p.dispatcher.handlers {
 				h.mu.RLock()
@@ -433,7 +428,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	// if p.mainNode {
 	// 	node = "main "
 	// }
-	fmt.Printf("      Starting Stratum Server\n")
+	p.log.Printf("      Starting Stratum Server\n")
 
 	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: sync.RWMutex{}, p: p}
 	p.dispatcher.log, err = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
