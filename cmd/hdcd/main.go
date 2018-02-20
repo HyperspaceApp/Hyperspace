@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -58,47 +59,49 @@ func readConfig() error {
 	viper.SetConfigName("hdc")
 	viper.AddConfigPath(".")
 
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil { // Handle errors reading the config file
-		fmt.Errorf("Fatal error config file: %s \n", err)
-		return err
+	if strings.Contains(globalConfig.Siad.Modules, "p") {
+		err := viper.ReadInConfig() // Find and read the config file
+		if err != nil { // Handle errors reading the config file
+			fmt.Errorf("Fatal error config file: %s \n", err)
+			return err
+		}
+		poolViper := viper.Sub("miningpool")
+		poolViper.SetDefault("name", "")
+		poolViper.SetDefault("id", "")
+		poolViper.SetDefault("acceptingcontracts", false)
+		poolViper.SetDefault("operatorpercentage", 0.0)
+		poolViper.SetDefault("operatorwallet", "")
+		poolViper.SetDefault("networkport", 3333)
+		poolViper.SetDefault("dbaddress", "127.0.0.1")
+		poolViper.SetDefault("dbname", "miningpool")
+		poolViper.SetDefault("dbport", "3306")
+		if !poolViper.IsSet("poolwallet") {
+			return errors.New("Must specify a poolwallet")
+		}
+		if !poolViper.IsSet("dbuser") {
+			return errors.New("Must specify a dbuser")
+		}
+		if !poolViper.IsSet("dbpass") {
+			return errors.New("Must specify a dbpass")
+		}
+		dbUser := poolViper.GetString("dbuser")
+		dbPass := poolViper.GetString("dbpass")
+		dbAddress := poolViper.GetString("dbaddress")
+		dbPort := poolViper.GetString("dbport")
+		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/", dbUser, dbPass, dbAddress, dbPort)
+		poolConfig := config.MiningPoolConfig{
+			AcceptingShares: poolViper.GetBool("acceptingcontracts"),
+			PoolOperatorPercentage: poolViper.GetFloat64("operatorpercentage"),
+			PoolNetworkPort: uint16(poolViper.GetInt("networkport")),
+			PoolName: poolViper.GetString("name"),
+			PoolID: poolViper.GetString("id"),
+			PoolDBConnection: dbConnection,
+			PoolDBName: poolViper.GetString("dbname"),
+			PoolOperatorWallet: poolViper.GetString("operatorwallet"),
+			PoolWallet: poolViper.GetString("poolwallet"),
+		}
+		globalConfig.MiningPoolConfig = poolConfig
 	}
-	poolViper := viper.Sub("miningpool")
-	poolViper.SetDefault("name", "")
-	poolViper.SetDefault("id", "")
-	poolViper.SetDefault("acceptingcontracts", false)
-	poolViper.SetDefault("operatorpercentage", 0.0)
-	poolViper.SetDefault("operatorwallet", "")
-	poolViper.SetDefault("networkport", 3333)
-	poolViper.SetDefault("dbaddress", "127.0.0.1")
-	poolViper.SetDefault("dbname", "miningpool")
-	poolViper.SetDefault("dbport", "3306")
-	if !poolViper.IsSet("poolwallet") {
-		return errors.New("Must specify a poolwallet")
-	}
-	if !poolViper.IsSet("dbuser") {
-		return errors.New("Must specify a dbuser")
-	}
-	if !poolViper.IsSet("dbpass") {
-		return errors.New("Must specify a dbpass")
-	}
-	dbUser := poolViper.GetString("dbuser")
-	dbPass := poolViper.GetString("dbpass")
-	dbAddress := poolViper.GetString("dbaddress")
-	dbPort := poolViper.GetString("dbport")
-	dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/", dbUser, dbPass, dbAddress, dbPort)
-	poolConfig := config.MiningPoolConfig{
-		AcceptingShares: poolViper.GetBool("acceptingcontracts"),
-		PoolOperatorPercentage: poolViper.GetFloat64("operatorpercentage"),
-		PoolNetworkPort: uint16(poolViper.GetInt("networkport")),
-		PoolName: poolViper.GetString("name"),
-		PoolID: poolViper.GetString("id"),
-		PoolDBConnection: dbConnection,
-		PoolDBName: poolViper.GetString("dbname"),
-		PoolOperatorWallet: poolViper.GetString("operatorwallet"),
-		PoolWallet: poolViper.GetString("poolwallet"),
-	}
-	globalConfig.MiningPoolConfig = poolConfig
 	return nil
 }
 
