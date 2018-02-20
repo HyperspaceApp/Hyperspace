@@ -1,13 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/HardDriveCoin/HardDriveCoin/build"
 	"github.com/HardDriveCoin/HardDriveCoin/config"
@@ -52,57 +49,6 @@ type Config struct {
 	}
 
 	MiningPoolConfig config.MiningPoolConfig
-}
-
-func readConfig() error {
-	viper.SetConfigType("yaml")
-	viper.SetConfigName("hdc")
-	viper.AddConfigPath(".")
-
-	if strings.Contains(globalConfig.Siad.Modules, "p") {
-		err := viper.ReadInConfig() // Find and read the config file
-		if err != nil { // Handle errors reading the config file
-			fmt.Errorf("Fatal error config file: %s \n", err)
-			return err
-		}
-		poolViper := viper.Sub("miningpool")
-		poolViper.SetDefault("name", "")
-		poolViper.SetDefault("id", "")
-		poolViper.SetDefault("acceptingcontracts", false)
-		poolViper.SetDefault("operatorpercentage", 0.0)
-		poolViper.SetDefault("operatorwallet", "")
-		poolViper.SetDefault("networkport", 3333)
-		poolViper.SetDefault("dbaddress", "127.0.0.1")
-		poolViper.SetDefault("dbname", "miningpool")
-		poolViper.SetDefault("dbport", "3306")
-		if !poolViper.IsSet("poolwallet") {
-			return errors.New("Must specify a poolwallet")
-		}
-		if !poolViper.IsSet("dbuser") {
-			return errors.New("Must specify a dbuser")
-		}
-		if !poolViper.IsSet("dbpass") {
-			return errors.New("Must specify a dbpass")
-		}
-		dbUser := poolViper.GetString("dbuser")
-		dbPass := poolViper.GetString("dbpass")
-		dbAddress := poolViper.GetString("dbaddress")
-		dbPort := poolViper.GetString("dbport")
-		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/", dbUser, dbPass, dbAddress, dbPort)
-		poolConfig := config.MiningPoolConfig{
-			AcceptingShares: poolViper.GetBool("acceptingcontracts"),
-			PoolOperatorPercentage: poolViper.GetFloat64("operatorpercentage"),
-			PoolNetworkPort: uint16(poolViper.GetInt("networkport")),
-			PoolName: poolViper.GetString("name"),
-			PoolID: poolViper.GetString("id"),
-			PoolDBConnection: dbConnection,
-			PoolDBName: poolViper.GetString("dbname"),
-			PoolOperatorWallet: poolViper.GetString("operatorwallet"),
-			PoolWallet: poolViper.GetString("poolwallet"),
-		}
-		globalConfig.MiningPoolConfig = poolConfig
-	}
-	return nil
 }
 
 // die prints its arguments to stderr, then exits the program with the default
@@ -232,11 +178,6 @@ func main() {
 	root.Flags().BoolVarP(&globalConfig.Siad.AuthenticateAPI, "authenticate-api", "", false, "enable API password protection")
 	root.Flags().BoolVarP(&globalConfig.Siad.AllowAPIBind, "disable-api-security", "", false, "allow hdcd to listen on a non-localhost address (DANGEROUS)")
 
-	configErr := readConfig()
-	if configErr != nil {
-		fmt.Println("Configuration error: ", configErr.Error())
-		os.Exit(exitCodeGeneral)
-	}
 	// Parse cmdline flags, overwriting both the default values and the config
 	// file values.
 	if err := root.Execute(); err != nil {
