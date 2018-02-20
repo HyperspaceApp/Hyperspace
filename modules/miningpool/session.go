@@ -15,7 +15,7 @@ const (
 )
 
 //
-// A Session captures the interaction with a miner client from whewn they connect until the connection is
+// A Session captures the interaction with a miner client from when they connect until the connection is
 // closed.  A session is tied to a single client and has many jobs associated with it
 //
 type Session struct {

@@ -63,7 +63,7 @@ const (
 )
 
 // Listen listens on a connection for incoming data and acts on it
-func (h *Handler) Listen() { // listen connection for incomming data
+func (h *Handler) Listen() { // listen connection for incoming data
 	defer func() {
 		h.conn.Close()
 		if h.s != nil && h.s.CurrentWorker != nil {
@@ -82,7 +82,7 @@ func (h *Handler) Listen() { // listen connection for incomming data
 	h.mu.Lock()
 	h.s, _ = newSession(h.p)
 	h.mu.Unlock()
-	h.log.Println("New sessioon: " + sPrintID(h.s.SessionID))
+	h.log.Println("New session: " + sPrintID(h.s.SessionID))
 	dec := json.NewDecoder(h.conn)
 	for {
 		var m StratumRequestMsg
