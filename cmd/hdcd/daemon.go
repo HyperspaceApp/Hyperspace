@@ -139,7 +139,6 @@ func readFileConfig(config Config) error {
 	viper.AddConfigPath(".")
 
 	if strings.Contains(config.Siad.Modules, "p") {
-		fmt.Println("pool module specified")
 		err := viper.ReadInConfig() // Find and read the config file
 		if err != nil { // Handle errors reading the config file
 			fmt.Errorf("Fatal error config file: %s \n", err)
@@ -169,7 +168,6 @@ func readFileConfig(config Config) error {
 		dbAddress := poolViper.GetString("dbaddress")
 		dbPort := poolViper.GetString("dbport")
 		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/", dbUser, dbPass, dbAddress, dbPort)
-		fmt.Println(dbConnection)
 		poolConfig := fileConfig.MiningPoolConfig{
 			AcceptingShares: poolViper.GetBool("acceptingcontracts"),
 			PoolOperatorPercentage: poolViper.GetFloat64("operatorpercentage"),
