@@ -35,4 +35,4 @@ apt install mysql-server
 
 Run pool
 ---
-siad -M cghtwp
+siad -M cgtwp
