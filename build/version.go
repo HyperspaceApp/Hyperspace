@@ -13,9 +13,8 @@ const (
 	// commit hash.
 	MaxEncodedVersionLength = 100
 
-	// Version is the current version of hdcd.
-	//Version = "0.0.1"
-	Version = "1.3.1"
+	// Version is the current version of siad.
+	Version = "1.3.2"
 )
 
 // IsVersion returns whether str is a valid version number.

@@ -13,9 +13,9 @@ func TestNewGroup(t *testing.T) {
 	}
 	// Specify the parameters for the group
 	groupParams := GroupParams{
-		hosts:   5,
-		renters: 2,
-		miners:  2,
+		Hosts:   5,
+		Renters: 2,
+		Miners:  2,
 	}
 	// Create the group
 	tg, err := NewGroupFromTemplate(groupParams)
@@ -29,21 +29,24 @@ func TestNewGroup(t *testing.T) {
 	}()
 
 	// Check if the correct number of nodes was created
-	if len(tg.Hosts()) != groupParams.hosts {
+	if len(tg.Hosts()) != groupParams.Hosts {
 		t.Error("Wrong number of hosts")
 	}
-	if len(tg.Renters()) != groupParams.renters {
+	if len(tg.Renters()) != groupParams.Renters {
 		t.Error("Wrong number of renters")
 	}
-	if len(tg.Miners()) != groupParams.miners {
+	if len(tg.Miners()) != groupParams.Miners {
 		t.Error("Wrong number of miners")
 	}
-	if len(tg.Nodes()) != groupParams.hosts+groupParams.renters+groupParams.miners {
+	if len(tg.Nodes()) != groupParams.Hosts+groupParams.Renters+groupParams.Miners {
 		t.Error("Wrong number of nodes")
 	}
 
 	// Check if nodes are funded
 	cg, err := tg.Nodes()[0].ConsensusGet()
+	if err != nil {
+		t.Fatal("Failed to get consensus: ", err)
+	}
 	for _, node := range tg.Nodes() {
 		wtg, err := node.WalletTransactionsGet(0, cg.Height)
 		if err != nil {
@@ -62,9 +65,9 @@ func TestNewGroupNoMiner(t *testing.T) {
 	}
 	// Try to create a group without miners
 	groupParams := GroupParams{
-		hosts:   5,
-		renters: 2,
-		miners:  0,
+		Hosts:   5,
+		Renters: 2,
+		Miners:  0,
 	}
 	// Create the group
 	_, err := NewGroupFromTemplate(groupParams)
@@ -80,9 +83,9 @@ func TestNewGroupNoRenterHost(t *testing.T) {
 	}
 	// Create a group with nothing but miners
 	groupParams := GroupParams{
-		hosts:   0,
-		renters: 0,
-		miners:  5,
+		Hosts:   0,
+		Renters: 0,
+		Miners:  5,
 	}
 	// Create the group
 	tg, err := NewGroupFromTemplate(groupParams)
