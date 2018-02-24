@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/NebulousLabs/Sia/build"
-	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/node/api"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HardDriveCoin/HardDriveCoin/node/api"
 	"github.com/NebulousLabs/fastrand"
 )
 

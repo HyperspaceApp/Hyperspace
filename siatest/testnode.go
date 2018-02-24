@@ -3,9 +3,6 @@ package siatest
 import (
 	"errors"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
 	"github.com/HardDriveCoin/HardDriveCoin/node"
 	"github.com/HardDriveCoin/HardDriveCoin/node/api/client"
 	"github.com/HardDriveCoin/HardDriveCoin/node/api/server"

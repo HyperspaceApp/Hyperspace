@@ -131,17 +131,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
 	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com//HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HardDriveCoin/HardDriveCoin/persist"
 	"github.com/HardDriveCoin/HardDriveCoin/types"
-	"github.com/HardDriveCoin/HardDriveCoin/errors"
-)
 
-const (
-	defaultFilePerm         = 0666
-	downloadFailureCooldown = time.Minute * 30
+	"github.com/NebulousLabs/errors"
 )
 
 type (

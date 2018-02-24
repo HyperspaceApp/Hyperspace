@@ -5,8 +5,6 @@ package renter
 // coordinating resource management between the workers operating on a chunk.
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
 	"sync/atomic"
 	"time"
 )
