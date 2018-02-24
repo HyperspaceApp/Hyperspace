@@ -1,31 +1,38 @@
-Ubuntu
-------
+# Ubuntu
 
-# Install Go 1.9
-wget https://dl.google.com/go/go1.9.4.linux-amd64.tar.gz
-tar zxvf go1.9.4.linux-amd64.tar.gz
-mv go /usr/local/
-ln -s /usr/local/go/bin/go /usr/bin/go
-ln -s /usr/local/go/bin/gofmt /usr/bin/gofmt
+Install Go 1.9
+---
+wget https://dl.google.com/go/go1.9.4.linux-amd64.tar.gz  
+tar zxvf go1.9.4.linux-amd64.tar.gz  
+mv go /usr/local/  
+ln -s /usr/local/go/bin/go /usr/bin/go  
+ln -s /usr/local/go/bin/gofmt /usr/bin/gofmt  
 
-# Install dependencies
+Install dependencies
+---
 make dependencies
 
-# Setup data directory
-mkdir ~/hdc
-cp hdc.yml ~/hdc
-cd ~/hdc
+Setup data directory
+---
+mkdir ~/hdc  
+cp hdc.yml ~/hdc  
+cd ~/hdc  
 
-# Run standard node
+Run standard node
+---
 hdcd
 
-# OR run pool node:
+OR run pool node:
+---
 
-# Configure db info, port number, etc
+Configure db info, port number, etc
+---
 vim ~/hdc/hdc.yml
 
-# Install mysql if necessary
+Install mysql if necessary
+---
 apt install mysql-server
 
-# Run pool
+Run pool
+---
 hdcd -M cghtwp
