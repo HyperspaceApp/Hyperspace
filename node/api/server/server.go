@@ -80,7 +80,7 @@ func New(APIaddr string, requiredUserAgent string, requiredPassword string, node
 	}
 
 	// Create the api for the server.
-	api := api.New(requiredUserAgent, requiredPassword, node.ConsensusSet, node.Explorer, node.Gateway, node.Host, node.Miner, node.Renter, node.TransactionPool, node.Wallet)
+	api := api.New(requiredUserAgent, requiredPassword, node.ConsensusSet, node.Explorer, node.Gateway, node.Host, node.Miner, node.Renter, node.TransactionPool, node.Wallet, node.MiningPool)
 	srv := &Server{
 		api: api,
 		apiServer: &http.Server{

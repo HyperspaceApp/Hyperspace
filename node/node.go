@@ -12,11 +12,13 @@ package node
 import (
 	"path/filepath"
 
+	"github.com/NebulousLabs/Sia/config"
 	"github.com/NebulousLabs/Sia/modules"
 	"github.com/NebulousLabs/Sia/modules/consensus"
 	"github.com/NebulousLabs/Sia/modules/gateway"
 	"github.com/NebulousLabs/Sia/modules/host"
 	"github.com/NebulousLabs/Sia/modules/miner"
+	"github.com/NebulousLabs/Sia/modules/miningpool"
 	"github.com/NebulousLabs/Sia/modules/renter"
 	"github.com/NebulousLabs/Sia/modules/transactionpool"
 	"github.com/NebulousLabs/Sia/modules/wallet"
@@ -54,6 +56,7 @@ type NodeParams struct {
 	CreateGateway         bool
 	CreateHost            bool
 	CreateMiner           bool
+	CreateMiningPool      bool
 	CreateRenter          bool
 	CreateTransactionPool bool
 	CreateWallet          bool
@@ -67,6 +70,7 @@ type NodeParams struct {
 	Gateway         modules.Gateway
 	Host            modules.Host
 	Miner           modules.TestMiner
+	MiningPool      modules.Pool
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
@@ -84,6 +88,7 @@ type Node struct {
 	Gateway         modules.Gateway
 	Host            modules.Host
 	Miner           modules.TestMiner
+	MiningPool      modules.Pool
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
@@ -101,6 +106,9 @@ func (n *Node) Close() (err error) {
 	}
 	if n.Miner != nil {
 		err = errors.Compose(n.Miner.Close())
+	}
+	if n.MiningPool != nil {
+		err = errors.Compose(n.MiningPool.Close())
 	}
 	if n.Host != nil {
 		err = errors.Compose(n.Host.Close())
@@ -266,6 +274,24 @@ func New(params NodeParams) (*Node, error) {
 		return nil, errors.Extend(err, errors.New("unable to create miner"))
 	}
 
+	// Mining Pool.
+	p, err := func() (modules.Pool, error) {
+		if params.CreateMiningPool && params.MiningPool != nil {
+			return nil, errors.New("cannot create mining pool and also use custom mining pool")
+		}
+		if params.MiningPool != nil {
+			return params.MiningPool, nil
+		}
+		if !params.CreateMiningPool {
+			return nil, nil
+		}
+		p, err := pool.New(cs, tp, g, w, filepath.Join(dir, modules.PoolDir), config.MiningPoolConfig{})
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	}()
+
 	// Explorer.
 	e, err := func() (modules.Explorer, error) {
 		if !params.CreateExplorer && params.Explorer != nil {
@@ -290,6 +316,7 @@ func New(params NodeParams) (*Node, error) {
 		Gateway:         g,
 		Host:            h,
 		Miner:           m,
+		MiningPool:      p,
 		Renter:          r,
 		TransactionPool: tp,
 		Wallet:          w,

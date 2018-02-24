@@ -23,9 +23,12 @@ dependencies:
 	go get -u github.com/inconshreveable/go-update
 	go get -u github.com/kardianos/osext
 	go get -u github.com/inconshreveable/mousetrap
+	go get -u github.com/go-sql-driver/mysql
+	go get -u github.com/lib/pq
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
+	go get -u github.com/spf13/viper
 	# Developer Dependencies
 	go install -race std
 	go get -u github.com/client9/misspell/cmd/misspell
@@ -37,8 +40,8 @@ dependencies:
 run = .
 pkgs = ./build ./cmd/siac ./cmd/siad ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
-       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/wallet   \
-       ./modules/transactionpool ./node ./node/api ./persist ./siatest ./siatest/consensus ./siatest/renter               \
+       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
+       ./modules/wallet ./modules/transactionpool ./node ./node/api ./persist ./siatest ./siatest/consensus ./siatest/renter \
        ./node/api/server ./sync ./types
 
 # fmt calls go fmt on all packages.
@@ -52,9 +55,9 @@ vet: release-std
 
 # will always run on some packages for a while.
 lintpkgs = ./build ./cmd/siac ./cmd/siad ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
-           ./modules/gateway ./modules/host ./modules/miner ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor ./modules/renter/hostdb \
-           ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/wallet ./modules/transactionpool ./node ./node/api ./node/api/server ./persist \
-           ./siatest ./siatest/consensus ./siatest/renter
+           ./modules/gateway ./modules/host ./modules/miner ./modules/miningpool ./modules/host/contractmanager ./modules/renter \
+           ./modules/renter/contractor ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/wallet \
+           ./modules/transactionpool ./node ./node/api ./node/api/server ./persist ./siatest ./siatest/consensus ./siatest/renter
 lint:
 	golint -min_confidence=1.0 -set_exit_status $(lintpkgs)
 
