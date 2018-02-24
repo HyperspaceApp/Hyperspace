@@ -3,7 +3,7 @@ package renter
 import (
 	"testing"
 
-	"github.com/NebulousLabs/Sia/siatest"
+	"github.com/HardDriveCoin/HardDriveCoin/siatest"
 )
 
 // TestRenter executes a number of subtests using the same TestGroup to

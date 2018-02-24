@@ -8,7 +8,7 @@ package renter
 import (
 	"sync"
 
-	"github.com/NebulousLabs/Sia/build"
+	"github.com/HardDriveCoin/HardDriveCoin/build"
 )
 
 // memoryManager can handle requests for memory and returns of memory. The
