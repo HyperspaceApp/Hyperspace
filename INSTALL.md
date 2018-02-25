@@ -14,20 +14,20 @@ make dependencies
 
 Setup data directory
 ---
-mkdir ~/hdc  
-cp hdc.yml ~/hdc  
-cd ~/hdc  
+mkdir ~/sia  
+cd ~/sia  
 
 Run standard node
 ---
-hdcd
+siad
 
 OR run pool node:
 ---
 
 Configure db info, port number, etc
 ---
-vim ~/hdc/hdc.yml
+cp sampleconfig/sia.yml ~/sia  
+vim ~/sia/sia.yml
 
 Install mysql if necessary
 ---
@@ -35,4 +35,5 @@ apt install mysql-server
 
 Run pool
 ---
-hdcd -M cghtwp
+=======
+siad -M cgtwp

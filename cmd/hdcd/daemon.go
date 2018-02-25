@@ -135,7 +135,7 @@ func unlockWallet(w modules.Wallet, password string) error {
 
 func readFileConfig(config Config) error {
 	viper.SetConfigType("yaml")
-	viper.SetConfigName("hdc")
+	viper.SetConfigName("sia")
 	viper.AddConfigPath(".")
 
 	if strings.Contains(config.Siad.Modules, "p") {
@@ -205,8 +205,8 @@ func startDaemon(config Config) (err error) {
 		}
 	}
 
-	// Print the hdcd version
-	fmt.Println("Hard Drive Coin Daemon v" + build.Version)
+	// Print the siad version
+	fmt.Println("Sia Daemon v" + build.Version)
 
 	// Install a signal handler that will catch exceptions thrown by mmap'd
 	// files.
