@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 var (

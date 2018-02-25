@@ -3,7 +3,7 @@ package crypto
 import (
 	"bytes"
 
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
 
 	"github.com/NebulousLabs/merkletree"
 )

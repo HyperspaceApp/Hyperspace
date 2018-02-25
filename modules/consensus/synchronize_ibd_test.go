@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestSimpleInitialBlockchainDownload tests that

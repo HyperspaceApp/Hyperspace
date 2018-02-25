@@ -14,11 +14,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/renter/proto"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
-	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceProject/Hyperspace/persist"
+	siasync "github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 var (

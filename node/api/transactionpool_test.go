@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestTransactionPoolRawHandler verifies that the transaction pools' raw

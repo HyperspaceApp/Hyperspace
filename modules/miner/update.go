@@ -3,8 +3,8 @@ package miner
 import (
 	"sort"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // addMapElementTxns places the splitSet from a mapElement into the correct

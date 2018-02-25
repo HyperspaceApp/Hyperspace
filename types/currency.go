@@ -12,7 +12,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 type (

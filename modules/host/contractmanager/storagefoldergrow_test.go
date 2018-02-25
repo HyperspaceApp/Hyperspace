@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // TestGrowStorageFolder checks that a storage folder can be successfully

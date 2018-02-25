@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // WalletAddressGet requests a new address from the /wallet/address endpoint

@@ -9,9 +9,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	siasync "github.com/HyperspaceProject/Hyperspace/sync"
 )
 
 // newTestingGateway returns a gateway ready to use in a testing environment.

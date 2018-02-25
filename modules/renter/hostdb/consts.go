@@ -3,7 +3,7 @@ package hostdb
 import (
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 const (

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
 
 	"github.com/spf13/cobra"
 )

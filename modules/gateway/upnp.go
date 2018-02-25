@@ -12,8 +12,8 @@ import (
 
 	"github.com/NebulousLabs/go-upnp"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // myExternalIP discovers the gateway's external IP by querying a centralized

@@ -8,9 +8,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
 	"github.com/NebulousLabs/fastrand"
 )
 

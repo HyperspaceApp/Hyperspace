@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/node"
-	"github.com/HardDriveCoin/HardDriveCoin/node/api/client"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/node"
+	"github.com/HyperspaceProject/Hyperspace/node/api/client"
+	"github.com/HyperspaceProject/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 

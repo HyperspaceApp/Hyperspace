@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // mockMarshaler is a mock implementation of the encoding.GenericMarshaler

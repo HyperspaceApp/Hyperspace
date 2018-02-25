@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 	"github.com/julienschmidt/httprouter"
 )
 

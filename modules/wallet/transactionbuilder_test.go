@@ -4,8 +4,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // addBlockNoPayout adds a block to the wallet tester that does not have any

@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 
 	"github.com/coreos/bbolt"
 )

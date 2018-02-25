@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // TestBacktrackToCurrentPath probes the backtrackToCurrentPath method of the

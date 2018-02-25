@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // blockingPortForward is a dependency set that causes the host port forward

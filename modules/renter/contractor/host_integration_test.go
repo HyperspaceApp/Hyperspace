@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/consensus"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/host"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/miner"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/renter/hostdb"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/transactionpool"
-	modWallet "github.com/HardDriveCoin/HardDriveCoin/modules/wallet"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
+	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
+	"github.com/HyperspaceProject/Hyperspace/modules/host"
+	"github.com/HyperspaceProject/Hyperspace/modules/miner"
+	"github.com/HyperspaceProject/Hyperspace/modules/renter/hostdb"
+	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
+	modWallet "github.com/HyperspaceProject/Hyperspace/modules/wallet"
+	"github.com/HyperspaceProject/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -595,7 +595,7 @@ func TestIntegrationEditorCaching(t *testing.T) {
 
 // TestContractPresenceLeak tests that a renter can not tell from the response
 // of the host to RPCs if the host has the contract if the renter doesn't
-// own this contract. See https://github.com/HardDriveCoin/HardDriveCoin/issues/2327.
+// own this contract. See https://github.com/HyperspaceProject/Hyperspace/issues/2327.
 func TestContractPresenceLeak(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()

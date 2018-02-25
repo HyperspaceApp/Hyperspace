@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // MaxEncodedNetAddressLength is the maximum length of a NetAddress encoded

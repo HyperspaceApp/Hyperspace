@@ -1,6 +1,6 @@
 package siatest
 
-import "github.com/HardDriveCoin/HardDriveCoin/node"
+import "github.com/HyperspaceProject/Hyperspace/node"
 
 var (
 	// MinerTemplate is a template for a Sia node that has a functioning

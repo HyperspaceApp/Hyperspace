@@ -3,8 +3,8 @@ package api
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
 )
 
 // TestGatewayStatus checks that the /gateway/status call is returning a corect

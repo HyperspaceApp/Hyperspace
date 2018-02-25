@@ -103,9 +103,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
-	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/persist"
+	siasync "github.com/HyperspaceProject/Hyperspace/sync"
 	"github.com/NebulousLabs/fastrand"
 )
 

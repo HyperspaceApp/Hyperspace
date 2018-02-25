@@ -3,7 +3,7 @@ package gateway
 import (
 	"net"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 	"github.com/xtaci/smux"
 )
 

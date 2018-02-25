@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestEstimatedHeightAt tests that the expectedHeightAt function correctly

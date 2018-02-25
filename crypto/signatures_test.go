@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
 	"github.com/NebulousLabs/fastrand"
 )
 

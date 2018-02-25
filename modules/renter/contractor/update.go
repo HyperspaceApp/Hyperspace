@@ -1,8 +1,8 @@
 package contractor
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // managedArchiveContracts will figure out which contracts are no longer needed

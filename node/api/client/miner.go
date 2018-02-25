@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // MinerHeaderGet uses the /miner/header endpoint to get a header for work.

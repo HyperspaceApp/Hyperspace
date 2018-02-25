@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // peerConn is a simple type that implements the modules.PeerConn interface.

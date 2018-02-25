@@ -4,9 +4,9 @@ package consensus
 // There is an assumption that the transaction has already been verified.
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )

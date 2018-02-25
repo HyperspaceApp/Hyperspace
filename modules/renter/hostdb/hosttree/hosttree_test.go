@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	siasync "github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceProject/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 

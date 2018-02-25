@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 	"github.com/NebulousLabs/fastrand"
 )
 

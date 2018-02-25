@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
 
 	"github.com/NebulousLabs/errors"
 )

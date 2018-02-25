@@ -1,6 +1,6 @@
 package client
 
-import "github.com/HardDriveCoin/HardDriveCoin/node/api"
+import "github.com/HyperspaceProject/Hyperspace/node/api"
 
 // ConsensusGet requests the /consensus api resource
 func (c *Client) ConsensusGet() (cg api.ConsensusGET, err error) {

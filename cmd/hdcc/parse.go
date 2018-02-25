@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 var errUnableToParseSize = errors.New("unable to parse size")

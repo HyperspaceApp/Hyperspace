@@ -3,9 +3,9 @@ package transactionpool
 import (
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/persist"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // Consts related to the persisting structures of the transactoin pool.

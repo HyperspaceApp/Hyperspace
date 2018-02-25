@@ -3,8 +3,8 @@ package modules
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestConsensusConflict checks that the consensus conflict type is correctly

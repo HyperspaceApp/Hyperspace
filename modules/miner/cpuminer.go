@@ -3,7 +3,7 @@ package miner
 import (
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // threadedMine starts a gothread that does CPU mining. threadedMine is the

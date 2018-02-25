@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 
 	"github.com/julienschmidt/httprouter"
 )

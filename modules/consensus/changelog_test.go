@@ -3,8 +3,8 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestIntegrationChangeLog does a general test of the changelog by creating a

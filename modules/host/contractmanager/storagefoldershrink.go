@@ -3,7 +3,7 @@ package contractmanager
 import (
 	"sync/atomic"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 type (

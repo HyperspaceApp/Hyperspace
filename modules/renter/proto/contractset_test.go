@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 
 	"github.com/NebulousLabs/fastrand"
 )

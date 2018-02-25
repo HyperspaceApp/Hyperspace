@@ -3,8 +3,8 @@ package explorer
 import (
 	"errors"
 
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceProject/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )

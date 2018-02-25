@@ -18,8 +18,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 	"github.com/NebulousLabs/fastrand"
 )
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 )
 
 // dependencyErrMkdirAll is a dependency set that returns an error when MkdirAll

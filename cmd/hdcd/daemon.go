@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	fileConfig "github.com/HardDriveCoin/HardDriveCoin/config"
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/profile"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	fileConfig "github.com/HyperspaceProject/Hyperspace/config"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/profile"
 	mnemonics "github.com/NebulousLabs/entropy-mnemonics"
 
 	"github.com/spf13/cobra"

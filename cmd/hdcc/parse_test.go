@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 func TestParseFilesize(t *testing.T) {

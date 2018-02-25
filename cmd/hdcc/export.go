@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceProject/Hyperspace/types"
 
 	"github.com/spf13/cobra"
 )

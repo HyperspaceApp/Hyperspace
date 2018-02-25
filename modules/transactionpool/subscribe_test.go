@@ -3,8 +3,8 @@ package transactionpool
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // mockSubscriber receives transactions from the transaction pool it is

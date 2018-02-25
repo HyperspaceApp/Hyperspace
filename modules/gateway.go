@@ -3,7 +3,7 @@ package modules
 import (
 	"net"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 const (

@@ -3,7 +3,7 @@ package renter
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/siatest"
+	"github.com/HyperspaceProject/Hyperspace/siatest"
 )
 
 // TestRenter executes a number of subtests using the same TestGroup to

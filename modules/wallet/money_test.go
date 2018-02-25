@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestSendSiacoins probes the SendSiacoins method of the wallet.

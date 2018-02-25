@@ -17,7 +17,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // addStorageToAllHosts adds a storage folder with a bunch of storage to each

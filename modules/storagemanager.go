@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
 )
 
 const (

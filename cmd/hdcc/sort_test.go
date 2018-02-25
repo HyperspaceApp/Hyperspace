@@ -4,8 +4,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestSortByValue tests that byValue sorts contracts correctly.

@@ -6,8 +6,8 @@ import (
 
 	"github.com/coreos/bbolt"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestApplyMinerPayouts probes the applyMinerPayouts method of the consensus

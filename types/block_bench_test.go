@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
 )
 
 // BenchmarkEncodeEmptyBlock benchmarks encoding an empty block.

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // TestLogger checks that the basic functions of the file logger work as

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/persist"
+	"github.com/HyperspaceProject/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )

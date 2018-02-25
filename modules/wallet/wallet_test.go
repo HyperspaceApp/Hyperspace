@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/consensus"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/gateway"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/miner"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/transactionpool"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
+	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
+	"github.com/HyperspaceProject/Hyperspace/modules/miner"
+	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceProject/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 

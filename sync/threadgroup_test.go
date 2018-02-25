@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // TestThreadGroupStopEarly tests that a thread group can correctly interrupt

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // dummy types to test encoding

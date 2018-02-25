@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // TestSaveLoadJSON creates a simple object and then tries saving and loading

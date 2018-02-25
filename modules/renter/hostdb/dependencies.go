@@ -4,8 +4,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 )
 
 // These interfaces define the HostDB's dependencies. Using the smallest

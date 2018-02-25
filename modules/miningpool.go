@@ -3,7 +3,7 @@ package modules
 import (
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 const (

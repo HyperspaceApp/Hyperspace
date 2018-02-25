@@ -11,11 +11,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/renter/hostdb/hosttree"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
-	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules/renter/hostdb/hosttree"
+	"github.com/HyperspaceProject/Hyperspace/persist"
+	siasync "github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 var (

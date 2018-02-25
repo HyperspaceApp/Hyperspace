@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // mockSubscriber receives and holds changes to the consensus set, remembering

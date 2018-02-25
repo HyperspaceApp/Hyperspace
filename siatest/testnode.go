@@ -3,10 +3,10 @@ package siatest
 import (
 	"errors"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node"
-	"github.com/HardDriveCoin/HardDriveCoin/node/api/client"
-	"github.com/HardDriveCoin/HardDriveCoin/node/api/server"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/node"
+	"github.com/HyperspaceProject/Hyperspace/node/api/client"
+	"github.com/HyperspaceProject/Hyperspace/node/api/server"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestNode is a helper struct for testing that contains a server and a client

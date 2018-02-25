@@ -1,7 +1,7 @@
 package siatest
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
 )
 
 type (

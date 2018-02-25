@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 )
 
 // There's a global lock on cpu and memory profiling, because I'm not sure what

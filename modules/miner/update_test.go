@@ -3,7 +3,7 @@ package miner
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // TestIntegrationBlockHeightReorg checks that the miner has the correct block

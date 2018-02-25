@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // TestCheckBuildConstants checks that the required build constants have been

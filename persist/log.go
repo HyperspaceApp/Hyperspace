@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // Logger is a wrapper for the standard library logger that enforces logging

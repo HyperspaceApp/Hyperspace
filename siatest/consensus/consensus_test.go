@@ -3,8 +3,8 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node"
-	"github.com/HardDriveCoin/HardDriveCoin/siatest"
+	"github.com/HyperspaceProject/Hyperspace/node"
+	"github.com/HyperspaceProject/Hyperspace/siatest"
 )
 
 // TestApiHeight checks if the consensus api endpoint works

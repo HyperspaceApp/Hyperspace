@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
 )
 
 // TestTargetAdd probes the Add function of the target type.

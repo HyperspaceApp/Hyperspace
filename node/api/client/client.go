@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
 	"github.com/NebulousLabs/errors"
 )
 

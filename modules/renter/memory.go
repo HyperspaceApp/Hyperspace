@@ -8,7 +8,7 @@ package renter
 import (
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // memoryManager can handle requests for memory and returns of memory. The

@@ -3,10 +3,10 @@ package wallet
 import (
 	"fmt"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/persist"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 const scanMultiplier = 4 // how many more keys to generate after each scan iteration

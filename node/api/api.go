@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // Error is a type that is encoded as JSON and returned in an API response in

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 )
 
 type WorkerRecord struct {

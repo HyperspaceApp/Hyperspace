@@ -5,7 +5,7 @@ import (
 
 	"github.com/klauspost/reedsolomon"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // rsCode is a Reed-Solomon encoder/decoder. It implements the

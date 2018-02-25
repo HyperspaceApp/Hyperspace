@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/modules/renter/proto"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 var errInvalidEditor = errors.New("editor has been invalidated because its contract is being renewed")

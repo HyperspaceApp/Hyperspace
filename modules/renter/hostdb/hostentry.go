@@ -3,8 +3,8 @@ package hostdb
 import (
 	"math"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // updateHostDBEntry updates a HostDBEntries's historic interactions if more

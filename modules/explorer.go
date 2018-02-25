@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 const (

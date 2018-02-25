@@ -3,8 +3,8 @@ package host
 import (
 	"errors"
 
-	"github.com/HardDriveCoin/HardDriveCoin/sync"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 var (

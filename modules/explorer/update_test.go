@@ -3,8 +3,8 @@ package explorer
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 func (et *explorerTester) currentFacts() (facts modules.BlockFacts, exists bool) {

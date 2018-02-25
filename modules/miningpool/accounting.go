@@ -3,7 +3,7 @@ package pool
 import (
 	"fmt"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 func (p *Pool) BlockCount() uint64 {

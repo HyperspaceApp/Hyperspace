@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // TestRenterSiapathValidate verifies that the validateSiapath function correctly validates SiaPaths.

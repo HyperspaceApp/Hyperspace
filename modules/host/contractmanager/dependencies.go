@@ -6,8 +6,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/persist"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/persist"
 	"github.com/NebulousLabs/fastrand"
 )
 

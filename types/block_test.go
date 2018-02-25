@@ -3,8 +3,8 @@ package types
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
-	"github.com/HardDriveCoin/HardDriveCoin/encoding"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceProject/Hyperspace/encoding"
 )
 
 // TestCalculateCoinbase probes the CalculateCoinbase function. The test code

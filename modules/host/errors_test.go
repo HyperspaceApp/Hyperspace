@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // countFileLines is a helper function that will count the number of lines in a

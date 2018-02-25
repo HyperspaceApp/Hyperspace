@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/crypto"
+	"github.com/HyperspaceProject/Hyperspace/crypto"
 )
 
 // ChunkHeap is a bunch of chunks sorted by percentage-completion for uploading.

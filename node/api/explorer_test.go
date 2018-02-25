@@ -3,7 +3,7 @@ package api
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 )
 
 // TestIntegrationExplorerGET probes the GET call to /explorer.

@@ -3,7 +3,7 @@ package siatest
 import (
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 )
 
 // TestCreateTestGroup tests the behavior of NewGroup.

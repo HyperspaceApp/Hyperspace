@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 )
 
 // TestAddStorageFolder tries to add a storage folder to the contract manager,

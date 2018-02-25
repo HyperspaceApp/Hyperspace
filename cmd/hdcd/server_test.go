@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
-	"github.com/HardDriveCoin/HardDriveCoin/node/api/client"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceProject/Hyperspace/node/api/client"
 )
 
 // TestLatestRelease tests that the latestRelease function properly processes a

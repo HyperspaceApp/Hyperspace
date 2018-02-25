@@ -1,10 +1,10 @@
 package consensus
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/build"
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
+	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceProject/Hyperspace/modules"
 
-	siasync "github.com/HardDriveCoin/HardDriveCoin/sync"
+	siasync "github.com/HyperspaceProject/Hyperspace/sync"
 	"github.com/coreos/bbolt"
 )
 

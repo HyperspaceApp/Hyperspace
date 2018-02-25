@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/modules"
-	"github.com/HardDriveCoin/HardDriveCoin/node/api"
+	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceProject/Hyperspace/node/api"
 	"github.com/NebulousLabs/errors"
 )
 

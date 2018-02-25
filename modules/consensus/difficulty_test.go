@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/HardDriveCoin/HardDriveCoin/types"
+	"github.com/HyperspaceProject/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )

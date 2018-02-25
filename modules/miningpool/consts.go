@@ -1,7 +1,7 @@
 package pool
 
 import (
-	"github.com/HardDriveCoin/HardDriveCoin/build"
+	"github.com/HyperspaceProject/Hyperspace/build"
 
 	"time"
 )
