@@ -725,55 +725,6 @@ func TestValidFileContractRevisions(t *testing.T) {
 }
 
 /*
-// TestValidSiafunds probes the validSiafunds mthod of the consensus set.
-func TestValidSiafunds(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	cst, err := createConsensusSetTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cst.closeCst()
-
-	// Create a transaction pointing to a nonexistent siafund output.
-	txn := types.Transaction{
-		SiafundInputs: []types.SiafundInput{{}},
-	}
-	err = cst.cs.validSiafunds(txn)
-	if err != ErrMissingSiafundOutput {
-		t.Error(err)
-	}
-
-	// Create a transaction with invalid unlock conditions.
-	var sfoid types.SiafundOutputID
-	cst.cs.db.forEachSiafundOutputs(func(mapSfoid types.SiafundOutputID, sfo types.SiafundOutput) {
-		sfoid = mapSfoid
-		// pointless to do this but I can't think of a better way.
-	})
-	txn = types.Transaction{
-		SiafundInputs: []types.SiafundInput{{
-			ParentID:         sfoid,
-			UnlockConditions: types.UnlockConditions{Timelock: 12345}, // avoid collisions with existing outputs
-		}},
-	}
-	err = cst.cs.validSiafunds(txn)
-	if err != ErrWrongUnlockConditions {
-		t.Error(err)
-	}
-
-	// Create a transaction with more outputs than inputs.
-	txn = types.Transaction{
-		SiafundOutputs: []types.SiafundOutput{{
-			Value: types.NewCurrency64(1),
-		}},
-	}
-	err = cst.cs.validSiafunds(txn)
-	if err != ErrSiafundInputOutputMismatch {
-		t.Error(err)
-	}
-}
-
 // TestValidTransaction probes the validTransaction method of the consensus
 // set.
 func TestValidTransaction(t *testing.T) {
@@ -822,15 +773,6 @@ func TestValidTransaction(t *testing.T) {
 			NewWindowEnd:   5005,
 			ParentID:       types.FileContractID{},
 		}},
-	}
-	err = cst.cs.validTransaction(txn)
-	if err == nil {
-		t.Error("transaction is valid")
-	}
-
-	// Create a transaction with invalid siafunds.
-	txn = types.Transaction{
-		SiafundInputs: []types.SiafundInput{{}},
 	}
 	err = cst.cs.validTransaction(txn)
 	if err == nil {

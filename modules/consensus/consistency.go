@@ -38,8 +38,6 @@ func consensusChecksum(tx *bolt.Tx) crypto.Hash {
 		tx.Bucket(BlockPath),
 		tx.Bucket(SiacoinOutputs),
 		tx.Bucket(FileContracts),
-		tx.Bucket(SiafundOutputs),
-		tx.Bucket(SiafundPool),
 	}
 	for i := range consensusSetBuckets {
 		err := consensusSetBuckets[i].ForEach(func(k, v []byte) error {
@@ -141,55 +139,16 @@ func checkSiacoinCount(tx *bolt.Tx) {
 		manageErr(tx, err)
 	}
 
-	// Add all of the siafund claims.
-	var claimSiacoins types.Currency
-	err = tx.Bucket(SiafundOutputs).ForEach(func(_, sfoBytes []byte) error {
-		var sfo types.SiafundOutput
-		err := encoding.Unmarshal(sfoBytes, &sfo)
-		if err != nil {
-			manageErr(tx, err)
-		}
-
-		coinsPerFund := getSiafundPool(tx).Sub(sfo.ClaimStart)
-		claimCoins := coinsPerFund.Mul(sfo.Value).Div(types.SiafundCount)
-		claimSiacoins = claimSiacoins.Add(claimCoins)
-		return nil
-	})
-	if err != nil {
-		manageErr(tx, err)
-	}
-
 	expectedSiacoins := types.CalculateNumSiacoins(blockHeight(tx))
-	totalSiacoins := dscoSiacoins.Add(scoSiacoins).Add(fcSiacoins).Add(claimSiacoins)
+	totalSiacoins := dscoSiacoins.Add(scoSiacoins).Add(fcSiacoins)
 	if !totalSiacoins.Equals(expectedSiacoins) {
-		diagnostics := fmt.Sprintf("Wrong number of siacoins\nDsco: %v\nSco: %v\nFc: %v\nClaim: %v\n", dscoSiacoins, scoSiacoins, fcSiacoins, claimSiacoins)
+		diagnostics := fmt.Sprintf("Wrong number of siacoins\nDsco: %v\nSco: %v\nFc: %v\n", dscoSiacoins, scoSiacoins, fcSiacoins)
 		if totalSiacoins.Cmp(expectedSiacoins) < 0 {
 			diagnostics += fmt.Sprintf("total: %v\nexpected: %v\n expected is bigger: %v", totalSiacoins, expectedSiacoins, expectedSiacoins.Sub(totalSiacoins))
 		} else {
 			diagnostics += fmt.Sprintf("total: %v\nexpected: %v\n expected is bigger: %v", totalSiacoins, expectedSiacoins, totalSiacoins.Sub(expectedSiacoins))
 		}
 		manageErr(tx, errors.New(diagnostics))
-	}
-}
-
-// checkSiafundCount checks that the number of siafunds countable within the
-// consensus set equal the expected number of siafunds for the block height.
-func checkSiafundCount(tx *bolt.Tx) {
-	var total types.Currency
-	err := tx.Bucket(SiafundOutputs).ForEach(func(_, siafundOutputBytes []byte) error {
-		var sfo types.SiafundOutput
-		err := encoding.Unmarshal(siafundOutputBytes, &sfo)
-		if err != nil {
-			manageErr(tx, err)
-		}
-		total = total.Add(sfo.Value)
-		return nil
-	})
-	if err != nil {
-		manageErr(tx, err)
-	}
-	if !total.Equals(types.SiafundCount) {
-		manageErr(tx, errors.New("wrong number of siafunds in the consensus set"))
 	}
 }
 
@@ -320,7 +279,6 @@ func (cs *ConsensusSet) checkConsistency(tx *bolt.Tx) {
 	cs.checkingConsistency = true
 	checkDSCOs(tx)
 	checkSiacoinCount(tx)
-	checkSiafundCount(tx)
 	if build.DEBUG {
 		cs.checkRevertApply(tx)
 	}

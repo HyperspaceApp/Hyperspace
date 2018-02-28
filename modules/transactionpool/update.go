@@ -92,13 +92,6 @@ func findSets(ts []types.Transaction) [][]types.Transaction {
 				parentSets[parentSet] = struct{}{}
 			}
 		}
-		for _, obj := range t.SiafundInputs {
-			txid, exists := objMap[ObjectID(obj.ParentID)]
-			if exists {
-				parentSet := forward(txMap[txid])
-				parentSets[parentSet] = struct{}{}
-			}
-		}
 
 		// Determine the new counter for this transaction.
 		if len(parentSets) == 0 {
@@ -144,10 +137,6 @@ func findSets(ts []types.Transaction) [][]types.Transaction {
 		for j := range t.FileContractRevisions {
 			fcid := t.FileContractRevisions[j].ParentID
 			objMap[ObjectID(fcid)] = tid
-		}
-		for j := range t.SiafundOutputs {
-			sfoid := t.SiafundOutputID(uint64(j))
-			objMap[ObjectID(sfoid)] = tid
 		}
 	}
 

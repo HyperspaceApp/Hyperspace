@@ -42,12 +42,6 @@ func relatedObjectIDs(ts []types.Transaction) []ObjectID {
 		for _, sp := range t.StorageProofs {
 			oidMap[ObjectID(sp.ParentID)] = struct{}{}
 		}
-		for _, sfi := range t.SiafundInputs {
-			oidMap[ObjectID(sfi.ParentID)] = struct{}{}
-		}
-		for i := range t.SiafundOutputs {
-			oidMap[ObjectID(t.SiafundOutputID(uint64(i)))] = struct{}{}
-		}
 	}
 
 	var oids []ObjectID
@@ -207,9 +201,6 @@ func (tp *TransactionPool) handleConflicts(ts []types.Transaction, conflicts []T
 		tp.knownObjects[ObjectID(diff.ID)] = setID
 	}
 	for _, diff := range cc.FileContractDiffs {
-		tp.knownObjects[ObjectID(diff.ID)] = setID
-	}
-	for _, diff := range cc.SiafundOutputDiffs {
 		tp.knownObjects[ObjectID(diff.ID)] = setID
 	}
 	tp.transactionSetDiffs[setID] = &cc

@@ -43,8 +43,6 @@ func TestSigHash(t *testing.T) {
 		FileContracts:         []FileContract{{}},
 		FileContractRevisions: []FileContractRevision{{}},
 		StorageProofs:         []StorageProof{{}},
-		SiafundInputs:         []SiafundInput{{}},
-		SiafundOutputs:        []SiafundOutput{{}},
 		MinerFees:             []Currency{{}},
 		ArbitraryData:         [][]byte{{'o'}, {'t'}},
 		TransactionSignatures: []TransactionSignature{
@@ -60,8 +58,6 @@ func TestSigHash(t *testing.T) {
 					FileContracts:         []uint64{0},
 					FileContractRevisions: []uint64{0},
 					StorageProofs:         []uint64{0},
-					SiafundInputs:         []uint64{0},
-					SiafundOutputs:        []uint64{0},
 					MinerFees:             []uint64{0},
 					ArbitraryData:         []uint64{0},
 					TransactionSignatures: []uint64{0},
@@ -119,8 +115,6 @@ func TestTransactionValidCoveredFields(t *testing.T) {
 		FileContracts:         []FileContract{{}},
 		FileContractRevisions: []FileContractRevision{{}},
 		StorageProofs:         []StorageProof{{}},
-		SiafundInputs:         []SiafundInput{{}},
-		SiafundOutputs:        []SiafundOutput{{}},
 		MinerFees:             []Currency{{}},
 		ArbitraryData:         [][]byte{{'o'}, {'t'}},
 		TransactionSignatures: []TransactionSignature{
@@ -204,12 +198,8 @@ func TestTransactionValidSignatures(t *testing.T) {
 		FileContractRevisions: []FileContractRevision{
 			{UnlockConditions: uc},
 		},
-		SiafundInputs: []SiafundInput{
-			{UnlockConditions: uc},
-		},
 	}
 	txn.FileContractRevisions[0].ParentID[0] = 1 // can't overlap with other objects
-	txn.SiafundInputs[0].ParentID[0] = 2         // can't overlap with other objects
 
 	// Create the signatures that spend the output.
 	txn.TransactionSignatures = []TransactionSignature{
@@ -269,7 +259,7 @@ func TestTransactionValidSignatures(t *testing.T) {
 	}
 	txn.TransactionSignatures[0].CoveredFields.SiacoinInputs = nil
 
-	// Double spend a SiacoinInput, FileContractTermination, and SiafundInput.
+	// Double spend a SiacoinInput and FileContractTermination.
 	txn.SiacoinInputs = append(txn.SiacoinInputs, SiacoinInput{UnlockConditions: UnlockConditions{}})
 	err = txn.validSignatures(10)
 	if err == nil {
@@ -282,12 +272,10 @@ func TestTransactionValidSignatures(t *testing.T) {
 		t.Error("failed to double spend a file contract termination")
 	}
 	txn.FileContractRevisions = txn.FileContractRevisions[:len(txn.FileContractRevisions)-1]
-	txn.SiafundInputs = append(txn.SiafundInputs, SiafundInput{UnlockConditions: UnlockConditions{}})
 	err = txn.validSignatures(10)
 	if err == nil {
 		t.Error("failed to double spend a siafund input")
 	}
-	txn.SiafundInputs = txn.SiafundInputs[:len(txn.SiafundInputs)-1]
 
 	// Add a frivolous signature
 	txn.TransactionSignatures = append(txn.TransactionSignatures, TransactionSignature{})

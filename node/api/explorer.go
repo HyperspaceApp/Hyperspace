@@ -42,9 +42,6 @@ type (
 		FileContractRevisionMissedProofOutputIDs [][]types.SiacoinOutputID `json:"filecontractrevisionmissedproofoutputids"` // outer array is per-revision
 		StorageProofOutputIDs                    [][]types.SiacoinOutputID `json:"storageproofoutputids"`                    // outer array is per-payout
 		StorageProofOutputs                      [][]types.SiacoinOutput   `json:"storageproofoutputs"`                      // outer array is per-payout
-		SiafundInputOutputs                      []types.SiafundOutput     `json:"siafundinputoutputs"`                      // the outputs being spent
-		SiafundOutputIDs                         []types.SiafundOutputID   `json:"siafundoutputids"`
-		SiafundClaimOutputIDs                    []types.SiacoinOutputID   `json:"siafundclaimoutputids"`
 	}
 
 	// ExplorerGET is the object returned as a response to a GET request to
@@ -151,22 +148,6 @@ func (api *API) buildExplorerTransaction(height types.BlockHeight, parent types.
 		et.StorageProofOutputs = append(et.StorageProofOutputs, storageProofOutputs)
 	}
 
-	// Add the siafund outputs that correspond to each siacoin input.
-	for _, sci := range txn.SiafundInputs {
-		sco, exists := api.explorer.SiafundOutput(sci.ParentID)
-		if build.DEBUG && !exists {
-			panic("could not find corresponding siafund output")
-		}
-		et.SiafundInputOutputs = append(et.SiafundInputOutputs, sco)
-	}
-
-	for i := range txn.SiafundOutputs {
-		et.SiafundOutputIDs = append(et.SiafundOutputIDs, txn.SiafundOutputID(uint64(i)))
-	}
-
-	for _, sfi := range txn.SiafundInputs {
-		et.SiafundClaimOutputIDs = append(et.SiafundClaimOutputIDs, sfi.ParentID.SiaClaimOutputID())
-	}
 	return et
 }
 
@@ -310,18 +291,6 @@ func (api *API) explorerHashHandler(w http.ResponseWriter, req *http.Request, ps
 		txns, blocks := api.buildTransactionSet(txids)
 		WriteJSON(w, ExplorerHashGET{
 			HashType:     "filecontractid",
-			Blocks:       blocks,
-			Transactions: txns,
-		})
-		return
-	}
-
-	// Try the hash as a siafund output id.
-	txids = api.explorer.SiafundOutputID(types.SiafundOutputID(hash))
-	if len(txids) != 0 {
-		txns, blocks := api.buildTransactionSet(txids)
-		WriteJSON(w, ExplorerHashGET{
-			HashType:     "siafundoutputid",
 			Blocks:       blocks,
 			Transactions: txns,
 		})

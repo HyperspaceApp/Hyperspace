@@ -251,137 +251,6 @@ func (tb *transactionBuilder) FundSiacoins(amount types.Currency) error {
 	return nil
 }
 
-// FundSiafunds will add a siafund input of exactly 'amount' to the
-// transaction. A parent transaction may be needed to achieve an input with the
-// correct value. The siafund input will not be signed until 'Sign' is called
-// on the transaction builder.
-func (tb *transactionBuilder) FundSiafunds(amount types.Currency) error {
-	tb.wallet.mu.Lock()
-	defer tb.wallet.mu.Unlock()
-
-	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
-	if err != nil {
-		return err
-	}
-
-	// Create and fund a parent transaction that will add the correct amount of
-	// siafunds to the transaction.
-	var fund types.Currency
-	var potentialFund types.Currency
-	parentTxn := types.Transaction{}
-	var spentSfoids []types.SiafundOutputID
-	c := tb.wallet.dbTx.Bucket(bucketSiafundOutputs).Cursor()
-	for idBytes, sfoBytes := c.First(); idBytes != nil; idBytes, sfoBytes = c.Next() {
-		var sfoid types.SiafundOutputID
-		var sfo types.SiafundOutput
-		if err := encoding.Unmarshal(idBytes, &sfoid); err != nil {
-			return err
-		} else if err := encoding.Unmarshal(sfoBytes, &sfo); err != nil {
-			return err
-		}
-
-		// Check that this output has not recently been spent by the wallet.
-		spendHeight, err := dbGetSpentOutput(tb.wallet.dbTx, types.OutputID(sfoid))
-		if err != nil {
-			// mimic map behavior: no entry means zero value
-			spendHeight = 0
-		}
-		// Prevent an underflow error.
-		allowedHeight := consensusHeight - RespendTimeout
-		if consensusHeight < RespendTimeout {
-			allowedHeight = 0
-		}
-		if spendHeight > allowedHeight {
-			potentialFund = potentialFund.Add(sfo.Value)
-			continue
-		}
-		outputUnlockConditions := tb.wallet.keys[sfo.UnlockHash].UnlockConditions
-		if consensusHeight < outputUnlockConditions.Timelock {
-			continue
-		}
-
-		// Add a siafund input for this output.
-		parentClaimUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
-		if err != nil {
-			return err
-		}
-		sfi := types.SiafundInput{
-			ParentID:         sfoid,
-			UnlockConditions: outputUnlockConditions,
-			ClaimUnlockHash:  parentClaimUnlockConditions.UnlockHash(),
-		}
-		parentTxn.SiafundInputs = append(parentTxn.SiafundInputs, sfi)
-		spentSfoids = append(spentSfoids, sfoid)
-
-		// Add the output to the total fund
-		fund = fund.Add(sfo.Value)
-		potentialFund = potentialFund.Add(sfo.Value)
-		if fund.Cmp(amount) >= 0 {
-			break
-		}
-	}
-	if potentialFund.Cmp(amount) >= 0 && fund.Cmp(amount) < 0 {
-		return modules.ErrIncompleteTransactions
-	}
-	if fund.Cmp(amount) < 0 {
-		return modules.ErrLowBalance
-	}
-
-	// Create and add the output that will be used to fund the standard
-	// transaction.
-	parentUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
-	if err != nil {
-		return err
-	}
-	exactOutput := types.SiafundOutput{
-		Value:      amount,
-		UnlockHash: parentUnlockConditions.UnlockHash(),
-	}
-	parentTxn.SiafundOutputs = append(parentTxn.SiafundOutputs, exactOutput)
-
-	// Create a refund output if needed.
-	if !amount.Equals(fund) {
-		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
-		if err != nil {
-			return err
-		}
-		refundOutput := types.SiafundOutput{
-			Value:      fund.Sub(amount),
-			UnlockHash: refundUnlockConditions.UnlockHash(),
-		}
-		parentTxn.SiafundOutputs = append(parentTxn.SiafundOutputs, refundOutput)
-	}
-
-	// Sign all of the inputs to the parent transaction.
-	for _, sfi := range parentTxn.SiafundInputs {
-		addSignatures(&parentTxn, types.FullCoveredFields, sfi.UnlockConditions, crypto.Hash(sfi.ParentID), tb.wallet.keys[sfi.UnlockConditions.UnlockHash()])
-	}
-
-	// Add the exact output.
-	claimUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
-	if err != nil {
-		return err
-	}
-	newInput := types.SiafundInput{
-		ParentID:         parentTxn.SiafundOutputID(0),
-		UnlockConditions: parentUnlockConditions,
-		ClaimUnlockHash:  claimUnlockConditions.UnlockHash(),
-	}
-	tb.newParents = append(tb.newParents, len(tb.parents))
-	tb.parents = append(tb.parents, parentTxn)
-	tb.siafundInputs = append(tb.siafundInputs, len(tb.transaction.SiafundInputs))
-	tb.transaction.SiafundInputs = append(tb.transaction.SiafundInputs, newInput)
-
-	// Mark all outputs that were spent as spent.
-	for _, sfoid := range spentSfoids {
-		err = dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(sfoid), consensusHeight)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // AddParents adds a set of parents to the transaction.
 func (tb *transactionBuilder) AddParents(newParents []types.Transaction) {
 	tb.parents = append(tb.parents, newParents...)
@@ -431,21 +300,6 @@ func (tb *transactionBuilder) AddStorageProof(sp types.StorageProof) uint64 {
 	return uint64(len(tb.transaction.StorageProofs) - 1)
 }
 
-// AddSiafundInput adds a siafund input to the transaction, returning the index
-// of the siafund input within the transaction. When 'Sign' is called, this
-// input will be left unsigned.
-func (tb *transactionBuilder) AddSiafundInput(input types.SiafundInput) uint64 {
-	tb.transaction.SiafundInputs = append(tb.transaction.SiafundInputs, input)
-	return uint64(len(tb.transaction.SiafundInputs) - 1)
-}
-
-// AddSiafundOutput adds a siafund output to the transaction, returning the
-// index of the siafund output within the transaction.
-func (tb *transactionBuilder) AddSiafundOutput(output types.SiafundOutput) uint64 {
-	tb.transaction.SiafundOutputs = append(tb.transaction.SiafundOutputs, output)
-	return uint64(len(tb.transaction.SiafundOutputs) - 1)
-}
-
 // AddArbitraryData adds arbitrary data to the transaction, returning the index
 // of the data within the transaction.
 func (tb *transactionBuilder) AddArbitraryData(arb []byte) uint64 {
@@ -456,7 +310,7 @@ func (tb *transactionBuilder) AddArbitraryData(arb []byte) uint64 {
 // AddTransactionSignature adds a transaction signature to the transaction,
 // returning the index of the signature within the transaction. The signature
 // should already be valid, and shouldn't sign any of the inputs that were
-// added by calling 'FundSiacoins' or 'FundSiafunds'.
+// added by calling 'FundSiacoins'.
 func (tb *transactionBuilder) AddTransactionSignature(sig types.TransactionSignature) uint64 {
 	tb.transaction.TransactionSignatures = append(tb.transaction.TransactionSignatures, sig)
 	return uint64(len(tb.transaction.TransactionSignatures) - 1)
@@ -488,7 +342,7 @@ func (tb *transactionBuilder) Drop() {
 	tb.transactionSignatures = nil
 }
 
-// Sign will sign any inputs added by 'FundSiacoins' or 'FundSiafunds' and
+// Sign will sign any inputs added by 'FundSiacoins' and
 // return a transaction set that contains all parents prepended to the
 // transaction. If more fields need to be added, a new transaction builder will
 // need to be created.
@@ -529,12 +383,6 @@ func (tb *transactionBuilder) Sign(wholeTransaction bool) ([]types.Transaction, 
 		for i := range tb.transaction.StorageProofs {
 			coveredFields.StorageProofs = append(coveredFields.StorageProofs, uint64(i))
 		}
-		for i := range tb.transaction.SiafundInputs {
-			coveredFields.SiafundInputs = append(coveredFields.SiafundInputs, uint64(i))
-		}
-		for i := range tb.transaction.SiafundOutputs {
-			coveredFields.SiafundOutputs = append(coveredFields.SiafundOutputs, uint64(i))
-		}
 		for i := range tb.transaction.ArbitraryData {
 			coveredFields.ArbitraryData = append(coveredFields.ArbitraryData, uint64(i))
 		}
@@ -551,16 +399,6 @@ func (tb *transactionBuilder) Sign(wholeTransaction bool) ([]types.Transaction, 
 	defer tb.wallet.mu.RUnlock()
 	for _, inputIndex := range tb.siacoinInputs {
 		input := tb.transaction.SiacoinInputs[inputIndex]
-		key, ok := tb.wallet.keys[input.UnlockConditions.UnlockHash()]
-		if !ok {
-			return nil, errors.New("transaction builder added an input that it cannot sign")
-		}
-		newSigIndices := addSignatures(&tb.transaction, coveredFields, input.UnlockConditions, crypto.Hash(input.ParentID), key)
-		tb.transactionSignatures = append(tb.transactionSignatures, newSigIndices...)
-		tb.signed = true // Signed is set to true after one successful signature to indicate that future signings can cause issues.
-	}
-	for _, inputIndex := range tb.siafundInputs {
-		input := tb.transaction.SiafundInputs[inputIndex]
 		key, ok := tb.wallet.keys[input.UnlockConditions.UnlockHash()]
 		if !ok {
 			return nil, errors.New("transaction builder added an input that it cannot sign")

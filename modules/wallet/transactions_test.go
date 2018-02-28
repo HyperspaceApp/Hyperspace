@@ -175,33 +175,6 @@ func TestIntegrationTransaction(t *testing.T) {
 	} else if exp := txn.Inputs[0].Value.Sub(sentValue); !txn.Outputs[1].Value.Equals(exp) {
 		t.Errorf("expected first output to equal %v, got %v", exp, txn.Outputs[1].Value)
 	}
-
-	// test sending siafunds
-	err = wt.wallet.LoadSiagKeys(wt.walletMasterKey, []string{"../../types/siag0of1of1.siakey"})
-	if err != nil {
-		t.Error(err)
-	}
-	sentValue = types.NewCurrency64(12)
-	sendTxns, err = wt.wallet.SendSiafunds(sentValue, types.UnlockHash{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = wt.miner.AddBlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	txn, exists = wt.wallet.Transaction(sendTxns[1].ID())
-	if !exists {
-		t.Fatal("unable to query transaction")
-	}
-	if len(txn.Inputs) != 1 || len(txn.Outputs) != 3 {
-		t.Error("expected 1 input and 3 outputs, got", len(txn.Inputs), len(txn.Outputs))
-	} else if !txn.Outputs[1].Value.Equals(sentValue) {
-		t.Errorf("expected first output to equal %v, got %v", sentValue, txn.Outputs[1].Value)
-	} else if exp := txn.Inputs[0].Value.Sub(sentValue); !txn.Outputs[2].Value.Equals(exp) {
-		t.Errorf("expected first output to equal %v, got %v", exp, txn.Outputs[2].Value)
-	}
 }
 
 // TestProcessedTxnIndexCompatCode checks if the compatibility code for the

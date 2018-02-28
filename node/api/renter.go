@@ -268,7 +268,7 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, _ *http.Request, _
 		contracts = append(contracts, RenterContract{
 			DownloadSpending:          c.DownloadSpending,
 			EndHeight:                 c.EndHeight,
-			Fees:                      c.TxnFee.Add(c.SiafundFee).Add(c.ContractFee),
+			Fees:                      c.TxnFee.Add(c.ContractFee),
 			GoodForUpload:             goodForUpload,
 			GoodForRenew:              goodForRenew,
 			HostPublicKey:             c.HostPublicKey,

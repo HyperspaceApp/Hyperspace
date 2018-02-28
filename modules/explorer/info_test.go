@@ -101,8 +101,8 @@ func TestFileContractPayoutsMissingProof(t *testing.T) {
 		WindowStart:        windowStart,
 		WindowEnd:          windowEnd,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 		UnlockHash:         types.UnlockConditions{}.UnlockHash(),
 	}
 
@@ -183,12 +183,11 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		WindowStart:        et.cs.Height() + 1,
 		WindowEnd:          et.cs.Height() + 2,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 	}
 
 	// Submit a transaction with the file contract.
-	//oldSiafundPool := cst.cs.dbGetSiafundPool()
 	builder := et.wallet.StartTransaction()
 	err = builder.FundSiacoins(payout)
 	if err != nil {

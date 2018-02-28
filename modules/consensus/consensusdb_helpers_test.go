@@ -142,44 +142,6 @@ func (cs *ConsensusSet) dbRemoveFileContract(id types.FileContractID) {
 	}
 }
 
-// dbGetSiafundOutput is a convenience function allowing getSiafundOutput to be
-// called without a bolt.Tx.
-func (cs *ConsensusSet) dbGetSiafundOutput(id types.SiafundOutputID) (sfo types.SiafundOutput, err error) {
-	dbErr := cs.db.View(func(tx *bolt.Tx) error {
-		sfo, err = getSiafundOutput(tx, id)
-		return nil
-	})
-	if dbErr != nil {
-		panic(dbErr)
-	}
-	return sfo, err
-}
-
-// dbAddSiafundOutput is a convenience function allowing addSiafundOutput to be
-// called without a bolt.Tx.
-func (cs *ConsensusSet) dbAddSiafundOutput(id types.SiafundOutputID, sfo types.SiafundOutput) {
-	dbErr := cs.db.Update(func(tx *bolt.Tx) error {
-		addSiafundOutput(tx, id, sfo)
-		return nil
-	})
-	if dbErr != nil {
-		panic(dbErr)
-	}
-}
-
-// dbGetSiafundPool is a convenience function allowing getSiafundPool to be
-// called without a bolt.Tx.
-func (cs *ConsensusSet) dbGetSiafundPool() (siafundPool types.Currency) {
-	dbErr := cs.db.View(func(tx *bolt.Tx) error {
-		siafundPool = getSiafundPool(tx)
-		return nil
-	})
-	if dbErr != nil {
-		panic(dbErr)
-	}
-	return siafundPool
-}
-
 // dbGetDSCO is a convenience function allowing a delayed siacoin output to be
 // fetched without a bolt.Tx. An error is returned if the delayed output is not
 // found at the maturity height indicated by the input.

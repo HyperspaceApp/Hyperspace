@@ -75,18 +75,6 @@ can then use the siacoins to fund file contracts, or can send the siacoins to
 other parties. The siacoin is represented by an infinite precision unsigned
 integer.
 
-The second currency in the Sia cryptosystem is the Siafund, which is a special
-asset limited to 10,000 indivisible units. Each time a file contract payout is
-made, 3.9% of the payout is put into the siafund pool. The number of siacoins
-in the siafund pool must always be divisible by 10,000; the number of coins
-taken from the payout is rounded down to the nearest 10,000. The siafund is
-also represented by an infinite precision unsigned integer.
-
-Siafund owners can collect the siacoins in the siafund pool. For every 10,000
-siacoins added to the siafund pool, a siafund owner can withdraw 1 siacoin.
-Approx. 8790 siafunds are owned by Nebulous Inc. The remaining siafunds are
-owned by early backers of the Sia project.
-
 There are future plans to enable sidechain compatibility with Sia. This would
 allow other currencies such as Bitcoin to be spent in all the same places that
 the Siacoin can be spent.
@@ -186,8 +174,6 @@ A Transaction is composed of the following:
 - File Contracts
 - File Contract Revisions
 - Storage Proofs
-- Siafund Inputs
-- Siafund Outputs
 - Miner Fees
 - Arbitrary Data
 - Transaction Signatures
@@ -314,43 +300,6 @@ These limits are in place because a simple blockchain reorganization can change
 the trigger block, which will invalidate the storage proof and therefore the
 entire transaction. This makes double spend attacks and false spend attacks
 significantly easier to execute.
-
-Siafund Inputs
---------------
-
-A siafund input works similar to a siacoin input. It contains the id of a
-siafund output being spent, and the unlock conditions required to spend the
-output.
-
-A special output is created when a siafund output is used as input. All of the
-siacoins that have accrued in the siafund since its last spend are sent to the
-'claim spend hash' found in the siafund output, which is a normal siacoin
-address. The value of the siacoin output is determined by taking the size of
-the siacoin pool when the output was created and comparing it to the current
-size of the siacoin pool. The equation is:
-
-	((Current Pool Size - Previous Pool Size) / 10,000) * siafund quantity
-
-Like the miner outputs and the storage proof outputs, the siafund output cannot
-be spent for 50 blocks because the value of the output can change if the
-blockchain reorganizes. Reorganizations will not however cause the transaction
-to be invalidated, so the ban on contracts and outputs does not need to be in
-place.
-
-Siafund Outputs
----------------
-
-Like siacoin outputs, siafund outputs contain a value and an unlock hash. The
-value indicates the number of siafunds that are put into the output, and the
-unlock hash is the Merkle root of the unlock conditions object which allows the
-output to be spent.
-
-Siafund outputs also contain a claim unlock hash field, which indicates the
-unlock hash of the siacoin output that is created when the siafund output is
-spent. The value of the output that gets created will depend on the growth of
-the siacoin pool between the creation and the spending of the output. This
-growth is measured by storing a 'claim start', which indicates the size of the
-siafund pool at the moment the siafund output was created.
 
 Miner Fees
 ----------

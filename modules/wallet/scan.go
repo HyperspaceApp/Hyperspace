@@ -59,7 +59,6 @@ type seedScanner struct {
 	largestIndexSeen uint64                      // largest index that has appeared in the blockchain
 	seed             modules.Seed
 	siacoinOutputs   map[types.SiacoinOutputID]scannedOutput
-	siafundOutputs   map[types.SiafundOutputID]scannedOutput
 
 	log *persist.Logger
 }
@@ -97,38 +96,10 @@ func (s *seedScanner) ProcessConsensusChange(cc modules.ConsensusChange) {
 			}
 		}
 	}
-	for _, diff := range cc.SiafundOutputDiffs {
-		if diff.Direction == modules.DiffApply {
-			// do not compare against dustThreshold here; we always want to
-			// sweep every siafund found
-			if index, exists := s.keys[diff.SiafundOutput.UnlockHash]; exists {
-				s.siafundOutputs[diff.ID] = scannedOutput{
-					id:        types.OutputID(diff.ID),
-					value:     diff.SiafundOutput.Value,
-					seedIndex: index,
-				}
-			}
-		} else if diff.Direction == modules.DiffRevert {
-			// NOTE: DiffRevert means the output was either spent or was in a
-			// block that was reverted.
-			if _, exists := s.keys[diff.SiafundOutput.UnlockHash]; exists {
-				delete(s.siafundOutputs, diff.ID)
-			}
-		}
-	}
 
 	// update s.largestIndexSeen
 	for _, diff := range cc.SiacoinOutputDiffs {
 		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
-		if exists {
-			s.log.Debugln("Seed scanner found a key used at index", index)
-			if index > s.largestIndexSeen {
-				s.largestIndexSeen = index
-			}
-		}
-	}
-	for _, diff := range cc.SiafundOutputDiffs {
-		index, exists := s.keys[diff.SiafundOutput.UnlockHash]
 		if exists {
 			s.log.Debugln("Seed scanner found a key used at index", index)
 			if index > s.largestIndexSeen {
@@ -175,7 +146,6 @@ func newSeedScanner(seed modules.Seed, log *persist.Logger) *seedScanner {
 		seed:           seed,
 		keys:           make(map[types.UnlockHash]uint64, numInitialKeys),
 		siacoinOutputs: make(map[types.SiacoinOutputID]scannedOutput),
-		siafundOutputs: make(map[types.SiafundOutputID]scannedOutput),
 
 		log: log,
 	}

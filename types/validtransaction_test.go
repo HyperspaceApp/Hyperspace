@@ -173,7 +173,6 @@ func TestTransactionFollowsMinimumValues(t *testing.T) {
 	txn := Transaction{
 		SiacoinOutputs: []SiacoinOutput{{Value: NewCurrency64(1)}},
 		FileContracts:  []FileContract{{Payout: NewCurrency64(1)}},
-		SiafundOutputs: []SiafundOutput{{Value: NewCurrency64(1)}},
 		MinerFees:      []Currency{NewCurrency64(1)},
 	}
 	err := txn.followsMinimumValues()
@@ -194,12 +193,10 @@ func TestTransactionFollowsMinimumValues(t *testing.T) {
 		t.Error(err)
 	}
 	txn.FileContracts[0].Payout = NewCurrency64(1)
-	txn.SiafundOutputs[0].Value = ZeroCurrency
 	err = txn.followsMinimumValues()
 	if err != ErrZeroOutput {
 		t.Error(err)
 	}
-	txn.SiafundOutputs[0].Value = NewCurrency64(1)
 	txn.MinerFees[0] = ZeroCurrency
 	err = txn.followsMinimumValues()
 	if err != ErrZeroMinerFee {
@@ -208,12 +205,10 @@ func TestTransactionFollowsMinimumValues(t *testing.T) {
 	txn.MinerFees[0] = NewCurrency64(1)
 
 	// Try a non-zero value for the ClaimStart field of a siafund output.
-	txn.SiafundOutputs[0].ClaimStart = NewCurrency64(1)
 	err = txn.followsMinimumValues()
 	if err != ErrNonZeroClaimStart {
 		t.Error(err)
 	}
-	txn.SiafundOutputs[0].ClaimStart = ZeroCurrency
 }
 
 // TestTransactionFollowsStorageProofRules probes the followsStorageProofRules
@@ -258,12 +253,10 @@ func TestTransactionFollowsStorageProofRules(t *testing.T) {
 	txn.FileContractRevisions = nil
 
 	// Try a transaction with a storage proof and a FileContractRevision.
-	txn.SiafundOutputs = append(txn.SiafundOutputs, SiafundOutput{})
 	err = txn.followsStorageProofRules()
 	if err != ErrStorageProofWithOutputs {
 		t.Error(err)
 	}
-	txn.SiafundOutputs = nil
 }
 
 // TestTransactionNoRepeats probes the noRepeats method of the Transaction
@@ -274,7 +267,6 @@ func TestTransactionNoRepeats(t *testing.T) {
 		SiacoinInputs:         []SiacoinInput{{}},
 		StorageProofs:         []StorageProof{{}},
 		FileContractRevisions: []FileContractRevision{{}},
-		SiafundInputs:         []SiafundInput{{}},
 	}
 	txn.FileContractRevisions[0].ParentID[0] = 1 // Otherwise it will conflict with the storage proof.
 	err := txn.noRepeats()
@@ -315,14 +307,6 @@ func TestTransactionNoRepeats(t *testing.T) {
 		t.Error(err)
 	}
 	txn.FileContractRevisions = txn.FileContractRevisions[:1]
-
-	// Try a transaction double spending a siafund output.
-	txn.SiafundInputs = append(txn.SiafundInputs, SiafundInput{})
-	err = txn.noRepeats()
-	if err != ErrDoubleSpend {
-		t.Error(err)
-	}
-	txn.SiafundInputs = txn.SiafundInputs[:1]
 }
 
 // TestValudUnlockConditions probes the validUnlockConditions function.
@@ -354,9 +338,6 @@ func TestTransactionValidUnlockConditions(t *testing.T) {
 		FileContractRevisions: []FileContractRevision{
 			{UnlockConditions: UnlockConditions{Timelock: 3}},
 		},
-		SiafundInputs: []SiafundInput{
-			{UnlockConditions: UnlockConditions{Timelock: 3}},
-		},
 	}
 	err := txn.validUnlockConditions(4)
 	if err != nil {
@@ -378,14 +359,6 @@ func TestTransactionValidUnlockConditions(t *testing.T) {
 		t.Error(err)
 	}
 	txn.FileContractRevisions[0].UnlockConditions.Timelock = 3
-
-	// Try with illegal conditions in the siafund inputs.
-	txn.SiafundInputs[0].UnlockConditions.Timelock = 5
-	err = txn.validUnlockConditions(4)
-	if err == nil {
-		t.Error(err)
-	}
-	txn.SiafundInputs[0].UnlockConditions.Timelock = 3
 }
 
 // TestTransactionStandaloneValid probes the StandaloneValid method of the

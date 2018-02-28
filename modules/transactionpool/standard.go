@@ -88,12 +88,6 @@ func isStandardTransaction(t types.Transaction) (uint64, error) {
 			return 0, err
 		}
 	}
-	for _, sfi := range t.SiafundInputs {
-		err := checkUnlockConditions(sfi.UnlockConditions)
-		if err != nil {
-			return 0, err
-		}
-	}
 
 	// Check that all arbitrary data is prefixed using the recognized set of
 	// prefixes. The allowed prefixes include a 'NonSia' prefix for truly

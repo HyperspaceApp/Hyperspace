@@ -44,7 +44,6 @@ func TestIntegrationChangeLog(t *testing.T) {
 
 	// Create a copy of the subscriber that will join when it is not at 0, but it is behind.
 	behindSubscriber := ms.copySub()
-	cst.addSiafunds()
 	cst.mineSiacoins()
 	cst.cs.ConsensusSetSubscribe(&behindSubscriber, behindSubscriber.updates[len(behindSubscriber.updates)-1].ID, cst.cs.tg.StopChan())
 	if types.BlockHeight(len(behindSubscriber.updates)) != cst.cs.dbBlockHeight()+1 {

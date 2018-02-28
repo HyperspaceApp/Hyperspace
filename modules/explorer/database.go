@@ -21,8 +21,6 @@ var (
 	bucketInternal         = []byte("Internal")
 	bucketSiacoinOutputIDs = []byte("SiacoinOutputIDs")
 	bucketSiacoinOutputs   = []byte("SiacoinOutputs")
-	bucketSiafundOutputIDs = []byte("SiafundOutputIDs")
-	bucketSiafundOutputs   = []byte("SiafundOutputs")
 	bucketTransactionIDs   = []byte("TransactionIDs")
 	bucketUnlockHashes     = []byte("UnlockHashes")
 

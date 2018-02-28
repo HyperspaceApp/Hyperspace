@@ -44,8 +44,6 @@ func (e *Explorer) initPersist() error {
 			bucketInternal,
 			bucketSiacoinOutputIDs,
 			bucketSiacoinOutputs,
-			bucketSiafundOutputIDs,
-			bucketSiafundOutputs,
 			bucketTransactionIDs,
 			bucketUnlockHashes,
 		}

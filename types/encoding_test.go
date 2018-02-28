@@ -69,18 +69,6 @@ var heavyBlock = func() Block {
 				StorageProofs: []StorageProof{{
 					HashSet: []crypto.Hash{{}},
 				}},
-				SiafundInputs: []SiafundInput{{
-					UnlockConditions: UnlockConditions{
-						PublicKeys: []SiaPublicKey{{
-							Algorithm: SignatureEd25519,
-							Key:       fastrand.Bytes(32),
-						}},
-					},
-				}},
-				SiafundOutputs: []SiafundOutput{{
-					ClaimStart: NewCurrency64(99),
-					Value:      NewCurrency64(25),
-				}},
 				MinerFees:     []Currency{NewCurrency64(215)},
 				ArbitraryData: [][]byte{fastrand.Bytes(10)},
 				TransactionSignatures: []TransactionSignature{{
@@ -93,8 +81,6 @@ var heavyBlock = func() Block {
 						FileContracts:         []uint64{2},
 						FileContractRevisions: []uint64{3},
 						StorageProofs:         []uint64{4},
-						SiafundInputs:         []uint64{5},
-						SiafundOutputs:        []uint64{6},
 						MinerFees:             []uint64{7},
 						ArbitraryData:         []uint64{8},
 						TransactionSignatures: []uint64{9},
@@ -116,9 +102,6 @@ var heavyBlock = func() Block {
 	fastrand.Read(b.Transactions[0].StorageProofs[0].ParentID[:])
 	fastrand.Read(b.Transactions[0].StorageProofs[0].HashSet[0][:])
 	fastrand.Read(b.Transactions[0].StorageProofs[0].Segment[:])
-	fastrand.Read(b.Transactions[0].SiafundInputs[0].ParentID[:])
-	fastrand.Read(b.Transactions[0].SiafundInputs[0].ClaimUnlockHash[:])
-	fastrand.Read(b.Transactions[0].SiafundOutputs[0].UnlockHash[:])
 	fastrand.Read(b.Transactions[0].TransactionSignatures[0].ParentID[:])
 	return b
 }()
@@ -338,8 +321,6 @@ func TestTransactionEncoding(t *testing.T) {
 		FileContracts:         []FileContract{{}},
 		FileContractRevisions: []FileContractRevision{{}},
 		StorageProofs:         []StorageProof{{}},
-		SiafundInputs:         []SiafundInput{{}},
-		SiafundOutputs:        []SiafundOutput{{}},
 		MinerFees:             []Currency{{}},
 		ArbitraryData:         [][]byte{{}},
 		TransactionSignatures: []TransactionSignature{{}},
@@ -383,42 +364,6 @@ func TestSiacoinOutputEncoding(t *testing.T) {
 	}
 }
 
-// TestSiafundInputEncoding tests that optimizations applied to the encoding
-// of the SiafundInput type do not change its encoding.
-func TestSiafundInputEncoding(t *testing.T) {
-	var sci SiafundInput
-	if h := hashStr(sci); h != "978a948b1a92bcddcea382bafc7718a25f8cc49b8fb11db5d9159afa960cf70a" {
-		t.Error("encoding mismatch:", h)
-	}
-
-	sci = SiafundInput{
-		ParentID:         SiafundOutputID{1, 2, 3},
-		UnlockConditions: UnlockConditions{1, nil, 3},
-		ClaimUnlockHash:  UnlockHash{1, 2, 3},
-	}
-	if h := hashStr(sci); h != "1a6781ca002262e1def98e294f86dd81f866e2db9029954c64a36d20d0c6b46f" {
-		t.Error("encoding mismatch:", h)
-	}
-}
-
-// TestSiafundOutputEncoding tests that optimizations applied to the encoding
-// of the SiafundOutput type do not change its encoding.
-func TestSiafundOutputEncoding(t *testing.T) {
-	var sco SiafundOutput
-	if h := hashStr(sco); h != "df69a516de12056d0895fdea7a0274c5aba67091543238670513104c1af69c1f" {
-		t.Error("encoding mismatch:", h)
-	}
-
-	sco = SiafundOutput{
-		Value:      NewCurrency64(0),
-		UnlockHash: UnlockHash{1, 2, 3},
-		ClaimStart: NewCurrency64(4),
-	}
-	if h := hashStr(sco); h != "9524d2250b21adc76967e9f86d26a68982727329e5c42a6bf5e62504891a5176" {
-		t.Error("encoding mismatch:", h)
-	}
-}
-
 // TestCoveredFieldsEncoding tests that optimizations applied to the encoding
 // of the CoveredFields type do not change its encoding.
 func TestCoveredFieldsEncoding(t *testing.T) {
@@ -434,8 +379,6 @@ func TestCoveredFieldsEncoding(t *testing.T) {
 		FileContracts:         []uint64{2},
 		FileContractRevisions: []uint64{3},
 		StorageProofs:         []uint64{4},
-		SiafundInputs:         []uint64{5},
-		SiafundOutputs:        []uint64{6},
 		MinerFees:             []uint64{7},
 		ArbitraryData:         []uint64{8},
 		TransactionSignatures: []uint64{9, 10},
@@ -708,8 +651,6 @@ func TestTransactionMarshalSiaSize(t *testing.T) {
 		FileContracts:         []FileContract{{}},
 		FileContractRevisions: []FileContractRevision{{}},
 		StorageProofs:         []StorageProof{{}},
-		SiafundInputs:         []SiafundInput{{}},
-		SiafundOutputs:        []SiafundOutput{{}},
 		MinerFees:             []Currency{{}},
 		ArbitraryData:         [][]byte{{}},
 		TransactionSignatures: []TransactionSignature{{}},

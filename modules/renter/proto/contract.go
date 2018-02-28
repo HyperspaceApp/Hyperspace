@@ -52,7 +52,6 @@ type contractHeader struct {
 	TotalCost        types.Currency
 	ContractFee      types.Currency
 	TxnFee           types.Currency
-	SiafundFee       types.Currency
 }
 
 // validate returns an error if the contractHeader is invalid.
@@ -127,7 +126,6 @@ func (c *SafeContract) Metadata() modules.RenterContract {
 		TotalCost:        h.TotalCost,
 		ContractFee:      h.ContractFee,
 		TxnFee:           h.TxnFee,
-		SiafundFee:       h.SiafundFee,
 	}
 }
 
@@ -441,7 +439,6 @@ func (cs *ContractSet) ConvertV130Contract(c V130Contract, cr V130CachedRevision
 		TotalCost:        c.TotalCost,
 		ContractFee:      c.ContractFee,
 		TxnFee:           c.TxnFee,
-		SiafundFee:       c.SiafundFee,
 	}, c.MerkleRoots)
 	if err != nil {
 		return err
@@ -481,7 +478,6 @@ type V130Contract struct {
 	TotalCost        types.Currency             `json:"totalcost"`
 	ContractFee      types.Currency             `json:"contractfee"`
 	TxnFee           types.Currency             `json:"txnfee"`
-	SiafundFee       types.Currency             `json:"siafundfee"`
 }
 
 // EndHeight returns the height at which the host is no longer obligated to

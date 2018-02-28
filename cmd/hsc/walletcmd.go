@@ -140,14 +140,6 @@ A miner fee of 10 SC is levied on all transactions.`,
 		Run: wrap(walletsendsiacoinscmd),
 	}
 
-	walletSendSiafundsCmd = &cobra.Command{
-		Use:   "siafunds [amount] [dest]",
-		Short: "Send siafunds",
-		Long: `Send siafunds to an address, and transfer the claim siacoins to your wallet.
-Run 'wallet send --help' to see a list of available units.`,
-		Run: wrap(walletsendsiafundscmd),
-	}
-
 	walletSweepCmd = &cobra.Command{
 		Use:   "sweep",
 		Short: "Sweep siacoins and siafunds from a seed.",
@@ -442,12 +434,10 @@ Height:              %v
 Confirmed Balance:   %v
 Unconfirmed Delta:  %v
 Exact:               %v H
-Siafunds:            %v SF
-Siafund Claims:      %v H
 
 Estimated Fee:       %v / KB
 `, encStatus, status.Height, currencyUnits(status.ConfirmedSiacoinBalance), delta,
-		status.ConfirmedSiacoinBalance, status.SiafundBalance, status.SiacoinClaimBalance,
+		status.ConfirmedSiacoinBalance,
 		fees.Maximum.Mul64(1e3).HumanString())
 }
 
@@ -479,28 +469,20 @@ func wallettransactionscmd() {
 	for _, txn := range txns {
 		// Determine the number of outgoing siacoins and siafunds.
 		var outgoingSiacoins types.Currency
-		var outgoingSiafunds types.Currency
 		for _, input := range txn.Inputs {
 			if input.FundType == types.SpecifierSiacoinInput && input.WalletAddress {
 				outgoingSiacoins = outgoingSiacoins.Add(input.Value)
-			}
-			if input.FundType == types.SpecifierSiafundInput && input.WalletAddress {
-				outgoingSiafunds = outgoingSiafunds.Add(input.Value)
 			}
 		}
 
 		// Determine the number of incoming siacoins and siafunds.
 		var incomingSiacoins types.Currency
-		var incomingSiafunds types.Currency
 		for _, output := range txn.Outputs {
 			if output.FundType == types.SpecifierMinerPayout {
 				incomingSiacoins = incomingSiacoins.Add(output.Value)
 			}
 			if output.FundType == types.SpecifierSiacoinOutput && output.WalletAddress {
 				incomingSiacoins = incomingSiacoins.Add(output.Value)
-			}
-			if output.FundType == types.SpecifierSiafundOutput && output.WalletAddress {
-				incomingSiafunds = incomingSiafunds.Add(output.Value)
 			}
 		}
 
@@ -520,12 +502,6 @@ func wallettransactionscmd() {
 			fmt.Printf(" unconfirmed")
 		}
 		fmt.Printf("%67v%15.2f SC", txn.TransactionID, incomingSiacoinsFloat-outgoingSiacoinsFloat)
-		// For siafunds, need to avoid having a negative types.Currency.
-		if incomingSiafunds.Cmp(outgoingSiafunds) >= 0 {
-			fmt.Printf("%14v SF\n", incomingSiafunds.Sub(outgoingSiafunds))
-		} else {
-			fmt.Printf("-%14v SF\n", outgoingSiafunds.Sub(incomingSiafunds))
-		}
 	}
 }
 

@@ -56,7 +56,7 @@ func (t Transaction) correctFileContracts(currentHeight BlockHeight) error {
 			*/
 			missedProofOutputSum = missedProofOutputSum.Add(output.Value)
 		}
-		outputPortion := PostTax(currentHeight, fc.Payout)
+		outputPortion := fc.Payout
 		if validProofOutputSum.Cmp(outputPortion) != 0 {
 			return ErrFileContractOutputSumViolation
 		}
@@ -135,17 +135,6 @@ func (t Transaction) followsMinimumValues() error {
 			return ErrZeroOutput
 		}
 	}
-	for _, sfo := range t.SiafundOutputs {
-		// SiafundOutputs are special in that they have a reserved field, the
-		// ClaimStart, which gets sent over the wire but must always be set to
-		// 0. The Value must always be greater than 0.
-		if !sfo.ClaimStart.IsZero() {
-			return ErrNonZeroClaimStart
-		}
-		if sfo.Value.IsZero() {
-			return ErrZeroOutput
-		}
-	}
 	for _, fee := range t.MinerFees {
 		if fee.IsZero() {
 			return ErrZeroMinerFee
@@ -176,9 +165,6 @@ func (t Transaction) followsStorageProofRules() error {
 		return ErrStorageProofWithOutputs
 	}
 	if len(t.FileContractRevisions) != 0 {
-		return ErrStorageProofWithOutputs
-	}
-	if len(t.SiafundOutputs) != 0 {
 		return ErrStorageProofWithOutputs
 	}
 
@@ -217,14 +203,6 @@ func (t Transaction) noRepeats() error {
 		}
 		doneFileContracts[fcr.ParentID] = struct{}{}
 	}
-	siafundInputs := make(map[SiafundOutputID]struct{})
-	for _, sfi := range t.SiafundInputs {
-		_, exists := siafundInputs[sfi.ParentID]
-		if exists {
-			return ErrDoubleSpend
-		}
-		siafundInputs[sfi.ParentID] = struct{}{}
-	}
 	return nil
 }
 
@@ -251,12 +229,6 @@ func (t Transaction) validUnlockConditions(currentHeight BlockHeight) (err error
 	}
 	for _, fcr := range t.FileContractRevisions {
 		err = validUnlockConditions(fcr.UnlockConditions, currentHeight)
-		if err != nil {
-			return
-		}
-	}
-	for _, sfi := range t.SiafundInputs {
-		err = validUnlockConditions(sfi.UnlockConditions, currentHeight)
 		if err != nil {
 			return
 		}

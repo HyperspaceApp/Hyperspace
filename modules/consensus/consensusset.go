@@ -124,17 +124,6 @@ func New(gateway modules.Gateway, bootstrap bool, persistDir string) (*Consensus
 		persistDir: persistDir,
 	}
 
-	// Create the diffs for the genesis siafund outputs.
-	for i, siafundOutput := range types.GenesisBlock.Transactions[0].SiafundOutputs {
-		sfid := types.GenesisBlock.Transactions[0].SiafundOutputID(uint64(i))
-		sfod := modules.SiafundOutputDiff{
-			Direction:     modules.DiffApply,
-			ID:            sfid,
-			SiafundOutput: siafundOutput,
-		}
-		cs.blockRoot.SiafundOutputDiffs = append(cs.blockRoot.SiafundOutputDiffs, sfod)
-	}
-
 	// Initialize the consensus persistence structures.
 	err := cs.initPersist()
 	if err != nil {

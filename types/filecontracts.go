@@ -4,7 +4,6 @@ package types
 // contracts.
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/build"
 	"github.com/HyperspaceProject/Hyperspace/crypto"
 )
 
@@ -82,8 +81,8 @@ type (
 	// StorageProofSegment for the exact implementation.
 	//
 	// A transaction with a StorageProof cannot have any SiacoinOutputs,
-	// SiafundOutputs, or FileContracts. This is because a mundane reorg can
-	// invalidate the proof, and with it the rest of the transaction.
+	// or FileContracts. This is because a mundane reorg can invalidate
+	// the proof, and with it the rest of the transaction.
 	StorageProof struct {
 		ParentID FileContractID           `json:"parentid"`
 		Segment  [crypto.SegmentSize]byte `json:"segment"`
@@ -106,20 +105,4 @@ func (fcid FileContractID) StorageProofOutputID(proofStatus ProofStatus, i uint6
 		proofStatus,
 		i,
 	))
-}
-
-// PostTax returns the amount of currency remaining in a file contract payout
-// after tax.
-func PostTax(height BlockHeight, payout Currency) Currency {
-	return payout.Sub(Tax(height, payout))
-}
-
-// Tax returns the amount of Currency that will be taxed from fc.
-func Tax(height BlockHeight, payout Currency) Currency {
-	// COMPATv0.4.0 - until the first 20,000 blocks have been archived, they
-	// will need to be handled in a special way.
-	if (height < 21e3 && build.Release == "standard") || (height < 10 && build.Release == "testing") {
-		return payout.MulFloat(0.039).RoundDown(SiafundCount)
-	}
-	return payout.MulTax().RoundDown(SiafundCount)
 }

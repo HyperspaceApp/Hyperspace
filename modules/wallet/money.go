@@ -24,7 +24,7 @@ func (w *Wallet) DustThreshold() types.Currency {
 
 // ConfirmedBalance returns the balance of the wallet according to all of the
 // confirmed transactions.
-func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency, siafundBalance types.Currency, siafundClaimBalance types.Currency) {
+func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency) {
 	// dustThreshold has to be obtained separate from the lock
 	dustThreshold := w.DustThreshold()
 
@@ -40,20 +40,6 @@ func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency, siafundBalan
 		}
 	})
 
-	siafundPool, err := dbGetSiafundPool(w.dbTx)
-	if err != nil {
-		return
-	}
-	dbForEachSiafundOutput(w.dbTx, func(_ types.SiafundOutputID, sfo types.SiafundOutput) {
-		siafundBalance = siafundBalance.Add(sfo.Value)
-		if sfo.ClaimStart.Cmp(siafundPool) > 0 {
-			// Skip claims larger than the siafund pool. This should only
-			// occur if the siafund pool has not been initialized yet.
-			w.log.Debugf("skipping claim with start value %v because siafund pool is only %v", sfo.ClaimStart, siafundPool)
-			return
-		}
-		siafundClaimBalance = siafundClaimBalance.Add(siafundPool.Sub(sfo.ClaimStart).Mul(sfo.Value).Div(types.SiafundCount))
-	})
 	return
 }
 
@@ -207,54 +193,6 @@ func (w *Wallet) SendSiacoinsMulti(outputs []types.SiacoinOutput) (txns []types.
 		outputList = outputList + "\n\tAddress: " + output.UnlockHash.String() + "\n\tValue: " + output.Value.HumanString() + "\n"
 	}
 	w.log.Printf("Successfully broadcast transaction with id %v, fee %v, and the following outputs: %v", txnSet[len(txnSet)-1].ID(), tpoolFee.HumanString(), outputList)
-	return txnSet, nil
-}
-
-// SendSiafunds creates a transaction sending 'amount' to 'dest'. The transaction
-// is submitted to the transaction pool and is also returned.
-func (w *Wallet) SendSiafunds(amount types.Currency, dest types.UnlockHash) ([]types.Transaction, error) {
-	if err := w.tg.Add(); err != nil {
-		return nil, err
-	}
-	defer w.tg.Done()
-	w.mu.RLock()
-	unlocked := w.unlocked
-	w.mu.RUnlock()
-	if !unlocked {
-		return nil, modules.ErrLockedWallet
-	}
-
-	_, tpoolFee := w.tpool.FeeEstimation()
-	tpoolFee = tpoolFee.Mul64(750) // Estimated transaction size in bytes
-	tpoolFee = tpoolFee.Mul64(5)   // use large fee to ensure siafund transactions are selected by miners
-	output := types.SiafundOutput{
-		Value:      amount,
-		UnlockHash: dest,
-	}
-
-	txnBuilder := w.StartTransaction()
-	err := txnBuilder.FundSiacoins(tpoolFee)
-	if err != nil {
-		return nil, err
-	}
-	err = txnBuilder.FundSiafunds(amount)
-	if err != nil {
-		return nil, err
-	}
-	txnBuilder.AddMinerFee(tpoolFee)
-	txnBuilder.AddSiafundOutput(output)
-	txnSet, err := txnBuilder.Sign(true)
-	if err != nil {
-		return nil, err
-	}
-	err = w.tpool.AcceptTransactionSet(txnSet)
-	if err != nil {
-		return nil, err
-	}
-	w.log.Println("Submitted a siafund transfer transaction set for value", amount.HumanString(), "with fees", tpoolFee.HumanString(), "IDs:")
-	for _, txn := range txnSet {
-		w.log.Println("\t", txn.ID())
-	}
 	return txnSet, nil
 }
 

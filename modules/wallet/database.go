@@ -29,10 +29,6 @@ var (
 	// outputs that the wallet controls are stored. The wallet uses these
 	// outputs to fund transactions.
 	bucketSiacoinOutputs = []byte("bucketSiacoinOutputs")
-	// bucketSiacoinOutputs maps a SiafundOutputID to its SiafundOutput. Only
-	// outputs that the wallet controls are stored. The wallet uses these
-	// outputs to fund transactions.
-	bucketSiafundOutputs = []byte("bucketSiafundOutputs")
 	// bucketSpentOutputs maps an OutputID to the height at which it was
 	// spent. Only outputs spent by the wallet are stored. The wallet tracks
 	// these outputs so that it can reuse them if they are not confirmed on
@@ -47,7 +43,6 @@ var (
 		bucketProcessedTxnIndex,
 		bucketAddrTransactions,
 		bucketSiacoinOutputs,
-		bucketSiafundOutputs,
 		bucketSpentOutputs,
 		bucketWallet,
 	}
@@ -61,7 +56,6 @@ var (
 	keyEncryptionVerification = []byte("keyEncryptionVerification")
 	keyPrimarySeedFile        = []byte("keyPrimarySeedFile")
 	keyPrimarySeedProgress    = []byte("keyPrimarySeedProgress")
-	keySiafundPool            = []byte("keySiafundPool")
 	keySpendableKeyFiles      = []byte("keySpendableKeyFiles")
 	keyUID                    = []byte("keyUID")
 )
@@ -123,7 +117,6 @@ func dbReset(tx *bolt.Tx) error {
 	wb.Put(keySpendableKeyFiles, encoding.Marshal([]spendableKeyFile{}))
 	dbPutConsensusHeight(tx, 0)
 	dbPutConsensusChangeID(tx, modules.ConsensusChangeBeginning)
-	dbPutSiafundPool(tx, types.ZeroCurrency)
 
 	return nil
 }
@@ -185,20 +178,6 @@ func dbDeleteSiacoinOutput(tx *bolt.Tx, id types.SiacoinOutputID) error {
 }
 func dbForEachSiacoinOutput(tx *bolt.Tx, fn func(types.SiacoinOutputID, types.SiacoinOutput)) error {
 	return dbForEach(tx.Bucket(bucketSiacoinOutputs), fn)
-}
-
-func dbPutSiafundOutput(tx *bolt.Tx, id types.SiafundOutputID, output types.SiafundOutput) error {
-	return dbPut(tx.Bucket(bucketSiafundOutputs), id, output)
-}
-func dbGetSiafundOutput(tx *bolt.Tx, id types.SiafundOutputID) (output types.SiafundOutput, err error) {
-	err = dbGet(tx.Bucket(bucketSiafundOutputs), id, &output)
-	return
-}
-func dbDeleteSiafundOutput(tx *bolt.Tx, id types.SiafundOutputID) error {
-	return dbDelete(tx.Bucket(bucketSiafundOutputs), id)
-}
-func dbForEachSiafundOutput(tx *bolt.Tx, fn func(types.SiafundOutputID, types.SiafundOutput)) error {
-	return dbForEach(tx.Bucket(bucketSiafundOutputs), fn)
 }
 
 func dbPutSpentOutput(tx *bolt.Tx, id types.OutputID, height types.BlockHeight) error {
@@ -421,17 +400,6 @@ func dbGetConsensusHeight(tx *bolt.Tx) (height types.BlockHeight, err error) {
 // dbPutConsensusHeight stores the height that the wallet has scanned to.
 func dbPutConsensusHeight(tx *bolt.Tx, height types.BlockHeight) error {
 	return tx.Bucket(bucketWallet).Put(keyConsensusHeight, encoding.Marshal(height))
-}
-
-// dbGetSiafundPool returns the value of the siafund pool.
-func dbGetSiafundPool(tx *bolt.Tx) (pool types.Currency, err error) {
-	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keySiafundPool), &pool)
-	return
-}
-
-// dbPutSiafundPool stores the value of the siafund pool.
-func dbPutSiafundPool(tx *bolt.Tx, pool types.Currency) error {
-	return tx.Bucket(bucketWallet).Put(keySiafundPool, encoding.Marshal(pool))
 }
 
 // COMPATv121: these types were stored in the db in v1.2.2 and earlier.

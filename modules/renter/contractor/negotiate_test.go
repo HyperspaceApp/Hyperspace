@@ -126,12 +126,12 @@ func TestNegotiateContract(t *testing.T) {
 		WindowEnd:      1000,
 		Payout:         payout,
 		ValidProofOutputs: []types.SiacoinOutput{
-			{Value: types.PostTax(ct.contractor.blockHeight, payout), UnlockHash: types.UnlockHash{}},
+			{Value: payout, UnlockHash: types.UnlockHash{}},
 			{Value: types.ZeroCurrency, UnlockHash: types.UnlockHash{}},
 		},
 		MissedProofOutputs: []types.SiacoinOutput{
 			// same as above
-			{Value: types.PostTax(ct.contractor.blockHeight, payout), UnlockHash: types.UnlockHash{}},
+			{Value: payout, UnlockHash: types.UnlockHash{}},
 			// goes to the void, not the hostdb
 			{Value: types.ZeroCurrency, UnlockHash: types.UnlockHash{}},
 		},
@@ -200,7 +200,7 @@ func TestReviseContract(t *testing.T) {
 	}
 	// outputs need account for tax
 	fc.ValidProofOutputs = []types.SiacoinOutput{
-		{Value: types.PostTax(ct.contractor.blockHeight, payout), UnlockHash: ourAddr.UnlockHash()},
+		{Value: payout, UnlockHash: ourAddr.UnlockHash()},
 		{Value: types.ZeroCurrency, UnlockHash: types.UnlockHash{}}, // no collateral
 	}
 	fc.MissedProofOutputs = []types.SiacoinOutput{

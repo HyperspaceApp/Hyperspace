@@ -70,8 +70,6 @@ type (
 		GenesisTimestamp       types.Timestamp   `json:"genesistimestamp"`
 		MaturityDelay          types.BlockHeight `json:"maturitydelay"`
 		MedianTimestampWindow  uint64            `json:"mediantimestampwindow"`
-		SiafundCount           types.Currency    `json:"siafundcount"`
-		SiafundPortion         *big.Rat          `json:"siafundportion"`
 		TargetWindow           types.BlockHeight `json:"targetwindow"`
 
 		InitialCoinbase uint64 `json:"initialcoinbase"`
@@ -338,8 +336,6 @@ func (srv *Server) daemonConstantsHandler(w http.ResponseWriter, _ *http.Request
 		GenesisTimestamp:       types.GenesisTimestamp,
 		MaturityDelay:          types.MaturityDelay,
 		MedianTimestampWindow:  types.MedianTimestampWindow,
-		SiafundCount:           types.SiafundCount,
-		SiafundPortion:         types.SiafundPortion,
 		TargetWindow:           types.TargetWindow,
 
 		InitialCoinbase: types.InitialCoinbase,

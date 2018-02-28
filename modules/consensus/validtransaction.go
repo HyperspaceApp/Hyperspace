@@ -19,9 +19,7 @@ var (
 	errLateRevision               = errors.New("file contract revision submitted after deadline")
 	errLowRevisionNumber          = errors.New("transaction has a file contract with an outdated revision number")
 	errMissingSiacoinOutput       = errors.New("transaction spends a nonexisting siacoin output")
-	errMissingSiafundOutput       = errors.New("transaction spends a nonexisting siafund output")
 	errSiacoinInputOutputMismatch = errors.New("siacoin inputs do not equal siacoin outputs for transaction")
-	errSiafundInputOutputMismatch = errors.New("siafund inputs do not equal siafund outputs for transaction")
 	errUnfinishedFileContract     = errors.New("file contract window has not yet openend")
 	errUnrecognizedFileContractID = errors.New("cannot fetch storage proof segment for unknown file contract")
 	errWrongUnlockConditions      = errors.New("transaction contains incorrect unlock conditions")
@@ -254,34 +252,6 @@ func validFileContractRevisions(tx *bolt.Tx, t types.Transaction) error {
 	return nil
 }
 
-// validSiafunds checks that the siafund portions of the transaction are valid
-// in the context of the consensus set.
-func validSiafunds(tx *bolt.Tx, t types.Transaction) (err error) {
-	// Compare the number of input siafunds to the output siafunds.
-	var siafundInputSum types.Currency
-	var siafundOutputSum types.Currency
-	for _, sfi := range t.SiafundInputs {
-		sfo, err := getSiafundOutput(tx, sfi.ParentID)
-		if err != nil {
-			return err
-		}
-
-		// Check the unlock conditions match the unlock hash.
-		if sfi.UnlockConditions.UnlockHash() != sfo.UnlockHash {
-			return errWrongUnlockConditions
-		}
-
-		siafundInputSum = siafundInputSum.Add(sfo.Value)
-	}
-	for _, sfo := range t.SiafundOutputs {
-		siafundOutputSum = siafundOutputSum.Add(sfo.Value)
-	}
-	if !siafundOutputSum.Equals(siafundInputSum) {
-		return errSiafundInputOutputMismatch
-	}
-	return
-}
-
 // validTransaction checks that all fields are valid within the current
 // consensus state. If not an error is returned.
 func validTransaction(tx *bolt.Tx, t types.Transaction) error {
@@ -303,10 +273,6 @@ func validTransaction(tx *bolt.Tx, t types.Transaction) error {
 		return err
 	}
 	err = validFileContractRevisions(tx, t)
-	if err != nil {
-		return err
-	}
-	err = validSiafunds(tx, t)
 	if err != nil {
 		return err
 	}
@@ -348,9 +314,7 @@ func (cs *ConsensusSet) tryTransactionSet(txns []types.Transaction) (modules.Con
 	cc := modules.ConsensusChange{
 		SiacoinOutputDiffs:        diffHolder.SiacoinOutputDiffs,
 		FileContractDiffs:         diffHolder.FileContractDiffs,
-		SiafundOutputDiffs:        diffHolder.SiafundOutputDiffs,
 		DelayedSiacoinOutputDiffs: diffHolder.DelayedSiacoinOutputDiffs,
-		SiafundPoolDiffs:          diffHolder.SiafundPoolDiffs,
 	}
 	return cc, nil
 }

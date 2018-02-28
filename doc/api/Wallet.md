@@ -589,11 +589,10 @@ gets the transaction associated with a specific transaction id.
         // Type of fund is represented by the output. Possible values are
         // 'siacoin output', 'siafund output', 'claim output', and 'miner
         // payout'. Siacoin outputs and claim outputs both relate to siacoins.
-        // Siafund outputs relate to siafunds. Miner payouts point to siacoins
-        // that have been spent on a miner payout. Because the destination of
-        // the miner payout is determined by the block and not the transaction,
-        // the data 'maturityheight', 'walletaddress', and 'relatedaddress' are
-        // left blank.
+        // Miner payouts point to siacoins that have been spent on a miner payout.
+        // Because the destination of the miner payout is determined by the
+        // block and not the transaction, the data 'maturityheight', 'walletaddress',
+        // and'relatedaddress' are left blank.
         "fundtype": "siacoin output",
 
         // Block height the output becomes available to be spent. Siacoin

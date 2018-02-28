@@ -15,7 +15,6 @@ func (cst *consensusSetTester) testBlockSuite() {
 	cst.testValidStorageProofBlocks()
 	cst.testMissedStorageProofBlocks()
 	cst.testFileContractRevision()
-	cst.testSpendSiafunds()
 }
 
 // testSimpleBlock mines a simple block (no transactions except those
@@ -187,16 +186,15 @@ func (cst *consensusSetTester) testValidStorageProofBlocks() {
 		Payout:         payout,
 		ValidProofOutputs: []types.SiacoinOutput{{
 			UnlockHash: validProofDest,
-			Value:      types.PostTax(cst.cs.dbBlockHeight(), payout),
+			Value:      payout,
 		}},
 		MissedProofOutputs: []types.SiacoinOutput{{
 			UnlockHash: types.UnlockHash{},
-			Value:      types.PostTax(cst.cs.dbBlockHeight(), payout),
+			Value:      payout,
 		}},
 	}
 
 	// Submit a transaction with the file contract.
-	oldSiafundPool := cst.cs.dbGetSiafundPool()
 	txnBuilder := cst.wallet.StartTransaction()
 	err := txnBuilder.FundSiacoins(payout)
 	if err != nil {
@@ -214,12 +212,6 @@ func (cst *consensusSetTester) testValidStorageProofBlocks() {
 	_, err = cst.miner.AddBlock()
 	if err != nil {
 		panic(err)
-	}
-
-	// Check that the siafund pool was increased by the tax on the payout.
-	siafundPool := cst.cs.dbGetSiafundPool()
-	if !siafundPool.Equals(oldSiafundPool.Add(types.Tax(cst.cs.dbBlockHeight()-1, payout))) {
-		panic("siafund pool was not increased correctly")
 	}
 
 	// Check that the file contract made it into the database.
@@ -260,12 +252,6 @@ func (cst *consensusSetTester) testValidStorageProofBlocks() {
 	_, err = cst.cs.dbGetFileContract(fcid)
 	if err != errNilItem {
 		panic("file contract should not exist in the database")
-	}
-
-	// Check that the siafund pool has not changed.
-	postProofPool := cst.cs.dbGetSiafundPool()
-	if !postProofPool.Equals(siafundPool) {
-		panic("siafund pool should not change after submitting a storage proof")
 	}
 
 	// Check that a delayed output was created for the valid proof.
@@ -312,16 +298,15 @@ func (cst *consensusSetTester) testMissedStorageProofBlocks() {
 		Payout:         payout,
 		ValidProofOutputs: []types.SiacoinOutput{{
 			UnlockHash: types.UnlockHash{},
-			Value:      types.PostTax(cst.cs.dbBlockHeight(), payout),
+			Value:      payout,
 		}},
 		MissedProofOutputs: []types.SiacoinOutput{{
 			UnlockHash: missedProofDest,
-			Value:      types.PostTax(cst.cs.dbBlockHeight(), payout),
+			Value:      payout,
 		}},
 	}
 
 	// Submit a transaction with the file contract.
-	oldSiafundPool := cst.cs.dbGetSiafundPool()
 	txnBuilder := cst.wallet.StartTransaction()
 	err := txnBuilder.FundSiacoins(payout)
 	if err != nil {
@@ -339,12 +324,6 @@ func (cst *consensusSetTester) testMissedStorageProofBlocks() {
 	_, err = cst.miner.AddBlock()
 	if err != nil {
 		panic(err)
-	}
-
-	// Check that the siafund pool was increased by the tax on the payout.
-	siafundPool := cst.cs.dbGetSiafundPool()
-	if !siafundPool.Equals(oldSiafundPool.Add(types.Tax(cst.cs.dbBlockHeight()-1, payout))) {
-		panic("siafund pool was not increased correctly")
 	}
 
 	// Check that the file contract made it into the database.
@@ -365,12 +344,6 @@ func (cst *consensusSetTester) testMissedStorageProofBlocks() {
 	_, err = cst.cs.dbGetFileContract(fcid)
 	if err != errNilItem {
 		panic("file contract should not exist in the database")
-	}
-
-	// Check that the siafund pool has not changed.
-	postProofPool := cst.cs.dbGetSiafundPool()
-	if !postProofPool.Equals(siafundPool) {
-		panic("siafund pool should not change after submitting a storage proof")
 	}
 
 	// Check that a delayed output was created for the missed proof.
@@ -442,11 +415,11 @@ func (cst *consensusSetTester) testFileContractRevision() {
 		Payout:         payout,
 		ValidProofOutputs: []types.SiacoinOutput{{
 			UnlockHash: validProofDest,
-			Value:      types.PostTax(cst.cs.dbBlockHeight(), payout),
+			Value:      payout,
 		}},
 		MissedProofOutputs: []types.SiacoinOutput{{
 			UnlockHash: types.UnlockHash{},
-			Value:      types.PostTax(cst.cs.dbBlockHeight(), payout),
+			Value:      payout,
 		}},
 		UnlockHash: uc.UnlockHash(),
 	}
@@ -553,100 +526,6 @@ func TestIntegrationFileContractRevision(t *testing.T) {
 	}
 	defer cst.Close()
 	cst.testFileContractRevision()
-}
-
-// testSpendSiafunds spends siafunds on the blockchain.
-func (cst *consensusSetTester) testSpendSiafunds() {
-	// Create a random destination address for the output in the transaction.
-	destAddr := randAddress()
-
-	// Create a block containing a transaction with a valid siafund output.
-	txnValue := types.NewCurrency64(3)
-	txnBuilder := cst.wallet.StartTransaction()
-	err := txnBuilder.FundSiafunds(txnValue)
-	if err != nil {
-		panic(err)
-	}
-	outputIndex := txnBuilder.AddSiafundOutput(types.SiafundOutput{Value: txnValue, UnlockHash: destAddr})
-	txnSet, err := txnBuilder.Sign(true)
-	if err != nil {
-		panic(err)
-	}
-	err = cst.tpool.AcceptTransactionSet(txnSet)
-	if err != nil {
-		panic(err)
-	}
-
-	// Find the siafund inputs used in the txn set.
-	var claimValues []types.Currency
-	var claimIDs []types.SiacoinOutputID
-	for _, txn := range txnSet {
-		for _, sfi := range txn.SiafundInputs {
-			sfo, err := cst.cs.dbGetSiafundOutput(sfi.ParentID)
-			if err != nil {
-				// It's not in the database because it's in an earlier
-				// transaction: disregard it - testing the first layer of
-				// dependencies is sufficient.
-				continue
-			}
-			poolDiff := cst.cs.dbGetSiafundPool().Sub(sfo.ClaimStart)
-			value := poolDiff.Div(types.SiafundCount).Mul(sfo.Value)
-			claimValues = append(claimValues, value)
-			claimIDs = append(claimIDs, sfi.ParentID.SiaClaimOutputID())
-		}
-	}
-	if len(claimValues) == 0 {
-		panic("no siafund outputs created?")
-	}
-
-	// Mine and apply the block to the consensus set.
-	_, err = cst.miner.AddBlock()
-	if err != nil {
-		panic(err)
-	}
-
-	// See that the destination output was created.
-	outputID := txnSet[len(txnSet)-1].SiafundOutputID(outputIndex)
-	sfo, err := cst.cs.dbGetSiafundOutput(outputID)
-	if err != nil {
-		panic(err)
-	}
-	if !sfo.Value.Equals(txnValue) {
-		panic("output added with wrong value")
-	}
-	if sfo.UnlockHash != destAddr {
-		panic("output sent to the wrong address")
-	}
-	if !sfo.ClaimStart.Equals(cst.cs.dbGetSiafundPool()) {
-		panic("ClaimStart is not being set correctly")
-	}
-
-	// Verify that all expected claims were created and added to the set of
-	// delayed siacoin outputs.
-	for i, id := range claimIDs {
-		dsco, err := cst.cs.dbGetDSCO(cst.cs.dbBlockHeight()+types.MaturityDelay, id)
-		if err != nil {
-			panic(err)
-		}
-		if !dsco.Value.Equals(claimValues[i]) {
-			panic("expected a different claim value on the siaclaim")
-		}
-	}
-}
-
-// TestIntegrationSpendSiafunds creates a consensus set tester and uses it
-// to call testSpendSiafunds.
-func (cst *consensusSetTester) TestIntegrationSpendSiafunds(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	cst, err := createConsensusSetTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cst.Close()
-	cst.testSpendSiafunds()
 }
 
 // testDelayedOutputMaturity adds blocks that result in many delayed outputs

@@ -359,14 +359,14 @@ func (c *Contractor) threadedContractMaintenance() {
 				// cycle. This is calculated by starting with the total cost and
 				// subtracting out all of the fees, and then all of the unused
 				// money that was allocated (the RenterFunds).
-				renewAmount := contract.TotalCost.Sub(contract.ContractFee).Sub(contract.TxnFee).Sub(contract.SiafundFee).Sub(contract.RenterFunds)
+				renewAmount := contract.TotalCost.Sub(contract.ContractFee).Sub(contract.TxnFee).Sub(contract.RenterFunds)
 				// TODO: add previous contracts here
 
 				// Get an estimate for how much the fees will cost.
 				//
 				// TODO: Look up this host in the hostdb to figure out what the
 				// actual fees will be.
-				estimatedFees := contract.ContractFee.Add(contract.TxnFee).Add(contract.SiafundFee)
+				estimatedFees := contract.ContractFee.Add(contract.TxnFee)
 				renewAmount = renewAmount.Add(estimatedFees)
 
 				// Determine if there is enough funds available to suppliement

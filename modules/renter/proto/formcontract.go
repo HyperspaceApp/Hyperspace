@@ -59,7 +59,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	totalPayout := renterPayout.Add(hostPayout)
 
 	// Check for negative currency.
-	if types.PostTax(startHeight, totalPayout).Cmp(hostPayout) < 0 {
+	if totalPayout.Cmp(hostPayout) < 0 {
 		return modules.RenterContract{}, errors.New("not enough money to pay both siafund fee and also host payout")
 	}
 	// Create file contract.
@@ -73,13 +73,13 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 		RevisionNumber: 0,
 		ValidProofOutputs: []types.SiacoinOutput{
 			// Outputs need to account for tax.
-			{Value: types.PostTax(startHeight, totalPayout).Sub(hostPayout), UnlockHash: refundAddress}, // This is the renter payout, but with tax applied.
+			{Value: totalPayout.Sub(hostPayout), UnlockHash: refundAddress}, // This is the renter payout, but with tax applied.
 			// Collateral is returned to host.
 			{Value: hostPayout, UnlockHash: host.UnlockHash},
 		},
 		MissedProofOutputs: []types.SiacoinOutput{
 			// Same as above.
-			{Value: types.PostTax(startHeight, totalPayout).Sub(hostPayout), UnlockHash: refundAddress},
+			{Value: totalPayout.Sub(hostPayout), UnlockHash: refundAddress},
 			// Same as above.
 			{Value: hostPayout, UnlockHash: host.UnlockHash},
 			// Once we start doing revisions, we'll move some coins to the host and some to the void.
@@ -269,7 +269,6 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 		TotalCost:   funding,
 		ContractFee: host.ContractPrice,
 		TxnFee:      txnFee,
-		SiafundFee:  types.Tax(startHeight, fc.Payout),
 	}
 
 	// Add contract to set.

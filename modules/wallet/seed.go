@@ -184,8 +184,8 @@ func (w *Wallet) PrimarySeed() (modules.Seed, uint64, error) {
 	return w.primarySeed, remaining, nil
 }
 
-// NextAddresses returns n unlock hashes that are ready to receive siacoins or
-// siafunds. The addresses are generated using the primary address seed.
+// NextAddresses returns n unlock hashes that are ready to receive siacoins.
+// The addresses are generated using the primary address seed.
 //
 // Warning: If this function is used to generate large numbers of addresses,
 // those addresses should be used. Otherwise the lookahead might not be able to
@@ -209,8 +209,8 @@ func (w *Wallet) NextAddresses(n uint64) ([]types.UnlockConditions, error) {
 	return ucs, err
 }
 
-// NextAddress returns an unlock hash that is ready to receive siacoins or
-// siafunds. The address is generated using the primary address seed.
+// NextAddress returns an unlock hash that is ready to receive siacoins.
+// The address is generated using the primary address seed.
 func (w *Wallet) NextAddress() (types.UnlockConditions, error) {
 	ucs, err := w.NextAddresses(1)
 	if err != nil {
@@ -332,7 +332,6 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 // SweepSeed scans the blockchain for outputs generated from seed and creates
 // a transaction that transfers them to the wallet. Note that this incurs a
 // transaction fee. It returns the total value of the outputs, minus the fee.
-// If only siafunds were found, the fee is deducted from the wallet.
 func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err error) {
 	if err = w.tg.Add(); err != nil {
 		return
@@ -374,39 +373,30 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 		return
 	}
 
-	if len(s.siacoinOutputs) == 0 && len(s.siafundOutputs) == 0 {
-		// if we aren't sweeping any coins or funds, then just return an
+	if len(s.siacoinOutputs) == 0 {
+		// if we aren't sweeping any coins, then just return an
 		// error; no reason to proceed
 		return types.Currency{}, types.Currency{}, errors.New("nothing to sweep")
 	}
 
 	// Flatten map to slice
-	var siacoinOutputs, siafundOutputs []scannedOutput
+	var siacoinOutputs []scannedOutput
 	for _, sco := range s.siacoinOutputs {
 		siacoinOutputs = append(siacoinOutputs, sco)
 	}
-	for _, sfo := range s.siafundOutputs {
-		siafundOutputs = append(siafundOutputs, sfo)
-	}
 
-	for len(siacoinOutputs) > 0 || len(siafundOutputs) > 0 {
+	for len(siacoinOutputs) > 0 {
 		// process up to maxOutputs siacoinOutputs
 		txnSiacoinOutputs := make([]scannedOutput, maxOutputs)
 		n := copy(txnSiacoinOutputs, siacoinOutputs)
 		txnSiacoinOutputs = txnSiacoinOutputs[:n]
 		siacoinOutputs = siacoinOutputs[n:]
 
-		// process up to (maxOutputs-n) siafundOutputs
-		txnSiafundOutputs := make([]scannedOutput, maxOutputs-n)
-		n = copy(txnSiafundOutputs, siafundOutputs)
-		txnSiafundOutputs = txnSiafundOutputs[:n]
-		siafundOutputs = siafundOutputs[n:]
-
-		var txnCoins, txnFunds types.Currency
+		var txnCoins types.Currency
 
 		// construct a transaction that spends the outputs
 		tb := w.StartTransaction()
-		var sweptCoins, sweptFunds types.Currency // total values of swept outputs
+		var sweptCoins types.Currency // total values of swept outputs
 		for _, output := range txnSiacoinOutputs {
 			// construct a siacoin input that spends the output
 			sk := generateSpendableKey(seed, output.seedIndex)
@@ -417,21 +407,11 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 			// add a signature for the input
 			sweptCoins = sweptCoins.Add(output.value)
 		}
-		for _, output := range txnSiafundOutputs {
-			// construct a siafund input that spends the output
-			sk := generateSpendableKey(seed, output.seedIndex)
-			tb.AddSiafundInput(types.SiafundInput{
-				ParentID:         types.SiafundOutputID(output.id),
-				UnlockConditions: sk.UnlockConditions,
-			})
-			// add a signature for the input
-			sweptFunds = sweptFunds.Add(output.value)
-		}
 
 		// estimate the transaction size and fee. NOTE: this equation doesn't
 		// account for other fields in the transaction, but since we are
 		// multiplying by maxFee, lowballing is ok
-		estTxnSize := (len(txnSiacoinOutputs) + len(txnSiafundOutputs)) * outputSize
+		estTxnSize := len(txnSiacoinOutputs) * outputSize
 		estFee := maxFee.Mul64(uint64(estTxnSize))
 		tb.AddMinerFee(estFee)
 
@@ -439,60 +419,27 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 		if sweptCoins.Cmp(estFee) > 0 {
 			txnCoins = sweptCoins.Sub(estFee)
 		}
-		txnFunds = sweptFunds
 
 		switch {
-		case txnCoins.IsZero() && txnFunds.IsZero():
-			// if we aren't sweeping any coins or funds, then just return an
+		case txnCoins.IsZero():
+			// if we aren't sweeping any coins, then just return an
 			// error; no reason to proceed
 			return types.Currency{}, types.Currency{}, errors.New("transaction fee exceeds value of swept outputs")
 
-		case !txnCoins.IsZero() && txnFunds.IsZero():
-			// if we're sweeping coins but not funds, add a siacoin output for
-			// them
+		case !txnCoins.IsZero():
+			// if we're sweeping coins, add a siacoin output for them
 			tb.AddSiacoinOutput(types.SiacoinOutput{
 				Value:      txnCoins,
-				UnlockHash: uc.UnlockHash(),
-			})
-
-		case txnCoins.IsZero() && !txnFunds.IsZero():
-			// if we're sweeping funds but not coins, add a siafund output for
-			// them. This is tricky because we still need to pay for the
-			// transaction fee, but we can't simply subtract the fee from the
-			// output value like we can with swept coins. Instead, we need to fund
-			// the fee using the existing wallet balance.
-			tb.AddSiafundOutput(types.SiafundOutput{
-				Value:      txnFunds,
-				UnlockHash: uc.UnlockHash(),
-			})
-			err = tb.FundSiacoins(estFee)
-			if err != nil {
-				return types.Currency{}, types.Currency{}, errors.New("couldn't pay transaction fee on swept funds: " + err.Error())
-			}
-
-		case !txnCoins.IsZero() && !txnFunds.IsZero():
-			// if we're sweeping both coins and funds, add a siacoin output and a
-			// siafund output
-			tb.AddSiacoinOutput(types.SiacoinOutput{
-				Value:      txnCoins,
-				UnlockHash: uc.UnlockHash(),
-			})
-			tb.AddSiafundOutput(types.SiafundOutput{
-				Value:      txnFunds,
 				UnlockHash: uc.UnlockHash(),
 			})
 		}
 
-		// add signatures for all coins and funds (manually, since tb doesn't have
+		// add signatures for all coins (manually, since tb doesn't have
 		// access to the signing keys)
 		txn, parents := tb.View()
 		for _, output := range txnSiacoinOutputs {
 			sk := generateSpendableKey(seed, output.seedIndex)
 			addSignatures(&txn, types.FullCoveredFields, sk.UnlockConditions, crypto.Hash(output.id), sk)
-		}
-		for _, sfo := range txnSiafundOutputs {
-			sk := generateSpendableKey(seed, sfo.seedIndex)
-			addSignatures(&txn, types.FullCoveredFields, sk.UnlockConditions, crypto.Hash(sfo.id), sk)
 		}
 		// Usually, all the inputs will come from swept outputs. However, there is
 		// an edge case in which inputs will be added from the wallet. To cover
@@ -521,7 +468,6 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 		}
 
 		coins = coins.Add(txnCoins)
-		funds = funds.Add(txnFunds)
 	}
 	return
 }

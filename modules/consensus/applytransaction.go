@@ -59,17 +59,6 @@ func applyFileContracts(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
 		}
 		pb.FileContractDiffs = append(pb.FileContractDiffs, fcd)
 		commitFileContractDiff(tx, fcd, modules.DiffApply)
-
-		// Get the portion of the contract that goes into the siafund pool and
-		// add it to the siafund pool.
-		sfp := getSiafundPool(tx)
-		sfpd := modules.SiafundPoolDiff{
-			Direction: modules.DiffApply,
-			Previous:  sfp,
-			Adjusted:  sfp.Add(types.Tax(blockHeight(tx), fc.Payout)),
-		}
-		pb.SiafundPoolDiffs = append(pb.SiafundPoolDiffs, sfpd)
-		commitSiafundPoolDiff(tx, sfpd, modules.DiffApply)
 	}
 }
 
@@ -147,59 +136,6 @@ func applyStorageProofs(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
 	}
 }
 
-// applyTxSiafundInputs takes all of the siafund inputs in a transaction and
-// applies them to the state, updating the diffs in the processed block.
-func applySiafundInputs(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
-	for _, sfi := range t.SiafundInputs {
-		// Calculate the volume of siacoins to put in the claim output.
-		sfo, err := getSiafundOutput(tx, sfi.ParentID)
-		if build.DEBUG && err != nil {
-			panic(err)
-		}
-		claimPortion := getSiafundPool(tx).Sub(sfo.ClaimStart).Div(types.SiafundCount).Mul(sfo.Value)
-
-		// Add the claim output to the delayed set of outputs.
-		sco := types.SiacoinOutput{
-			Value:      claimPortion,
-			UnlockHash: sfi.ClaimUnlockHash,
-		}
-		sfoid := sfi.ParentID.SiaClaimOutputID()
-		dscod := modules.DelayedSiacoinOutputDiff{
-			Direction:      modules.DiffApply,
-			ID:             sfoid,
-			SiacoinOutput:  sco,
-			MaturityHeight: pb.Height + types.MaturityDelay,
-		}
-		pb.DelayedSiacoinOutputDiffs = append(pb.DelayedSiacoinOutputDiffs, dscod)
-		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
-
-		// Create the siafund output diff and remove the output from the
-		// consensus set.
-		sfod := modules.SiafundOutputDiff{
-			Direction:     modules.DiffRevert,
-			ID:            sfi.ParentID,
-			SiafundOutput: sfo,
-		}
-		pb.SiafundOutputDiffs = append(pb.SiafundOutputDiffs, sfod)
-		commitSiafundOutputDiff(tx, sfod, modules.DiffApply)
-	}
-}
-
-// applySiafundOutput applies a siafund output to the consensus set.
-func applySiafundOutputs(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
-	for i, sfo := range t.SiafundOutputs {
-		sfoid := t.SiafundOutputID(uint64(i))
-		sfo.ClaimStart = getSiafundPool(tx)
-		sfod := modules.SiafundOutputDiff{
-			Direction:     modules.DiffApply,
-			ID:            sfoid,
-			SiafundOutput: sfo,
-		}
-		pb.SiafundOutputDiffs = append(pb.SiafundOutputDiffs, sfod)
-		commitSiafundOutputDiff(tx, sfod, modules.DiffApply)
-	}
-}
-
 // applyTransaction applies the contents of a transaction to the ConsensusSet.
 // This produces a set of diffs, which are stored in the blockNode containing
 // the transaction. No verification is done by this function.
@@ -209,6 +145,4 @@ func applyTransaction(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
 	applyFileContracts(tx, pb, t)
 	applyFileContractRevisions(tx, pb, t)
 	applyStorageProofs(tx, pb, t)
-	applySiafundInputs(tx, pb, t)
-	applySiafundOutputs(tx, pb, t)
 }

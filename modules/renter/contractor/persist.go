@@ -117,7 +117,6 @@ func convertPersist(dir string) error {
 			TotalCost:        c.TotalCost,
 			ContractFee:      c.ContractFee,
 			TxnFee:           c.TxnFee,
-			SiafundFee:       c.SiafundFee,
 		})
 	}
 	err = persist.SaveJSON(persistMeta, data, persistPath)

@@ -28,7 +28,6 @@ type (
 		UnconfirmedIncomingSiacoins types.Currency `json:"unconfirmedincomingsiacoins"`
 
 		SiacoinClaimBalance types.Currency `json:"siacoinclaimbalance"`
-		SiafundBalance      types.Currency `json:"siafundbalance"`
 
 		DustThreshold types.Currency `json:"dustthreshold"`
 	}
@@ -54,12 +53,6 @@ type (
 	// WalletSiacoinsPOST contains the transaction sent in the POST call to
 	// /wallet/siacoins.
 	WalletSiacoinsPOST struct {
-		TransactionIDs []types.TransactionID `json:"transactionids"`
-	}
-
-	// WalletSiafundsPOST contains the transaction sent in the POST call to
-	// /wallet/siafunds.
-	WalletSiafundsPOST struct {
 		TransactionIDs []types.TransactionID `json:"transactionids"`
 	}
 
@@ -122,7 +115,7 @@ func encryptionKeys(seedStr string) (validKeys []crypto.TwofishKey) {
 
 // walletHander handles API calls to /wallet.
 func (api *API) walletHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	siacoinBal, siafundBal, siaclaimBal := api.wallet.ConfirmedBalance()
+	siacoinBal := api.wallet.ConfirmedBalance()
 	siacoinsOut, siacoinsIn := api.wallet.UnconfirmedBalance()
 	dustThreshold := api.wallet.DustThreshold()
 	WriteJSON(w, WalletGET{
@@ -134,9 +127,6 @@ func (api *API) walletHandler(w http.ResponseWriter, req *http.Request, _ httpro
 		ConfirmedSiacoinBalance:     siacoinBal,
 		UnconfirmedOutgoingSiacoins: siacoinsOut,
 		UnconfirmedIncomingSiacoins: siacoinsIn,
-
-		SiafundBalance:      siafundBal,
-		SiacoinClaimBalance: siaclaimBal,
 
 		DustThreshold: dustThreshold,
 	})
@@ -420,33 +410,6 @@ func (api *API) walletSiacoinsHandler(w http.ResponseWriter, req *http.Request, 
 		txids = append(txids, txn.ID())
 	}
 	WriteJSON(w, WalletSiacoinsPOST{
-		TransactionIDs: txids,
-	})
-}
-
-// walletSiafundsHandler handles API calls to /wallet/siafunds.
-func (api *API) walletSiafundsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	amount, ok := scanAmount(req.FormValue("amount"))
-	if !ok {
-		WriteError(w, Error{"could not read 'amount' from POST call to /wallet/siafunds"}, http.StatusBadRequest)
-		return
-	}
-	dest, err := scanAddress(req.FormValue("destination"))
-	if err != nil {
-		WriteError(w, Error{"error when calling /wallet/siafunds: " + err.Error()}, http.StatusBadRequest)
-		return
-	}
-
-	txns, err := api.wallet.SendSiafunds(amount, dest)
-	if err != nil {
-		WriteError(w, Error{"error when calling /wallet/siafunds: " + err.Error()}, http.StatusInternalServerError)
-		return
-	}
-	var txids []types.TransactionID
-	for _, txn := range txns {
-		txids = append(txids, txn.ID())
-	}
-	WriteJSON(w, WalletSiafundsPOST{
 		TransactionIDs: txids,
 	})
 }

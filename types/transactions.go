@@ -36,8 +36,6 @@ var (
 	SpecifierMinerPayout          = Specifier{'m', 'i', 'n', 'e', 'r', ' ', 'p', 'a', 'y', 'o', 'u', 't'}
 	SpecifierSiacoinInput         = Specifier{'s', 'i', 'a', 'c', 'o', 'i', 'n', ' ', 'i', 'n', 'p', 'u', 't'}
 	SpecifierSiacoinOutput        = Specifier{'s', 'i', 'a', 'c', 'o', 'i', 'n', ' ', 'o', 'u', 't', 'p', 'u', 't'}
-	SpecifierSiafundInput         = Specifier{'s', 'i', 'a', 'f', 'u', 'n', 'd', ' ', 'i', 'n', 'p', 'u', 't'}
-	SpecifierSiafundOutput        = Specifier{'s', 'i', 'a', 'f', 'u', 'n', 'd', ' ', 'o', 'u', 't', 'p', 'u', 't'}
 	SpecifierStorageProof         = Specifier{'s', 't', 'o', 'r', 'a', 'g', 'e', ' ', 'p', 'r', 'o', 'o', 'f'}
 	SpecifierStorageProofOutput   = Specifier{'s', 't', 'o', 'r', 'a', 'g', 'e', ' ', 'p', 'r', 'o', 'o', 'f'}
 )
@@ -61,7 +59,6 @@ type (
 	// gives us type safety and makes the code more readable.
 	TransactionID   crypto.Hash
 	SiacoinOutputID crypto.Hash
-	SiafundOutputID crypto.Hash
 	FileContractID  crypto.Hash
 	OutputID        crypto.Hash
 
@@ -79,8 +76,6 @@ type (
 		FileContracts         []FileContract         `json:"filecontracts"`
 		FileContractRevisions []FileContractRevision `json:"filecontractrevisions"`
 		StorageProofs         []StorageProof         `json:"storageproofs"`
-		SiafundInputs         []SiafundInput         `json:"siafundinputs"`
-		SiafundOutputs        []SiafundOutput        `json:"siafundoutputs"`
 		MinerFees             []Currency             `json:"minerfees"`
 		ArbitraryData         [][]byte               `json:"arbitrarydata"`
 		TransactionSignatures []TransactionSignature `json:"transactionsignatures"`
@@ -103,36 +98,6 @@ type (
 	SiacoinOutput struct {
 		Value      Currency   `json:"value"`
 		UnlockHash UnlockHash `json:"unlockhash"`
-	}
-
-	// A SiafundInput consumes a SiafundOutput and adds the siafunds to the set of
-	// siafunds that can be spent in the transaction. The ParentID points to the
-	// output that is getting consumed, and the UnlockConditions contain the rules
-	// for spending the output. The UnlockConditions must match the UnlockHash of
-	// the output.
-	SiafundInput struct {
-		ParentID         SiafundOutputID  `json:"parentid"`
-		UnlockConditions UnlockConditions `json:"unlockconditions"`
-		ClaimUnlockHash  UnlockHash       `json:"claimunlockhash"`
-	}
-
-	// A SiafundOutput holds a volume of siafunds. Outputs must be spent
-	// atomically; that is, they must all be spent in the same transaction. The
-	// UnlockHash is the hash of a set of UnlockConditions that must be fulfilled
-	// in order to spend the output.
-	//
-	// When the SiafundOutput is spent, a SiacoinOutput is created, where:
-	//
-	//     SiacoinOutput.Value := (SiafundPool - ClaimStart) / 10,000 * Value
-	//     SiacoinOutput.UnlockHash := SiafundInput.ClaimUnlockHash
-	//
-	// When a SiafundOutput is put into a transaction, the ClaimStart must always
-	// equal zero. While the transaction is being processed, the ClaimStart is set
-	// to the value of the SiafundPool.
-	SiafundOutput struct {
-		Value      Currency   `json:"value"`
-		UnlockHash UnlockHash `json:"unlockhash"`
-		ClaimStart Currency   `json:"claimstart"`
 	}
 
 	// An UnlockHash is a specially constructed hash of the UnlockConditions type.
@@ -160,8 +125,6 @@ func (t Transaction) ID() TransactionID {
 			t.FileContracts,
 			t.FileContractRevisions,
 			t.StorageProofs,
-			t.SiafundInputs,
-			t.SiafundOutputs,
 			t.MinerFees,
 			t.ArbitraryData,
 		))
@@ -197,8 +160,6 @@ func (t Transaction) SiacoinOutputID(i uint64) SiacoinOutputID {
 			t.FileContracts,
 			t.FileContractRevisions,
 			t.StorageProofs,
-			t.SiafundInputs,
-			t.SiafundOutputs,
 			t.MinerFees,
 			t.ArbitraryData,
 			i,
@@ -233,8 +194,6 @@ func (t Transaction) FileContractID(i uint64) FileContractID {
 			t.FileContracts,
 			t.FileContractRevisions,
 			t.StorageProofs,
-			t.SiafundInputs,
-			t.SiafundOutputs,
 			t.MinerFees,
 			t.ArbitraryData,
 			i,
@@ -244,41 +203,6 @@ func (t Transaction) FileContractID(i uint64) FileContractID {
 		}
 	}
 
-	return id
-}
-
-// SiafundOutputID returns the ID of a SiafundOutput at the given index, which
-// is calculated by hashing the concatenation of the SiafundOutput Specifier,
-// all of the fields in the transaction (except the signatures), and output
-// index.
-func (t Transaction) SiafundOutputID(i uint64) SiafundOutputID {
-	var id SiafundOutputID
-	h := crypto.NewHash()
-	h.Write(SpecifierSiafundOutput[:])
-	t.MarshalSiaNoSignatures(h) // Encode non-signature fields into hash.
-	encoding.WriteUint64(h, i)  // Writes index of this output.
-	h.Sum(id[:0])
-
-	// Sanity check - verify that the optimized code is always returning the
-	// same ids as the unoptimized code.
-	if build.DEBUG {
-		verificationID := SiafundOutputID(crypto.HashAll(
-			SpecifierSiafundOutput,
-			t.SiacoinInputs,
-			t.SiacoinOutputs,
-			t.FileContracts,
-			t.FileContractRevisions,
-			t.StorageProofs,
-			t.SiafundInputs,
-			t.SiafundOutputs,
-			t.MinerFees,
-			t.ArbitraryData,
-			i,
-		))
-		if id != verificationID {
-			panic("SiafundOutputID is not marshalling correctly")
-		}
-	}
 	return id
 }
 
@@ -304,10 +228,4 @@ func (t Transaction) SiacoinOutputSum() (sum Currency) {
 	}
 
 	return
-}
-
-// SiaClaimOutputID returns the ID of the SiacoinOutput that is created when
-// the siafund output is spent. The ID is the hash the SiafundOutputID.
-func (id SiafundOutputID) SiaClaimOutputID() SiacoinOutputID {
-	return SiacoinOutputID(crypto.HashObject(id))
 }

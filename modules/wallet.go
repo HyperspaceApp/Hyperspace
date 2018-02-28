@@ -52,8 +52,8 @@ type (
 	WalletTransactionID crypto.Hash
 
 	// A ProcessedInput represents funding to a transaction. The input is
-	// coming from an address and going to the outputs. The fund types are
-	// 'SiacoinInput', 'SiafundInput'.
+	// coming from an address and going to the outputs. The fund type is
+	// 'SiacoinInput'.
 	ProcessedInput struct {
 		ParentID       types.OutputID   `json:"parentid"`
 		FundType       types.Specifier  `json:"fundtype"`
@@ -66,13 +66,13 @@ type (
 	// Some outputs mature immediately, some are delayed, and some may never
 	// mature at all (in the event of storage proofs).
 	//
-	// Fund type can either be 'SiacoinOutput', 'SiafundOutput', 'ClaimOutput',
+	// Fund type can either be 'SiacoinOutput', 'ClaimOutput',
 	// 'MinerPayout', or 'MinerFee'. All outputs except the miner fee create
 	// outputs accessible to an address. Miner fees are not spendable, and
 	// instead contribute to the block subsidy.
 	//
 	// MaturityHeight indicates at what block height the output becomes
-	// available. SiacoinInputs and SiafundInputs become available immediately.
+	// available. SiacoinInputs become available immediately.
 	// ClaimInputs and MinerPayouts become available after 144 confirmations.
 	ProcessedOutput struct {
 		ID             types.OutputID    `json:"id"`
@@ -103,8 +103,8 @@ type (
 	// TransactionBuilder is used to construct custom transactions. A transaction
 	// builder is initialized via 'RegisterTransaction' and then can be modified by
 	// adding funds or other fields. The transaction is completed by calling
-	// 'Sign', which will sign all inputs added via the 'FundSiacoins' or
-	// 'FundSiafunds' call. All modifications are additive.
+	// 'Sign', which will sign all inputs added via the 'FundSiacoins' call.
+	// All modifications are additive.
 	//
 	// Parents of the transaction are kept in the transaction builder. A parent is
 	// any unconfirmed transaction that is required for the child to be valid.
@@ -119,17 +119,6 @@ type (
 		// Longer risks double-spends, as the wallet will assume that the
 		// transaction failed.
 		FundSiacoins(amount types.Currency) error
-
-		// FundSiafunds will add a siafund input of exactly 'amount' to the
-		// transaction. A parent transaction may be needed to achieve an input
-		// with the correct value. The siafund input will not be signed until
-		// 'Sign' is called on the transaction builder. Any siacoins that are
-		// released by spending the siafund outputs will be sent to another
-		// address owned by the wallet. The expectation is that the transaction
-		// will be completed and broadcast within a few hours. Longer risks
-		// double-spends, because the wallet will assume the transaction
-		// failed.
-		FundSiafunds(amount types.Currency) error
 
 		// AddParents adds a set of parents to the transaction.
 		AddParents([]types.Transaction)
@@ -161,15 +150,6 @@ type (
 		// the index of the storage proof within the transaction.
 		AddStorageProof(types.StorageProof) uint64
 
-		// AddSiafundInput adds a siafund input to the transaction, returning
-		// the index of the siafund input within the transaction. When 'Sign'
-		// is called, this input will be left unsigned.
-		AddSiafundInput(types.SiafundInput) uint64
-
-		// AddSiafundOutput adds a siafund output to the transaction, returning
-		// the index of the siafund output within the transaction.
-		AddSiafundOutput(types.SiafundOutput) uint64
-
 		// AddArbitraryData adds arbitrary data to the transaction, returning
 		// the index of the data within the transaction.
 		AddArbitraryData(arb []byte) uint64
@@ -177,12 +157,11 @@ type (
 		// AddTransactionSignature adds a transaction signature to the
 		// transaction, returning the index of the signature within the
 		// transaction. The signature should already be valid, and shouldn't
-		// sign any of the inputs that were added by calling 'FundSiacoins' or
-		// 'FundSiafunds'.
+		// sign any of the inputs that were added by calling 'FundSiacoins'.
 		AddTransactionSignature(types.TransactionSignature) uint64
 
-		// Sign will sign any inputs added by 'FundSiacoins' or 'FundSiafunds'
-		// and return a transaction set that contains all parents prepended to
+		// Sign will sign any inputs added by 'FundSiacoins' and return a
+		// transaction set that contains all parents prepended to
 		// the transaction. If more fields need to be added, a new transaction
 		// builder will need to be created.
 		//
@@ -338,13 +317,12 @@ type (
 		// ConfirmedBalance returns the confirmed balance of the wallet, minus
 		// any outgoing transactions. ConfirmedBalance will include unconfirmed
 		// refund transactions.
-		ConfirmedBalance() (siacoinBalance types.Currency, siafundBalance types.Currency, siacoinClaimBalance types.Currency)
+		ConfirmedBalance() (siacoinBalance types.Currency)
 
 		// UnconfirmedBalance returns the unconfirmed balance of the wallet.
 		// Outgoing funds and incoming funds are reported separately. Refund
 		// outputs are included, meaning that sending a single coin to
-		// someone could result in 'outgoing: 12, incoming: 11'. Siafunds are
-		// not considered in the unconfirmed balance.
+		// someone could result in 'outgoing: 12, incoming: 11'.
 		UnconfirmedBalance() (outgoingSiacoins types.Currency, incomingSiacoins types.Currency)
 
 		// Height returns the wallet's internal processed consensus height
@@ -398,12 +376,6 @@ type (
 
 		// SendSiacoinsMulti sends coins to multiple addresses.
 		SendSiacoinsMulti(outputs []types.SiacoinOutput) ([]types.Transaction, error)
-
-		// SendSiafunds is a tool for sending siafunds from the wallet to an
-		// address. Sending money usually results in multiple transactions. The
-		// transactions are automatically given to the transaction pool, and
-		// are also returned to the caller.
-		SendSiafunds(amount types.Currency, dest types.UnlockHash) ([]types.Transaction, error)
 
 		// DustThreshold returns the quantity per byte below which a Currency is
 		// considered to be Dust.

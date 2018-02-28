@@ -51,7 +51,7 @@ func (ht *hostTester) newTesterStorageObligation() (storageObligation, error) {
 		Payout: payout,
 		ValidProofOutputs: []types.SiacoinOutput{
 			{
-				Value: types.PostTax(ht.host.blockHeight, payout),
+				Value: payout,
 			},
 			{
 				Value: types.ZeroCurrency,
@@ -59,7 +59,7 @@ func (ht *hostTester) newTesterStorageObligation() (storageObligation, error) {
 		},
 		MissedProofOutputs: []types.SiacoinOutput{
 			{
-				Value: types.PostTax(ht.host.blockHeight, payout),
+				Value: payout,
 			},
 			{
 				Value: types.ZeroCurrency,

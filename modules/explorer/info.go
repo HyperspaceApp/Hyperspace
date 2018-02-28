@@ -162,25 +162,3 @@ func (e *Explorer) FileContractPayouts(id types.FileContractID) ([]types.Siacoin
 
 	return outputs, nil
 }
-
-// SiafundOutput returns the siafund output associated with the specified ID.
-func (e *Explorer) SiafundOutput(id types.SiafundOutputID) (types.SiafundOutput, bool) {
-	var sco types.SiafundOutput
-	err := e.db.View(dbGetAndDecode(bucketSiafundOutputs, id, &sco))
-	if err != nil {
-		return types.SiafundOutput{}, false
-	}
-	return sco, true
-}
-
-// SiafundOutputID returns all of the transactions that contain the specified
-// siafund output ID. An empty set indicates that the siafund output ID does
-// not appear in the blockchain.
-func (e *Explorer) SiafundOutputID(id types.SiafundOutputID) []types.TransactionID {
-	var ids []types.TransactionID
-	err := e.db.View(dbGetTransactionIDSet(bucketSiafundOutputIDs, id, &ids))
-	if err != nil {
-		ids = nil
-	}
-	return ids
-}

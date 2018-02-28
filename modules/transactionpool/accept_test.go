@@ -520,8 +520,8 @@ func TestAcceptFCAndConflictingRevision(t *testing.T) {
 		WindowStart:        tpt.cs.Height() + 2,
 		WindowEnd:          tpt.cs.Height() + 5,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 		UnlockHash:         types.UnlockConditions{}.UnlockHash(),
 	})
 	tSet, err := builder.Sign(true)
@@ -542,8 +542,8 @@ func TestAcceptFCAndConflictingRevision(t *testing.T) {
 
 			NewWindowStart:        tpt.cs.Height() + 2,
 			NewWindowEnd:          tpt.cs.Height() + 5,
-			NewValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
-			NewMissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
+			NewValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+			NewMissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 		}},
 	}}
 	err = tpt.tpool.AcceptTransactionSet(rSet)
@@ -576,8 +576,8 @@ func TestPartialConfirmation(t *testing.T) {
 		WindowStart:        tpt.cs.Height() + 2,
 		WindowEnd:          tpt.cs.Height() + 5,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 		UnlockHash:         types.UnlockConditions{}.UnlockHash(),
 	})
 	tSet, err := builder.Sign(true)
@@ -594,8 +594,8 @@ func TestPartialConfirmation(t *testing.T) {
 
 			NewWindowStart:        tpt.cs.Height() + 2,
 			NewWindowEnd:          tpt.cs.Height() + 5,
-			NewValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
-			NewMissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(tpt.cs.Height(), payout)}},
+			NewValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+			NewMissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 		}},
 	}}
 

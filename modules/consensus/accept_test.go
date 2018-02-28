@@ -842,10 +842,17 @@ func TestInconsistentCheck(t *testing.T) {
 	}
 
 	// Corrupt the consensus set by adding a new siafund output.
-	sfo := types.SiafundOutput{
+	sco := types.SiacoinOutput{
 		Value: types.NewCurrency64(1),
 	}
-	cst.cs.dbAddSiafundOutput(types.SiafundOutputID{}, sfo)
+	dbBucketMap := map[string]dbBucket{}
+	if tt.useNilBlockMap {
+		dbBucketMap[string(BlockMap)] = nil
+	} else {
+		dbBucketMap[string(BlockMap)] = bucket
+	}
+	tx := mockDbTx{dbBucketMap}
+	cst.cs.dbAddSiacoinOutputID(tx, types.SiacoinOutputID{}, sco)
 
 	// Catch a panic that should be caused by the inconsistency check after a
 	// block is mined.
@@ -858,113 +865,6 @@ func TestInconsistentCheck(t *testing.T) {
 	_, err = cst.miner.AddBlock()
 	if err != nil {
 		t.Fatal(err)
-	}
-}
-
-// COMPATv0.4.0
-//
-// This test checks that the hardfork scheduled for block 21,000 rolls through
-// smoothly.
-func TestTaxHardfork(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	cst, err := createConsensusSetTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cst.Close()
-
-	// Create a file contract with a payout that is put into the blockchain
-	// before the hardfork block but expires after the hardfork block.
-	payout := types.NewCurrency64(400e6)
-	outputSize := types.PostTax(cst.cs.dbBlockHeight(), payout)
-	fc := types.FileContract{
-		WindowStart:        cst.cs.dbBlockHeight() + 12,
-		WindowEnd:          cst.cs.dbBlockHeight() + 14,
-		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: outputSize}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: outputSize}},
-		UnlockHash:         types.UnlockConditions{}.UnlockHash(), // The empty UC is anyone-can-spend
-	}
-
-	// Create and fund a transaction with a file contract.
-	txnBuilder := cst.wallet.StartTransaction()
-	err = txnBuilder.FundSiacoins(payout)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fcIndex := txnBuilder.AddFileContract(fc)
-	txnSet, err := txnBuilder.Sign(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = cst.tpool.AcceptTransactionSet(txnSet)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = cst.miner.AddBlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Check that the siafund pool was increased by the faulty float amount.
-	siafundPool := cst.cs.dbGetSiafundPool()
-	if !siafundPool.Equals64(15590e3) {
-		t.Fatal("siafund pool was not increased correctly")
-	}
-
-	// Mine blocks until the hardfork is reached.
-	for i := 0; i < 10; i++ {
-		_, err = cst.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// Submit a file contract revision and check that the payouts are able to
-	// be the same.
-	fcid := txnSet[len(txnSet)-1].FileContractID(fcIndex)
-	fcr := types.FileContractRevision{
-		ParentID:          fcid,
-		UnlockConditions:  types.UnlockConditions{},
-		NewRevisionNumber: 1,
-
-		NewFileSize:           1,
-		NewWindowStart:        cst.cs.dbBlockHeight() + 2,
-		NewWindowEnd:          cst.cs.dbBlockHeight() + 4,
-		NewValidProofOutputs:  fc.ValidProofOutputs,
-		NewMissedProofOutputs: fc.MissedProofOutputs,
-	}
-	txnBuilder = cst.wallet.StartTransaction()
-	txnBuilder.AddFileContractRevision(fcr)
-	txnSet, err = txnBuilder.Sign(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = cst.tpool.AcceptTransactionSet(txnSet)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = cst.miner.AddBlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Mine blocks until the revision goes through, such that the sanity checks
-	// can be run.
-	for i := 0; i < 6; i++ {
-		_, err = cst.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	// Check that the siafund pool did not change after the submitted revision.
-	siafundPool = cst.cs.dbGetSiafundPool()
-	if !siafundPool.Equals64(15590e3) {
-		t.Fatal("siafund pool was not increased correctly")
 	}
 }
 

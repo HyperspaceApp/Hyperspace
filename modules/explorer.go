@@ -30,8 +30,6 @@ type (
 		FileContractCount         uint64 `json:"filecontractcount"`
 		FileContractRevisionCount uint64 `json:"filecontractrevisioncount"`
 		StorageProofCount         uint64 `json:"storageproofcount"`
-		SiafundInputCount         uint64 `json:"siafundinputcount"`
-		SiafundOutputCount        uint64 `json:"siafundoutputcount"`
 		MinerFeeCount             uint64 `json:"minerfeecount"`
 		ArbitraryDataCount        uint64 `json:"arbitrarydatacount"`
 		TransactionSignatureCount uint64 `json:"transactionsignaturecount"`
@@ -90,14 +88,6 @@ type (
 		// FileContractID returns all of the transaction ids associated with
 		// the provided file contract id.
 		FileContractID(types.FileContractID) []types.TransactionID
-
-		// SiafundOutput will return the siafund output associated with the
-		// input id.
-		SiafundOutput(types.SiafundOutputID) (types.SiafundOutput, bool)
-
-		// SiafundOutputID returns all of the transaction ids associated with
-		// the provided siafund output id.
-		SiafundOutputID(types.SiafundOutputID) []types.TransactionID
 
 		Close() error
 	}

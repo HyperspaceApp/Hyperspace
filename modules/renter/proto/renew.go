@@ -57,7 +57,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	totalPayout := renterPayout.Add(hostPayout)
 
 	// check for negative currency
-	if types.PostTax(startHeight, totalPayout).Cmp(hostPayout) < 0 {
+	if totalPayout.Cmp(hostPayout) < 0 {
 		return modules.RenterContract{}, errors.New("insufficient funds to pay both siafund fee and also host payout")
 	} else if hostCollateral.Cmp(baseCollateral) < 0 {
 		return modules.RenterContract{}, errors.New("new collateral smaller than base collateral")
@@ -74,13 +74,13 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 		RevisionNumber: 0,
 		ValidProofOutputs: []types.SiacoinOutput{
 			// renter
-			{Value: types.PostTax(startHeight, totalPayout).Sub(hostPayout), UnlockHash: refundAddress},
+			{Value: totalPayout.Sub(hostPayout), UnlockHash: refundAddress},
 			// host
 			{Value: hostPayout, UnlockHash: host.UnlockHash},
 		},
 		MissedProofOutputs: []types.SiacoinOutput{
 			// renter
-			{Value: types.PostTax(startHeight, totalPayout).Sub(hostPayout), UnlockHash: refundAddress},
+			{Value: totalPayout.Sub(hostPayout), UnlockHash: refundAddress},
 			// host gets its unused collateral back, plus the contract price
 			{Value: hostCollateral.Sub(baseCollateral).Add(host.ContractPrice), UnlockHash: host.UnlockHash},
 			// void gets the spent storage fees, plus the collateral being risked
@@ -276,7 +276,6 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 		TotalCost:   funding,
 		ContractFee: host.ContractPrice,
 		TxnFee:      txnFee,
-		SiafundFee:  types.Tax(startHeight, fc.Payout),
 	}
 
 	// Add contract to set.

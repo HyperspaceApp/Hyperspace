@@ -213,9 +213,6 @@ func (tp *TransactionPool) Transaction(id types.TransactionID) (types.Transactio
 		for _, fcr := range txn.FileContractRevisions {
 			parentIDs[types.OutputID(fcr.ParentID)] = struct{}{}
 		}
-		for _, input := range txn.SiafundInputs {
-			parentIDs[types.OutputID(input.ParentID)] = struct{}{}
-		}
 		for _, proof := range txn.StorageProofs {
 			parentIDs[types.OutputID(proof.ParentID)] = struct{}{}
 		}
@@ -230,11 +227,6 @@ func (tp *TransactionPool) Transaction(id types.TransactionID) (types.Transactio
 			}
 		}
 		for i := range t.FileContracts {
-			if _, exists := parentIDs[types.OutputID(t.SiacoinOutputID(uint64(i)))]; exists {
-				return true
-			}
-		}
-		for i := range t.SiafundOutputs {
 			if _, exists := parentIDs[types.OutputID(t.SiacoinOutputID(uint64(i)))]; exists {
 				return true
 			}

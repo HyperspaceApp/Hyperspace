@@ -301,8 +301,6 @@ func (cf CoveredFields) MarshalSia(w io.Writer) error {
 		cf.FileContracts,
 		cf.FileContractRevisions,
 		cf.StorageProofs,
-		cf.SiafundInputs,
-		cf.SiafundOutputs,
 		cf.MinerFees,
 		cf.ArbitraryData,
 		cf.TransactionSignatures,
@@ -324,8 +322,6 @@ func (cf CoveredFields) MarshalSiaSize() (size int) {
 	size += 8 + len(cf.FileContracts)*8
 	size += 8 + len(cf.FileContractRevisions)*8
 	size += 8 + len(cf.StorageProofs)*8
-	size += 8 + len(cf.SiafundInputs)*8
-	size += 8 + len(cf.SiafundOutputs)*8
 	size += 8 + len(cf.MinerFees)*8
 	size += 8 + len(cf.ArbitraryData)*8
 	size += 8 + len(cf.TransactionSignatures)*8
@@ -344,8 +340,6 @@ func (cf *CoveredFields) UnmarshalSia(r io.Reader) error {
 		&cf.FileContracts,
 		&cf.FileContractRevisions,
 		&cf.StorageProofs,
-		&cf.SiafundInputs,
-		&cf.SiafundOutputs,
 		&cf.MinerFees,
 		&cf.ArbitraryData,
 		&cf.TransactionSignatures,
@@ -707,57 +701,6 @@ func (scoid *SiacoinOutputID) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalSia implements the encoding.SiaMarshaler interface.
-func (sfi SiafundInput) MarshalSia(w io.Writer) error {
-	e := encoder(w)
-	e.Write(sfi.ParentID[:])
-	sfi.UnlockConditions.MarshalSia(e)
-	e.Write(sfi.ClaimUnlockHash[:])
-	return e.Err()
-}
-
-// UnmarshalSia implements the encoding.SiaUnmarshaler interface.
-func (sfi *SiafundInput) UnmarshalSia(r io.Reader) error {
-	d := decoder(r)
-	d.ReadFull(sfi.ParentID[:])
-	sfi.UnlockConditions.UnmarshalSia(d)
-	d.ReadFull(sfi.ClaimUnlockHash[:])
-	return d.Err()
-}
-
-// MarshalSia implements the encoding.SiaMarshaler interface.
-func (sfo SiafundOutput) MarshalSia(w io.Writer) error {
-	e := encoder(w)
-	sfo.Value.MarshalSia(e)
-	e.Write(sfo.UnlockHash[:])
-	sfo.ClaimStart.MarshalSia(e)
-	return e.Err()
-}
-
-// UnmarshalSia implements the encoding.SiaUnmarshaler interface.
-func (sfo *SiafundOutput) UnmarshalSia(r io.Reader) error {
-	d := decoder(r)
-	sfo.Value.UnmarshalSia(d)
-	d.ReadFull(sfo.UnlockHash[:])
-	sfo.ClaimStart.UnmarshalSia(d)
-	return d.Err()
-}
-
-// MarshalJSON marshals an id as a hex string.
-func (sfoid SiafundOutputID) MarshalJSON() ([]byte, error) {
-	return json.Marshal(sfoid.String())
-}
-
-// String prints the id in hex.
-func (sfoid SiafundOutputID) String() string {
-	return fmt.Sprintf("%x", sfoid[:])
-}
-
-// UnmarshalJSON decodes the json hex string of the id.
-func (sfoid *SiafundOutputID) UnmarshalJSON(b []byte) error {
-	return (*crypto.Hash)(sfoid).UnmarshalJSON(b)
-}
-
-// MarshalSia implements the encoding.SiaMarshaler interface.
 func (spk SiaPublicKey) MarshalSia(w io.Writer) error {
 	e := encoder(w)
 	e.Write(spk.Algorithm[:])
@@ -856,8 +799,6 @@ func (t Transaction) MarshalSia(w io.Writer) error {
 			t.FileContracts,
 			t.FileContractRevisions,
 			t.StorageProofs,
-			t.SiafundInputs,
-			t.SiafundOutputs,
 			t.MinerFees,
 			t.ArbitraryData,
 			t.TransactionSignatures,
@@ -898,14 +839,6 @@ func (t Transaction) MarshalSiaNoSignatures(w io.Writer) {
 	for i := range t.StorageProofs {
 		t.StorageProofs[i].MarshalSia(e)
 	}
-	e.WriteInt(len((t.SiafundInputs)))
-	for i := range t.SiafundInputs {
-		t.SiafundInputs[i].MarshalSia(e)
-	}
-	e.WriteInt(len((t.SiafundOutputs)))
-	for i := range t.SiafundOutputs {
-		t.SiafundOutputs[i].MarshalSia(e)
-	}
 	e.WriteInt(len((t.MinerFees)))
 	for i := range t.MinerFees {
 		t.MinerFees[i].MarshalSia(e)
@@ -941,18 +874,6 @@ func (t Transaction) MarshalSiaSize() (size int) {
 		size += len(sp.ParentID)
 		size += len(sp.Segment)
 		size += 8 + len(sp.HashSet)*crypto.HashSize
-	}
-	size += 8
-	for _, sfi := range t.SiafundInputs {
-		size += len(sfi.ParentID)
-		size += len(sfi.ClaimUnlockHash)
-		size += sfi.UnlockConditions.MarshalSiaSize()
-	}
-	size += 8
-	for _, sfo := range t.SiafundOutputs {
-		size += sfo.Value.MarshalSiaSize()
-		size += len(sfo.UnlockHash)
-		size += sfo.ClaimStart.MarshalSiaSize()
 	}
 	size += 8
 	for i := range t.MinerFees {
@@ -1003,14 +924,6 @@ func (t *Transaction) UnmarshalSia(r io.Reader) error {
 	t.StorageProofs = make([]StorageProof, d.NextPrefix(unsafe.Sizeof(StorageProof{})))
 	for i := range t.StorageProofs {
 		t.StorageProofs[i].UnmarshalSia(d)
-	}
-	t.SiafundInputs = make([]SiafundInput, d.NextPrefix(unsafe.Sizeof(SiafundInput{})))
-	for i := range t.SiafundInputs {
-		t.SiafundInputs[i].UnmarshalSia(d)
-	}
-	t.SiafundOutputs = make([]SiafundOutput, d.NextPrefix(unsafe.Sizeof(SiafundOutput{})))
-	for i := range t.SiafundOutputs {
-		t.SiafundOutputs[i].UnmarshalSia(d)
 	}
 	t.MinerFees = make([]Currency, d.NextPrefix(unsafe.Sizeof(Currency{})))
 	for i := range t.MinerFees {

@@ -58,8 +58,6 @@ type (
 		FileContracts         []uint64 `json:"filecontracts"`
 		FileContractRevisions []uint64 `json:"filecontractrevisions"`
 		StorageProofs         []uint64 `json:"storageproofs"`
-		SiafundInputs         []uint64 `json:"siafundinputs"`
-		SiafundOutputs        []uint64 `json:"siafundoutputs"`
 		MinerFees             []uint64 `json:"minerfees"`
 		ArbitraryData         []uint64 `json:"arbitrarydata"`
 		TransactionSignatures []uint64 `json:"transactionsignatures"`
@@ -79,7 +77,7 @@ type (
 	// UnlockConditions of the transaction. This key is specified first by
 	// 'ParentID', which specifies the UnlockConditions, and then
 	// 'PublicKeyIndex', which indicates the key in the UnlockConditions. There
-	// are three types that use UnlockConditions: SiacoinInputs, SiafundInputs,
+	// are three types that use UnlockConditions: SiacoinInputs,
 	// and FileContractTerminations. Each of these types also references a
 	// ParentID, and this is the hash that 'ParentID' must match. The 'Timelock'
 	// prevents the signature from being used until a certain height.
@@ -183,12 +181,6 @@ func (t Transaction) SigHash(i int) (hash crypto.Hash) {
 		for _, storageProof := range cf.StorageProofs {
 			t.StorageProofs[storageProof].MarshalSia(h)
 		}
-		for _, siafundInput := range cf.SiafundInputs {
-			t.SiafundInputs[siafundInput].MarshalSia(h)
-		}
-		for _, siafundOutput := range cf.SiafundOutputs {
-			t.SiafundOutputs[siafundOutput].MarshalSia(h)
-		}
 		for _, minerFee := range cf.MinerFees {
 			t.MinerFees[minerFee].MarshalSia(h)
 		}
@@ -242,8 +234,6 @@ func (t Transaction) validCoveredFields() error {
 			{cf.FileContracts, len(t.FileContracts)},
 			{cf.FileContractRevisions, len(t.FileContractRevisions)},
 			{cf.StorageProofs, len(t.StorageProofs)},
-			{cf.SiafundInputs, len(t.SiafundInputs)},
-			{cf.SiafundOutputs, len(t.SiafundOutputs)},
 			{cf.MinerFees, len(t.MinerFees)},
 			{cf.ArbitraryData, len(t.ArbitraryData)},
 			{cf.TransactionSignatures, len(t.TransactionSignatures)},
@@ -310,20 +300,6 @@ func (t *Transaction) validSignatures(currentHeight BlockHeight) error {
 		sigMap[id] = &inputSignatures{
 			remainingSignatures: revision.UnlockConditions.SignaturesRequired,
 			possibleKeys:        revision.UnlockConditions.PublicKeys,
-			usedKeys:            make(map[uint64]struct{}),
-			index:               i,
-		}
-	}
-	for i, input := range t.SiafundInputs {
-		id := crypto.Hash(input.ParentID)
-		_, exists := sigMap[id]
-		if exists {
-			return ErrDoubleSpend
-		}
-
-		sigMap[id] = &inputSignatures{
-			remainingSignatures: input.UnlockConditions.SignaturesRequired,
-			possibleKeys:        input.UnlockConditions.PublicKeys,
 			usedKeys:            make(map[uint64]struct{}),
 			index:               i,
 		}

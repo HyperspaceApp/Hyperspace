@@ -242,15 +242,9 @@ type RenterContract struct {
 	//
 	// TxnFee is the amount of money spent on the transaction fee when putting
 	// the renter contract on the blockchain.
-	//
-	// SiafundFee is the amount of money spent on siafund fees when creating the
-	// contract. The siafund fee that the renter pays covers both the renter and
-	// the host portions of the contract, and therefore can be unexpectedly high
-	// if the the host collateral is high.
 	TotalCost   types.Currency
 	ContractFee types.Currency
 	TxnFee      types.Currency
-	SiafundFee  types.Currency
 }
 
 // ContractorSpending contains the metrics about how much the Contractor has
