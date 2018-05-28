@@ -2,6 +2,7 @@ package pool
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
 	"runtime"
@@ -88,6 +89,39 @@ func printWithSuffix(number types.Currency) string {
 		return fmt.Sprintf("%dM", num/1000000)
 	}
 	return fmt.Sprintf("%d", num)
+}
+
+// IntToTarget converts a big.Int to a Target.
+func intToTarget(i *big.Int) (t types.Target, err error) {
+	// Check for negatives.
+	if i.Sign() < 0 {
+		err = errors.New("Negative target")
+		return
+	}
+	// In the event of overflow, return the maximum.
+	if i.BitLen() > 256 {
+		err = errors.New("Target is too high")
+		return
+	}
+	b := i.Bytes()
+	offset := len(t[:]) - len(b)
+	copy(t[offset:], b)
+	return
+}
+
+func difficultyToTarget(difficulty float64) (target types.Target, err error) {
+	diffAsBig := big.NewFloat(difficulty)
+
+	diffOneString := "0x00000000ffff0000000000000000000000000000000000000000000000000000"
+	targetOneAsBigInt := &big.Int{}
+	targetOneAsBigInt.SetString(diffOneString, 0)
+
+	targetAsBigFloat := &big.Float{}
+	targetAsBigFloat.SetInt(targetOneAsBigInt)
+	targetAsBigFloat.Quo(targetAsBigFloat, diffAsBig)
+	targetAsBigInt, _ := targetAsBigFloat.Int(nil)
+	target, err = intToTarget(targetAsBigInt)
+	return
 }
 
 //
