@@ -455,8 +455,8 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	submitPoolTarget, _ := difficultyToTarget(submitPoolDifficulty)
 
 	// need to checkout the block hashrate reach pool target or not
-	h.s.CurrentWorker.log.Printf("Submit diff: %064x\n", bh)
-	h.s.CurrentWorker.log.Printf("Pool target: %064x\n", submitPoolTarget.Int())
+	h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
+	h.s.CurrentWorker.log.Printf("Pool target:   %064x\n", submitPoolTarget.Int())
 	if bytes.Compare(submitPoolTarget[:], blockHash[:]) < 0 {
 		r.Result = false
 		r.Error = interfaceify([]string{"22","Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
