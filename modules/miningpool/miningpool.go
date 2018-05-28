@@ -87,8 +87,8 @@ var (
 	// storage when a block hasn't been found.
 	ShiftDuration = build.Select(build.Var{
 		Standard: 1 * time.Minute,
-		Dev:      0.5 * time.Minute,
-		Testing:  0.5 * time.Minute,
+		Dev:      20 * time.Second,
+		Testing:  1 * time.Second,
 	}).(time.Duration)
 )
 
