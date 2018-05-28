@@ -143,7 +143,7 @@ func (s *Session) ShareDurationAverage() (float64, float64) {
 	var timestampCount int
 
 	for i := uint64(0); i < s.vardiff.bufSize; i++ {
-		s.log.Printf("ShareDurationAverage: %d %s %t\n", i, s.shareTimes[i], s.shareTimes[i].IsZero())
+		// s.log.Printf("ShareDurationAverage: %d %s %t\n", i, s.shareTimes[i], s.shareTimes[i].IsZero())
 		if s.shareTimes[i].IsZero() {
 			continue
 		}

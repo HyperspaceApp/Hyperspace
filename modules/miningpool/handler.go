@@ -456,6 +456,9 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		h.s.CurrentWorker.log.Printf("Block is greater than target\n")
+		h.s.CurrentWorker.log.Printf("Share Accepted\n")
+		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
+		h.s.CurrentWorker.SetLastShareTime(time.Now())
 		return h.sendResponse(r)
 	}
 	err = h.p.managedSubmitBlock(b)
@@ -468,9 +471,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		return h.sendResponse(r)
 	}
 
-	// only ErrBlockUnsolved or Accepted is valid share
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
-	// should not use `CurrentDifficulty`
 	h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
