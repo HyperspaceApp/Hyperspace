@@ -13,8 +13,8 @@ var (
 		Testing:  3.0,
 	}).(float64) // targeted seconds between shares
 	retargetDuration = build.Select(build.Var{
-		Standard: 10.0,
-		Dev:      20.0,
+		Standard: 15.0,
+		Dev:      15.0,
 		Testing:  9.0,
 	}).(float64) // how often do we consider changing difficulty
 	variancePercent  = build.Select(build.Var{
