@@ -288,7 +288,7 @@ func assembleHostPort(key crypto.TwofishKey, hostHostname string, testdir string
 	if err != nil {
 		return nil, err
 	}
-	srv, err := NewServer("localhost:0", "Sia-Agent", "", cs, nil, g, h, m, r, tp, w)
+	srv, err := NewServer("localhost:0", "Sia-Agent", "", cs, nil, g, h, m, r, tp, w, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}

@@ -540,21 +540,46 @@ func (api *API) walletTransactionHandler(w http.ResponseWriter, req *http.Reques
 
 // walletTransactionsHandler handles API calls to /wallet/transactions.
 func (api *API) walletTransactionsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	startheightStr, endheightStr := req.FormValue("startheight"), req.FormValue("endheight")
-	if startheightStr == "" || endheightStr == "" {
-		WriteError(w, Error{"startheight and endheight must be provided to a /wallet/transactions call."}, http.StatusBadRequest)
-		return
-	}
-	// Get the start and end blocks.
-	start, err := strconv.ParseUint(startheightStr, 10, 64)
-	if err != nil {
-		WriteError(w, Error{"parsing integer value for parameter `startheight` failed: " + err.Error()}, http.StatusBadRequest)
-		return
-	}
-	end, err := strconv.ParseUint(endheightStr, 10, 64)
-	if err != nil {
-		WriteError(w, Error{"parsing integer value for parameter `endheight` failed: " + err.Error()}, http.StatusBadRequest)
-		return
+	startheightStr, endheightStr, depthStr := req.FormValue("startheight"), req.FormValue("endheight"), req.FormValue("depth")
+	var start, end, depth uint64
+	var err error
+	if depthStr == "" {
+		if startheightStr == "" || endheightStr == "" {
+			WriteError(w, Error{"startheight and endheight must be provided to a /wallet/transactions call if depth is unspecified."}, http.StatusBadRequest)
+			return
+		}
+		// Get the start and end blocks.
+		start, err = strconv.ParseUint(startheightStr, 10, 64)
+		if err != nil {
+			WriteError(w, Error{"parsing integer value for parameter `startheight` failed: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		end, err = strconv.ParseUint(endheightStr, 10, 64)
+		if err != nil {
+			WriteError(w, Error{"parsing integer value for parameter `endheight` failed: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+	} else {
+		if startheightStr != "" || endheightStr != "" {
+			WriteError(w, Error{"startheight and endheight must not be provided to a /wallet/transactions call if depth is specified."}, http.StatusBadRequest)
+			return
+		}
+		// Get the start and end blocks by looking backwards from our current height.
+		depth, err = strconv.ParseUint(depthStr, 10, 64)
+		if err != nil {
+			WriteError(w, Error{"parsing integer value for parameter `depth` failed: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		height, err := api.wallet.Height()
+		if err != nil {
+			WriteError(w, Error{fmt.Sprintf("Error when calling /wallet: %v", err)}, http.StatusBadRequest)
+			return
+		}
+		end = uint64(height)
+		start = end - depth - 1
+		if start < 0 {
+			start = 0
+		}
 	}
 	confirmedTxns, err := api.wallet.Transactions(types.BlockHeight(start), types.BlockHeight(end))
 	if err != nil {

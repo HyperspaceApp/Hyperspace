@@ -382,3 +382,8 @@ func (cs *ConsensusSet) StorageProofSegment(fcid types.FileContractID) (index ui
 	})
 	return index, err
 }
+
+// get db
+func (cs *ConsensusSet) Db() *persist.BoltDatabase {
+	return cs.db
+}

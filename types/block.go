@@ -5,6 +5,9 @@ package types
 
 import (
 	"bytes"
+	"encoding/hex"
+	"hash"
+	"unsafe"
 
 	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/crypto"
@@ -83,15 +86,21 @@ func (h BlockHeader) ID() BlockID {
 	return BlockID(crypto.HashObject(h))
 }
 
+func (b Block) CalculateMinerFees() Currency {
+	fees := NewCurrency64(0)
+	for _, txn := range b.Transactions {
+		for _, fee := range txn.MinerFees {
+			fees = fees.Add(fee)
+		}
+	}
+	return fees
+}
+
 // CalculateSubsidy takes a block and a height and determines the block
 // subsidy.
 func (b Block) CalculateSubsidy(height BlockHeight) Currency {
 	subsidy := CalculateCoinbase(height)
-	for _, txn := range b.Transactions {
-		for _, fee := range txn.MinerFees {
-			subsidy = subsidy.Add(fee)
-		}
-	}
+	subsidy = subsidy.Add(b.CalculateMinerFees())
 	return subsidy
 }
 
@@ -144,7 +153,6 @@ func (b Block) MerkleRoot() crypto.Hash {
 			panic("Block MerkleRoot implementation is broken")
 		}
 	}
-
 	return tree.Root()
 }
 
@@ -157,3 +165,47 @@ func (b Block) MinerPayoutID(i uint64) SiacoinOutputID {
 		i,
 	))
 }
+
+func (b Block) MerkleBranches() []string {
+	mbranch := crypto.NewTree()
+	var buf bytes.Buffer
+	for _, payout := range b.MinerPayouts {
+		payout.MarshalSia(&buf)
+		mbranch.Push(buf.Bytes())
+		buf.Reset()
+	}
+
+	for _, txn := range b.Transactions {
+		txn.MarshalSia(&buf)
+		mbranch.Push(buf.Bytes())
+		buf.Reset()
+	}
+	//
+	// This whole approach needs to be revisited.  I basically am cheating to look
+	// inside the merkle tree struct to determine if the head is a leaf or not
+	//
+	type SubTree struct {
+		next   *SubTree
+		height int // Int is okay because a height over 300 is physically unachievable.
+		sum    []byte
+	}
+
+	type Tree struct {
+		head         *SubTree
+		hash         hash.Hash
+		currentIndex uint64
+		proofIndex   uint64
+		proofSet     [][]byte
+		cachedTree   bool
+	}
+	tr := *(*Tree)(unsafe.Pointer(mbranch))
+
+	var merkle []string
+	//	h.log.Debugf("mBranch Hash %s\n", mbranch.Root().String())
+	for st := tr.head; st != nil; st = st.next {
+		//		h.log.Debugf("Height %d Hash %x\n", st.height, st.sum)
+		merkle = append(merkle, hex.EncodeToString(st.sum))
+	}
+	return merkle
+}
+

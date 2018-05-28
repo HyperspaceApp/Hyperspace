@@ -23,6 +23,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/consensus", api.consensusHandler)
 		router.GET("/consensus/blocks", api.consensusBlocksHandler)
 		router.POST("/consensus/validate/transactionset", api.consensusValidateTransactionsetHandler)
+		router.GET("/consensus/blocks/:height", api.consensusBlocksHandlerSanasol)
+		router.GET("/consensus/future/:height", api.consensusFutureBlocksHandler)
 	}
 
 	// Explorer API Calls
@@ -65,6 +67,20 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/miner/stop", RequirePassword(api.minerStopHandler, requiredPassword))
 	}
 
+	// Mining pool API Calls
+	if api.pool != nil {
+		router.GET("/pool", api.poolHandler)
+		// router.GET("/pool/clients", api.poolGetClientsInfo)
+		// router.GET("/pool/client", api.poolGetClientInfo)
+		// router.GET("/pool/clienttx", api.poolGetClientTransactions)
+		router.POST("/pool/config", RequirePassword(api.poolConfigHandlerPOST, requiredPassword)) // Change the settings of the host.
+		router.GET("/pool/config", RequirePassword(api.poolConfigHandler, requiredPassword))
+		router.GET("/pool/start", RequirePassword(api.poolStartHandler, requiredPassword))
+		router.GET("/pool/stop", RequirePassword(api.poolStopHandler, requiredPassword))
+		// router.GET("/pool/blocks", api.poolGetBlocksInfo)
+		// router.GET("/pool/block", api.poolGetBlockInfo)
+	}
+
 	// Renter API Calls
 	if api.renter != nil {
 		router.GET("/renter", api.renterHandlerGET)
@@ -93,6 +109,12 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/hostdb/active", api.hostdbActiveHandler)
 		router.GET("/hostdb/all", api.hostdbAllHandler)
 		router.GET("/hostdb/hosts/:pubkey", api.hostdbHostsHandler)
+	}
+
+	if api.stratumminer != nil {
+		router.GET("/stratumminer", api.stratumminerHandler)
+		router.POST("/stratumminer/start", api.stratumminerStartHandler)
+		router.POST("/stratumminer/stop", api.stratumminerStopHandler)
 	}
 
 	// Transaction pool API Calls

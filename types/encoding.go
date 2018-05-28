@@ -871,7 +871,7 @@ func (t Transaction) MarshalSia(w io.Writer) error {
 	}
 
 	e := encoder(w)
-	t.marshalSiaNoSignatures(e)
+	t.MarshalSiaNoSignatures(e)
 	e.WriteInt(len((t.TransactionSignatures)))
 	for i := range t.TransactionSignatures {
 		t.TransactionSignatures[i].MarshalSia(e)
@@ -879,9 +879,9 @@ func (t Transaction) MarshalSia(w io.Writer) error {
 	return e.Err()
 }
 
-// marshalSiaNoSignatures is a helper function for calculating certain hashes
+// MarshalSiaNoSignatures is a helper function for calculating certain hashes
 // that do not include the transaction's signatures.
-func (t Transaction) marshalSiaNoSignatures(w io.Writer) {
+func (t Transaction) MarshalSiaNoSignatures(w io.Writer) {
 	e := encoder(w)
 	e.WriteInt(len((t.SiacoinInputs)))
 	for i := range t.SiacoinInputs {

@@ -31,11 +31,15 @@ dependencies:
 	go get -u github.com/inconshreveable/go-update
 	go get -u github.com/kardianos/osext
 	go get -u github.com/inconshreveable/mousetrap
+	go get -u github.com/go-sql-driver/mysql
+	go get -u github.com/lib/pq
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
+	go get -u github.com/spf13/viper
+	go get -u github.com/inconshreveable/mousetrap
 	# Developer Dependencies
-	go install -race std
+	#go install -race std
 	go get -u github.com/client9/misspell/cmd/misspell
 	go get -u github.com/golang/lint/golint
 	go get -u github.com/NebulousLabs/glyphcheck
@@ -45,9 +49,9 @@ dependencies:
 run = .
 pkgs = ./build ./cmd/siac ./cmd/siad ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
-       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/wallet   \
-       ./modules/transactionpool ./node ./node/api ./persist ./siatest ./siatest/consensus ./siatest/renter               \
-       ./siatest/wallet ./node/api/server ./sync ./types
+       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
+       ./modules/wallet ./modules/transactionpool ./modules/stratumminer ./node ./node/api ./persist ./siatest \
+       ./siatest/consensus ./siatest/renter ./siatest/wallet ./node/api/server ./sync ./types
 
 # fmt calls go fmt on all packages.
 fmt:
@@ -86,7 +90,7 @@ release-race:
 # clean removes all directories that get automatically created during
 # development.
 clean:
-	rm -rf cover doc/whitepaper.aux doc/whitepaper.log doc/whitepaper.pdf release 
+	rm -rf cover doc/whitepaper.aux doc/whitepaper.log doc/whitepaper.pdf release
 
 test:
 	go test -short -tags='debug testing netgo' -timeout=5s $(pkgs) -run=$(run)
@@ -100,6 +104,8 @@ test-cpu:
 	go test -v -tags='testing debug netgo' -timeout=500s -cpuprofile cpu.prof $(pkgs) -run=$(run)
 test-mem:
 	go test -v -tags='testing debug netgo' -timeout=500s -memprofile mem.prof $(pkgs) -run=$(run)
+test-pool:
+	go test -short -tags='testing debug pool' -timeout=60s ./modules/miningpool -run=$(run)
 bench: clean fmt
 	go test -tags='debug testing netgo' -timeout=500s -run=XXX -bench=$(run) $(pkgs)
 cover: clean

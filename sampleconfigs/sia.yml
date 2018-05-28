@@ -1,0 +1,7 @@
+miningpool:
+  name: YOUR_POOL_NAME
+  poolwallet: YOUR_WALLET
+  dbaddress: 127.0.0.1
+  dbuser: YOUR_DB_USER
+  dbpass: YOUR_DB_PASS
+  dbname: YOUR_DB_NAME

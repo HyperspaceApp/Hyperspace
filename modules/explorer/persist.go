@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"os"
+	//"fmt"
 	"path/filepath"
 
 	"github.com/NebulousLabs/Sia/encoding"
@@ -73,6 +74,17 @@ func (e *Explorer) initPersist() error {
 				return err
 			}
 		}
+		
+		//err = b.Put(internalBlockHeight, encoding.Marshal(types.BlockHeight(98112)))
+		//if err != nil {
+		//	fmt.Printf("internal err %v", err)
+		//	return err
+		//}
+
+		//err = b.Put(internalRecentChange, encoding.Marshal(modules.ConsensusChangeID{}))
+		//if err != nil {
+		//	return err
+		//}
 
 		return nil
 	})

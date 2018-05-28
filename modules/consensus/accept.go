@@ -61,6 +61,17 @@ func (cs *ConsensusSet) validateHeaderAndBlock(tx dbTx, b types.Block, id types.
 	// Check that the timestamp is not too far in the past to be acceptable.
 	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parent)
 
+	// XXX debugging
+	var payoutSum types.Currency
+	for _, payout := range b.MinerPayouts {
+	        //if payout.Value.IsZero() {
+	        //        return false
+	        //}
+	        payoutSum = payoutSum.Add(payout.Value)
+	}
+	// cs.log.Debugln(fmt.Sprintf("block id: %s, #txs: %d, miner fees %s, miner subsidy (calculated by transaction fees): %s miner payout: %s\n", b.ID(), len(b.Transactions), b.CalculateMinerFees().String(), b.CalculateSubsidy(parent.Height+1).String(), payoutSum.String()))
+	// XXX debugging
+
 	err = cs.blockValidator.ValidateBlock(b, id, minTimestamp, parent.ChildTarget, parent.Height+1, cs.log)
 	if err != nil {
 		return nil, err

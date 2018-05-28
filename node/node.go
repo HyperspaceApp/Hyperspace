@@ -12,15 +12,18 @@ package node
 import (
 	"path/filepath"
 
+	"github.com/NebulousLabs/Sia/config"
 	"github.com/NebulousLabs/Sia/modules"
 	"github.com/NebulousLabs/Sia/modules/consensus"
 	"github.com/NebulousLabs/Sia/modules/gateway"
 	"github.com/NebulousLabs/Sia/modules/host"
 	"github.com/NebulousLabs/Sia/modules/miner"
+	"github.com/NebulousLabs/Sia/modules/miningpool"
 	"github.com/NebulousLabs/Sia/modules/renter"
 	"github.com/NebulousLabs/Sia/modules/renter/contractor"
 	"github.com/NebulousLabs/Sia/modules/renter/hostdb"
 	"github.com/NebulousLabs/Sia/modules/renter/proto"
+	"github.com/NebulousLabs/Sia/modules/stratumminer"
 	"github.com/NebulousLabs/Sia/modules/transactionpool"
 	"github.com/NebulousLabs/Sia/modules/wallet"
 	"github.com/NebulousLabs/Sia/persist"
@@ -58,6 +61,8 @@ type NodeParams struct {
 	CreateGateway         bool
 	CreateHost            bool
 	CreateMiner           bool
+	CreateMiningPool      bool
+	CreateStratumMiner    bool
 	CreateRenter          bool
 	CreateTransactionPool bool
 	CreateWallet          bool
@@ -71,6 +76,8 @@ type NodeParams struct {
 	Gateway         modules.Gateway
 	Host            modules.Host
 	Miner           modules.TestMiner
+	MiningPool      modules.Pool
+	StratumMiner    modules.StratumMiner
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
@@ -98,6 +105,8 @@ type Node struct {
 	Gateway         modules.Gateway
 	Host            modules.Host
 	Miner           modules.TestMiner
+	MiningPool      modules.Pool
+	StratumMiner    modules.StratumMiner
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
@@ -115,6 +124,12 @@ func (n *Node) Close() (err error) {
 	}
 	if n.Miner != nil {
 		err = errors.Compose(n.Miner.Close())
+	}
+	if n.MiningPool != nil {
+		err = errors.Compose(n.MiningPool.Close())
+	}
+	if n.StratumMiner != nil {
+		err = errors.Compose(n.StratumMiner.Close())
 	}
 	if n.Host != nil {
 		err = errors.Compose(n.Host.Close())
@@ -321,6 +336,42 @@ func New(params NodeParams) (*Node, error) {
 		return nil, errors.Extend(err, errors.New("unable to create miner"))
 	}
 
+	// Mining Pool.
+	p, err := func() (modules.Pool, error) {
+		if params.CreateMiningPool && params.MiningPool != nil {
+			return nil, errors.New("cannot create mining pool and also use custom mining pool")
+		}
+		if params.MiningPool != nil {
+			return params.MiningPool, nil
+		}
+		if !params.CreateMiningPool {
+			return nil, nil
+		}
+		p, err := pool.New(cs, tp, g, w, filepath.Join(dir, modules.PoolDir), config.MiningPoolConfig{})
+		if err != nil {
+			return nil, err
+		}
+		return p, nil
+	}()
+
+	// Stratum Miner.
+	sm, err := func() (modules.StratumMiner, error) {
+		if params.CreateStratumMiner && params.StratumMiner != nil {
+			return nil, errors.New("cannot create stratum miner and also use custom stratum miner")
+		}
+		if params.StratumMiner != nil {
+			return params.StratumMiner, nil
+		}
+		if !params.CreateStratumMiner {
+			return nil, nil
+		}
+		sm, err := stratumminer.New(filepath.Join(dir, modules.StratumMinerDir))
+		if err != nil {
+			return nil, err
+		}
+		return sm, nil
+	}()
+
 	// Explorer.
 	e, err := func() (modules.Explorer, error) {
 		if !params.CreateExplorer && params.Explorer != nil {
@@ -345,6 +396,8 @@ func New(params NodeParams) (*Node, error) {
 		Gateway:         g,
 		Host:            h,
 		Miner:           m,
+		MiningPool:      p,
+		StratumMiner:    sm,
 		Renter:          r,
 		TransactionPool: tp,
 		Wallet:          w,

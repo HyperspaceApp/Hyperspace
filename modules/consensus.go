@@ -5,6 +5,7 @@ import (
 
 	"github.com/NebulousLabs/Sia/crypto"
 	"github.com/NebulousLabs/Sia/types"
+	"github.com/NebulousLabs/Sia/persist"
 )
 
 const (
@@ -101,11 +102,11 @@ type (
 		// SiafundOutputDiffs contains the set of siafund diffs that were applied
 		// to the consensus set in the recent change. The direction for the set of
 		// diffs is 'DiffApply'.
-		SiafundOutputDiffs []SiafundOutputDiff
+		SiafundOutputDiffs []SiafundOutputDiff `json:"scod"`
 
 		// DelayedSiacoinOutputDiffs contains the set of delayed siacoin output
 		// diffs that were applied to the consensus set in the recent change.
-		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff `json:"dscod"`
 
 		// SiafundPoolDiffs are the siafund pool diffs that were applied to the
 		// consensus set in the recent change.
@@ -150,19 +151,19 @@ type (
 	// A SiafundOutputDiff indicates the addition or removal of a SiafundOutput in
 	// the consensus set.
 	SiafundOutputDiff struct {
-		Direction     DiffDirection
-		ID            types.SiafundOutputID
-		SiafundOutput types.SiafundOutput
+		Direction     DiffDirection `json:"dir"`
+		ID            types.SiafundOutputID `json:"id"`
+		SiafundOutput types.SiafundOutput `json:"sco"`
 	}
 
 	// A DelayedSiacoinOutputDiff indicates the introduction of a siacoin output
 	// that cannot be spent until after maturing for 144 blocks. When the output
 	// has matured, a SiacoinOutputDiff will be provided.
 	DelayedSiacoinOutputDiff struct {
-		Direction      DiffDirection
-		ID             types.SiacoinOutputID
-		SiacoinOutput  types.SiacoinOutput
-		MaturityHeight types.BlockHeight
+		Direction      DiffDirection `json:"dir"`
+		ID             types.SiacoinOutputID `json:"id"`
+		SiacoinOutput  types.SiacoinOutput `json:"sco"`
+		MaturityHeight types.BlockHeight `json:"mh"`
 	}
 
 	// A SiafundPoolDiff contains the value of the siafundPool before the block
@@ -248,6 +249,8 @@ type (
 		// allowing for garbage collection and rescanning. If the subscriber is
 		// not found in the subscriber database, no action is taken.
 		Unsubscribe(ConsensusSetSubscriber)
+
+		Db() *persist.BoltDatabase
 	}
 )
 
