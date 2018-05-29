@@ -13,8 +13,8 @@ var (
 		Testing:  3.0,
 	}).(float64) // targeted seconds between shares
 	retargetDuration = build.Select(build.Var{
-		Standard: 10.0,
-		Dev:      20.0,
+		Standard: 15.0,
+		Dev:      15.0,
 		Testing:  9.0,
 	}).(float64) // how often do we consider changing difficulty
 	variancePercent  = build.Select(build.Var{
@@ -55,7 +55,7 @@ func (s *Session) checkDiffOnNewShare() bool {
 		return false
 	}
 	if s.log != nil {
-		s.log.Debugf("Retargeted Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
+		s.log.Printf("Retargeted Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
 	}
 	s.lastVardiffRetarget = time.Now()
 
@@ -78,7 +78,7 @@ func (s *Session) checkDiffOnNewShare() bool {
 
 	if historyDuration < s.vardiff.tmax && historyDuration > s.vardiff.tmin { // close enough
 		if s.log != nil {
-			s.log.Debugf("HistoryDuration: %f is inside range\n", historyDuration)
+			s.log.Printf("HistoryDuration: %f is inside range\n", historyDuration)
 		}
 		return false
 	}
@@ -94,11 +94,11 @@ func (s *Session) checkDiffOnNewShare() bool {
 	}
 
 	if s.log != nil {
-		s.log.Debugf("HistoryDuration: %f Delta %f\n", historyDuration, deltaDiff)
+		s.log.Printf("HistoryDuration: %f Delta %f\n", historyDuration, deltaDiff)
 	}
 
 	if s.log != nil {
-		s.log.Debugf("Old difficulty was %v\n", s.currentDifficulty)
+		s.log.Printf("Old difficulty was %v\n", s.currentDifficulty)
 	}
 	s.SetCurrentDifficulty(s.CurrentDifficulty() * deltaDiff)
 	if s.log != nil {

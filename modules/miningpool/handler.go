@@ -407,6 +407,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 
 	h.s.SetLastShareTimestamp(time.Now())
+	submitPoolDifficulty := h.s.CurrentDifficulty()
 	if h.s.checkDiffOnNewShare() {
 		h.sendSetDifficulty(h.s.CurrentDifficulty())
 		needNewJob = true
@@ -427,7 +428,8 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		}
 	}
 	if len(b.MinerPayouts) == 0 {
-		r.Error = interfaceify([]string{"21","Stale - old/unknown job"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		r.Result = false
+		r.Error = interfaceify([]string{"22","Stale - old/unknown job"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
 		h.s.CurrentWorker.log.Printf("Stale Share rejected - old/unknown job\n")
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
@@ -449,13 +451,30 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	b.Transactions = append(b.Transactions, []types.Transaction{cointxn}...)
 	blockHash := b.ID()
 	bh := new(big.Int).SetBytes(blockHash[:])
+
+	submitPoolTarget, _ := difficultyToTarget(submitPoolDifficulty)
+
+	// need to checkout the block hashrate reach pool target or not
+	h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
+	h.s.CurrentWorker.log.Printf("Pool target:   %064x\n", submitPoolTarget.Int())
+	if bytes.Compare(submitPoolTarget[:], blockHash[:]) < 0 {
+		r.Result = false
+		r.Error = interfaceify([]string{"22","Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		h.s.CurrentWorker.log.Printf("Submit nonce not reach pool diff target\n")
+		h.s.CurrentWorker.IncrementInvalidShares()
+		return h.sendResponse(r)
+	}
+
 	t := h.p.persist.GetTarget()
-	h.s.CurrentWorker.log.Printf("BH hash is %064x\n", bh)
-	h.s.CurrentWorker.log.Printf("Target is  %064x\n", t.Int())
+	h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
+	h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
 	h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
 		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		h.s.CurrentWorker.log.Printf("Block is greater than target\n")
+		h.s.CurrentWorker.log.Printf("Share Accepted\n")
+		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
+		h.s.CurrentWorker.SetLastShareTime(time.Now())
 		return h.sendResponse(r)
 	}
 	err = h.p.managedSubmitBlock(b)
@@ -468,9 +487,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		return h.sendResponse(r)
 	}
 
-	// only ErrBlockUnsolved or Accepted is valid share
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
-	// should not use `CurrentDifficulty`
 	h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
