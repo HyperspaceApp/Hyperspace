@@ -388,6 +388,13 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		return nil, errors.New("Failed to ping database: " + err.Error())
 	}
 
+	// clean old worker records for this stratum server just in case we didn't
+	// shutdown cleanly
+	err = p.DeleteAllWorkerRecords()
+	if err != nil {
+		return nil, errors.New("Failed to clean database: " + err.Error())
+	}
+
 	p.tg.OnStop(func() error {
 		p.DeleteAllWorkerRecords()
 		p.sqldb.Close()
