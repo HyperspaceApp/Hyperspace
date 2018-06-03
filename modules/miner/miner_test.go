@@ -104,7 +104,7 @@ func TestIntegrationMiner(t *testing.T) {
 	}
 
 	// Check that the wallet has money.
-	siacoins, _, _, err := mt.wallet.ConfirmedBalance()
+	siacoins, err := mt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Error(err)
 	}
@@ -120,7 +120,7 @@ func TestIntegrationMiner(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	morecoins, _, _, err := mt.wallet.ConfirmedBalance()
+	morecoins, err := mt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Error(err)
 	}

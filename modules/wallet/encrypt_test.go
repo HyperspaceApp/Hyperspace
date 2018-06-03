@@ -55,7 +55,7 @@ func postEncryptionTesting(m modules.TestMiner, w *Wallet, masterKey crypto.Twof
 			panic(err)
 		}
 	}
-	siacoinBal, _, _, err := w.ConfirmedBalance()
+	siacoinBal, err := w.ConfirmedBalance()
 	if err != nil {
 		panic(err)
 	}
@@ -94,7 +94,7 @@ func postEncryptionTesting(m modules.TestMiner, w *Wallet, masterKey crypto.Twof
 	if err != nil {
 		panic(err)
 	}
-	siacoinBal2, _, _, err := w.ConfirmedBalance()
+	siacoinBal2, err := w.ConfirmedBalance()
 	if err != nil {
 		panic(err)
 	}
@@ -237,7 +237,7 @@ func TestLock(t *testing.T) {
 	}
 
 	// Lock the wallet.
-	siacoinBalance, _, _, err := wt.wallet.ConfirmedBalance()
+	siacoinBalance, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Error(err)
 	}
@@ -246,7 +246,7 @@ func TestLock(t *testing.T) {
 		t.Error(err)
 	}
 	// Compare to the original balance.
-	siacoinBalance2, _, _, err := wt.wallet.ConfirmedBalance()
+	siacoinBalance2, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Error(err)
 	}
@@ -276,7 +276,7 @@ func TestLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siacoinBalance3, _, _, err := wt.wallet.ConfirmedBalance()
+	siacoinBalance3, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Error(err)
 	}
@@ -302,7 +302,7 @@ func TestInitFromSeedConcurrentUnlock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	origBal, _, _, err := wt.wallet.ConfirmedBalance()
+	origBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +335,7 @@ func TestInitFromSeedConcurrentUnlock(t *testing.T) {
 	}
 
 	// starting balance should match the original wallet
-	newBal, _, _, err := w.ConfirmedBalance()
+	newBal, err := w.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,7 +400,7 @@ func TestInitFromSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	origBal, _, _, err := wt.wallet.ConfirmedBalance()
+	origBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -420,7 +420,7 @@ func TestInitFromSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 	// starting balance should match the original wallet
-	newBal, _, _, err := w.ConfirmedBalance()
+	newBal, err := w.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -495,7 +495,7 @@ func TestChangeKey(t *testing.T) {
 
 	var newKey crypto.TwofishKey
 	fastrand.Read(newKey[:])
-	origBal, _, _, err := wt.wallet.ConfirmedBalance()
+	origBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +519,7 @@ func TestChangeKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newBal, _, _, err := wt.wallet.ConfirmedBalance()
+	newBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}

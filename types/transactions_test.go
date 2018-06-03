@@ -18,7 +18,6 @@ func TestIDs(t *testing.T) {
 	fcid := txn.FileContractID(0)
 	spidT := fcid.StorageProofOutputID(ProofValid, 0)
 	spidF := fcid.StorageProofOutputID(ProofMissed, 0)
-	scloid := sfoid.SiaClaimOutputID()
 
 	// Put all of the ids into a slice.
 	var ids []crypto.Hash
@@ -28,8 +27,6 @@ func TestIDs(t *testing.T) {
 		crypto.Hash(fcid),
 		crypto.Hash(spidT),
 		crypto.Hash(spidF),
-		crypto.Hash(sfoid),
-		crypto.Hash(scloid),
 	)
 
 	// Check that each id is unique.

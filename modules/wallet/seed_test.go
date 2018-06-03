@@ -8,7 +8,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
@@ -125,7 +124,7 @@ func TestLoadSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Balance of wallet should be 0.
-	siacoinBal, _, _, err := w.ConfirmedBalance()
+	siacoinBal, err := w.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +149,7 @@ func TestLoadSeed(t *testing.T) {
 		t.Error("AllSeeds returned the wrong seed")
 	}
 
-	siacoinBal2, _, _, err := w.ConfirmedBalance()
+	siacoinBal2, err := w.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +218,7 @@ func TestSweepSeedCoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	// starting balance should be 0.
-	siacoinBal, _, _, err := w.ConfirmedBalance()
+	siacoinBal, err := w.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}

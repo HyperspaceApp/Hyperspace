@@ -311,7 +311,7 @@ func TestAllowanceSpending(t *testing.T) {
 			}
 		}
 	}
-	balance, _, _, err := w.ConfirmedBalance()
+	balance, err := w.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,6 @@ func TestAllowanceSpending(t *testing.T) {
 	var expectedFees types.Currency
 	for _, contract := range c.Contracts() {
 		expectedFees = expectedFees.Add(contract.TxnFee)
-		expectedFees = expectedFees.Add(contract.SiafundFee)
 		expectedFees = expectedFees.Add(contract.ContractFee)
 	}
 	if expectedFees.Cmp(reportedSpending.ContractFees) != 0 {

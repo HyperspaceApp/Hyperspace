@@ -21,7 +21,7 @@ func TestSendSiacoins(t *testing.T) {
 
 	// Get the initial balance - should be 1 block. The unconfirmed balances
 	// should be 0.
-	confirmedBal, _, _, err := wt.wallet.ConfirmedBalance()
+	confirmedBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestSendSiacoins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	confirmedBal2, _, _, err := wt.wallet.ConfirmedBalance()
+	confirmedBal2, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestSendSiacoins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	confirmedBal3, _, _, err := wt.wallet.ConfirmedBalance()
+	confirmedBal3, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}

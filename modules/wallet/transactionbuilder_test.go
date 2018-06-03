@@ -200,7 +200,7 @@ func TestConcurrentBuilders(t *testing.T) {
 	}
 
 	// Get a baseline balance for the wallet.
-	startingSCConfirmed, _, _, err := wt.wallet.ConfirmedBalance()
+	startingSCConfirmed, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestConcurrentBuilders(t *testing.T) {
 	}
 
 	// Get a second reading on the wallet's balance.
-	fundedSCConfirmed, _, _, err := wt.wallet.ConfirmedBalance()
+	fundedSCConfirmed, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func TestConcurrentBuildersSingleOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	scBal, _, _, err := wt.wallet.ConfirmedBalance()
+	scBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestConcurrentBuildersSingleOutput(t *testing.T) {
 	}
 
 	// Get a baseline balance for the wallet.
-	startingSCConfirmed, _, _, err := wt.wallet.ConfirmedBalance()
+	startingSCConfirmed, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +379,7 @@ func TestConcurrentBuildersSingleOutput(t *testing.T) {
 	}
 
 	// Get a second reading on the wallet's balance.
-	fundedSCConfirmed, _, _, err := wt.wallet.ConfirmedBalance()
+	fundedSCConfirmed, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +442,7 @@ func TestParallelBuilders(t *testing.T) {
 	}
 
 	// Get a baseline balance for the wallet.
-	startingSCConfirmed, _, _, err := wt.wallet.ConfirmedBalance()
+	startingSCConfirmed, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -498,7 +498,7 @@ func TestParallelBuilders(t *testing.T) {
 	}
 
 	// Check the final balance.
-	endingSCConfirmed, _, _, err := wt.wallet.ConfirmedBalance()
+	endingSCConfirmed, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +525,7 @@ func TestUnconfirmedParents(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to get address", err)
 	}
-	siacoins, _, _, err := wt.wallet.ConfirmedBalance()
+	siacoins, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}

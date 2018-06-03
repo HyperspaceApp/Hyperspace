@@ -120,7 +120,6 @@ func TestConsensusBlocksIDGet(t *testing.T) {
 				SiacoinInputs:         tx.SiacoinInputs,
 				FileContractRevisions: tx.FileContractRevisions,
 				StorageProofs:         tx.StorageProofs,
-				SiafundInputs:         tx.SiafundInputs,
 				MinerFees:             tx.MinerFees,
 				ArbitraryData:         tx.ArbitraryData,
 				TransactionSignatures: tx.TransactionSignatures,
@@ -154,13 +153,6 @@ func TestConsensusBlocksIDGet(t *testing.T) {
 					})
 				}
 			}
-			for _, sfo := range tx.SiafundOutputs {
-				txn.SiafundOutputs = append(txn.SiafundOutputs, types.SiafundOutput{
-					Value:      sfo.Value,
-					UnlockHash: sfo.UnlockHash,
-					ClaimStart: types.ZeroCurrency,
-				})
-			}
 
 			// Verify SiacoinOutput IDs
 			for i, sco := range tx.SiacoinOutputs {
@@ -190,13 +182,6 @@ func TestConsensusBlocksIDGet(t *testing.T) {
 				}
 			}
 
-			// Verify SiafundOutput IDs
-			for i, sfo := range tx.SiafundOutputs {
-				// Failing, switch back to !=
-				if sfo.ID != txn.SiafundOutputID(uint64(i)) {
-					t.Fatalf("SiafundOutputID not as expected, got %v expected %v", sfo.ID, txn.SiafundOutputID(uint64(i)))
-				}
-			}
 		}
 	}
 }

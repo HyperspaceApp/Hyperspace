@@ -447,7 +447,7 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 	if err != nil {
 		t.Fatal("Couldn't fetch primary seed from db")
 	}
-	startBal, _, _, err := wt.wallet.ConfirmedBalance()
+	startBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -482,7 +482,7 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 		t.Fatal(err)
 	}
 	wt.addBlockNoPayout()
-	newBal, _, _, err := wt.wallet.ConfirmedBalance()
+	newBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -536,7 +536,7 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	// Check that high seed index txn was discovered in the rescan
-	rescanBal, _, _, err := wt.wallet.ConfirmedBalance()
+	rescanBal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,11 +596,11 @@ func TestDistantWallets(t *testing.T) {
 	}
 
 	// The second wallet's balance should update accordingly.
-	w1bal, _, _, err := wt.wallet.ConfirmedBalance()
+	w1bal, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
-	w2bal, _, _, err := w2.ConfirmedBalance()
+	w2bal, err := w2.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -635,7 +635,7 @@ func TestDistantWallets(t *testing.T) {
 	}
 	wt.addBlockNoPayout()
 
-	if newBal, _, _, err := w2.ConfirmedBalance(); !newBal.Equals(w2bal.Sub(value)) {
+	if newBal, err := w2.ConfirmedBalance(); !newBal.Equals(w2bal.Sub(value)) {
 		if err != nil {
 			t.Fatal(err)
 		}

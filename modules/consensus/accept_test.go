@@ -852,11 +852,8 @@ func TestInconsistentCheck(t *testing.T) {
 		Value: types.NewCurrency64(1),
 	}
 	dbBucketMap := map[string]dbBucket{}
-	if tt.useNilBlockMap {
-		dbBucketMap[string(BlockMap)] = nil
-	} else {
-		dbBucketMap[string(BlockMap)] = bucket
-	}
+	bucket := mockDbBucket{map[string][]byte{}}
+	dbBucketMap[string(BlockMap)] = bucket
 	tx := mockDbTx{dbBucketMap}
 	cst.cs.dbAddSiacoinOutputID(tx, types.SiacoinOutputID{}, sco)
 
