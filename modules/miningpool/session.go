@@ -6,7 +6,24 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/persist"
+)
+
+const (
+	numSharesToAverage = 30
+	// we can drop to 1% of the highest difficulty before we decide we're disconnected
+	maxDifficultyDropRatio = 0.01
+	// how long we allow the session to linger if we haven't heard from the worker
+	heartbeatTimeout = 3 * time.Minute
+)
+
+var (
+	initialDifficulty  = build.Select(build.Var{
+		Standard: 6400.0,
+		Dev:      6400.0,
+		Testing:  0.00001,
+	}).(float64) // change from 6.0 to 1.0
 )
 
 //
