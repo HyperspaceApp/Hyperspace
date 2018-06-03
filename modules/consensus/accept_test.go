@@ -836,7 +836,7 @@ func TestBuriedBadTransaction(t *testing.T) {
 }
 
 // TestInconsistencyCheck puts the consensus set in to an inconsistent state
-// and makes sure that the santiy checks are triggering panics.
+// and makes sure that the sanity checks are triggering panics.
 func TestInconsistentCheck(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
@@ -847,15 +847,11 @@ func TestInconsistentCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Corrupt the consensus set by adding a new siafund output.
+	// Corrupt the consensus set by adding a new siacoin output.
 	sco := types.SiacoinOutput{
 		Value: types.NewCurrency64(1),
 	}
-	dbBucketMap := map[string]dbBucket{}
-	bucket := mockDbBucket{map[string][]byte{}}
-	dbBucketMap[string(BlockMap)] = bucket
-	tx := mockDbTx{dbBucketMap}
-	cst.cs.dbAddSiacoinOutputID(tx, types.SiacoinOutputID{}, sco)
+	cst.cs.dbAddSiacoinOutput(types.SiacoinOutputID{}, sco)
 
 	// Catch a panic that should be caused by the inconsistency check after a
 	// block is mined.

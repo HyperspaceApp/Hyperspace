@@ -142,6 +142,18 @@ func (cs *ConsensusSet) dbRemoveFileContract(id types.FileContractID) {
 	}
 }
 
+// dbAddFileContract is a convenience function allowing addSiacoinOutput to be
+// called without a bolt.Tx.
+func (cs *ConsensusSet) dbAddSiacoinOutput(id types.SiacoinOutputID, sco types.SiacoinOutput) {
+	dbErr := cs.db.Update(func(tx *bolt.Tx) error {
+		addSiacoinOutput(tx, id, sco)
+		return nil
+	})
+	if dbErr != nil {
+		panic(dbErr)
+	}
+}
+
 // dbGetDSCO is a convenience function allowing a delayed siacoin output to be
 // fetched without a bolt.Tx. An error is returned if the delayed output is not
 // found at the maturity height indicated by the input.
