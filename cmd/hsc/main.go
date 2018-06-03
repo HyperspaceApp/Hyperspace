@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 )
 
 var (
