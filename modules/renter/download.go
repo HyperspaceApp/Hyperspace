@@ -8,7 +8,7 @@ package renter
 // available to send the downloads off to the workers. The heap is sorted first
 // by priority, but then a few other criteria as well.
 //
-// Some downloads, in particualr downloads issued by the repair code, have
+// Some downloads, in particular downloads issued by the repair code, have
 // already had their memory allocated. These downloads get to skip the heap and
 // go straight for the workers.
 //
@@ -44,7 +44,7 @@ package renter
 // if this was the final unfinished chunk in the download, it'll mark the
 // download as complete.
 
-// The download process has a slighly complicating factor, which is overdrive
+// The download process has a slightly complicating factor, which is overdrive
 // workers. Traditionally, if you need 10 pieces to recover a file, you will use
 // 10 workers. But if you have an overdrive of '2', you will actually use 12
 // workers, meaning you download 2 more pieces than you need. This means that up
@@ -131,9 +131,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/errors"
 )
@@ -142,8 +142,8 @@ type (
 	// A download is a file download that has been queued by the renter.
 	download struct {
 		// Data progress variables.
-		atomicDataReceived        uint64 // Incremented as data completes, will stop at 100% file progress.
-		atomicTotalDataTransfered uint64 // Incremented as data arrives, includes overdrive, contract negotiation, etc.
+		atomicDataReceived         uint64 // Incremented as data completes, will stop at 100% file progress.
+		atomicTotalDataTransferred uint64 // Incremented as data arrives, includes overdrive, contract negotiation, etc.
 
 		// Other progress variables.
 		chunksRemaining uint64        // Number of chunks whose downloads are incomplete.
@@ -155,12 +155,12 @@ type (
 		staticStartTime time.Time // Set immediately when the download object is created.
 
 		// Basic information about the file.
-		destination       downloadDestination
-		destinationString string // The string reported to the user to indicate the download's destination.
-		destinationType   string // "memory buffer", "http stream", "file", etc.
-		staticLength      uint64 // Length to download starting from the offset.
-		staticOffset      uint64 // Offset within the file to start the download.
-		staticSiaPath     string // The path of the siafile at the time the download started.
+		destination           downloadDestination
+		destinationString     string // The string reported to the user to indicate the download's destination.
+		staticDestinationType string // "memory buffer", "http stream", "file", etc.
+		staticLength          uint64 // Length to download starting from the offset.
+		staticOffset          uint64 // Offset within the file to start the download.
+		staticSiaPath         string // The path of the siafile at the time the download started.
 
 		// Retrieval settings for the file.
 		staticLatencyTarget time.Duration // In milliseconds. Lower latency results in lower total system throughput.
@@ -208,7 +208,10 @@ func (d *download) managedFail(err error) {
 	// Mark the download as complete and set the error.
 	d.err = err
 	close(d.completeChan)
-	err = d.destination.Close()
+	if d.destination != nil {
+		err = d.destination.Close()
+		d.destination = nil
+	}
 	if err != nil {
 		d.log.Println("unable to close download destination:", err)
 	}
@@ -233,9 +236,112 @@ func (d *download) Err() (err error) {
 	return err
 }
 
-// newDownload creates and initializes a download based on the provided
+// Download performs a file download using the passed parameters and blocks
+// until the download is finished.
+func (r *Renter) Download(p modules.RenterDownloadParameters) error {
+	d, err := r.managedDownload(p)
+	if err != nil {
+		return err
+	}
+	// Block until the download has completed
+	select {
+	case <-d.completeChan:
+		return d.Err()
+	case <-r.tg.StopChan():
+		return errors.New("download interrupted by shutdown")
+	}
+}
+
+// DownloadAsync performs a file download using the passed parameters without
+// blocking until the download is finished.
+func (r *Renter) DownloadAsync(p modules.RenterDownloadParameters) error {
+	_, err := r.managedDownload(p)
+	return err
+}
+
+// managedDownload performs a file download using the passed parameters and
+// returns the download object and an error that indicates if the download
+// setup was successful.
+func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download, error) {
+	// Lookup the file associated with the nickname.
+	lockID := r.mu.RLock()
+	file, exists := r.files[p.SiaPath]
+	r.mu.RUnlock(lockID)
+	if !exists {
+		return nil, fmt.Errorf("no file with that path: %s", p.SiaPath)
+	}
+
+	// Validate download parameters.
+	isHTTPResp := p.Httpwriter != nil
+	if p.Async && isHTTPResp {
+		return nil, errors.New("cannot async download to http response")
+	}
+	if isHTTPResp && p.Destination != "" {
+		return nil, errors.New("destination cannot be specified when downloading to http response")
+	}
+	if !isHTTPResp && p.Destination == "" {
+		return nil, errors.New("destination not supplied")
+	}
+	if p.Destination != "" && !filepath.IsAbs(p.Destination) {
+		return nil, errors.New("destination must be an absolute path")
+	}
+	if p.Offset == file.size {
+		return nil, errors.New("offset equals filesize")
+	}
+	// Sentinel: if length == 0, download the entire file.
+	if p.Length == 0 {
+		p.Length = file.size - p.Offset
+	}
+	// Check whether offset and length is valid.
+	if p.Offset < 0 || p.Offset+p.Length > file.size {
+		return nil, fmt.Errorf("offset and length combination invalid, max byte is at index %d", file.size-1)
+	}
+
+	// Instantiate the correct downloadWriter implementation.
+	var dw downloadDestination
+	var destinationType string
+	if isHTTPResp {
+		dw = newDownloadDestinationWriteCloserFromWriter(p.Httpwriter)
+		destinationType = "http stream"
+	} else {
+		osFile, err := os.OpenFile(p.Destination, os.O_CREATE|os.O_WRONLY, os.FileMode(file.mode))
+		if err != nil {
+			return nil, err
+		}
+		dw = osFile
+		destinationType = "file"
+	}
+
+	// Create the download object.
+	d, err := r.managedNewDownload(downloadParams{
+		destination:       dw,
+		destinationType:   destinationType,
+		destinationString: p.Destination,
+		file:              file,
+
+		latencyTarget: 25e3 * time.Millisecond, // TODO: high default until full latency support is added.
+		length:        p.Length,
+		needsMemory:   true,
+		offset:        p.Offset,
+		overdrive:     3, // TODO: moderate default until full overdrive support is added.
+		priority:      5, // TODO: moderate default until full priority support is added.
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the download object to the download queue.
+	r.downloadHistoryMu.Lock()
+	r.downloadHistory = append(r.downloadHistory, d)
+	r.downloadHistoryMu.Unlock()
+
+	// Return the download object
+	return d, nil
+}
+
+// managedNewDownload creates and initializes a download based on the provided
 // parameters.
-func (r *Renter) newDownload(params downloadParams) (*download, error) {
+func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 	// Input validation.
 	if params.file == nil {
 		return nil, errors.New("no file provided when requesting download")
@@ -256,14 +362,15 @@ func (r *Renter) newDownload(params downloadParams) (*download, error) {
 
 		staticStartTime: time.Now(),
 
-		destination:         params.destination,
-		destinationString:   params.destinationString,
-		staticLatencyTarget: params.latencyTarget,
-		staticLength:        params.length,
-		staticOffset:        params.offset,
-		staticOverdrive:     params.overdrive,
-		staticSiaPath:       params.file.name,
-		staticPriority:      params.priority,
+		destination:           params.destination,
+		destinationString:     params.destinationString,
+		staticDestinationType: params.destinationType,
+		staticLatencyTarget:   params.latencyTarget,
+		staticLength:          params.length,
+		staticOffset:          params.offset,
+		staticOverdrive:       params.overdrive,
+		staticSiaPath:         params.file.name,
+		staticPriority:        params.priority,
 
 		log:           r.log,
 		memoryManager: r.memoryManager,
@@ -309,6 +416,7 @@ func (r *Renter) newDownload(params downloadParams) (*download, error) {
 			masterKey:   params.file.masterKey,
 
 			staticChunkIndex: i,
+			staticCacheID:    fmt.Sprintf("%v:%v", d.staticSiaPath, i),
 			staticChunkMap:   chunkMaps[i-minChunk],
 			staticChunkSize:  params.file.staticChunkSize(),
 			staticPieceSize:  params.file.pieceSize,
@@ -329,7 +437,8 @@ func (r *Renter) newDownload(params downloadParams) (*download, error) {
 			physicalChunkData: make([][]byte, params.file.erasureCode.NumPieces()),
 			pieceUsage:        make([]bool, params.file.erasureCode.NumPieces()),
 
-			download: d,
+			download:          d,
+			staticStreamCache: r.staticStreamCache,
 		}
 
 		// Set the fetchOffset - the offset within the chunk that we start
@@ -351,18 +460,10 @@ func (r *Renter) newDownload(params downloadParams) (*download, error) {
 		udc.staticWriteOffset = writeOffset
 		writeOffset += int64(udc.staticFetchLength)
 
-		// TODO: Currently only the first two chunks are given overdrive, on the
-		// assumption that even the slow hosts will be able to finish the third
-		// chunk before the fast hosts complete the first chunks. This does
-		// assume however (incorrectly) that the workers internally are already
-		// able to tell when a worker is going to be a big bottleneck when
-		// downloading. On later chunks, if the system is memory-bottlenecked,
-		// the slow hosts could end up hogging all of the memory and slowing the
-		// whole system down. Ideally the fix for that type of scenario would
-		// happen within the worker standby selection though.
-		if i < minChunk+1 || i+3 > maxChunk {
-			udc.staticOverdrive = params.overdrive
-		}
+		// TODO: Currently all chunks are given overdrive. This should probably
+		// be changed once the hostdb knows how to measure host speed/latency
+		// and once we can assign overdrive dynamically.
+		udc.staticOverdrive = params.overdrive
 
 		// Add this chunk to the chunk heap, and notify the download loop that
 		// there is work to do.
@@ -375,89 +476,6 @@ func (r *Renter) newDownload(params downloadParams) (*download, error) {
 	return d, nil
 }
 
-// Download performs a file download using the passed parameters.
-func (r *Renter) Download(p modules.RenterDownloadParameters) error {
-	// Lookup the file associated with the nickname.
-	lockID := r.mu.RLock()
-	file, exists := r.files[p.SiaPath]
-	r.mu.RUnlock(lockID)
-	if !exists {
-		return fmt.Errorf("no file with that path: %s", p.SiaPath)
-	}
-
-	// Validate download parameters.
-	isHTTPResp := p.Httpwriter != nil
-	if p.Async && isHTTPResp {
-		return errors.New("cannot async download to http response")
-	}
-	if isHTTPResp && p.Destination != "" {
-		return errors.New("destination cannot be specified when downloading to http response")
-	}
-	if !isHTTPResp && p.Destination == "" {
-		return errors.New("destination not supplied")
-	}
-	if p.Destination != "" && !filepath.IsAbs(p.Destination) {
-		return errors.New("destination must be an absolute path")
-	}
-	if p.Offset == file.size {
-		return errors.New("offset equals filesize")
-	}
-	// Sentinel: if length == 0, download the entire file.
-	if p.Length == 0 {
-		p.Length = file.size - p.Offset
-	}
-	// Check whether offset and length is valid.
-	if p.Offset < 0 || p.Offset+p.Length > file.size {
-		return fmt.Errorf("offset and length combination invalid, max byte is at index %d", file.size-1)
-	}
-
-	// Instantiate the correct downloadWriter implementation.
-	var dw downloadDestination
-	var destinationType string
-	if isHTTPResp {
-		dw = newDownloadDestinationWriteCloserFromWriter(p.Httpwriter)
-		destinationType = "http stream"
-	} else {
-		osFile, err := os.OpenFile(p.Destination, os.O_CREATE|os.O_WRONLY, os.FileMode(file.mode))
-		if err != nil {
-			return err
-		}
-		dw = osFile
-		destinationType = "file"
-	}
-
-	// Create the download object.
-	d, err := r.newDownload(downloadParams{
-		destination:       dw,
-		destinationType:   destinationType,
-		destinationString: p.Destination,
-		file:              file,
-
-		latencyTarget: 25e3 * time.Millisecond, // TODO: high default until full latency support is added.
-		length:        p.Length,
-		needsMemory:   true,
-		offset:        p.Offset,
-		overdrive:     3, // TODO: moderate default until full overdrive support is added.
-		priority:      5, // TODO: moderate default until full priority support is added.
-	})
-	if err != nil {
-		return err
-	}
-
-	// Add the download object to the download queue.
-	r.downloadHistoryMu.Lock()
-	r.downloadHistory = append(r.downloadHistory, d)
-	r.downloadHistoryMu.Unlock()
-
-	// Block until the download has completed.
-	select {
-	case <-d.completeChan:
-		return d.Err()
-	case <-r.tg.StopChan():
-		return errors.New("download interrupted by shutdown")
-	}
-}
-
 // DownloadHistory returns the list of downloads that have been performed. Will
 // include downloads that have not yet completed. Downloads will be roughly, but
 // not precisely, sorted according to start time.
@@ -465,7 +483,7 @@ func (r *Renter) Download(p modules.RenterDownloadParameters) error {
 // TODO: Currently the DownloadHistory only contains downloads from this
 // session, does not contain downloads that were executed for the purposes of
 // repairing, and has no way to clear the download history if it gets long or
-// unweildly. It's not entirely certain which of the missing features are
+// unwieldy. It's not entirely certain which of the missing features are
 // actually desirable, please consult core team + app dev community before
 // deciding what to implement.
 func (r *Renter) DownloadHistory() []modules.DownloadInfo {
@@ -479,16 +497,16 @@ func (r *Renter) DownloadHistory() []modules.DownloadInfo {
 		d.mu.Lock() // Lock required for d.endTime only.
 		downloads[i] = modules.DownloadInfo{
 			Destination:     d.destinationString,
-			DestinationType: d.destinationType,
+			DestinationType: d.staticDestinationType,
 			Length:          d.staticLength,
 			Offset:          d.staticOffset,
 			SiaPath:         d.staticSiaPath,
 
-			Completed:           d.staticComplete(),
-			EndTime:             d.endTime,
-			Received:            atomic.LoadUint64(&d.atomicDataReceived),
-			StartTime:           d.staticStartTime,
-			TotalDataTransfered: atomic.LoadUint64(&d.atomicTotalDataTransfered),
+			Completed:            d.staticComplete(),
+			EndTime:              d.endTime,
+			Received:             atomic.LoadUint64(&d.atomicDataReceived),
+			StartTime:            d.staticStartTime,
+			TotalDataTransferred: atomic.LoadUint64(&d.atomicTotalDataTransferred),
 		}
 		// Release download lock before calling d.Err(), which will acquire the
 		// lock. The error needs to be checked separately because we need to

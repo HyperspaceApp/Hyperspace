@@ -3,22 +3,30 @@ package proto
 import (
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 const (
 	// contractExtension is the extension given to contract files.
 	contractExtension = ".contract"
+
+	// rootsDiskLoadBulkSize is the max number of roots we read from disk at
+	// once to avoid using up all the ram.
+	rootsDiskLoadBulkSize = 1024 * crypto.HashSize // 32 kib
+
+	// remainingFile is a constant used to indicate that a fileSection can access
+	// the whole remaining file instead of being bound to a certain end offset.
+	remainingFile = -1
 )
 
 var (
-	// connTimeout determines the number of seconds the dialer will wait
-	// for a connect to complete
+	// connTimeout determines the number of seconds before a dial-up or
+	// revision negotiation times out.
 	connTimeout = build.Select(build.Var{
 		Dev:      10 * time.Second,
-		Standard: 60 * time.Second,
+		Standard: 2 * time.Minute,
 		Testing:  5 * time.Second,
 	}).(time.Duration)
 

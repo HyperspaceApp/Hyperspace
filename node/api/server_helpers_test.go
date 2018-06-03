@@ -13,19 +13,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/explorer"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/host"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/explorer"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/host"
+	"github.com/HyperspaceApp/Hyperspace/modules/index"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/miningpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/errors"
 	"github.com/NebulousLabs/threadgroup"
@@ -65,6 +68,7 @@ func (srv *Server) Close() error {
 		{"host", srv.api.host},
 		{"renter", srv.api.renter},
 		{"miner", srv.api.miner},
+		{"stratumminer", srv.api.stratumminer},
 		{"wallet", srv.api.wallet},
 		{"tpool", srv.api.tpool},
 		{"consensus", srv.api.cs},
@@ -73,7 +77,7 @@ func (srv *Server) Close() error {
 	for _, mod := range mods {
 		if mod.c != nil {
 			if closeErr := mod.c.Close(); closeErr != nil {
-				err = errors.Extend(err, fmt.Errorf("%v.Close failed: %v", mod.name, err))
+				err = errors.Extend(err, fmt.Errorf("%v.Close failed: %v", mod.name, closeErr))
 			}
 		}
 	}
@@ -103,13 +107,13 @@ func (srv *Server) Serve() error {
 // the empty string. Usernames are ignored for authentication. This type of
 // authentication sends passwords in plaintext and should therefore only be
 // used if the APIaddr is localhost.
-func NewServer(APIaddr string, requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet) (*Server, error) {
+func NewServer(APIaddr string, requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, mp modules.Pool, sm modules.StratumMiner, i modules.Index) (*Server, error) {
 	listener, err := net.Listen("tcp", APIaddr)
 	if err != nil {
 		return nil, err
 	}
 
-	api := New(requiredUserAgent, requiredPassword, cs, e, g, h, m, r, tp, w)
+	api := New(requiredUserAgent, requiredPassword, cs, e, g, h, m, r, tp, w, mp, sm, i)
 	srv := &Server{
 		api: api,
 		apiServer: &http.Server{
@@ -165,7 +169,11 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 	if err != nil {
 		return nil, err
 	}
-	if !w.Encrypted() {
+	encrypted, err := w.Encrypted()
+	if err != nil {
+		return nil, err
+	}
+	if !encrypted {
 		_, err = w.Encrypt(key)
 		if err != nil {
 			return nil, err
@@ -187,7 +195,15 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 	if err != nil {
 		return nil, err
 	}
-	srv, err := NewServer("localhost:0", "Sia-Agent", "", cs, nil, g, h, m, r, tp, w)
+	mp, err := pool.New(cs, tp, g, w, filepath.Join(testdir, modules.PoolDir), config.MiningPoolConfig{})
+	if err != nil {
+		return nil, err
+	}
+	idx, err := index.New(cs, tp, g, w, filepath.Join(testdir, modules.IndexDir), config.IndexConfig{})
+	if err != nil {
+		return nil, err
+	}
+	srv, err := NewServer("localhost:0", "Sia-Agent", "", cs, nil, g, h, m, r, tp, w, mp, nil, idx)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +261,11 @@ func assembleAuthenticatedServerTester(requiredPassword string, key crypto.Twofi
 	if err != nil {
 		return nil, err
 	}
-	if !w.Encrypted() {
+	encrypted, err := w.Encrypted()
+	if err != nil {
+		return nil, err
+	}
+	if !encrypted {
 		_, err = w.Encrypt(key)
 		if err != nil {
 			return nil, err
@@ -267,7 +287,15 @@ func assembleAuthenticatedServerTester(requiredPassword string, key crypto.Twofi
 	if err != nil {
 		return nil, err
 	}
-	srv, err := NewServer("localhost:0", "Sia-Agent", requiredPassword, cs, nil, g, h, m, r, tp, w)
+	mp, err := pool.New(cs, tp, g, w, filepath.Join(testdir, modules.PoolDir), config.MiningPoolConfig{})
+	if err != nil {
+		return nil, err
+	}
+	idx, err := index.New(cs, tp, g, w, filepath.Join(testdir, modules.IndexDir), config.IndexConfig{})
+	if err != nil {
+		return nil, err
+	}
+	srv, err := NewServer("localhost:0", "Sia-Agent", requiredPassword, cs, nil, g, h, m, r, tp, w, mp, nil, idx)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +349,7 @@ func assembleExplorerServerTester(testdir string) (*serverTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	srv, err := NewServer("localhost:0", "", "", cs, e, g, nil, nil, nil, nil, nil)
+	srv, err := NewServer("localhost:0", "", "", cs, e, g, nil, nil, nil, nil, nil, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -458,20 +486,6 @@ func non2xx(code int) bool {
 // with the error.
 func (st *serverTester) panicClose() {
 	st.server.panicClose()
-}
-
-// retry will retry a function multiple times until it returns 'nil'. It will
-// sleep the specified duration between tries. If success is not achieved in the
-// specified number of attempts, the final error is returned.
-func retry(tries int, durationBetweenAttempts time.Duration, fn func() error) (err error) {
-	for i := 0; i < tries-1; i++ {
-		err = fn()
-		if err == nil {
-			return nil
-		}
-		time.Sleep(durationBetweenAttempts)
-	}
-	return fn()
 }
 
 // reloadedServerTester creates a server tester where all of the persistent

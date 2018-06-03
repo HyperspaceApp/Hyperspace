@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
+	"github.com/NebulousLabs/errors"
 	"github.com/coreos/bbolt"
 )
 
@@ -206,10 +207,14 @@ func (tp *TransactionPool) initPersist() error {
 // TransactionConfirmed returns true if the transaction has been seen on the
 // blockchain. Note, however, that the block containing the transaction may
 // later be invalidated by a reorg.
-func (tp *TransactionPool) TransactionConfirmed(id types.TransactionID) bool {
+func (tp *TransactionPool) TransactionConfirmed(id types.TransactionID) (bool, error) {
+	if err := tp.tg.Add(); err != nil {
+		return false, errors.AddContext(err, "cannot check transaction status, the transaction pool has closed")
+	}
+	defer tp.tg.Done()
 	tp.mu.Lock()
 	defer tp.mu.Unlock()
-	return tp.transactionConfirmed(tp.dbTx, id)
+	return tp.transactionConfirmed(tp.dbTx, id), nil
 }
 
 func (tp *TransactionPool) transactionConfirmed(tx *bolt.Tx, id types.TransactionID) bool {

@@ -4,13 +4,40 @@ import (
 	"errors"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
 	errLateHeader = errors.New("header is old, block could not be recovered")
 )
+
+// blockForWork returns a block that is ready for nonce grinding, including
+// correct miner payouts.
+func (p *Pool) blockForWork() types.Block {
+	p.persist.mu.Lock()
+	defer p.persist.mu.Unlock()
+
+	b := p.sourceBlock
+	b.Transactions = p.blockTxns.transactions()
+
+	// Update the timestamp.
+	if b.Timestamp < types.CurrentTimestamp() {
+		b.Timestamp = types.CurrentTimestamp()
+	}
+
+	payoutVal := b.CalculateSubsidy(p.persist.BlockHeight + 1)
+	p.log.Printf("building a new source block, block id is: %s\n", b.ID())
+	p.log.Printf("miner fees cost: %s", b.CalculateMinerFees().String())
+	p.log.Printf("# transactions: %d", len(b.Transactions))
+	p.log.Printf("payout value is: %s", payoutVal.String())
+	b.MinerPayouts = []types.SiacoinOutput{{
+		Value:      payoutVal,
+		UnlockHash: p.persist.Settings.PoolWallet,
+	}}
+
+	return b
+}
 
 // newSourceBlock creates a new source block for the block manager so that new
 // headers will use the updated source block.
@@ -27,18 +54,7 @@ func (p *Pool) newSourceBlock() {
 	}
 
 	// Update the source block.
-	block := p.persist.GetUnsolvedBlockPtr()
-	p.persist.mu.Lock()
-	// Update the timestamp.
-	if block.Timestamp < types.CurrentTimestamp() {
-		block.Timestamp = types.CurrentTimestamp()
-	}
-
-	block.MinerPayouts = []types.SiacoinOutput{{
-		Value:      block.CalculateSubsidy(p.persist.BlockHeight + 1),
-		UnlockHash: p.persist.Settings.PoolWallet,
-	}}
-	p.persist.mu.Unlock()
+	block := p.blockForWork()
 	p.saveSync()
 	p.sourceBlock = block
 	p.sourceBlockTime = time.Now()
@@ -46,13 +62,14 @@ func (p *Pool) newSourceBlock() {
 
 // managedSubmitBlock takes a solved block and submits it to the blockchain.
 func (p *Pool) managedSubmitBlock(b types.Block) error {
+	p.log.Printf("managedSubmitBlock called on block id: %s, block has %d txs\n", b.ID(), len(b.Transactions))
 	// Give the block to the consensus set.
 	err := p.cs.AcceptBlock(b)
 	// Add the miner to the blocks list if the only problem is that it's stale.
 	if err == modules.ErrNonExtendingBlock {
 		// p.log.Debugf("Waiting to lock pool\n")
 		p.mu.Lock()
-
+		p.persist.SetBlocksFound(append(p.persist.GetBlocksFound(), b.ID()))
 		// p.log.Debugf("Unlocking pool\n")
 		p.mu.Unlock()
 		p.log.Println("Mined a stale block - block appears valid but does not extend the blockchain")

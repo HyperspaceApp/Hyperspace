@@ -3,8 +3,9 @@ package modules
 import (
 	"errors"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/persist"
 )
 
 const (
@@ -100,7 +101,7 @@ type (
 
 		// DelayedSiacoinOutputDiffs contains the set of delayed siacoin output
 		// diffs that were applied to the consensus set in the recent change.
-		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff `json:"dscod"`
 
 		// ChildTarget defines the target of any block that would be the child
 		// of the block most recently appended to the consensus set.
@@ -142,10 +143,10 @@ type (
 	// that cannot be spent until after maturing for 144 blocks. When the output
 	// has matured, a SiacoinOutputDiff will be provided.
 	DelayedSiacoinOutputDiff struct {
-		Direction      DiffDirection
-		ID             types.SiacoinOutputID
-		SiacoinOutput  types.SiacoinOutput
-		MaturityHeight types.BlockHeight
+		Direction      DiffDirection `json:"dir"`
+		ID             types.SiacoinOutputID `json:"id"`
+		SiacoinOutput  types.SiacoinOutput `json:"sco"`
+		MaturityHeight types.BlockHeight `json:"mh"`
 	}
 
 	// A ConsensusSet accepts blocks and builds an understanding of network
@@ -162,6 +163,10 @@ type (
 		// BlockAtHeight returns the block found at the input height, with a
 		// bool to indicate whether that block exists.
 		BlockAtHeight(types.BlockHeight) (types.Block, bool)
+
+		// BlocksByID returns a block found for a given ID and its height, with
+		// a bool to indicate whether that block exists.
+		BlockByID(types.BlockID) (types.Block, types.BlockHeight, bool)
 
 		// ChildTarget returns the target required to extend the current heaviest
 		// fork. This function is typically used by miners looking to extend the
@@ -217,6 +222,8 @@ type (
 		// allowing for garbage collection and rescanning. If the subscriber is
 		// not found in the subscriber database, no action is taken.
 		Unsubscribe(ConsensusSetSubscriber)
+
+		Db() *persist.BoltDatabase
 	}
 )
 

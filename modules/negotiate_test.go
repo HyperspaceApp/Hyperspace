@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestAnnouncementHandling checks that CreateAnnouncement and

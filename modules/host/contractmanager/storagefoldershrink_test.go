@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // TestShrinkStorageFolder checks that a storage folder can be successfully
@@ -701,12 +701,12 @@ func TestShrinkStorageFolderIncompleteWriteForce(t *testing.T) {
 // dependencyShrinkNoFinalize will not add a confirmation to the WAL that a
 // shrink storage folder operation has completed.
 type dependencyShrinkNoFinalize struct {
-	productionDependencies
+	modules.ProductionDependencies
 }
 
 // disrupt will prevent the growStorageFolder operation from committing a
 // finalized growStorageFolder operation to the WAL.
-func (dependencyShrinkNoFinalize) disrupt(s string) bool {
+func (*dependencyShrinkNoFinalize) Disrupt(s string) bool {
 	if s == "incompleteShrinkStorageFolder" {
 		return true
 	}

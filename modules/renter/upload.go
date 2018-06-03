@@ -1,73 +1,31 @@
 package renter
 
+// upload.go performs basic preprocessing on upload requests and then adds the
+// requested files into the repair heap.
+//
+// TODO: Currently you cannot upload a directory using the api, if you want to
+// upload a directory you must make 1 api call per file in that directory.
+// Perhaps we should extend this endpoint to be able to recursively add files in
+// a directory?
+//
+// TODO: Currently the minimum contracts check is not enforced while testing,
+// which means that code is not covered at all. Enabling enforcement during
+// testing will probably break a ton of existing tests, which means they will
+// all need to be fixed when we do enable it, but we should enable it.
+
 import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 var (
-	// defaultDataPieces is the number of data pieces per erasure-coded chunk
-	defaultDataPieces = func() int {
-		switch build.Release {
-		case "dev":
-			return 1
-		case "standard":
-			return 10
-		case "testing":
-			return 1
-		}
-		panic("undefined defaultDataPieces")
-	}()
-
-	// defaultParityPieces is the number of parity pieces per erasure-coded
-	// chunk
-	defaultParityPieces = func() int {
-		switch build.Release {
-		case "dev":
-			return 1
-		case "standard":
-			return 20
-		case "testing":
-			return 8
-		}
-		panic("undefined defaultParityPieces")
-	}()
-
-	errInsufficientContracts = errors.New("not enough contracts to upload file")
-	errUploadDirectory       = errors.New("cannot upload directory")
-
-	// Erasure-coded piece size
-	pieceSize = modules.SectorSize - crypto.TwofishOverhead
+	// errUploadDirectory is returned if the user tries to upload a directory.
+	errUploadDirectory = errors.New("cannot upload directory")
 )
-
-// validateSiapath checks that a Siapath is a legal filename.
-// ../ is disallowed to prevent directory traversal, and paths must not begin
-// with / or be empty.
-func validateSiapath(siapath string) error {
-	if strings.HasPrefix(siapath, "/") {
-		return errors.New("siapath cannot begin with /")
-	}
-
-	if siapath == "" {
-		return ErrEmptyFilename
-	}
-
-	if strings.Contains(siapath, "../") {
-		return errors.New("directory traversal is not allowed")
-	}
-
-	if strings.Contains(siapath, "./") {
-		return errors.New("siapath contains invalid characters")
-	}
-
-	return nil
-}
 
 // validateSource verifies that a sourcePath meets the
 // requirements for upload.
@@ -112,11 +70,14 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 		up.ErasureCode, _ = NewRSCode(defaultDataPieces, defaultParityPieces)
 	}
 
-	// Check that we have contracts to upload to. We need at least (data +
-	// parity/2) contracts; since NumPieces = data + parity, we arrive at the
-	// expression below.
-	if nContracts := len(r.hostContractor.Contracts()); nContracts < (up.ErasureCode.NumPieces()+up.ErasureCode.MinPieces())/2 && build.Release != "testing" {
-		return fmt.Errorf("not enough contracts to upload file: got %v, needed %v", nContracts, (up.ErasureCode.NumPieces()+up.ErasureCode.MinPieces())/2)
+	// Check that we have contracts to upload to. We need at least data +
+	// parity/2 contracts. NumPieces is equal to data+parity, and min pieces is
+	// equal to parity. Therefore (NumPieces+MinPieces)/2 = (data+data+parity)/2
+	// = data+parity/2.
+	numContracts := len(r.hostContractor.Contracts())
+	requiredContracts := (up.ErasureCode.NumPieces() + up.ErasureCode.MinPieces()) / 2
+	if numContracts < requiredContracts && build.Release != "testing" {
+		return fmt.Errorf("not enough contracts to upload file: got %v, needed %v", numContracts, (up.ErasureCode.NumPieces()+up.ErasureCode.MinPieces())/2)
 	}
 
 	// Create file object.
@@ -126,7 +87,7 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 	// Add file to renter.
 	lockID = r.mu.Lock()
 	r.files[up.SiaPath] = f
-	r.tracking[up.SiaPath] = trackedFile{
+	r.persist.Tracking[up.SiaPath] = trackedFile{
 		RepairPath: up.Source,
 	}
 	r.saveSync()
@@ -137,6 +98,16 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 	}
 
 	// Send the upload to the repair loop.
-	r.newUploads <- f
+	hosts := r.managedRefreshHostsAndWorkers()
+	id := r.mu.Lock()
+	unfinishedChunks := r.buildUnfinishedChunks(f, hosts)
+	r.mu.Unlock(id)
+	for i := 0; i < len(unfinishedChunks); i++ {
+		r.uploadHeap.managedPush(unfinishedChunks[i])
+	}
+	select {
+	case r.uploadHeap.newUploads <- struct{}{}:
+	default:
+	}
 	return nil
 }

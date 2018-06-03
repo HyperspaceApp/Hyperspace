@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 func TestParseFilesize(t *testing.T) {

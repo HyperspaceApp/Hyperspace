@@ -3,9 +3,9 @@ package wallet
 import (
 	"errors"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // sortedOutputs is a struct containing a slice of siacoin outputs and their
@@ -17,22 +17,37 @@ type sortedOutputs struct {
 
 // DustThreshold returns the quantity per byte below which a Currency is
 // considered to be Dust.
-func (w *Wallet) DustThreshold() types.Currency {
+func (w *Wallet) DustThreshold() (types.Currency, error) {
+	if err := w.tg.Add(); err != nil {
+		return types.Currency{}, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
 	minFee, _ := w.tpool.FeeEstimation()
-	return minFee.Mul64(3)
+	return minFee.Mul64(3), nil
 }
 
 // ConfirmedBalance returns the balance of the wallet according to all of the
 // confirmed transactions.
-func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency) {
+func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency, err error) {
+	if err := w.tg.Add(); err != nil {
+		return types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
 	// dustThreshold has to be obtained separate from the lock
-	dustThreshold := w.DustThreshold()
+	dustThreshold, err := w.DustThreshold()
+	if err != nil {
+		return types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, modules.ErrWalletShutdown
+	}
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	// ensure durability of reported balance
-	w.syncDB()
+	if err = w.syncDB(); err != nil {
+		return
+	}
 
 	dbForEachSiacoinOutput(w.dbTx, func(_ types.SiacoinOutputID, sco types.SiacoinOutput) {
 		if sco.Value.Cmp(dustThreshold) > 0 {
@@ -46,9 +61,17 @@ func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency) {
 // UnconfirmedBalance returns the number of outgoing and incoming siacoins in
 // the unconfirmed transaction set. Refund outputs are included in this
 // reporting.
-func (w *Wallet) UnconfirmedBalance() (outgoingSiacoins types.Currency, incomingSiacoins types.Currency) {
+func (w *Wallet) UnconfirmedBalance() (outgoingSiacoins types.Currency, incomingSiacoins types.Currency, err error) {
+	if err := w.tg.Add(); err != nil {
+		return types.ZeroCurrency, types.ZeroCurrency, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
 	// dustThreshold has to be obtained separate from the lock
-	dustThreshold := w.DustThreshold()
+	dustThreshold, err := w.DustThreshold()
+	if err != nil {
+		return types.ZeroCurrency, types.ZeroCurrency, modules.ErrWalletShutdown
+	}
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -72,6 +95,7 @@ func (w *Wallet) UnconfirmedBalance() (outgoingSiacoins types.Currency, incoming
 // is submitted to the transaction pool and is also returned.
 func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txns []types.Transaction, err error) {
 	if err := w.tg.Add(); err != nil {
+		err = modules.ErrWalletShutdown
 		return nil, err
 	}
 	defer w.tg.Done()
@@ -91,7 +115,10 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 		UnlockHash: dest,
 	}
 
-	txnBuilder := w.StartTransaction()
+	txnBuilder, err := w.StartTransaction()
+	if err != nil {
+		return nil, err
+	}
 	defer func() {
 		if err != nil {
 			txnBuilder.Drop()
@@ -130,6 +157,7 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 func (w *Wallet) SendSiacoinsMulti(outputs []types.SiacoinOutput) (txns []types.Transaction, err error) {
 	w.log.Println("Beginning call to SendSiacoinsMulti")
 	if err := w.tg.Add(); err != nil {
+		err = modules.ErrWalletShutdown
 		return nil, err
 	}
 	defer w.tg.Done()
@@ -141,7 +169,10 @@ func (w *Wallet) SendSiacoinsMulti(outputs []types.SiacoinOutput) (txns []types.
 		return nil, modules.ErrLockedWallet
 	}
 
-	txnBuilder := w.StartTransaction()
+	txnBuilder, err := w.StartTransaction()
+	if err != nil {
+		return nil, err
+	}
 	defer func() {
 		if err != nil {
 			txnBuilder.Drop()

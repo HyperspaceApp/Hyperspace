@@ -5,10 +5,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -51,7 +51,10 @@ func (h *Host) managedAddRenewCollateral(so storageObligation, settings modules.
 	parents := txnSet[:len(txnSet)-1]
 	fc := txn.FileContracts[0]
 	hostPortion := renewContractCollateral(so, settings, fc)
-	builder = h.wallet.RegisterTransaction(txn, parents)
+	builder, err = h.wallet.RegisterTransaction(txn, parents)
+	if err != nil {
+		return
+	}
 	err = builder.FundSiacoins(hostPortion)
 	if err != nil {
 		builder.Drop()
@@ -118,9 +121,9 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 		return extendErr("unable to read renter public key: ", ErrorConnection(err.Error()))
 	}
 
-	h.mu.RLock()
+	h.mu.Lock()
 	settings := h.externalSettings()
-	h.mu.RUnlock()
+	h.mu.Unlock()
 
 	// Verify that the transaction coming over the wire is a proper renewal.
 	err = h.managedVerifyRenewedContract(so, txnSet, renterPK)
@@ -221,14 +224,14 @@ func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types
 		return extendErr("transaction without file contract: ", errEmptyObject)
 	}
 
-	h.mu.RLock()
+	h.mu.Lock()
 	blockHeight := h.blockHeight
 	externalSettings := h.externalSettings()
 	internalSettings := h.settings
 	lockedStorageCollateral := h.financialMetrics.LockedStorageCollateral
 	publicKey := h.publicKey
 	unlockHash := h.unlockHash
-	h.mu.RUnlock()
+	h.mu.Unlock()
 	fc := txnSet[len(txnSet)-1].FileContracts[0]
 
 	// The file size and merkle root must match the file size and merkle root

@@ -4,16 +4,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/hostdb"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	modWallet "github.com/HyperspaceProject/Hyperspace/modules/wallet" // name conflicts with type
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	modWallet "github.com/HyperspaceApp/Hyperspace/modules/wallet" // name conflicts with type
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // contractorTester contains all of the modules that are used while testing the contractor.
@@ -139,7 +139,10 @@ func TestNegotiateContract(t *testing.T) {
 		RevisionNumber: 0,
 	}
 
-	txnBuilder := ct.wallet.StartTransaction()
+	txnBuilder, err := ct.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = txnBuilder.FundSiacoins(fc.Payout)
 	if err != nil {
 		t.Fatal(err)
@@ -210,7 +213,10 @@ func TestReviseContract(t *testing.T) {
 		{Value: types.ZeroCurrency, UnlockHash: types.UnlockHash{}},
 	}
 
-	txnBuilder := ct.wallet.StartTransaction()
+	txnBuilder, err := ct.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = txnBuilder.FundSiacoins(fc.Payout)
 	if err != nil {
 		t.Fatal(err)

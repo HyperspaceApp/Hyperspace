@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/NebulousLabs/fastrand"
 )
 

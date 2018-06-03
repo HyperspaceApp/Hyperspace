@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/errors"
 	"github.com/NebulousLabs/fastrand"
 
 	"github.com/coreos/bbolt"
@@ -119,8 +121,26 @@ func (w *Wallet) initPersist() error {
 	if err != nil {
 		return err
 	}
-	w.tg.AfterStop(func() { w.db.Close() })
-
+	err = w.tg.AfterStop(func() error {
+		var err error
+		if w.dbRollback {
+			// rollback txn if necessry.
+			err = errors.New("database unable to sync - rollback requested")
+			err = errors.Compose(err, w.dbTx.Rollback())
+		} else {
+			// else commit the transaction.
+			err = w.dbTx.Commit()
+		}
+		if err != nil {
+			w.log.Severe("ERROR: failed to apply database update:", err)
+			return errors.AddContext(err, "unable to commit dbTx in syncDB")
+		}
+		return w.db.Close()
+	})
+	if err != nil {
+		return err
+	}
+	go w.threadedDBUpdate()
 	return nil
 }
 

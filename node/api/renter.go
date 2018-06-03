@@ -1,8 +1,5 @@
 package api
 
-// TODO: When setting renter settings, leave empty values unchanged instead of
-// zeroing them out.
-
 import (
 	"fmt"
 	"net/http"
@@ -11,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -126,6 +123,11 @@ type (
 		Downloads []DownloadInfo `json:"downloads"`
 	}
 
+	// RenterFile lists the file queried.
+	RenterFile struct {
+		File modules.FileInfo `json:"file"`
+	}
+
 	// RenterFiles lists the files known to the renter.
 	RenterFiles struct {
 		Files []modules.FileInfo `json:"files"`
@@ -156,12 +158,12 @@ type (
 		Offset          uint64 `json:"offset"`          // The offset within the siafile requested for the download.
 		SiaPath         string `json:"siapath"`         // The siapath of the file used for the download.
 
-		Completed           bool      `json:"completed"`           // Whether or not the download has completed.
-		EndTime             time.Time `json:"endtime"`             // The time when the download fully completed.
-		Error               string    `json:"error"`               // Will be the empty string unless there was an error.
-		Received            uint64    `json:"received"`            // Amount of data confirmed and decoded.
-		StartTime           time.Time `json:"starttime"`           // The time when the download was started.
-		TotalDataTransfered uint64    `json:"totaldatatransfered"` // The total amount of data transfered, including negotiation, overdrive etc.
+		Completed            bool      `json:"completed"`            // Whether or not the download has completed.
+		EndTime              time.Time `json:"endtime"`              // The time when the download fully completed.
+		Error                string    `json:"error"`                // Will be the empty string unless there was an error.
+		Received             uint64    `json:"received"`             // Amount of data confirmed and decoded.
+		StartTime            time.Time `json:"starttime"`            // The time when the download was started.
+		TotalDataTransferred uint64    `json:"totaldatatransferred"` // The total amount of data transferred, including negotiation, overdrive etc.
 	}
 )
 
@@ -178,62 +180,90 @@ func (api *API) renterHandlerGET(w http.ResponseWriter, req *http.Request, _ htt
 
 // renterHandlerPOST handles the API call to set the Renter's settings.
 func (api *API) renterHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	// Scan the allowance amount.
-	funds, ok := scanAmount(req.FormValue("funds"))
-	if !ok {
-		WriteError(w, Error{"unable to parse funds"}, http.StatusBadRequest)
-		return
-	}
+	// Get the existing settings
+	settings := api.renter.Settings()
 
+	// Scan the allowance amount. (optional parameter)
+	if f := req.FormValue("funds"); f != "" {
+		funds, ok := scanAmount(f)
+		if !ok {
+			WriteError(w, Error{"unable to parse funds"}, http.StatusBadRequest)
+			return
+		}
+		settings.Allowance.Funds = funds
+	}
 	// Scan the number of hosts to use. (optional parameter)
-	var hosts uint64
-	if req.FormValue("hosts") != "" {
-		_, err := fmt.Sscan(req.FormValue("hosts"), &hosts)
-		if err != nil {
+	if h := req.FormValue("hosts"); h != "" {
+		var hosts uint64
+		if _, err := fmt.Sscan(h, &hosts); err != nil {
 			WriteError(w, Error{"unable to parse hosts: " + err.Error()}, http.StatusBadRequest)
 			return
-		}
-		if hosts != 0 && hosts < requiredHosts {
+		} else if hosts != 0 && hosts < requiredHosts {
 			WriteError(w, Error{fmt.Sprintf("insufficient number of hosts, need at least %v but have %v", recommendedHosts, hosts)}, http.StatusBadRequest)
+		} else {
+			settings.Allowance.Hosts = hosts
+		}
+	} else if settings.Allowance.Hosts == 0 {
+		// Sane defaults if host haven't been set before.
+		settings.Allowance.Hosts = recommendedHosts
+	}
+	// Scan the period. (optional parameter)
+	if p := req.FormValue("period"); p != "" {
+		var period types.BlockHeight
+		if _, err := fmt.Sscan(p, &period); err != nil {
+			WriteError(w, Error{"unable to parse period: " + err.Error()}, http.StatusBadRequest)
 			return
 		}
-	} else {
-		hosts = recommendedHosts
-	}
-
-	// Scan the period.
-	var period types.BlockHeight
-	_, err := fmt.Sscan(req.FormValue("period"), &period)
-	if err != nil {
-		WriteError(w, Error{"unable to parse period: " + err.Error()}, http.StatusBadRequest)
+		settings.Allowance.Period = types.BlockHeight(period)
+	} else if settings.Allowance.Period == 0 {
+		WriteError(w, Error{"period needs to be set if it hasn't been set before"}, http.StatusBadRequest)
 		return
 	}
-
 	// Scan the renew window. (optional parameter)
-	var renewWindow types.BlockHeight
-	if req.FormValue("renewwindow") != "" {
-		_, err = fmt.Sscan(req.FormValue("renewwindow"), &renewWindow)
-		if err != nil {
+	if rw := req.FormValue("renewwindow"); rw != "" {
+		var renewWindow types.BlockHeight
+		if _, err := fmt.Sscan(rw, &renewWindow); err != nil {
 			WriteError(w, Error{"unable to parse renewwindow: " + err.Error()}, http.StatusBadRequest)
 			return
-		}
-		if renewWindow != 0 && renewWindow < requiredRenewWindow {
+		} else if renewWindow != 0 && types.BlockHeight(renewWindow) < requiredRenewWindow {
 			WriteError(w, Error{fmt.Sprintf("renew window is too small, must be at least %v blocks but have %v blocks", requiredRenewWindow, renewWindow)}, http.StatusBadRequest)
 			return
+		} else {
+			settings.Allowance.RenewWindow = types.BlockHeight(renewWindow)
 		}
-	} else {
-		renewWindow = period / 2
+	} else if settings.Allowance.RenewWindow == 0 {
+		// Sane defaults if renew window hasn't been set before.
+		settings.Allowance.RenewWindow = settings.Allowance.Period / 2
 	}
-
+	// Scan the download speed limit. (optional parameter)
+	if d := req.FormValue("maxdownloadspeed"); d != "" {
+		var downloadSpeed int64
+		if _, err := fmt.Sscan(d, &downloadSpeed); err != nil {
+			WriteError(w, Error{"unable to parse downloadspeed: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.MaxDownloadSpeed = downloadSpeed
+	}
+	// Scan the upload speed limit. (optional parameter)
+	if u := req.FormValue("maxuploadspeed"); u != "" {
+		var uploadSpeed int64
+		if _, err := fmt.Sscan(u, &uploadSpeed); err != nil {
+			WriteError(w, Error{"unable to parse uploadspeed: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.MaxUploadSpeed = uploadSpeed
+	}
+	// Scan the stream cache size. (optional parameter)
+	if dcs := req.FormValue("streamcachesize"); dcs != "" {
+		var streamCacheSize uint64
+		if _, err := fmt.Sscan(dcs, &streamCacheSize); err != nil {
+			WriteError(w, Error{"unable to parse streamcachesize: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.StreamCacheSize = streamCacheSize
+	}
 	// Set the settings in the renter.
-	err = api.renter.SetSettings(modules.RenterSettings{
-		Allowance: modules.Allowance{
-			Funds:       funds,
-			Hosts:       hosts,
-			Period:      period,
-			RenewWindow: renewWindow,
-		},
-	})
+	err := api.renter.SetSettings(settings)
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -301,12 +331,12 @@ func (api *API) renterDownloadsHandler(w http.ResponseWriter, _ *http.Request, _
 			Offset:          di.Offset,
 			SiaPath:         di.SiaPath,
 
-			Completed:           di.Completed,
-			EndTime:             di.EndTime,
-			Error:               di.Error,
-			Received:            di.Received,
-			StartTime:           di.StartTime,
-			TotalDataTransfered: di.TotalDataTransfered,
+			Completed:            di.Completed,
+			EndTime:              di.EndTime,
+			Error:                di.Error,
+			Received:             di.Received,
+			StartTime:            di.StartTime,
+			TotalDataTransferred: di.TotalDataTransferred,
 		})
 	}
 	// sort the downloads by newest first
@@ -335,7 +365,7 @@ func (api *API) renterLoadHandler(w http.ResponseWriter, req *http.Request, _ ht
 
 // renterLoadAsciiHandler handles the API call to load a '.sia' file
 // in ASCII form.
-func (api *API) renterLoadAsciiHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+func (api *API) renterLoadASCIIHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	files, err := api.renter.LoadSharedFilesASCII(req.FormValue("asciisia"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
@@ -355,6 +385,18 @@ func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps
 	}
 
 	WriteSuccess(w)
+}
+
+// renterFileHandler handles the API call to return specific file.
+func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	file, err := api.renter.File(strings.TrimPrefix(ps.ByName("siapath"), "/"))
+	if err != nil {
+		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, RenterFile{
+		File: file,
+	})
 }
 
 // renterFilesHandler handles the API call to list all of the files.
@@ -391,30 +433,15 @@ func (api *API) renterDownloadHandler(w http.ResponseWriter, req *http.Request, 
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
 	}
-
-	if params.Async { // Create goroutine if `async` param set.
-		// check for errors for 5 seconds to catch validation errors (no file with
-		// that path, invalid parameters, insufficient hosts, etc)
-		errchan := make(chan error)
-		go func() {
-			errchan <- api.renter.Download(params)
-		}()
-		select {
-		case err = <-errchan:
-			if err != nil {
-				WriteError(w, Error{"download failed: " + err.Error()}, http.StatusInternalServerError)
-				return
-			}
-		case <-time.After(time.Millisecond * 100):
-		}
+	if params.Async {
+		err = api.renter.DownloadAsync(params)
 	} else {
-		err := api.renter.Download(params)
-		if err != nil {
-			WriteError(w, Error{"download failed: " + err.Error()}, http.StatusInternalServerError)
-			return
-		}
+		err = api.renter.Download(params)
 	}
-
+	if err != nil {
+		WriteError(w, Error{"download failed: " + err.Error()}, http.StatusInternalServerError)
+		return
+	}
 	if params.Httpwriter == nil {
 		// `httpresp=true` causes writes to w before this line is run, automatically
 		// adding `200 Status OK` code to response. Calling this results in a
@@ -512,7 +539,7 @@ func (api *API) renterShareHandler(w http.ResponseWriter, req *http.Request, ps 
 
 // renterShareAsciiHandler handles the API call to return a '.sia' file
 // in ascii form.
-func (api *API) renterShareAsciiHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+func (api *API) renterShareASCIIHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	ascii, err := api.renter.ShareFilesASCII(strings.Split(req.FormValue("siapaths"), ","))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
@@ -521,6 +548,18 @@ func (api *API) renterShareAsciiHandler(w http.ResponseWriter, req *http.Request
 	WriteJSON(w, RenterShareASCII{
 		ASCIIsia: ascii,
 	})
+}
+
+// renterStreamHandler handles downloads from the /renter/stream endpoint
+func (api *API) renterStreamHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	siaPath := strings.TrimPrefix(ps.ByName("siapath"), "/")
+	fileName, streamer, err := api.renter.Streamer(siaPath)
+	if err != nil {
+		WriteError(w, Error{fmt.Sprintf("failed to create download streamer: %v", err)},
+			http.StatusInternalServerError)
+		return
+	}
+	http.ServeContent(w, req, fileName, time.Time{}, streamer)
 }
 
 // renterUploadHandler handles the API call to upload a file.

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestIntegrationTransactions checks that the transaction history is being
@@ -14,7 +14,7 @@ func TestIntegrationTransactions(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,11 @@ func TestIntegrationTransactions(t *testing.T) {
 	}
 	// Two transactions added to unconfirmed pool - 1 to fund the exact output,
 	// and 1 to hold the exact output.
-	if len(wt.wallet.UnconfirmedTransactions()) != 2 {
+	utxns, err := wt.wallet.UnconfirmedTransactions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(utxns) != 2 {
 		t.Error("was expecting 4 unconfirmed transactions")
 	}
 
@@ -84,7 +88,7 @@ func TestTransactionsSingleTxn(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,13 +143,16 @@ func TestIntegrationTransaction(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer wt.closeWt()
 
-	_, exists := wt.wallet.Transaction(types.TransactionID{})
+	_, exists, err := wt.wallet.Transaction(types.TransactionID{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if exists {
 		t.Error("able to query a nonexisting transction")
 	}
@@ -162,7 +169,10 @@ func TestIntegrationTransaction(t *testing.T) {
 	}
 
 	// sendTxns[0] is the set-up transaction, sendTxns[1] contains the sentValue output
-	txn, exists := wt.wallet.Transaction(sendTxns[1].ID())
+	txn, exists, err := wt.wallet.Transaction(sendTxns[1].ID())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !exists {
 		t.Fatal("unable to query transaction")
 	}
@@ -183,7 +193,7 @@ func TestProcessedTxnIndexCompatCode(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +259,7 @@ func TestIntegrationAddressTransactions(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,11 +277,18 @@ func TestIntegrationAddressTransactions(t *testing.T) {
 	}
 
 	// Check the confirmed balance of the address.
-	addrHist := wt.wallet.AddressTransactions(addr)
+	addrHist, err := wt.wallet.AddressTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(addrHist) != 0 {
 		t.Error("address should be empty - no confirmed transactions")
 	}
-	if len(wt.wallet.AddressUnconfirmedTransactions(addr)) == 0 {
+	utxns, err := wt.wallet.AddressUnconfirmedTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(utxns) == 0 {
 		t.Error("addresses unconfirmed transactions should not be empty")
 	}
 	b, _ := wt.miner.FindBlock()
@@ -279,11 +296,18 @@ func TestIntegrationAddressTransactions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addrHist = wt.wallet.AddressTransactions(addr)
+	addrHist, err = wt.wallet.AddressTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(addrHist) == 0 {
 		t.Error("address history should have some transactions")
 	}
-	if len(wt.wallet.AddressUnconfirmedTransactions(addr)) != 0 {
+	utxns, err = wt.wallet.AddressUnconfirmedTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(utxns) != 0 {
 		t.Error("addresses unconfirmed transactions should be empty")
 	}
 }
@@ -294,7 +318,7 @@ func TestAddressTransactionRevertedBlock(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -317,11 +341,18 @@ func TestAddressTransactionRevertedBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	addrHist := wt.wallet.AddressTransactions(addr)
+	addrHist, err := wt.wallet.AddressTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(addrHist) == 0 {
 		t.Error("address history should have some transactions")
 	}
-	if len(wt.wallet.AddressUnconfirmedTransactions(addr)) != 0 {
+	utxns, err := wt.wallet.AddressUnconfirmedTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(utxns) != 0 {
 		t.Error("addresses unconfirmed transactions should be empty")
 	}
 
@@ -332,11 +363,18 @@ func TestAddressTransactionRevertedBlock(t *testing.T) {
 	}
 	wt.wallet.mu.Unlock()
 
-	addrHist = wt.wallet.AddressTransactions(addr)
+	addrHist, err = wt.wallet.AddressTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(addrHist) > 0 {
 		t.Error("address history should should be empty")
 	}
-	if len(wt.wallet.AddressUnconfirmedTransactions(addr)) > 0 {
+	utxns, err = wt.wallet.AddressUnconfirmedTransactions(addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(utxns) > 0 {
 		t.Error("addresses unconfirmed transactions should have some transactions")
 	}
 }
@@ -347,7 +385,7 @@ func TestTransactionInputOutputIDs(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -410,7 +448,7 @@ func TestTransactionInputOutputIDs(t *testing.T) {
 // using the near-worst-case scenario of 10,000 transactions to search through
 // with only a single relevant transaction.
 func BenchmarkAddressTransactions(b *testing.B) {
-	wt, err := createWalletTester(b.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(b.Name(), modules.ProdDependencies)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -444,7 +482,10 @@ func BenchmarkAddressTransactions(b *testing.B) {
 	b.ResetTimer()
 	b.Run("indexed", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			txns := wt.wallet.AddressTransactions(searchAddr)
+			txns, err := wt.wallet.AddressTransactions(searchAddr)
+			if err != nil {
+				b.Fatal(err)
+			}
 			if len(txns) != 1 {
 				b.Fatal(len(txns))
 			}
@@ -453,7 +494,10 @@ func BenchmarkAddressTransactions(b *testing.B) {
 	b.Run("indexed-nosync", func(b *testing.B) {
 		wt.wallet.db.NoSync = true
 		for i := 0; i < b.N; i++ {
-			txns := wt.wallet.AddressTransactions(searchAddr)
+			txns, err := wt.wallet.AddressTransactions(searchAddr)
+			if err != nil {
+				b.Fatal(err)
+			}
 			if len(txns) != 1 {
 				b.Fatal(len(txns))
 			}

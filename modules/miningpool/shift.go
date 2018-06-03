@@ -6,16 +6,20 @@ import (
 	"time"
 )
 
+type Share struct {
+	userid int64
+	workerid int64
+	valid bool
+	difficulty float64
+}
+
 type Shift struct {
 	mu                   sync.RWMutex
 	shiftID              uint64
-	pool                 string
+	pool                 uint64
 	worker               *Worker
 	blockID              uint64
-	shares               uint64
-	invalidShares        uint64
-	staleShares          uint64
-	cumulativeDifficulty float64
+	shares               []Share
 	lastShareTime        time.Time
 	startShiftTime       time.Time
 }
@@ -31,6 +35,7 @@ func (p *Pool) newShift(w *Worker) *Shift {
 		worker:         w,
 		blockID:        currentBlock,
 		startShiftTime: time.Now(),
+		shares:         make([]Share, 0),
 	}
 	// fmt.Printf("New Shift: %s, block %d, shift %d\n", w.Name(), currentBlock, currentShiftID)
 	return s
@@ -42,7 +47,7 @@ func (s *Shift) ShiftID() uint64 {
 	return s.shiftID
 }
 
-func (s *Shift) Pool() string {
+func (s *Shift) PoolID() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.pool
@@ -54,52 +59,34 @@ func (s *Shift) BlockID() uint64 {
 	return s.blockID
 }
 
-func (s *Shift) Shares() uint64 {
+func (s *Shift) Shares() []Share {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.shares
 }
 
-func (s *Shift) IncrementShares() {
+func (s *Shift) IncrementShares(currentDifficulty float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.shares++
-}
 
-func (s *Shift) Invalid() uint64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.invalidShares
+	share := &Share{
+		userid:     s.worker.Parent().cr.clientID,
+		workerid:   s.worker.wr.workerID,
+		valid:      true,
+		difficulty: currentDifficulty,
+	}
+	s.shares = append(s.shares, *share)
 }
 
 func (s *Shift) IncrementInvalid() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.invalidShares++
-}
-
-func (s *Shift) Stale() uint64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.staleShares
-}
-
-func (s *Shift) IncrementStale() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.staleShares++
-}
-
-func (s *Shift) CumulativeDifficulty() float64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.cumulativeDifficulty
-}
-
-func (s *Shift) IncrementCumulativeDifficulty(more float64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.cumulativeDifficulty += more
+	share := &Share{
+		userid:     s.worker.Parent().cr.clientID,
+		workerid:   s.worker.wr.workerID,
+		valid:      false,
+	}
+	s.shares = append(s.shares, *share)
 }
 
 func (s *Shift) LastShareTime() time.Time {

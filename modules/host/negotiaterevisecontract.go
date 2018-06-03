@@ -1,14 +1,15 @@
 package host
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // managedRevisionIteration handles one iteration of the revision loop. As a
@@ -37,11 +38,11 @@ func (h *Host) managedRevisionIteration(conn net.Conn, so *storageObligation, fi
 	}
 
 	// Read some variables from the host for use later in the function.
-	h.mu.RLock()
+	h.mu.Lock()
 	settings := h.externalSettings()
 	secretKey := h.secretKey
 	blockHeight := h.blockHeight
-	h.mu.RUnlock()
+	h.mu.Unlock()
 
 	// The renter is going to send its intended modifications, followed by the
 	// file contract revision that pays for them.
@@ -239,6 +240,18 @@ func verifyRevision(so storageObligation, revision types.FileContractRevision, b
 	}
 
 	oldFCR := so.RevisionTransactionSet[len(so.RevisionTransactionSet)-1].FileContractRevisions[0]
+
+	// Host payout addresses shouldn't change
+	if revision.NewValidProofOutputs[1].UnlockHash != oldFCR.NewValidProofOutputs[1].UnlockHash {
+		return errors.New("host payout address changed")
+	}
+	if revision.NewMissedProofOutputs[1].UnlockHash != oldFCR.NewMissedProofOutputs[1].UnlockHash {
+		return errors.New("host payout address changed")
+	}
+	// Make sure the lost collateral still goes to the void
+	if revision.NewMissedProofOutputs[2].UnlockHash != oldFCR.NewMissedProofOutputs[2].UnlockHash {
+		return errors.New("lost collateral address was changed")
+	}
 
 	// Check that all non-volatile fields are the same.
 	if oldFCR.ParentID != revision.ParentID {

@@ -4,8 +4,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/node/api"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestSortByValue tests that byValue sorts contracts correctly.

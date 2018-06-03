@@ -7,9 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/node"
-	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/node"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/errors"
 )
@@ -61,6 +62,15 @@ func (srv *Server) GatewayAddress() modules.NetAddress {
 	return srv.node.Gateway.Address()
 }
 
+// HostPublicKey returns the host's public key or an error if the node is no
+// host.
+func (srv *Server) HostPublicKey() (types.SiaPublicKey, error) {
+	if srv.node.Host == nil {
+		return types.SiaPublicKey{}, errors.New("can't get public host key of a non-host node")
+	}
+	return srv.node.Host.PublicKey(), nil
+}
+
 // New creates a new API server from the provided modules. The API will
 // require authentication using HTTP basic auth if the supplied password is not
 // the empty string. Usernames are ignored for authentication. This type of
@@ -80,7 +90,7 @@ func New(APIaddr string, requiredUserAgent string, requiredPassword string, node
 	}
 
 	// Create the api for the server.
-	api := api.New(requiredUserAgent, requiredPassword, node.ConsensusSet, node.Explorer, node.Gateway, node.Host, node.Miner, node.Renter, node.TransactionPool, node.Wallet, node.MiningPool)
+	api := api.New(requiredUserAgent, requiredPassword, node.ConsensusSet, node.Explorer, node.Gateway, node.Host, node.Miner, node.Renter, node.TransactionPool, node.Wallet, node.MiningPool, node.StratumMiner, nil)
 	srv := &Server{
 		api: api,
 		apiServer: &http.Server{

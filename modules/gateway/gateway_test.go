@@ -9,9 +9,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 )
 
 // newTestingGateway returns a gateway ready to use in a testing environment.

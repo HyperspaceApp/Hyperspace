@@ -3,7 +3,7 @@ package pool
 import (
 	"fmt"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 func (p *Pool) BlockCount() uint64 {
@@ -14,32 +14,21 @@ func (p *Pool) BlockCount() uint64 {
 	return p.blockCounter
 }
 
-func (p *Pool) processPayouts() {
-	fmt.Printf("Processing payouts\n")
-	blocks := p.BlocksInfo()
-	for _, block := range blocks {
-		if block.BlockHeight != 0 && block.BlockStatus == confirmedButUnpaid {
-			// block is due to be paid
-			p.processBlockPayout(block.BlockNumber)
-		}
-	}
-
-}
-
+// processBlockPayout TODO: would move this part all to yiimp
 func (p *Pool) processBlockPayout(block uint64) {
-	info := p.BlockInfo(block)
-	fmt.Printf("Processing block %d, split %d ways\n", block, len(info))
-	for _, bi := range info {
-		p.processClientPayout(block, bi)
-	}
-	p.markBlockPaid(block)
+	// info := p.BlockInfo(block)
+	// fmt.Printf("Processing block %d, split %d ways\n", block, len(info))
+	// for _, bi := range info {
+	// 	p.processClientPayout(block, bi)
+	// }
+	// p.markBlockPaid(block)
 
 }
 
 // processClientPayout modifies the client internal balance and records
 // the transaction in the ledger
 func (p *Pool) processClientPayout(block uint64, bi modules.PoolBlock) {
-	client := p.findClientDB(bi.ClientName)
+	client := p.FindClientDB(bi.ClientName)
 	err := p.modifyClientBalance(client.cr.clientID, bi.ClientReward)
 	if err != nil {
 		p.log.Printf("Failed to modify client %s balance: %s\n", bi.ClientName, err)

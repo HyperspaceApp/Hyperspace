@@ -1,29 +1,29 @@
 Developer Environment
 =====================
 
-Sia is written in Go. To build and test Sia, you are going to need a working go
+Hyperspace is written in Go. To build and test Hyperspace, you are going to need a working go
 environment, including having both `$GOROOT/bin` and `$GOPATH/bin` in your
 `$PATH`. For most Linux distributions, Go will be in the package manager,
-though it may be an old version that is incompatible with Sia. Once you have a
+though it may be an old version that is incompatible with Hyperspace. Once you have a
 working Go environment, you are set to build the project. If you plan on cross
-compiling Sia, you may need to install Go from source. You can find information
+compiling Hyperspace, you may need to install Go from source. You can find information
 on that [here](http://golang.org/doc/install/source).
 
-Sia has a development build, an automated testing build, and a release
+Hyperspace has a development build, an automated testing build, and a release
 build. The release build is the only one that can synchronize to the full
 network. To get the release build, it is usually sufficient to run `go get -u
-github.com/NebulousLabs/Sia/...`. This will download Sia and its dependencies
+github.com/HyperspaceApp/Hyperspace/...`. This will download Hyperspace and its dependencies
 and install binaries in `$GOPATH/bin`.
 
-After downloading, you can find the Sia source code in
-`$GOPATH/src/github.com/NebulousLabs/Sia`. To build the release binary, run
+After downloading, you can find the Hyperspace source code in
+`$GOPATH/src/github.com/HyperspaceApp/Hyperspace`. To build the release binary, run
 `make release-std` from this directory. To build the release binary with a
 (slow) race detector and an array of debugging asserts, run `make release`. To
 build the developer binary (which has a different genesis block, faster block
 times, and a few other tweaks), just run `make`.
 
-If you intend to contribute to Sia, you should start by forking the project on
-GitHub, and then adding your fork as a "remote" in the Sia git repository via
+If you intend to contribute to Hyperspace, you should start by forking the project on
+GitHub, and then adding your fork as a "remote" in the Hyperspace git repository via
 `git remote add [fork name] [fork url]`. Now you can develop by pulling changes
 from `origin`, pushing your modifications to `[fork name]`, and then making a
 pull request on GitHub.
@@ -34,9 +34,9 @@ does not recognize (usually the wrong path, or symbolic links were somehow
 involved).
 
 ```
-consensus/fork.go:4:2: cannot find package "github.com/NebulousLabs/Sia/crypto" in any of:
-    /usr/lib/go/src/github.com/NebulousLabs/Sia/crypto (from $GOROOT)
-    /home/user/gopath/src/github.com/NebulousLabs/Sia/crypto (from $GOPATH)
+consensus/fork.go:4:2: cannot find package "github.com/HyperspaceApp/Hyperspace/crypto" in any of:
+    /usr/lib/go/src/github.com/HyperspaceApp/Hyperspace/crypto (from $GOROOT)
+    /home/user/gopath/src/github.com/HyperspaceApp/Hyperspace/crypto (from $GOPATH)
 ```
 
 Developer Conventions
@@ -44,9 +44,9 @@ Developer Conventions
 
 This file is meant to help a developer navigate the codebase and develop clean,
 maintainable code. Knowing all of these conventions will also make it easier to
-read and code review the Sia project.
+read and code review the Hyperspace project.
 
-The primary purpose of the conventions within Sia is to keep the codebase
+The primary purpose of the conventions within Hyperspace is to keep the codebase
 simple. Simpler constructions means easier code reviews, greater accessibility
 to newcomers, and less potential for mistakes. It is also to keep things
 uniform, much in the spirit of `go fmt`. When everything looks the same,
@@ -91,7 +91,7 @@ outputs := getOutputs()
 //
 // COMPATv0.4.0: allow a blank agent to preserve compatibility with
 // 'siac' v0.4.0, which did not set an agent.
-if agent != "SiaAgent" && agent != "" {
+if agent != "HyperspaceAgent" && agent != "" {
 	return errors.New("unrecognized agent!")
 }
 ```
@@ -126,7 +126,7 @@ developers it is obvious that `cs` refers to a `consensus.ConsensusSet`.
 
 ### Function Prefixes
 
-Sia uses special prefixes for certain functions to hint about their usage to the
+Hyperspace uses special prefixes for certain functions to hint about their usage to the
 caller.
 
 #### `threaded`

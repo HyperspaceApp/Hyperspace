@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 )
 
 // TestEd25519PublicKey tests the Ed25519PublicKey function.

@@ -1,13 +1,15 @@
 package config
 
+// MiningPoolConfig is config for miningpool
 type MiningPoolConfig struct {
-	AcceptingShares        bool
-	PoolOperatorPercentage float64
-	PoolNetworkPort        uint16
+	PoolNetworkPort        int
 	PoolName               string
-	PoolID                 string
+	PoolID                 uint64
 	PoolDBConnection       string
-	PoolDBName             string
-	PoolOperatorWallet     string
 	PoolWallet             string
+}
+
+// IndexConfig is config for index
+type IndexConfig struct {
+	PoolDBConnection       string
 }

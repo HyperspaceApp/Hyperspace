@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/host/contractmanager"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/host/contractmanager"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -210,6 +210,8 @@ func TestWorkingStatus(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +257,7 @@ func TestWorkingStatus(t *testing.T) {
 		t.Fatal("uploading has failed")
 	}
 
-	err = retry(30, time.Second, func() error {
+	err = build.Retry(30, time.Second, func() error {
 		var hg HostGET
 		st.getAPI("/host", &hg)
 
@@ -288,7 +290,7 @@ func TestConnectabilityStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = retry(30, time.Second, func() error {
+	err = build.Retry(30, time.Second, func() error {
 		var hg HostGET
 		st.getAPI("/host", &hg)
 
@@ -329,6 +331,8 @@ func TestStorageHandler(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -577,6 +581,8 @@ func TestResizeNonemptyStorageFolder(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -935,6 +941,8 @@ func TestRemoveStorageFolderForced(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}

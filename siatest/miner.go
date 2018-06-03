@@ -2,13 +2,12 @@ package siatest
 
 import (
 	"bytes"
-	"errors"
 	"unsafe"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/errors"
 )
 
 // MineBlock makes the underlying node mine a single block and broadcast it.
@@ -16,16 +15,16 @@ func (tn *TestNode) MineBlock() error {
 	// Get the header
 	target, header, err := tn.MinerHeaderGet()
 	if err != nil {
-		return build.ExtendErr("failed to get header for work", err)
+		return errors.AddContext(err, "failed to get header for work")
 	}
 	// Solve the header
 	header, err = solveHeader(target, header)
 	if err != nil {
-		return build.ExtendErr("failed to solve header", err)
+		return errors.AddContext(err, "failed to solve header")
 	}
 	// Submit the header
 	if err := tn.MinerHeaderPost(header); err != nil {
-		return build.ExtendErr("failed to submit header", err)
+		return errors.AddContext(err, "failed to submit header")
 	}
 	return nil
 }

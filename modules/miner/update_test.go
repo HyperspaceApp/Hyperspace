@@ -3,7 +3,7 @@ package miner
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // TestIntegrationBlockHeightReorg checks that the miner has the correct block

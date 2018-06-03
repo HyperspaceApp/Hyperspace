@@ -1,6 +1,6 @@
 package siatest
 
-import "github.com/HyperspaceProject/Hyperspace/node"
+import "github.com/HyperspaceApp/Hyperspace/node"
 
 var (
 	// MinerTemplate is a template for a Sia node that has a functioning

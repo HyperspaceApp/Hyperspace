@@ -1,8 +1,8 @@
 package gateway
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -36,6 +36,7 @@ func (g *Gateway) managedPeerManagerConnect(addr modules.NetAddress) {
 				g.nodes[n.NetAddress] = n
 			}
 			g.log.Debugf("[PMC] [SUCCESS] [%v] existing peer has been converted to outbound peer", addr)
+			g.callInitRPCs(p.NetAddress)
 		}
 		g.mu.Unlock()
 	} else if err != nil {

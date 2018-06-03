@@ -13,7 +13,7 @@ import (
 	"errors"
 	"hash"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 
 	"golang.org/x/crypto/blake2b"
 )

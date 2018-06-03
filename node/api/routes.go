@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/julienschmidt/httprouter"
 )
 
 // buildHttpRoutes sets up and returns an * httprouter.Router.
 // it connected the Router to the given api using the required
 // parameters: requiredUserAgent and requiredPassword
-func (api *API) buildHttpRoutes(requiredUserAgent string, requiredPassword string) {
+func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword string) {
 	router := httprouter.New()
 
 	router.NotFound = http.HandlerFunc(UnrecognizedCallHandler)
@@ -21,7 +21,10 @@ func (api *API) buildHttpRoutes(requiredUserAgent string, requiredPassword strin
 	// Consensus API Calls
 	if api.cs != nil {
 		router.GET("/consensus", api.consensusHandler)
+		router.GET("/consensus/blocks", api.consensusBlocksHandler)
 		router.POST("/consensus/validate/transactionset", api.consensusValidateTransactionsetHandler)
+		router.GET("/consensus/blocks/:height", api.consensusBlocksHandlerSanasol)
+		router.GET("/consensus/future/:height", api.consensusFutureBlocksHandler)
 	}
 
 	// Explorer API Calls
@@ -44,6 +47,7 @@ func (api *API) buildHttpRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/host", api.hostHandlerGET)                                                   // Get the host status.
 		router.POST("/host", RequirePassword(api.hostHandlerPOST, requiredPassword))              // Change the settings of the host.
 		router.POST("/host/announce", RequirePassword(api.hostAnnounceHandler, requiredPassword)) // Announce the host to the network.
+		router.GET("/host/contracts", api.hostContractInfoHandler)                                // Get info about contracts.
 		router.GET("/host/estimatescore", api.hostEstimateScoreGET)
 
 		// Calls pertaining to the storage manager that the host uses.
@@ -66,15 +70,15 @@ func (api *API) buildHttpRoutes(requiredUserAgent string, requiredPassword strin
 	// Mining pool API Calls
 	if api.pool != nil {
 		router.GET("/pool", api.poolHandler)
-		router.GET("/pool/clients", api.poolGetClientsInfo)
-		router.GET("/pool/client", api.poolGetClientInfo)
-		router.GET("/pool/clienttx", api.poolGetClientTransactions)
+		// router.GET("/pool/clients", api.poolGetClientsInfo)
+		// router.GET("/pool/client", api.poolGetClientInfo)
+		// router.GET("/pool/clienttx", api.poolGetClientTransactions)
 		router.POST("/pool/config", RequirePassword(api.poolConfigHandlerPOST, requiredPassword)) // Change the settings of the host.
 		router.GET("/pool/config", RequirePassword(api.poolConfigHandler, requiredPassword))
 		router.GET("/pool/start", RequirePassword(api.poolStartHandler, requiredPassword))
 		router.GET("/pool/stop", RequirePassword(api.poolStopHandler, requiredPassword))
-		router.GET("/pool/blocks", api.poolGetBlocksInfo)
-		router.GET("/pool/block", api.poolGetBlockInfo)
+		// router.GET("/pool/blocks", api.poolGetBlocksInfo)
+		// router.GET("/pool/block", api.poolGetBlockInfo)
 	}
 
 	// Renter API Calls
@@ -84,6 +88,7 @@ func (api *API) buildHttpRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/renter/contracts", api.renterContractsHandler)
 		router.GET("/renter/downloads", api.renterDownloadsHandler)
 		router.GET("/renter/files", api.renterFilesHandler)
+		router.GET("/renter/file/*siapath", api.renterFileHandler)
 		router.GET("/renter/prices", api.renterPricesHandler)
 
 		// TODO: re-enable these routes once the new .sia format has been
@@ -97,12 +102,19 @@ func (api *API) buildHttpRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/renter/download/*siapath", RequirePassword(api.renterDownloadHandler, requiredPassword))
 		router.GET("/renter/downloadasync/*siapath", RequirePassword(api.renterDownloadAsyncHandler, requiredPassword))
 		router.POST("/renter/rename/*siapath", RequirePassword(api.renterRenameHandler, requiredPassword))
+		router.GET("/renter/stream/*siapath", api.renterStreamHandler)
 		router.POST("/renter/upload/*siapath", RequirePassword(api.renterUploadHandler, requiredPassword))
 
 		// HostDB endpoints.
 		router.GET("/hostdb/active", api.hostdbActiveHandler)
 		router.GET("/hostdb/all", api.hostdbAllHandler)
 		router.GET("/hostdb/hosts/:pubkey", api.hostdbHostsHandler)
+	}
+
+	if api.stratumminer != nil {
+		router.GET("/stratumminer", api.stratumminerHandler)
+		router.POST("/stratumminer/start", api.stratumminerStartHandler)
+		router.POST("/stratumminer/stop", api.stratumminerStopHandler)
 	}
 
 	// Transaction pool API Calls
@@ -179,7 +191,7 @@ func cleanCloseHandler(next http.Handler) http.Handler {
 // UserAgent that contains the specified string.
 func RequireUserAgent(h http.Handler, ua string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if !strings.Contains(req.UserAgent(), ua) {
+		if !strings.Contains(req.UserAgent(), ua) && !isUnrestricted(req) {
 			WriteError(w, Error{"Browser access disabled due to security vulnerability. Use Sia-UI or siac."}, http.StatusBadRequest)
 			return
 		}
@@ -204,4 +216,9 @@ func RequirePassword(h httprouter.Handle, password string) httprouter.Handle {
 		}
 		h(w, req, ps)
 	}
+}
+
+// isUnrestricted checks if a request may bypass the useragent check.
+func isUnrestricted(req *http.Request) bool {
+	return strings.HasPrefix(req.URL.Path, "/renter/stream/")
 }

@@ -17,11 +17,11 @@ package consensus
 // the genesis block will call 'append' later on during initialization.
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -121,8 +121,8 @@ func (ce *changeEntry) NextEntry(tx *bolt.Tx) (nextEntry changeEntry, exists boo
 	cl := tx.Bucket(ChangeLog)
 	changeNodeBytes := cl.Get(ceid[:])
 	err := encoding.Unmarshal(changeNodeBytes, &cn)
-	if build.DEBUG && err != nil {
-		panic(err)
+	if err != nil {
+		build.Critical(err)
 	}
 
 	return getEntry(tx, cn.Next)

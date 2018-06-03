@@ -2,11 +2,12 @@ package transactionpool
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // findSets takes a bunch of transactions (presumably from a block) and finds
@@ -174,7 +175,7 @@ func (tp *TransactionPool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		tp.log.Println("NOTE: Upgrading tpool database to support consensus change verification.")
 		resetSanityCheck = true
 	} else if err != nil {
-		tp.log.Println("ERROR: Could not access recentID from tpool.")
+		tp.log.Critical("ERROR: Could not access recentID from tpool:", err)
 	}
 
 	// Update the database of confirmed transactions.
@@ -182,7 +183,7 @@ func (tp *TransactionPool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		// Sanity check - the id of each reverted block should match the recent
 		// parent id.
 		if block.ID() != recentID && !resetSanityCheck {
-			panic("Consensus change series appears to be inconsistent - we are reverting the wrong block.")
+			panic(fmt.Sprintf("Consensus change series appears to be inconsistent - we are reverting the wrong block. bid: %v recent: %v", block.ID(), recentID))
 		}
 		recentID = block.ParentID
 
@@ -209,7 +210,7 @@ func (tp *TransactionPool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		// Sanity check - the parent id of each block should match the current
 		// block id.
 		if block.ParentID != recentID && !resetSanityCheck {
-			panic("Consensus change series appears to be inconsistent - we are applying the wrong block.")
+			panic(fmt.Sprintf("Consensus change series appears to be inconsistent - we are applying the wrong block. pid: %v recent: %v", block.ParentID, recentID))
 		}
 		recentID = block.ID()
 

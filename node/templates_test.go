@@ -3,7 +3,7 @@ package node
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // TestNew is a basic smoke test for New that uses all of the templates to

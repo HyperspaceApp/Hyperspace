@@ -3,12 +3,13 @@ package client
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
-	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/NebulousLabs/errors"
 )
 
@@ -68,9 +69,9 @@ func readAPIError(r io.Reader) error {
 	return apiErr
 }
 
-// GetRawResponse requests the specified resource. The response, if provided,
+// getRawResponse requests the specified resource. The response, if provided,
 // will be returned in a byte slice
-func (c *Client) GetRawResponse(resource string) ([]byte, error) {
+func (c *Client) getRawResponse(resource string) ([]byte, error) {
 	req, err := c.NewRequest("GET", resource, nil)
 	if err != nil {
 		return nil, err
@@ -98,11 +99,43 @@ func (c *Client) GetRawResponse(resource string) ([]byte, error) {
 	return ioutil.ReadAll(res.Body)
 }
 
-// Get requests the specified resource. The response, if provided, will be
+// getRawResponse requests part of the specified resource. The response, if
+// provided, will be returned in a byte slice
+func (c *Client) getRawPartialResponse(resource string, from, to uint64) ([]byte, error) {
+	req, err := c.NewRequest("GET", resource, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Range", fmt.Sprintf("bytes=%d-%d", from, to))
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.AddContext(err, "request failed")
+	}
+	defer drainAndClose(res.Body)
+
+	if res.StatusCode == http.StatusNotFound {
+		return nil, errors.New("API call not recognized: " + resource)
+	}
+
+	// If the status code is not 2xx, decode and return the accompanying
+	// api.Error.
+	if res.StatusCode < 200 || res.StatusCode > 299 {
+		return nil, readAPIError(res.Body)
+	}
+
+	if res.StatusCode == http.StatusNoContent {
+		// no reason to read the response
+		return []byte{}, nil
+	}
+	return ioutil.ReadAll(res.Body)
+}
+
+// get requests the specified resource. The response, if provided, will be
 // decoded into obj. The resource path must begin with /.
-func (c *Client) Get(resource string, obj interface{}) error {
+func (c *Client) get(resource string, obj interface{}) error {
 	// Request resource
-	data, err := c.GetRawResponse(resource)
+	data, err := c.getRawResponse(resource)
 	if err != nil {
 		return err
 	}
@@ -120,9 +153,9 @@ func (c *Client) Get(resource string, obj interface{}) error {
 	return nil
 }
 
-// PostRawResponse requests the specified resource. The response, if provided,
+// postRawResponse requests the specified resource. The response, if provided,
 // will be returned in a byte slice
-func (c *Client) PostRawResponse(resource string, data string) ([]byte, error) {
+func (c *Client) postRawResponse(resource string, data string) ([]byte, error) {
 	req, err := c.NewRequest("POST", resource, strings.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -152,11 +185,11 @@ func (c *Client) PostRawResponse(resource string, data string) ([]byte, error) {
 	return ioutil.ReadAll(res.Body)
 }
 
-// Post makes a POST request to the resource at `resource`, using `data` as the
+// post makes a POST request to the resource at `resource`, using `data` as the
 // request body. The response, if provided, will be decoded into `obj`.
-func (c *Client) Post(resource string, data string, obj interface{}) error {
+func (c *Client) post(resource string, data string, obj interface{}) error {
 	// Request resource
-	body, err := c.PostRawResponse(resource, data)
+	body, err := c.postRawResponse(resource, data)
 	if err != nil {
 		return err
 	}

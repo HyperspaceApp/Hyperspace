@@ -3,7 +3,7 @@ package modules
 import (
 	"net"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 const (

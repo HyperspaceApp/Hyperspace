@@ -19,10 +19,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // rpcSettingsDeprecated is a specifier for a deprecated settings request.
@@ -156,7 +156,7 @@ func (h *Host) threadedTrackConnectabilityStatus(closeChan chan struct{}) {
 // host established on the network.
 func (h *Host) initNetworking(address string) (err error) {
 	// Create the listener and setup the close procedures.
-	h.listener, err = h.dependencies.listen("tcp", address)
+	h.listener, err = h.dependencies.Listen("tcp", address)
 	if err != nil {
 		return err
 	}

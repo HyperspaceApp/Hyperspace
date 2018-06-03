@@ -8,12 +8,13 @@ package types
 import (
 	"errors"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 )
 
 const (
+	// SpecifierLen is the length in bytes of a Specifier.
 	SpecifierLen = 16
 
 	// UnlockHashChecksumSize is the size of the checksum used to verify
@@ -57,9 +58,14 @@ type (
 	// are constructed by hashing specific fields of the type, along with a
 	// Specifier. While all of these types are hashes, defining type aliases
 	// gives us type safety and makes the code more readable.
-	TransactionID   crypto.Hash
+
+	// TransactionID uniquely identifies a transaction
+	TransactionID crypto.Hash
+	// SiacoinOutputID uniquely identifies a siacoin output
 	SiacoinOutputID crypto.Hash
+	// FileContractID uniquely identifies a file contract
 	FileContractID  crypto.Hash
+	// OutputID uniquely identifies an output
 	OutputID        crypto.Hash
 
 	// A Transaction is an atomic component of a block. Transactions can contain

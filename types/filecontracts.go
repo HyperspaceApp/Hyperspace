@@ -4,12 +4,16 @@ package types
 // contracts.
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 )
 
 var (
+	// ProofMissed indicates that a StorageProof was missed, which means that
+	// no valid proof was submitted within the proof window.
 	ProofMissed ProofStatus = false
-	ProofValid  ProofStatus = true
+	// ProofValid indicates that a valid StorageProof was submitted within the
+	// proof window.
+	ProofValid ProofStatus = true
 )
 
 type (
@@ -89,6 +93,7 @@ type (
 		HashSet  []crypto.Hash            `json:"hashset"`
 	}
 
+	// ProofStatus indicates whether a StorageProof was valid (true) or missed (false).
 	ProofStatus bool
 )
 

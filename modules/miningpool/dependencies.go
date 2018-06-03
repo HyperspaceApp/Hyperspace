@@ -6,7 +6,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/HyperspaceProject/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/NebulousLabs/fastrand"
 )
 

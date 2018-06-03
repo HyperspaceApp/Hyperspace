@@ -9,11 +9,11 @@ import (
 	"math"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -323,18 +323,18 @@ func (tp *TransactionPool) AcceptTransactionSet(ts []types.Transaction) error {
 	}
 
 	return cs.LockedTryTransactionSet(func(txnFn func(txns []types.Transaction) (modules.ConsensusChange, error)) error {
-		tp.log.Println("Beginning broadcast of transaction set")
+		tp.log.Debugln("Beginning broadcast of transaction set")
 		tp.mu.Lock()
 		defer tp.mu.Unlock()
 		err := tp.acceptTransactionSet(ts, txnFn)
 		if err != nil {
-			tp.log.Println("Transaction set broadcast has failed")
+			tp.log.Debugln("Transaction set broadcast has failed:", err)
 			return err
 		}
 		go tp.gateway.Broadcast("RelayTransactionSet", ts, tp.gateway.Peers())
 		// Notify subscribers of an accepted transaction set
 		tp.updateSubscribersTransactions()
-		tp.log.Println("Transaction set broadcast appears to have succeeded")
+		tp.log.Debugln("Transaction set broadcast appears to have succeeded")
 		return nil
 	})
 }
@@ -343,6 +343,10 @@ func (tp *TransactionPool) AcceptTransactionSet(ts []types.Transaction) error {
 // the accept is successful, the transaction will be relayed to the gateway's
 // other peers.
 func (tp *TransactionPool) relayTransactionSet(conn modules.PeerConn) error {
+	if err := tp.tg.Add(); err != nil {
+		return err
+	}
+	defer tp.tg.Done()
 	err := conn.SetDeadline(time.Now().Add(relayTransactionSetTimeout))
 	if err != nil {
 		return err

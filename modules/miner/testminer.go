@@ -9,9 +9,9 @@ import (
 	"errors"
 	"unsafe"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -49,7 +49,11 @@ func solveBlock(b types.Block, target types.Target) (types.Block, bool) {
 func (m *Miner) BlockForWork() (b types.Block, t types.Target, err error) {
 	// Check if the wallet is unlocked. If the wallet is unlocked, make sure
 	// that the miner has a recent address.
-	if !m.wallet.Unlocked() {
+	unlocked, err := m.wallet.Unlocked()
+	if err != nil {
+		return types.Block{}, types.Target{}, err
+	}
+	if !unlocked {
 		err = modules.ErrLockedWallet
 		return
 	}
@@ -85,10 +89,14 @@ func (m *Miner) FindBlock() (types.Block, error) {
 		m.mu.Lock()
 		defer m.mu.Unlock()
 
-		if !m.wallet.Unlocked() {
+		unlocked, err := m.wallet.Unlocked()
+		if err != nil {
+			return err
+		}
+		if !unlocked {
 			return modules.ErrLockedWallet
 		}
-		err := m.checkAddress()
+		err = m.checkAddress()
 		if err != nil {
 			return err
 		}

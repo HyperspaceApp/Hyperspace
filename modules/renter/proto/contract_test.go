@@ -6,18 +6,22 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestContractUncommittedTxn tests that if a contract revision is left in an
 // uncommitted state, either version of the contract can be recovered.
 func TestContractUncommittedTxn(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
 	// create contract set with one contract
 	dir := build.TempDir(filepath.Join("proto", t.Name()))
-	cs, err := NewContractSet(dir)
+	cs, err := NewContractSet(dir, modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,15 +71,19 @@ func TestContractUncommittedTxn(t *testing.T) {
 	// the state of the contract should match the initial state
 	// NOTE: can't use reflect.DeepEqual for the header because it contains
 	// types.Currency fields
+	merkleRoots, err := sc.merkleRoots.merkleRoots()
+	if err != nil {
+		t.Fatal("failed to get merkle roots", err)
+	}
 	if !bytes.Equal(encoding.Marshal(sc.header), encoding.Marshal(initialHeader)) {
 		t.Fatal("contractHeader should match initial contractHeader")
-	} else if !reflect.DeepEqual(sc.merkleRoots, initialRoots) {
+	} else if !reflect.DeepEqual(merkleRoots, initialRoots) {
 		t.Fatal("Merkle roots should match initial Merkle roots")
 	}
 
 	// close and reopen the contract set
 	cs.Close()
-	cs, err = NewContractSet(dir)
+	cs, err = NewContractSet(dir, modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,9 +95,13 @@ func TestContractUncommittedTxn(t *testing.T) {
 		t.Fatal("WAL transaction changed")
 	}
 	// the state of the contract should match the initial state
+	merkleRoots, err = sc.merkleRoots.merkleRoots()
+	if err != nil {
+		t.Fatal("failed to get merkle roots:", err)
+	}
 	if !bytes.Equal(encoding.Marshal(sc.header), encoding.Marshal(initialHeader)) {
 		t.Fatal("contractHeader should match initial contractHeader", sc.header, initialHeader)
-	} else if !reflect.DeepEqual(sc.merkleRoots, initialRoots) {
+	} else if !reflect.DeepEqual(merkleRoots, initialRoots) {
 		t.Fatal("Merkle roots should match initial Merkle roots")
 	}
 
@@ -103,9 +115,13 @@ func TestContractUncommittedTxn(t *testing.T) {
 		t.Fatal("expected 0 unappliedTxns, got", len(sc.unappliedTxns))
 	}
 	// the state of the contract should now match the revised state
+	merkleRoots, err = sc.merkleRoots.merkleRoots()
+	if err != nil {
+		t.Fatal("failed to get merkle roots:", err)
+	}
 	if !bytes.Equal(encoding.Marshal(sc.header), encoding.Marshal(revisedHeader)) {
 		t.Fatal("contractHeader should match revised contractHeader", sc.header, revisedHeader)
-	} else if !reflect.DeepEqual(sc.merkleRoots, revisedRoots) {
+	} else if !reflect.DeepEqual(merkleRoots, revisedRoots) {
 		t.Fatal("Merkle roots should match revised Merkle roots")
 	}
 }

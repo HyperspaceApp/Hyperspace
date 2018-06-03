@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 )
 
 const (

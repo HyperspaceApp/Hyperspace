@@ -6,11 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/ratelimit"
 )
 
 // cachedMerkleRoot calculates the root of a set of existing Merkle roots.
@@ -29,9 +30,10 @@ type Editor struct {
 	contractSet *ContractSet
 	conn        net.Conn
 	closeChan   chan struct{}
-	once        sync.Once
-	host        modules.HostDBEntry
+	deps        modules.Dependencies
 	hdb         hostDB
+	host        modules.HostDBEntry
+	once        sync.Once
 
 	height types.BlockHeight
 }
@@ -90,13 +92,12 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 
 	// calculate the new Merkle root
 	sectorRoot := crypto.MerkleRoot(data)
-	newRoots := append(sc.merkleRoots, sectorRoot)
-	merkleRoot := cachedMerkleRoot(newRoots)
+	merkleRoot := sc.merkleRoots.checkNewRoot(sectorRoot)
 
 	// create the action and revision
 	actions := []modules.RevisionAction{{
 		Type:        modules.ActionInsert,
-		SectorIndex: uint64(len(sc.merkleRoots)),
+		SectorIndex: uint64(sc.merkleRoots.len()),
 		Data:        data,
 	}}
 	rev := newUploadRevision(contract.LastRevision(), merkleRoot, sectorPrice, sectorCollateral)
@@ -134,8 +135,14 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 		return modules.RenterContract{}, crypto.Hash{}, err
 	}
 
+	// Disrupt here before sending the signed revision to the host.
+	if he.deps.Disrupt("InterruptUploadBeforeSendingRevision") {
+		return modules.RenterContract{}, crypto.Hash{},
+			errors.New("InterruptUploadBeforeSendingRevision disrupt")
+	}
+
 	// send revision to host and exchange signatures
-	extendDeadline(he.conn, 2*time.Minute)
+	extendDeadline(he.conn, connTimeout)
 	signedTxn, err := negotiateRevision(he.conn, rev, contract.SecretKey)
 	if err == modules.ErrStopResponse {
 		// if host gracefully closed, close our connection as well; this will
@@ -143,6 +150,12 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 		he.conn.Close()
 	} else if err != nil {
 		return modules.RenterContract{}, crypto.Hash{}, err
+	}
+
+	// Disrupt here before updating the contract.
+	if he.deps.Disrupt("InterruptUploadAfterSendingRevision") {
+		return modules.RenterContract{}, crypto.Hash{},
+			errors.New("InterruptUploadAfterSendingRevision disrupt")
 	}
 
 	// update contract
@@ -174,11 +187,11 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 		}
 	}()
 
-	conn, closeChan, err := initiateRevisionLoop(host, contract, modules.RPCReviseContract, cancel)
+	conn, closeChan, err := initiateRevisionLoop(host, contract, modules.RPCReviseContract, cancel, cs.rl)
 	if IsRevisionMismatch(err) && len(sc.unappliedTxns) > 0 {
 		// we have desynced from the host. If we have unapplied updates from the
 		// WAL, try applying them.
-		conn, closeChan, err = initiateRevisionLoop(host, sc.unappliedHeader(), modules.RPCReviseContract, cancel)
+		conn, closeChan, err = initiateRevisionLoop(host, sc.unappliedHeader(), modules.RPCReviseContract, cancel, cs.rl)
 		if err != nil {
 			return nil, err
 		}
@@ -204,19 +217,21 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 		contractSet: cs,
 		conn:        conn,
 		closeChan:   closeChan,
+		deps:        cs.deps,
 	}, nil
 }
 
 // initiateRevisionLoop initiates either the editor or downloader loop with
 // host, depending on which rpc was passed.
-func initiateRevisionLoop(host modules.HostDBEntry, contract contractHeader, rpc types.Specifier, cancel <-chan struct{}) (net.Conn, chan struct{}, error) {
-	conn, err := (&net.Dialer{
+func initiateRevisionLoop(host modules.HostDBEntry, contract contractHeader, rpc types.Specifier, cancel <-chan struct{}, rl *ratelimit.RateLimit) (net.Conn, chan struct{}, error) {
+	c, err := (&net.Dialer{
 		Cancel:  cancel,
 		Timeout: 45 * time.Second, // TODO: Constant
 	}).Dial("tcp", string(host.NetAddress))
 	if err != nil {
 		return nil, nil, err
 	}
+	conn := ratelimit.NewRLConn(c, rl, cancel)
 
 	closeChan := make(chan struct{})
 	go func() {

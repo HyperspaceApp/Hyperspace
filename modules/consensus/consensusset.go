@@ -9,11 +9,11 @@ package consensus
 import (
 	"errors"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/sync"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/demotemutex"
 	"github.com/coreos/bbolt"
@@ -88,16 +88,24 @@ type ConsensusSet struct {
 
 	// Utilities
 	db         *persist.BoltDatabase
+	staticDeps modules.Dependencies
 	log        *persist.Logger
 	mu         demotemutex.DemoteMutex
 	persistDir string
-	tg         sync.ThreadGroup
+	tg         siasync.ThreadGroup
 }
 
 // New returns a new ConsensusSet, containing at least the genesis block. If
 // there is an existing block database present in the persist directory, it
 // will be loaded.
 func New(gateway modules.Gateway, bootstrap bool, persistDir string) (*ConsensusSet, error) {
+	return NewCustomConsensusSet(gateway, bootstrap, persistDir, modules.ProdDependencies)
+}
+
+// NewCustomConsensusSet returns a new ConsensusSet, containing at least the genesis block. If
+// there is an existing block database present in the persist directory, it
+// will be loaded.
+func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir string, deps modules.Dependencies) (*ConsensusSet, error) {
 	// Check for nil dependencies.
 	if gateway == nil {
 		return nil, errNilGateway
@@ -121,6 +129,7 @@ func New(gateway modules.Gateway, bootstrap bool, persistDir string) (*Consensus
 		blockRuleHelper: stdBlockRuleHelper{},
 		blockValidator:  NewBlockValidator(),
 
+		staticDeps: deps,
 		persistDir: persistDir,
 	}
 
@@ -189,6 +198,21 @@ func (cs *ConsensusSet) BlockAtHeight(height types.BlockHeight) (block types.Blo
 		return nil
 	})
 	return block, exists
+}
+
+// BlockByID returns the block for a given BlockID.
+func (cs *ConsensusSet) BlockByID(id types.BlockID) (block types.Block, height types.BlockHeight, exists bool) {
+	_ = cs.db.View(func(tx *bolt.Tx) error {
+		pb, err := getBlockMap(tx, id)
+		if err != nil {
+			return err
+		}
+		block = pb.Block
+		height = pb.Height
+		exists = true
+		return nil
+	})
+	return block, height, exists
 }
 
 // ChildTarget returns the target for the child of a block.
@@ -346,4 +370,9 @@ func (cs *ConsensusSet) StorageProofSegment(fcid types.FileContractID) (index ui
 		return nil
 	})
 	return index, err
+}
+
+// get db
+func (cs *ConsensusSet) Db() *persist.BoltDatabase {
+	return cs.db
 }

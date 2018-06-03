@@ -3,8 +3,8 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -106,8 +106,11 @@ func (cst *consensusSetTester) testSpendSiacoinsBlock() {
 
 	// Create a block containing a transaction with a valid siacoin output.
 	txnValue := types.NewCurrency64(1200)
-	txnBuilder := cst.wallet.StartTransaction()
-	err := txnBuilder.FundSiacoins(txnValue)
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		panic(err)
+	}
+	err = txnBuilder.FundSiacoins(txnValue)
 	if err != nil {
 		panic(err)
 	}
@@ -195,8 +198,11 @@ func (cst *consensusSetTester) testValidStorageProofBlocks() {
 	}
 
 	// Submit a transaction with the file contract.
-	txnBuilder := cst.wallet.StartTransaction()
-	err := txnBuilder.FundSiacoins(payout)
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		panic(err)
+	}
+	err = txnBuilder.FundSiacoins(payout)
 	if err != nil {
 		panic(err)
 	}
@@ -233,7 +239,10 @@ func (cst *consensusSetTester) testValidStorageProofBlocks() {
 		HashSet:  hashSet,
 	}
 	copy(sp.Segment[:], segment)
-	txnBuilder = cst.wallet.StartTransaction()
+	txnBuilder, err = cst.wallet.StartTransaction()
+	if err != nil {
+		panic(err)
+	}
 	txnBuilder.AddStorageProof(sp)
 	txnSet, err = txnBuilder.Sign(true)
 	if err != nil {
@@ -307,8 +316,11 @@ func (cst *consensusSetTester) testMissedStorageProofBlocks() {
 	}
 
 	// Submit a transaction with the file contract.
-	txnBuilder := cst.wallet.StartTransaction()
-	err := txnBuilder.FundSiacoins(payout)
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		panic(err)
+	}
+	err = txnBuilder.FundSiacoins(payout)
 	if err != nil {
 		panic(err)
 	}
@@ -425,8 +437,11 @@ func (cst *consensusSetTester) testFileContractRevision() {
 	}
 
 	// Submit a transaction with the file contract.
-	txnBuilder := cst.wallet.StartTransaction()
-	err := txnBuilder.FundSiacoins(payout)
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		panic(err)
+	}
+	err = txnBuilder.FundSiacoins(payout)
 	if err != nil {
 		panic(err)
 	}
@@ -491,7 +506,10 @@ func (cst *consensusSetTester) testFileContractRevision() {
 		HashSet:  hashSet,
 	}
 	copy(sp.Segment[:], segment)
-	txnBuilder = cst.wallet.StartTransaction()
+	txnBuilder, err = cst.wallet.StartTransaction()
+	if err != nil {
+		panic(err)
+	}
 	txnBuilder.AddStorageProof(sp)
 	txnSet, err = txnBuilder.Sign(true)
 	if err != nil {

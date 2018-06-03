@@ -3,8 +3,8 @@ package hostdb
 import (
 	"math"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // updateHostDBEntry updates a HostDBEntries's historic interactions if more

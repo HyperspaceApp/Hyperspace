@@ -1,29 +1,29 @@
-# Running and Writing Tests for Sia
-Improving test coverage is a great way to start contributing to Sia.  
+# Running and Writing Tests for Hyperspace
+Improving test coverage is a great way to start contributing to Hyperspace.  
 
 This guide focuses on how to write tests.  To learn about making pull requests
 to submit the code you've written, see
-[doc/Guide to Contributing to Sia.md][guide].  You should also read
-[doc/Developers.md][developers] to learn about Sia code conventions and quality
+[doc/Guide to Contributing to Hyperspace.md][guide].  You should also read
+[doc/Developers.md][developers] to learn about Hyperspace code conventions and quality
 standards.
 
 
 #### Table of Contents
-* [Running tests for Sia](#existing)
+* [Running tests for Hyperspace](#existing)
   * [Updating code before testing](#update)
   * [Testing the entire build](#entire)
   * [Testing a particular package](#particular)
-* [Writing new tests for Sia](#write)
+* [Writing new tests for Hyperspace](#write)
   * [A few guidelines](#naming)
   * [Basic test format](#basic)
   * [Table-driven tests](#table)
 * [Questions?](#questions)
 
 <a name="existing"></a>
-## Running tests for Sia
+## Running tests for Hyperspace
 Go's comprehensive [test package][pkg/testing] makes testing straightforward,
 particularly when you use the bundled tools included in the
-[Sia makefile][makefile], including `make test`, `make cover`, `make bench`,
+[Hyperspace makefile][makefile], including `make test`, `make cover`, `make bench`,
 and their variants.
 
 <a name="update"></a>
@@ -31,14 +31,14 @@ and their variants.
 If you just want to run existing tests on the codebase as is, you just need to
 pull the latest version of the original repo to your master branch.  (If that 
 sentence didn't make sense, go read
-[doc/Guide to Contributing to Sia.md][guide].)
+[doc/Guide to Contributing to Hyperspace.md][guide].)
 
 ```bash
 # Make sure you are in the right directory.
-$ cd $GOPATH/src/github.com/<your Github username>/Sia
+$ cd $GOPATH/src/github.com/<your Github username>/Hyperspace
 # Also make sure you're working with the right branch.
 $ git checkout master
-# Pull latest changes from origin, the original Sia repo. 
+# Pull latest changes from origin, the original Hyperspace repo. 
 $ git pull origin master
 # Update your fork of the repo, which should be set up as a remote.
 $ git push <remote>  master
@@ -46,11 +46,11 @@ $ git push <remote>  master
 
 If you want to run tests on the new code you've added, first make sure the rest
 of the code is up to date. New code should be on its own branch (again, see
-[doc/Guide to Contributing to Sia.md][guide]).
+[doc/Guide to Contributing to Hyperspace.md][guide]).
 
 ```bash
 # Make sure you are in the right directory.
-$ cd $GOPATH/src/github.com/<your Github username>/Sia
+$ cd $GOPATH/src/github.com/<your Github username>/Hyperspace
 # Checkout the branch you made the changes on.
 $ git checkout <branch name>
 # Stash any tracked but uncommitted changes.
@@ -127,12 +127,12 @@ go test -v -race -tags='testing debug' -timeout=300s ./persist -run=Test
 === RUN   TestRelativePathSafeFile
 --- PASS: TestRelativePathSafeFile (0.00s)
 PASS
-ok  	github.com/NebulousLabs/Sia/persist	1.485s
+ok  	github.com/HyperspaceApp/Hyperspace/persist	1.485s
 $
 ``` 
 
 <a name="write"></a>
-## Writing new tests for Sia
+## Writing new tests for Hyperspace
 When you run `make cover`, you'll notice that many files have pretty low
 coverage.  We're working on fixing that, but we could use your help.
 
@@ -228,9 +228,9 @@ func TestParseFilesize(t *testing.T) {
 <a name="questions"></a>
 ## Questions?
 Read these if you haven't already:
-* [doc/Guide to Contributing to Sia.md][guide]: getting started with Go, Sia,
+* [doc/Guide to Contributing to Hyperspace.md][guide]: getting started with Go, Hyperspace,
     and git
-* [doc/Developers.md][developers]: conventions and quality standards for Sia
+* [doc/Developers.md][developers]: conventions and quality standards for Hyperspace
     code
 
 Some other useful resources, some of which have been linked to already:
@@ -239,18 +239,18 @@ Some other useful resources, some of which have been linked to already:
 * [How to Write Benchmarks in Go][cheney-benchmarks]
 * [How to into git and GitHub][luke]: an essential introduction to git
 
-And feel free to ask questions on the [#core-dev channel][discord] on the Sia Discord. 
+And feel free to ask questions on the [#core-dev channel][discord] on the Hyperspace Discord. 
 Odds are, someone else is wondering the same thing.
 
 [pkg/testing]: https://golang.org/pkg/testing/
-[makefile]: https://github.com/NebulousLabs/Sia/blob/master/Makefile
+[makefile]: https://github.com/HyperspaceApp/Hyperspace/blob/master/Makefile
 [luke]: https://gist.github.com/lukechampine/6418449
-[guide]: https://github.com/NebulousLabs/Sia/blob/master/doc/Guide%20to%20Contributing%20to%20Sia.md
-[developers]: https://github.com/NebulousLabs/Sia/blob/master/doc/Developers.md
+[guide]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Guide%20to%20Contributing%20to%20Hyperspace.md
+[developers]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Developers.md
 [table]: http://dave.cheney.net/2013/06/09/writing-table-driven-tests-in-go
-[boltdb_test.go]: https://github.com/NebulousLabs/Sia/blob/master/persist/boltdb_test.go
+[boltdb_test.go]: https://github.com/HyperspaceApp/Hyperspace/blob/master/persist/boltdb_test.go
 [cheney-benchmarks]: http://dave.cheney.net/2013/06/30/how-to-write-benchmarks-in-go
 [pkg/testing]: https://golang.org/pkg/testing/
 [discord]: https://discord.gg/sia
-[parse_test]: https://github.com/NebulousLabs/Sia/blob/master/siac/parse_test.go
+[parse_test]: https://github.com/HyperspaceApp/Hyperspace/blob/master/siac/parse_test.go
 [global]: http://c2.com/cgi/wiki?GlobalVariablesAreBad

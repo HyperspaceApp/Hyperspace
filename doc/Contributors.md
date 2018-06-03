@@ -7,13 +7,14 @@
 ### List of contributors
 * DavidVorick (Owner)
 * lukechampine (Lead Developer)
+* ChrisSchinnerl (Nebulous Developer)
+* Msevey (Nebulous Developer)
 * VoidingWarranties
 * avahowell
 * seveibar
 * triazo
 * mnsl
 * mtlynch
-* ChrisSchinnerl
 * Mingling94
 * marcinja
 * RNabel
@@ -52,10 +53,11 @@
 * huetsch
 * mjmay08
 * jfcg
+* pachisi456
 * Google Inc.
 
 
-[guide]: https://github.com/NebulousLabs/Sia/blob/master/doc/Guide%20to%20Contributing%20to%20Sia.md
-[developers]: https://github.com/NebulousLabs/Sia/blob/master/doc/Developers.md
-[doc]: https://github.com/NebulousLabs/Sia/tree/master/doc
+[guide]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Guide%20to%20Contributing%20to%20Hyperspace.md
+[developers]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Developers.md
+[doc]: https://github.com/HyperspaceApp/Hyperspace/tree/master/doc
 [discord]: https://discord.gg/sia

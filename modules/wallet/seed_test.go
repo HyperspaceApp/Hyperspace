@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestPrimarySeed checks that the correct seed is returned when calling
@@ -91,7 +91,7 @@ func TestLoadSeed(t *testing.T) {
 		t.SkipNow()
 	}
 	t.Parallel()
-	wt, err := createWalletTester(t.Name(), &ProductionDependencies{})
+	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,10 @@ func TestLoadSeed(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Balance of wallet should be 0.
-	siacoinBal, _, _ := w.ConfirmedBalance()
+	siacoinBal, _, _, err := w.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !siacoinBal.Equals64(0) {
 		t.Error("fresh wallet should not have a balance")
 	}
@@ -147,7 +150,10 @@ func TestLoadSeed(t *testing.T) {
 		t.Error("AllSeeds returned the wrong seed")
 	}
 
-	siacoinBal2, _, _ := w.ConfirmedBalance()
+	siacoinBal2, _, _, err := w.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if siacoinBal2.Cmp64(0) <= 0 {
 		t.Error("wallet failed to load a seed with money in it")
 	}
@@ -174,7 +180,7 @@ func TestSweepSeedCoins(t *testing.T) {
 	}
 	t.Parallel()
 	// create a wallet with some money
-	wt, err := createWalletTester("TestSweepSeedCoins0", &ProductionDependencies{})
+	wt, err := createWalletTester("TestSweepSeedCoins0", modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +219,10 @@ func TestSweepSeedCoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	// starting balance should be 0.
-	siacoinBal, _, _ := w.ConfirmedBalance()
+	siacoinBal, _, _, err := w.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !siacoinBal.IsZero() {
 		t.Error("fresh wallet should not have a balance")
 	}
@@ -225,7 +234,10 @@ func TestSweepSeedCoins(t *testing.T) {
 	}
 
 	// new wallet should have exactly 'sweptCoins' coins
-	_, incoming := w.UnconfirmedBalance()
+	_, incoming, err := w.UnconfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if incoming.Cmp(sweptCoins) != 0 {
 		t.Fatalf("wallet should have correct balance after sweeping seed: wanted %v, got %v", sweptCoins, incoming)
 	}

@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // mockMarshaler is a mock implementation of the encoding.GenericMarshaler

@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var errInvalidEditor = errors.New("editor has been invalidated because its contract is being renewed")
@@ -137,7 +137,7 @@ func (c *Contractor) Editor(id types.FileContractID, cancel <-chan struct{}) (_ 
 
 	// Check that the contract and host are both available, and run some brief
 	// sanity checks to see that the host is not swindling us.
-	contract, haveContract := c.contracts.View(id)
+	contract, haveContract := c.staticContracts.View(id)
 	if !haveContract {
 		return nil, errors.New("no record of that contract")
 	}
@@ -171,7 +171,7 @@ func (c *Contractor) Editor(id types.FileContractID, cancel <-chan struct{}) (_ 
 	}()
 
 	// Create the editor.
-	e, err := c.contracts.NewEditor(host, contract.ID, height, c.hdb, cancel)
+	e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, cancel)
 	if err != nil {
 		return nil, err
 	}

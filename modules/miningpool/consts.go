@@ -1,12 +1,24 @@
 package pool
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 
 	"time"
 )
 
-const ()
+const (
+	// Names of the various persistent files in the pool.
+	dbFilename   = modules.PoolDir + ".db"
+	logFile      = modules.PoolDir + ".log"
+	yiilogFile   = "yii.log"
+	settingsFile = modules.PoolDir + ".json"
+	MajorVersion = 0
+	MinorVersion = 3
+	SiaCoinID    = 1316
+	SiaCoinSymbol= "SC"
+	SiaCoinAlgo  = "blake2b"
+)
 
 var (
 	// workingStatusFirstCheck defines how frequently the Pool's working status

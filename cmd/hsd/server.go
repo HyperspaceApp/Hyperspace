@@ -21,26 +21,28 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/explorer"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/host"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	pool "github.com/HyperspaceProject/Hyperspace/modules/miningpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/node/api"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/explorer"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/host"
+	index "github.com/HyperspaceApp/Hyperspace/modules/index"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	pool "github.com/HyperspaceApp/Hyperspace/modules/miningpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/stratumminer"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/inconshreveable/go-update"
 	"github.com/julienschmidt/httprouter"
 	"github.com/kardianos/osext"
 )
 
-var errEmptyUpdateResponse = errors.New("API call to https://api.github.com/repos/NebulousLabs/Sia/releases/latest is returning an empty response")
+var errEmptyUpdateResponse = errors.New("API call to https://api.github.com/repos/HyperspaceApp/Hyperspace/releases/latest is returning an empty response")
 
 type (
 	// Server creates and serves a HTTP server that offers communication with a
@@ -78,15 +80,22 @@ type (
 		RootTarget types.Target `json:"roottarget"`
 		RootDepth  types.Target `json:"rootdepth"`
 
+		// DEPRECATED: same values as MaxTargetAdjustmentUp and
+		// MaxTargetAdjustmentDown.
 		MaxAdjustmentUp   *big.Rat `json:"maxadjustmentup"`
 		MaxAdjustmentDown *big.Rat `json:"maxadjustmentdown"`
+
+		MaxTargetAdjustmentUp   *big.Rat `json:"maxtargetadjustmentup"`
+		MaxTargetAdjustmentDown *big.Rat `json:"maxtargetadjustmentdown"`
 
 		SiacoinPrecision types.Currency `json:"siacoinprecision"`
 	}
 
 	// DaemonVersion holds the version information for hdcd
 	DaemonVersion struct {
-		Version string `json:"version"`
+		Version     string `json:"version"`
+		GitRevision string `json:"gitrevision"`
+		BuildTime   string `json:"buildtime"`
 	}
 	// UpdateInfo indicates whether an update is available, and to what
 	// version.
@@ -177,7 +186,7 @@ func latestRelease(releases []githubRelease) (githubRelease, error) {
 // fetchLatestRelease returns metadata about the most recent non-LTS GitHub
 // release.
 func fetchLatestRelease() (githubRelease, error) {
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/NebulousLabs/Sia/releases", nil)
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/HyperspaceApp/Hyperspace/releases", nil)
 	if err != nil {
 		return githubRelease{}, err
 	}
@@ -344,8 +353,13 @@ func (srv *Server) daemonConstantsHandler(w http.ResponseWriter, _ *http.Request
 		RootTarget: types.RootTarget,
 		RootDepth:  types.RootDepth,
 
-		MaxAdjustmentUp:   types.MaxAdjustmentUp,
-		MaxAdjustmentDown: types.MaxAdjustmentDown,
+		// DEPRECATED: same values as MaxTargetAdjustmentUp and
+		// MaxTargetAdjustmentDown.
+		MaxAdjustmentUp:   types.MaxTargetAdjustmentUp,
+		MaxAdjustmentDown: types.MaxTargetAdjustmentDown,
+
+		MaxTargetAdjustmentUp:   types.MaxTargetAdjustmentUp,
+		MaxTargetAdjustmentDown: types.MaxTargetAdjustmentDown,
 
 		SiacoinPrecision: types.SiacoinPrecision,
 	}
@@ -355,7 +369,7 @@ func (srv *Server) daemonConstantsHandler(w http.ResponseWriter, _ *http.Request
 
 // daemonVersionHandler handles the API call that requests the daemon's version.
 func (srv *Server) daemonVersionHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	api.WriteJSON(w, DaemonVersion{Version: build.Version})
+	api.WriteJSON(w, DaemonVersion{Version: build.Version, GitRevision: build.GitRevision, BuildTime: build.BuildTime})
 }
 
 // daemonStopHandler handles the API call to stop the daemon cleanly.
@@ -562,6 +576,27 @@ func (srv *Server) loadModules() error {
 		}
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "pool", Closer: p})
 	}
+	var sm modules.StratumMiner
+	if strings.Contains(srv.config.Siad.Modules, "s") {
+		i++
+		fmt.Printf("(%d/%d) Loading stratum miner...\n", i, len(srv.config.Siad.Modules))
+		sm, err = stratumminer.New(filepath.Join(srv.config.Siad.SiaDir, modules.StratumMinerDir))
+		if err != nil {
+			return err
+		}
+		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "stratumminer", Closer: sm})
+	}
+
+	var idx modules.Index
+	if strings.Contains(srv.config.Siad.Modules, "i") {
+		i++
+		fmt.Printf("(%d/%d) Loading index...\n", i, len(srv.config.Siad.Modules))
+		idx, err = index.New(cs, tpool, g, w, filepath.Join(srv.config.Siad.SiaDir, modules.IndexDir), srv.config.IndexConfig)
+		if err != nil {
+			return err
+		}
+		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "idx", Closer: idx})
+	}
 
 	// Create the Sia API
 	a := api.New(
@@ -576,6 +611,8 @@ func (srv *Server) loadModules() error {
 		tpool,
 		w,
 		p,
+		sm,
+		idx,
 	)
 
 	// connect the API to the server

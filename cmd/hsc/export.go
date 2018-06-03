@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/HyperspaceProject/Hyperspace/node/api"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/spf13/cobra"
 )
@@ -31,8 +30,7 @@ var (
 // renterexportcontracttxnscmd is the handler for the command `hdcc renter export contract-txns`.
 // Exports the current contract set to JSON.
 func renterexportcontracttxnscmd(destination string) {
-	var cs api.RenterContracts
-	err := getAPI("/renter/contracts", &cs)
+	cs, err := httpClient.RenterContractsGet()
 	if err != nil {
 		die("Could not retrieve contracts:", err)
 	}

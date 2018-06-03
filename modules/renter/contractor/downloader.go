@@ -4,10 +4,10 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var errInvalidDownloader = errors.New("downloader has been invalidated because its contract is being renewed")
@@ -121,7 +121,7 @@ func (c *Contractor) Downloader(id types.FileContractID, cancel <-chan struct{})
 	}
 
 	// Fetch the contract and host.
-	contract, haveContract := c.contracts.View(id)
+	contract, haveContract := c.staticContracts.View(id)
 	if !haveContract {
 		return nil, errors.New("no record of that contract")
 	}
@@ -157,7 +157,7 @@ func (c *Contractor) Downloader(id types.FileContractID, cancel <-chan struct{})
 	}()
 
 	// create downloader
-	d, err := c.contracts.NewDownloader(host, contract.ID, c.hdb, cancel)
+	d, err := c.staticContracts.NewDownloader(host, contract.ID, c.hdb, cancel)
 	if err != nil {
 		return nil, err
 	}

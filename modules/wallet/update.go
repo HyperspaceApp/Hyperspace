@@ -1,11 +1,11 @@
 package wallet
 
 import (
-	"fmt"
 	"math"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/errors"
 
 	"github.com/coreos/bbolt"
 )
@@ -113,6 +113,7 @@ func (w *Wallet) updateConfirmedSet(tx *bolt.Tx, cc modules.ConsensusChange) err
 		}
 		if err != nil {
 			w.log.Severe("Could not update siacoin output:", err)
+			return err
 		}
 	}
 	return nil
@@ -135,16 +136,24 @@ func (w *Wallet) revertHistory(tx *bolt.Tx, reverted []types.Block) error {
 				w.log.Println("A wallet transaction has been reverted due to a reorg:", txid)
 				if err := dbDeleteLastProcessedTransaction(tx); err != nil {
 					w.log.Severe("Could not revert transaction:", err)
+					return err
 				}
 			}
 		}
 
 		// Remove the miner payout transaction if applicable.
 		for i, mp := range block.MinerPayouts {
-			if w.isWalletAddress(mp.UnlockHash) {
+			// If the transaction is relevant to the wallet, it will be the
+			// most recent transaction in bucketProcessedTransactions.
+			pt, err := dbGetLastProcessedTransaction(tx)
+			if err != nil {
+				break // bucket is empty
+			}
+			if types.TransactionID(block.ID()) == pt.TransactionID {
 				w.log.Println("Miner payout has been reverted due to a reorg:", block.MinerPayoutID(uint64(i)), "::", mp.Value.HumanString())
 				if err := dbDeleteLastProcessedTransaction(tx); err != nil {
 					w.log.Severe("Could not revert transaction:", err)
+					return err
 				}
 				break // there will only ever be one miner transaction
 			}
@@ -270,8 +279,9 @@ func (w *Wallet) computeProcessedTransactionsFromBlock(tx *bolt.Tx, block types.
 
 		for _, fee := range txn.MinerFees {
 			pt.Outputs = append(pt.Outputs, modules.ProcessedOutput{
-				FundType: types.SpecifierMinerFee,
-				Value:    fee,
+				FundType:       types.SpecifierMinerFee,
+				MaturityHeight: consensusHeight + types.MaturityDelay,
+				Value:          fee,
 			})
 		}
 		pts = append(pts, pt)
@@ -287,14 +297,14 @@ func (w *Wallet) applyHistory(tx *bolt.Tx, cc modules.ConsensusChange) error {
 	for _, block := range cc.AppliedBlocks {
 		consensusHeight, err := dbGetConsensusHeight(tx)
 		if err != nil {
-			return err
+			return errors.AddContext(err, "failed to consensus height")
 		}
 		// Increment the consensus height.
 		if block.ID() != types.GenesisID {
 			consensusHeight++
 			err = dbPutConsensusHeight(tx, consensusHeight)
 			if err != nil {
-				return err
+				return errors.AddContext(err, "failed to store consensus height in database")
 			}
 		}
 
@@ -302,7 +312,7 @@ func (w *Wallet) applyHistory(tx *bolt.Tx, cc modules.ConsensusChange) error {
 		for _, pt := range pts {
 			err := dbAppendProcessedTransaction(tx, pt)
 			if err != nil {
-				return fmt.Errorf("could not put processed transaction: %v", err)
+				return errors.AddContext(err, "could not put processed transaction")
 			}
 		}
 	}
@@ -322,21 +332,26 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 	defer w.mu.Unlock()
 
 	if needRescan, err := w.updateLookahead(w.dbTx, cc); err != nil {
-		w.log.Println("ERROR: failed to update lookahead:", err)
+		w.log.Severe("ERROR: failed to update lookahead:", err)
+		w.dbRollback = true
 	} else if needRescan {
 		go w.threadedResetSubscriptions()
 	}
 	if err := w.updateConfirmedSet(w.dbTx, cc); err != nil {
-		w.log.Println("ERROR: failed to update confirmed set:", err)
+		w.log.Severe("ERROR: failed to update confirmed set:", err)
+		w.dbRollback = true
 	}
 	if err := w.revertHistory(w.dbTx, cc.RevertedBlocks); err != nil {
-		w.log.Println("ERROR: failed to revert consensus change:", err)
+		w.log.Severe("ERROR: failed to revert consensus change:", err)
+		w.dbRollback = true
 	}
 	if err := w.applyHistory(w.dbTx, cc); err != nil {
-		w.log.Println("ERROR: failed to apply consensus change:", err)
+		w.log.Severe("ERROR: failed to apply consensus change:", err)
+		w.dbRollback = true
 	}
 	if err := dbPutConsensusChangeID(w.dbTx, cc.ID); err != nil {
-		w.log.Println("ERROR: failed to update consensus change ID:", err)
+		w.log.Severe("ERROR: failed to update consensus change ID:", err)
+		w.dbRollback = true
 	}
 
 	if cc.Synced {

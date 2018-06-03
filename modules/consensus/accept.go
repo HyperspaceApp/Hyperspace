@@ -7,9 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -61,6 +60,17 @@ func (cs *ConsensusSet) validateHeaderAndBlock(tx dbTx, b types.Block, id types.
 	}
 	// Check that the timestamp is not too far in the past to be acceptable.
 	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parent)
+
+	// XXX debugging
+	var payoutSum types.Currency
+	for _, payout := range b.MinerPayouts {
+	        //if payout.Value.IsZero() {
+	        //        return false
+	        //}
+	        payoutSum = payoutSum.Add(payout.Value)
+	}
+	// cs.log.Debugln(fmt.Sprintf("block id: %s, #txs: %d, miner fees %s, miner subsidy (calculated by transaction fees): %s miner payout: %s\n", b.ID(), len(b.Transactions), b.CalculateMinerFees().String(), b.CalculateSubsidy(parent.Height+1).String(), payoutSum.String()))
+	// XXX debugging
 
 	err = cs.blockValidator.ValidateBlock(b, id, minTimestamp, parent.ChildTarget, parent.Height+1, cs.log)
 	if err != nil {
@@ -258,7 +268,7 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 				return err
 			}
 
-			// Try adding the block to consnesus.
+			// Try adding the block to consensus.
 			changeEntry, err := cs.addBlockToTree(tx, blocks[i], parent)
 			if err == nil {
 				changes = append(changes, changeEntry)
@@ -278,10 +288,11 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 			if err != nil {
 				return err
 			}
-			// Sanity check - If reverted blocks is zero, applied blocks should also
-			// be zero.
-			if build.DEBUG && len(changeEntry.AppliedBlocks) == 0 && len(changeEntry.RevertedBlocks) != 0 {
-				panic("after adding a change entry, there are no applied blocks but there are reverted blocks")
+			// Sanity check - we should never apply fewer blocks than we revert.
+			if len(changeEntry.AppliedBlocks) < len(changeEntry.RevertedBlocks) {
+				err := errors.New("after adding a change entry, there are more reverted blocks than applied ones")
+				cs.log.Severe(err)
+				return err
 			}
 		}
 		return nil

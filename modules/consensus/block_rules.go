@@ -3,8 +3,8 @@ package consensus
 import (
 	"sort"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // blockRuleHelper assists with block validity checks by calculating values

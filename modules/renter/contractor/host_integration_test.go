@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/host"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/hostdb"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	modWallet "github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/host"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	modWallet "github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -32,7 +32,11 @@ func newTestingWallet(testdir string, cs modules.ConsensusSet, tp modules.Transa
 		return nil, err
 	}
 	key := crypto.GenerateTwofishKey()
-	if !w.Encrypted() {
+	encrypted, err := w.Encrypted()
+	if err != nil {
+		return nil, err
+	}
+	if !encrypted {
 		_, err = w.Encrypt(key)
 		if err != nil {
 			return nil, err
@@ -126,7 +130,11 @@ func newTestingTrio(name string) (modules.Host, *Contractor, modules.TestMiner, 
 		return nil, nil, nil, err
 	}
 	key := crypto.GenerateTwofishKey()
-	if !w.Encrypted() {
+	encrypted, err := w.Encrypted()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if !encrypted {
 		_, err = w.Encrypt(key)
 		if err != nil {
 			return nil, nil, nil, err
@@ -348,15 +356,16 @@ func TestIntegrationRenew(t *testing.T) {
 	}
 
 	// renew the contract
-	oldContract, _ := c.contracts.Acquire(contract.ID)
-	c.mu.Lock()
-	c.contractUtilities[contract.ID] = modules.ContractUtility{GoodForRenew: true}
-	c.mu.Unlock()
+	err = c.managedUpdateContractUtility(contract.ID, modules.ContractUtility{GoodForRenew: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldContract, _ := c.staticContracts.Acquire(contract.ID)
 	contract, err = c.managedRenew(oldContract, types.SiacoinPrecision.Mul64(50), c.blockHeight+200)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.contracts.Return(oldContract)
+	c.staticContracts.Return(oldContract)
 
 	// check renewed contract
 	if contract.EndHeight != c.blockHeight+200 {
@@ -381,15 +390,16 @@ func TestIntegrationRenew(t *testing.T) {
 	}
 
 	// renew to a lower height
-	oldContract, _ = c.contracts.Acquire(contract.ID)
-	c.mu.Lock()
-	c.contractUtilities[contract.ID] = modules.ContractUtility{GoodForRenew: true}
-	c.mu.Unlock()
+	err = c.managedUpdateContractUtility(contract.ID, modules.ContractUtility{GoodForRenew: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldContract, _ = c.staticContracts.Acquire(contract.ID)
 	contract, err = c.managedRenew(oldContract, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
 	if err != nil {
 		t.Fatal(err)
 	}
-	c.contracts.Return(oldContract)
+	c.staticContracts.Return(oldContract)
 	if contract.EndHeight != c.blockHeight+100 {
 		t.Fatal(contract.EndHeight)
 	}
@@ -595,7 +605,7 @@ func TestIntegrationEditorCaching(t *testing.T) {
 
 // TestContractPresenceLeak tests that a renter can not tell from the response
 // of the host to RPCs if the host has the contract if the renter doesn't
-// own this contract. See https://github.com/HyperspaceProject/Hyperspace/issues/2327.
+// own this contract. See https://github.com/HyperspaceApp/Hyperspace/issues/2327.
 func TestContractPresenceLeak(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()

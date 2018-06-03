@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 
 	"github.com/julienschmidt/httprouter"
 )

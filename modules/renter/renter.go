@@ -15,18 +15,24 @@ package renter
 // bottlenecks, and reduce the amount of channel-ninjitsu required to make the
 // uploading function.
 
+// TODO: Allow user to configure the packet size when ratelimiting the renter.
+// Currently the default is set to 16kb. That's going to require updating the
+// API and extending the settings object, and then tweaking the
+// setBandwidthLimits function.
+
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/contractor"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/hostdb"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/threadgroup"
 )
@@ -74,7 +80,7 @@ type hostDB interface {
 	// RandomHosts returns a set of random hosts, weighted by their estimated
 	// usefulness / attractiveness to the renter. RandomHosts will not return
 	// any offline or inactive hosts.
-	RandomHosts(int, []types.SiaPublicKey) []modules.HostDBEntry
+	RandomHosts(int, []types.SiaPublicKey) ([]modules.HostDBEntry, error)
 
 	// ScoreBreakdown returns a detailed explanation of the various properties
 	// of the host.
@@ -131,6 +137,14 @@ type hostContractor interface {
 
 	// ResolveID returns the most recent renewal of the specified ID.
 	ResolveID(types.FileContractID) types.FileContractID
+
+	// RateLimits Gets the bandwidth limits for connections created by the
+	// contractor and its submodules.
+	RateLimits() (readBPS int64, writeBPS int64, packetSize uint64)
+
+	// SetRateLimits sets the bandwidth limits for connections created by the
+	// contractor and its submodules.
+	SetRateLimits(int64, int64, uint64)
 }
 
 // A trackedFile contains metadata about files being tracked by the Renter.
@@ -156,14 +170,13 @@ type Renter struct {
 	//
 	// tracking contains a list of files that the user intends to maintain. By
 	// default, files loaded through sharing are not maintained by the user.
-	files    map[string]*file
-	tracking map[string]trackedFile // Map from nickname to metadata.
+	files map[string]*file
 
 	// Download management. The heap has a separate mutex because it is always
 	// accessed in isolation.
 	downloadHeapMu sync.Mutex         // Used to protect the downloadHeap.
 	downloadHeap   *downloadChunkHeap // A heap of priority-sorted chunks to download.
-	newDownloads   chan struct{}      // Used to notify download heap thread that new downlaods are available.
+	newDownloads   chan struct{}      // Used to notify download loop that new downloads are available.
 
 	// Download history. The history list has its own mutex because it is always
 	// accessed in isolation.
@@ -174,25 +187,28 @@ type Renter struct {
 	downloadHistoryMu sync.Mutex
 
 	// Upload management.
-	newUploads chan *file // Used to send new uploads to the upload heap.
+	uploadHeap uploadHeap
 
 	// List of workers that can be used for uploading and/or downloading.
 	memoryManager *memoryManager
 	workerPool    map[types.FileContractID]*worker
 
-	// Utilities.
-	cs             modules.ConsensusSet
-	g              modules.Gateway
-	hostContractor hostContractor
-	hostDB         hostDB
-	log            *persist.Logger
-	persistDir     string
-	mu             *siasync.RWMutex
-	heapWG         sync.WaitGroup // in-progress chunks join this waitgroup
-	tg             threadgroup.ThreadGroup
-	tpool          modules.TransactionPool
+	// Cache the last price estimation result.
+	lastEstimation modules.RenterPriceEstimation
 
-	lastEstimation modules.RenterPriceEstimation // used to cache the last price estimation result
+	// Utilities.
+	staticStreamCache *streamCache
+	cs                modules.ConsensusSet
+	deps              modules.Dependencies
+	g                 modules.Gateway
+	hostContractor    hostContractor
+	hostDB            hostDB
+	log               *persist.Logger
+	persist           persistence
+	persistDir        string
+	mu                *siasync.RWMutex
+	tg                threadgroup.ThreadGroup
+	tpool             modules.TransactionPool
 }
 
 // Close closes the Renter and its dependencies
@@ -216,7 +232,10 @@ func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
 	}
 
 	// Grab hosts to perform the estimation.
-	hosts := r.hostDB.RandomHosts(priceEstimationScope, nil)
+	hosts, err := r.hostDB.RandomHosts(priceEstimationScope, nil)
+	if err != nil {
+		return modules.RenterPriceEstimation{}
+	}
 
 	// Check if there are zero hosts, which means no estimation can be made.
 	if len(hosts) == 0 {
@@ -272,13 +291,69 @@ func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
 	return est
 }
 
+// setBandwidthLimits will change the bandwidth limits of the renter based on
+// the persist values for the bandwidth.
+func (r *Renter) setBandwidthLimits(downloadSpeed int64, uploadSpeed int64) error {
+	// Input validation.
+	if downloadSpeed < 0 || uploadSpeed < 0 {
+		return errors.New("download/upload rate limit can't be below 0")
+	}
+
+	// Check for sentinal "no limits" value.
+	if downloadSpeed == 0 && uploadSpeed == 0 {
+		r.hostContractor.SetRateLimits(0, 0, 0)
+	} else {
+		// Set the rate limits according to the provided values.
+		r.hostContractor.SetRateLimits(downloadSpeed, uploadSpeed, 4*4096)
+	}
+	return nil
+}
+
 // SetSettings will update the settings for the renter.
+//
+// NOTE: This function can't be atomic. Typically we try to have user requests
+// be atomic, so that either everything changes or nothing changes, but since
+// these changes happen progressively, it's possible for some of the settings
+// (like the allowance) to succeed, but then if the bandwidth limits for example
+// are bad, then the allowance will update but the bandwidth will not update.
 func (r *Renter) SetSettings(s modules.RenterSettings) error {
+	// Early input valudation.
+	if s.MaxDownloadSpeed < 0 || s.MaxUploadSpeed < 0 {
+		return errors.New("bandwidth limits cannot be negative")
+	}
+	if s.StreamCacheSize <= 0 {
+		return errors.New("stream cache size needs to be 1 or larger")
+	}
+
+	// Set allowance.
 	err := r.hostContractor.SetAllowance(s.Allowance)
 	if err != nil {
 		return err
 	}
 
+	// Set the bandwidth limits.
+	err = r.setBandwidthLimits(s.MaxDownloadSpeed, s.MaxUploadSpeed)
+	if err != nil {
+		return err
+	}
+	r.persist.MaxDownloadSpeed = s.MaxDownloadSpeed
+	r.persist.MaxUploadSpeed = s.MaxUploadSpeed
+
+	// Set StreamingCacheSize
+	err = r.staticStreamCache.SetStreamingCacheSize(s.StreamCacheSize)
+	if err != nil {
+		return err
+	}
+	r.persist.StreamCacheSize = s.StreamCacheSize
+
+	// Save the changes.
+	err = r.saveSync()
+	if err != nil {
+		return err
+	}
+
+	// Update the worker pool so that the changes are immediately apparent to
+	// users.
 	r.managedUpdateWorkerPool()
 	return nil
 }
@@ -319,8 +394,12 @@ func (r *Renter) PeriodSpending() modules.ContractorSpending { return r.hostCont
 
 // Settings returns the host contractor's allowance
 func (r *Renter) Settings() modules.RenterSettings {
+	download, upload, _ := r.hostContractor.RateLimits()
 	return modules.RenterSettings{
-		Allowance: r.hostContractor.Allowance(),
+		Allowance:        r.hostContractor.Allowance(),
+		MaxDownloadSpeed: download,
+		MaxUploadSpeed:   upload,
+		StreamCacheSize:  r.staticStreamCache.cacheSize,
 	}
 }
 
@@ -331,11 +410,42 @@ func (r *Renter) ProcessConsensusChange(cc modules.ConsensusChange) {
 	r.mu.Unlock(id)
 }
 
+// validateSiapath checks that a Siapath is a legal filename.
+// ../ is disallowed to prevent directory traversal, and paths must not begin
+// with / or be empty.
+func validateSiapath(siapath string) error {
+	if siapath == "" {
+		return ErrEmptyFilename
+	}
+	if siapath == ".." {
+		return errors.New("siapath cannot be '..'")
+	}
+	if siapath == "." {
+		return errors.New("siapath cannot be '.'")
+	}
+	// check prefix
+	if strings.HasPrefix(siapath, "/") {
+		return errors.New("siapath cannot begin with /")
+	}
+	if strings.HasPrefix(siapath, "../") {
+		return errors.New("siapath cannot begin with ../")
+	}
+	if strings.HasPrefix(siapath, "./") {
+		return errors.New("siapath connot begin with ./")
+	}
+	for _, pathElem := range strings.Split(siapath, "/") {
+		if pathElem == "." || pathElem == ".." {
+			return errors.New("siapath cannot contain . or .. elements")
+		}
+	}
+	return nil
+}
+
 // Enforce that Renter satisfies the modules.Renter interface.
 var _ modules.Renter = (*Renter)(nil)
 
-// newRenter initializes a renter and returns it.
-func newRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.TransactionPool, hdb hostDB, hc hostContractor, persistDir string) (*Renter, error) {
+// NewCustomRenter initializes a renter and returns it.
+func NewCustomRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.TransactionPool, hdb hostDB, hc hostContractor, persistDir string, deps modules.Dependencies) (*Renter, error) {
 	if g == nil {
 		return nil, errNilGateway
 	}
@@ -353,8 +463,7 @@ func newRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.Transac
 	}
 
 	r := &Renter{
-		files:    make(map[string]*file),
-		tracking: make(map[string]trackedFile),
+		files: make(map[string]*file),
 
 		// Making newDownloads a buffered channel means that most of the time, a
 		// new download will trigger an unnecessary extra iteration of the
@@ -364,13 +473,15 @@ func newRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.Transac
 		newDownloads: make(chan struct{}, 1),
 		downloadHeap: new(downloadChunkHeap),
 
-		// TODO instead of using a buffered channel we should add uploads to
-		// the upload heap directly.
-		newUploads: make(chan *file, 2500),
+		uploadHeap: uploadHeap{
+			activeChunks: make(map[uploadChunkID]struct{}),
+			newUploads:   make(chan struct{}, 1),
+		},
 
 		workerPool: make(map[types.FileContractID]*worker),
 
 		cs:             cs,
+		deps:           deps,
 		g:              g,
 		hostDB:         hdb,
 		hostContractor: hc,
@@ -385,16 +496,29 @@ func newRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.Transac
 		return nil, err
 	}
 
+	// Set the bandwidth limits, sincce the contractor doesn't persist them.
+	//
+	// TODO: Reconsider the way that the bandwidth limits are allocated to the
+	// renter module, becaause really it seems they only impact the contractor.
+	// The renter itself doesn't actually do any uploading or downloading.
+	err := r.setBandwidthLimits(r.persist.MaxDownloadSpeed, r.persist.MaxUploadSpeed)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize the streaming cache.
+	r.staticStreamCache = newStreamCache(r.persist.StreamCacheSize)
+
 	// Subscribe to the consensus set.
-	err := cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+	err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
 	if err != nil {
 		return nil, err
 	}
 
 	// Spin up the workers for the work pool.
 	r.managedUpdateWorkerPool()
-	go r.threadedRepairScan()
 	go r.threadedDownloadLoop()
+	go r.threadedUploadLoop()
 
 	// Kill workers on shutdown.
 	r.tg.OnStop(func() error {
@@ -420,5 +544,5 @@ func New(g modules.Gateway, cs modules.ConsensusSet, wallet modules.Wallet, tpoo
 		return nil, err
 	}
 
-	return newRenter(g, cs, tpool, hdb, hc, persistDir)
+	return NewCustomRenter(g, cs, tpool, hdb, hc, persistDir, modules.ProdDependencies)
 }

@@ -5,11 +5,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -113,7 +113,7 @@ func (h *Host) loadPersistObject(p *persistence) {
 // initialize the database.
 func (h *Host) initDB() (err error) {
 	// Open the host's database and set up the stop function to close it.
-	h.db, err = h.dependencies.openDatabase(dbMetadata, filepath.Join(h.persistDir, dbFilename))
+	h.db, err = h.dependencies.OpenDatabase(dbMetadata, filepath.Join(h.persistDir, dbFilename))
 	if err != nil {
 		return err
 	}
@@ -155,7 +155,7 @@ func (h *Host) load() error {
 	// the most recent version, but older versions need to be updated to the
 	// more recent structures.
 	p := new(persistence)
-	err = h.dependencies.loadFile(persistMetadata, p, filepath.Join(h.persistDir, settingsFile))
+	err = h.dependencies.LoadFile(persistMetadata, p, filepath.Join(h.persistDir, settingsFile))
 	if err == nil {
 		// Copy in the persistence.
 		h.loadPersistObject(p)
@@ -172,9 +172,12 @@ func (h *Host) load() error {
 		return err
 	}
 
-	// Get the contract count by observing all of the incomplete storage
-	// obligations in the database.
+	// Get the contract count and locked collateral by observing all of the incomplete
+	// storage obligations in the database.
+	// TODO: both contract count and locked collateral are not correctly updated during
+	// contract renewals. This leads to an offset to the real value over time.
 	h.financialMetrics.ContractCount = 0
+	h.financialMetrics.LockedStorageCollateral = types.NewCurrency64(0)
 	err = h.db.View(func(tx *bolt.Tx) error {
 		cursor := tx.Bucket(bucketStorageObligations).Cursor()
 		for k, v := cursor.First(); k != nil; k, v = cursor.Next() {
@@ -185,6 +188,7 @@ func (h *Host) load() error {
 			}
 			if so.ObligationStatus == obligationUnresolved {
 				h.financialMetrics.ContractCount++
+				h.financialMetrics.LockedStorageCollateral = h.financialMetrics.LockedStorageCollateral.Add(so.LockedCollateral)
 			}
 		}
 		return nil

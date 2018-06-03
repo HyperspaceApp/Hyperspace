@@ -3,11 +3,11 @@ package consensus
 import (
 	"math/big"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -89,10 +89,10 @@ func (cs *ConsensusSet) targetAdjustmentBase(blockMap *bolt.Bucket, pb *processe
 // of total work, which prevents certain classes of difficulty adjusting
 // attacks.
 func clampTargetAdjustment(base *big.Rat) *big.Rat {
-	if base.Cmp(types.MaxAdjustmentUp) > 0 {
-		return types.MaxAdjustmentUp
-	} else if base.Cmp(types.MaxAdjustmentDown) < 0 {
-		return types.MaxAdjustmentDown
+	if base.Cmp(types.MaxTargetAdjustmentUp) > 0 {
+		return types.MaxTargetAdjustmentUp
+	} else if base.Cmp(types.MaxTargetAdjustmentDown) < 0 {
+		return types.MaxTargetAdjustmentDown
 	}
 	return base
 }

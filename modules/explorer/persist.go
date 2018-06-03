@@ -2,12 +2,13 @@ package explorer
 
 import (
 	"os"
+	//"fmt"
 	"path/filepath"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -71,6 +72,17 @@ func (e *Explorer) initPersist() error {
 				return err
 			}
 		}
+		
+		//err = b.Put(internalBlockHeight, encoding.Marshal(types.BlockHeight(98112)))
+		//if err != nil {
+		//	fmt.Printf("internal err %v", err)
+		//	return err
+		//}
+
+		//err = b.Put(internalRecentChange, encoding.Marshal(modules.ConsensusChangeID{}))
+		//if err != nil {
+		//	return err
+		//}
 
 		return nil
 	})

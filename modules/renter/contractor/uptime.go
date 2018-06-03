@@ -3,9 +3,9 @@ package contractor
 import (
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // uptimeMinScans is the minimum number of scans required to judge whether a
@@ -28,7 +28,7 @@ var uptimeWindow = func() time.Duration {
 // IsOffline indicates whether a contract's host should be considered offline,
 // based on its scan metrics.
 func (c *Contractor) IsOffline(id types.FileContractID) bool {
-	contract, ok := c.contracts.View(id)
+	contract, ok := c.staticContracts.View(id)
 	if !ok {
 		// No contract, assume offline.
 		return true
@@ -50,7 +50,14 @@ func isOffline(host modules.HostDBEntry) bool {
 		// No scan history, assume offline.
 		return true
 	}
-	// Return 'true' if the most recent scan of the host failed, false
-	// otherwise.
-	return !host.ScanHistory[len(host.ScanHistory)-1].Success
+	// If we only have one scan in the history we return false if it was
+	// successful.
+	if len(host.ScanHistory) == 1 {
+		return !host.ScanHistory[0].Success
+	}
+	// Otherwise we use the last 2 scans. This way a short connectivity problem
+	// won't mark the host as offline.
+	success1 := host.ScanHistory[len(host.ScanHistory)-1].Success
+	success2 := host.ScanHistory[len(host.ScanHistory)-2].Success
+	return !(success1 || success2)
 }

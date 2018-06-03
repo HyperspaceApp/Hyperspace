@@ -3,10 +3,11 @@
 // rewarding the submitters proportionally for their shares.
 package pool
 
-// TODO: everything
-
 import (
+	"bytes"
 	"database/sql"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -16,26 +17,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/config"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/NebulousLabs/threadgroup"
 
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const (
-	// Names of the various persistent files in the pool.
-	dbFilename   = modules.PoolDir + ".db"
-	logFile      = modules.PoolDir + ".log"
-	settingsFile = modules.PoolDir + ".json"
-	MajorVersion = 0
-	MinorVersion = 3
-)
+const ()
 
 var (
 	// persistMetadata is the header that gets written to the persist file, and is
@@ -58,7 +53,7 @@ var (
 	// Required settings to run pool
 	errNoAddressSet = errors.New("pool operators address must be set")
 
-	miningpool bool  // indicates if the mining pool is actually running
+	running bool  // indicates if the mining pool is actually running
 	hashRate   int64 // indicates hashes per second
 	// HeaderMemory is the number of previous calls to 'header'
 	// that are remembered. Additionally, 'header' will only poll for a
@@ -91,9 +86,9 @@ var (
 	// ShiftDuration is how often we commit mining data to persistent
 	// storage when a block hasn't been found.
 	ShiftDuration = build.Select(build.Var{
-		Standard: 10 * time.Minute,
-		Dev:      2 * time.Minute,
-		Testing:  1 * time.Minute,
+		Standard: 1 * time.Minute,
+		Dev:      20 * time.Second,
+		Testing:  1 * time.Second,
 	}).(time.Duration)
 )
 
@@ -124,9 +119,10 @@ type Pool struct {
 	// header to the block manager, the rest of the block needs to be found in
 	// a lookup.
 	blockMem        map[types.BlockHeader]*types.Block             // Mappings from headers to the blocks they are derived from.
+	blockTxns       *txnList                                       // list of transactions that are supposed to be solved in the next block
 	arbDataMem      map[types.BlockHeader][crypto.EntropySize]byte // Mappings from the headers to their unique arb data.
 	headerMem       []types.BlockHeader                            // A circular list of headers that have been given out from the api recently.
-	sourceBlock     *types.Block                                   // The block from which new headers for mining are created.
+	sourceBlock     types.Block                                   // The block from which new headers for mining are created.
 	sourceBlockTime time.Time                                      // How long headers have been using the same block (different from 'recent block').
 	memProgress     int                                            // The index of the most recent header used in headerMem.
 
@@ -155,44 +151,26 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	sqldb          *sql.DB
-	listener       net.Listener
-	log            *persist.Logger
-	mu             sync.RWMutex
-	persistDir     string
-	port           string
-	tg             siasync.ThreadGroup
-	persist        persistence
-	dispatcher     *Dispatcher
-	stratumID      uint64
-	shiftID        uint64
-	shiftChan      chan bool
-	shiftTimestamp time.Time
-	blockCounter   uint64
-	clients        map[string]*Client //client name to client pointer mapping
-}
+	sqldb                   *sql.DB
+	listener                net.Listener
+	log                     *persist.Logger
+	yiilog                  *persist.Logger
+	mu                      sync.RWMutex
+	persistDir              string
+	port                    string
+	tg                      threadgroup.ThreadGroup
+	persist                 persistence
+	dispatcher              *Dispatcher
+	stratumID               uint64
+	shiftID                 uint64
+	shiftChan               chan bool
+	shiftTimestamp          time.Time
+	blockCounter            uint64
+	clients                 map[string]*Client //client name to client pointer mapping
 
-// checkUnlockHash will check that the pool has an unlock hash. If the pool
-// does not have an unlock hash, an attempt will be made to get an unlock hash
-// from the wallet. That may fail due to the wallet being locked, in which case
-// an error is returned.
-func (p *Pool) checkUnlockHash() error {
-	if p.persist.GetUnlockHash() == (types.UnlockHash{}) {
-		uc, err := p.wallet.NextAddress()
-		if err != nil {
-			return err
-		}
-
-		// Set the unlock hash and save the pool. Saving is important, because
-		// the pool will be using this unlock hash to establish identity, and
-		// losing it will mean silently losing part of the pool identity.
-		p.persist.SetUnlockHash(uc.UnlockHash())
-		err = p.saveSync()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	clientSetupMutex        sync.Mutex
+	runningMutex            sync.RWMutex
+	running                 bool
 }
 
 // startupRescan will rescan the blockchain in the event that the pool
@@ -227,30 +205,83 @@ func (p *Pool) startupRescan() error {
 	if err != nil {
 		return err
 	}
-	p.tg.OnStop(func() {
+	p.tg.OnStop(func() error {
 		p.cs.Unsubscribe(p)
+		return nil
 	})
 	return nil
 }
 
-func (p *Pool) setPoolSettings(initConfig config.MiningPoolConfig) error {
-	var operatorWallet, poolWallet types.UnlockHash
-
-	operatorWallet.LoadString(initConfig.PoolOperatorWallet)
-	poolWallet.LoadString(initConfig.PoolWallet)
-	internalSettings := modules.PoolInternalSettings{
-		AcceptingShares: initConfig.AcceptingShares,
-		PoolOperatorPercentage: initConfig.PoolOperatorPercentage,
-		PoolNetworkPort: initConfig.PoolNetworkPort,
-		PoolName: initConfig.PoolName,
-		PoolID: initConfig.PoolID,
-		PoolDBConnection: initConfig.PoolDBConnection,
-		PoolDBName: initConfig.PoolDBName,
-		PoolOperatorWallet: operatorWallet,
-		PoolWallet: poolWallet,
+func (p *Pool) monitorShifts() {
+	p.shiftChan = make(chan bool, 1)
+	p.tg.Add()
+	defer p.tg.Done()
+	for {
+		select {
+		case <-p.shiftChan:
+		case <-time.After(ShiftDuration):
+		case <-p.tg.StopChan():
+			return
+		}
+		p.log.Debugf("Shift change - end of shift %d\n", p.shiftID)
+		atomic.AddUint64(&p.shiftID, 1)
+		p.dispatcher.mu.RLock()
+		// TODO: switch to batched insert
+		for _, h := range p.dispatcher.handlers {
+			h.mu.RLock()
+			s := h.s.Shift()
+			h.mu.RUnlock()
+			if s != nil {
+				s.UpdateOrSaveShift()
+			}
+			sh := p.newShift(h.s.CurrentWorker)
+			h.s.addShift(sh)
+		}
+		p.dispatcher.mu.RUnlock()
 	}
-	p.persist.SetSettings(internalSettings)
-	return nil
+}
+
+func (p *Pool) startServer() {
+	p.log.Printf("      Waiting for consensus synchronization...\n")
+	select {
+	// if we've received the stop message before this can even be spun up, just exit
+	case <-p.tg.StopChan():
+		return
+	default:
+	}
+	p.tg.Add()
+	defer p.tg.Done()
+	for {
+		if p.cs.Synced() {
+			// If we're immediately synced upon subscription AND we never got ProcessConsensusChange
+			// calls (this happens when we start the server and our most recent change was the latest
+			// block in a synced chain), we will need to look at the top of the chain to set up our
+			// source block. So let's just always do that upon first sync.
+			finalBlock := p.cs.CurrentBlock()
+			parentID := finalBlock.ID()
+			p.mu.Lock()
+			p.newSourceBlock()
+			p.sourceBlock.ParentID = parentID
+			p.sourceBlock.Timestamp, _ = p.cs.MinimumValidChildTimestamp(parentID)
+			p.mu.Unlock()
+
+			p.log.Printf("      Starting Stratum Server\n")
+
+			port := fmt.Sprintf("%d", p.InternalSettings().PoolNetworkPort)
+			go p.dispatcher.ListenHandlers(port)
+			p.tg.OnStop(func() error {
+				if p.dispatcher.ln == nil {
+					//panic(errors.New("network not opened yet"))
+				} else {
+					p.dispatcher.ln.Close()
+				}
+				return nil
+			})
+			return
+		} else {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
 }
 
 // newPool returns an initialized Pool, taking a set of dependencies as input.
@@ -277,12 +308,14 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		gw:           gw,
 		wallet:       wallet,
 		dependencies: dependencies,
+
 		blockMem:     make(map[types.BlockHeader]*types.Block),
+		blockTxns:    newTxnList(),
 		arbDataMem:   make(map[types.BlockHeader][crypto.EntropySize]byte),
 		headerMem:    make([]types.BlockHeader, HeaderMemory),
 
-		fullSets:  make(map[modules.TransactionSetID][]int),
-		splitSets: make(map[splitSetID]*splitSet),
+		fullSets:     make(map[modules.TransactionSetID][]int),
+		splitSets:    make(map[splitSetID]*splitSet),
 		blockMapHeap: &mapHeap{
 			selectID: make(map[splitSetID]*mapElement),
 			data:     nil,
@@ -294,18 +327,11 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			minHeap:  false,
 		},
 
-		persistDir: persistDir,
-		stratumID:  rand.Uint64(),
-		clients:    make(map[string]*Client),
+		persistDir:   persistDir,
+		stratumID:    rand.Uint64(),
+		clients:      make(map[string]*Client),
 	}
-	// TODO: Look at errors.go in modules/host directory for hints
-	// Call stop in the event of a partial startup.
 	var err error
-	// defer func() {
-	// 	if err != nil {
-	// 		err = composeErrors(p.tg.Stop(), err)
-	// 	}
-	// }()
 
 	// Create the perist directory if it does not yet exist.
 	err = dependencies.mkdirAll(p.persistDir, 0700)
@@ -319,13 +345,18 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, err
 	}
-	p.tg.AfterStop(func() {
+	p.yiilog, err = dependencies.newLogger(filepath.Join(p.persistDir, yiilogFile))
+	if err != nil {
+		return nil, err
+	}
+	p.tg.AfterStop(func() error {
 		err = p.log.Close()
 		if err != nil {
 			// State of the logger is uncertain, a Println will have to
 			// suffice.
 			fmt.Println("Error when closing the logger:", err)
 		}
+		return err
 	})
 
 	// Load the prior persistence structures, and configure the pool to save
@@ -336,13 +367,17 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	}
 	p.setPoolSettings(initConfig)
 
-	p.tg.AfterStop(func() {
+	p.tg.AfterStop(func() error {
+		p.mu.Lock()
 		err = p.saveSync()
+		p.mu.Unlock()
 		if err != nil {
 			p.log.Println("Could not save pool upon shutdown:", err)
 		}
+		return err
 	})
 	dbc := p.InternalSettings().PoolDBConnection
+
 	p.sqldb, err = sql.Open("mysql", dbc)
 	if err != nil {
 		return nil, errors.New("Failed to open database: " + err.Error())
@@ -352,14 +387,25 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		return nil, errors.New("Failed to ping database: " + err.Error())
 	}
 
-	err = p.createOrUpdateDatabase()
+	// clean old worker records for this stratum server just in case we didn't
+	// shutdown cleanly
+	err = p.DeleteAllWorkerRecords()
 	if err != nil {
-		return nil, errors.New("Failed to create/update database: " + err.Error())
+		return nil, errors.New("Failed to clean database: " + err.Error())
 	}
+
+	p.tg.OnStop(func() error {
+		p.DeleteAllWorkerRecords()
+		p.sqldb.Close()
+		return nil
+	})
+
 	err = p.setBlockCounterFromDB()
 	if err != nil {
 		return nil, errors.New("Failed to update block count: " + err.Error())
 	}
+
+	// grab our consensus set data
 	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())
 	if err == modules.ErrInvalidConsensusChangeID {
 		// Perform a rescan of the consensus set if the change id is not found.
@@ -372,78 +418,29 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	} else if err != nil {
 		return nil, errors.New("mining pool subscription failed: " + err.Error())
 	}
+
 	// spin up a go routine to handle shift changes.
-	p.shiftChan = make(chan bool, 1)
-	go func() {
-		p.tg.Add()
-		defer p.tg.Done()
-		for {
-			select {
-			case <-p.shiftChan:
-			case <-time.After(ShiftDuration):
-			case <-p.tg.StopChan():
-				return
-			}
-			p.log.Debugf("Shift change - end of shift %d\n", p.shiftID)
-			atomic.AddUint64(&p.shiftID, 1)
-			p.dispatcher.mu.RLock()
-			for _, h := range p.dispatcher.handlers {
-				h.mu.RLock()
-				s := h.s.Shift()
-				h.mu.RUnlock()
-				if s != nil {
-					s.UpdateOrSaveShift()
-				}
-				sh := p.newShift(h.s.CurrentWorker)
-				h.s.addShift(sh)
-			}
-			p.dispatcher.mu.RUnlock()
-		}
-	}()
-	p.tg.OnStop(func() {
+	go p.monitorShifts()
+
+	p.tg.OnStop(func() error {
 		p.cs.Unsubscribe(p)
+		return nil
 	})
 
 	p.tpool.TransactionPoolSubscribe(p)
-	p.tg.OnStop(func() {
+	p.tg.OnStop(func() error {
 		p.tpool.Unsubscribe(p)
+		return nil
 	})
 
-	//
-	// If our pool wallet is one of our (this node's) wallet, we are the main node and will
-	// do the payout processing when it is needed.
-	//
-	//	p.mainNode = wallet.isWalletAddress(p.InternalSettings().PoolWallet)
-	// if wallet != nil {
-	// 	addrs := wallet.AllAddresses()
-	// 	fmt.Printf("length is %d\n", len(addrs))
-	// 	for _, uh := range addrs {
-	// 		if uh == p.InternalSettings().PoolWallet {
-	// 			p.mainNode = true
-	// 			break
-	// 		}
-	// 	}
-	// }
-	// node := ""
-	// if p.mainNode {
-	// 	node = "main "
-	// }
-	p.log.Printf("      Starting Stratum Server\n")
-
+	p.runningMutex.Lock()
 	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: sync.RWMutex{}, p: p}
-	p.dispatcher.log, err = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
+	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
+	p.running = true
+	p.runningMutex.Unlock()
 
-	// la := modules.NetAddress(listenerAddress)
-	// p.dispatcher.ListenHandlers(la.Port())
-	port := fmt.Sprintf("%d", p.InternalSettings().PoolNetworkPort)
-	go p.dispatcher.ListenHandlers(port) // This will become a persistent config option
-	p.tg.OnStop(func() {
-		p.dispatcher.ln.Close()
-	})
-	err = p.setShiftIDFromDB()
-	if err != nil {
-		return nil, errors.New("Failed to update shiftID: " + err.Error())
-	}
+	go p.startServer()
+
 	return p, nil
 }
 
@@ -454,23 +451,27 @@ func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gate
 
 // Close shuts down the pool.
 func (p *Pool) Close() error {
-	p.sqldb.Close()
+	p.log.Println("Closing pool")
+	//defer func () {}()
 	return p.tg.Stop()
 }
 
+// TODO Start and Stop Pool are currently unused, maybe eliminate them
 // StartPool starts the pool running
 func (p *Pool) StartPool() {
-	miningpool = true
+	p.running = true
 }
 
 // StopPool stops the pool running
 func (p *Pool) StopPool() {
-	miningpool = false
+	p.running = false
 }
 
 // GetRunning returns the running (or not) status of the pool
 func (p *Pool) GetRunning() bool {
-	return miningpool
+	p.runningMutex.Lock()
+	defer p.runningMutex.Unlock()
+	return p.running
 }
 
 // WorkingStatus returns the working state of the pool, where working is
@@ -504,9 +505,8 @@ func (p *Pool) MiningMetrics() modules.PoolMiningMetrics {
 // SetInternalSettings updates the pool's internal PoolInternalSettings object.
 func (p *Pool) SetInternalSettings(settings modules.PoolInternalSettings) error {
 	p.mu.Lock()
-	defer func() {
-		p.mu.Unlock()
-	}()
+	defer p.mu.Unlock()
+
 	err := p.tg.Add()
 	if err != nil {
 		return err
@@ -515,13 +515,10 @@ func (p *Pool) SetInternalSettings(settings modules.PoolInternalSettings) error 
 
 	// The pool should not be open for business if it does not have an
 	// unlock hash.
-	if settings.AcceptingShares {
-		err := p.checkAddress()
-		if err != nil {
-			return errors.New("internal settings not updated, no operator wallet set: " + err.Error())
-		}
+	err = p.checkAddress()
+	if err != nil {
+		return errors.New("internal settings not updated, no operator wallet set: " + err.Error())
 	}
-	p.modifyClientWallet(0, settings.PoolOperatorWallet.String())
 
 	p.persist.SetSettings(settings)
 	p.persist.SetRevisionNumber(p.persist.GetRevisionNumber() + 1)
@@ -538,17 +535,6 @@ func (p *Pool) InternalSettings() modules.PoolInternalSettings {
 	return p.persist.GetSettings()
 }
 
-func (p *Pool) FindClient(name string) *modules.PoolClients {
-	clients := p.ClientData()
-	for _, cn := range clients {
-		if cn.ClientName == name {
-			return &cn
-		}
-	}
-	p.log.Printf("Failed to find Client %s\n", name)
-	return nil
-}
-
 // checkAddress checks that the miner has an address, fetching an address from
 // the wallet if not.
 func (p *Pool) checkAddress() error {
@@ -563,12 +549,75 @@ func (p *Pool) Client(name string) *Client {
 	defer p.mu.RUnlock()
 
 	return p.clients[name]
-
 }
+
 func (p *Pool) AddClient(c *Client) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	p.clients[c.Name()] = c
 
+}
+
+// newStratumID returns a function pointer to a unique ID generator used
+// for more the unique IDs within the Stratum protocol
+func (p *Pool) newStratumID() (f func() uint64) {
+	f = func() uint64 {
+		// p.log.Debugf("Waiting to lock pool\n")
+		p.mu.Lock()
+		defer func() {
+			// p.log.Debugf("Unlocking pool\n")
+			p.mu.Unlock()
+		}()
+		atomic.AddUint64(&p.stratumID, 1)
+		return p.stratumID
+	}
+	return
+}
+
+func (p *Pool) coinB1() types.Transaction {
+	s := fmt.Sprintf("\000     Software: siad-miningpool-module v%d.%02d\nPool name: \"%s\"     \000", MajorVersion, MinorVersion, p.InternalSettings().PoolName)
+	if ((len(modules.PrefixNonSia[:]) + len(s)) % 2) != 0 {
+		// odd length, add extra null
+		s = s + "\000"
+	}
+	cb := make([]byte, len(modules.PrefixNonSia[:])+len(s)) // represents the bytes appended later
+	n := copy(cb, modules.PrefixNonSia[:])
+	copy(cb[n:], s)
+	return types.Transaction{
+		ArbitraryData: [][]byte{cb},
+	}
+}
+
+func (p *Pool) coinB1Txn() string {
+	coinbaseTxn := p.coinB1()
+	buf := new(bytes.Buffer)
+	coinbaseTxn.MarshalSiaNoSignatures(buf)
+	b := buf.Bytes()
+	binary.LittleEndian.PutUint64(b[72:87], binary.LittleEndian.Uint64(b[72:87])+8)
+	return hex.EncodeToString(b)
+}
+
+func (p *Pool) coinB2() string {
+	return "0000000000000000"
+}
+
+func (p *Pool) NumConnections() int {
+	p.runningMutex.RLock()
+	defer p.runningMutex.RUnlock()
+	if p.running {
+		return p.dispatcher.NumConnections()
+	} else {
+		return 0
+	}
+}
+
+func (p *Pool) NumConnectionsOpened() uint64 {
+	p.runningMutex.RLock()
+	defer p.runningMutex.RUnlock()
+	if p.running {
+		return p.dispatcher.NumConnectionsOpened()
+	} else {
+		return 0
+	}
 }

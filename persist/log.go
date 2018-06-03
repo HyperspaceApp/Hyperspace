@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // Logger is a wrapper for the standard library logger that enforces logging

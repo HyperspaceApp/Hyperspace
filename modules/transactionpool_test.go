@@ -3,8 +3,8 @@ package modules
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestConsensusConflict checks that the consensus conflict type is correctly

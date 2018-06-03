@@ -3,8 +3,8 @@ package api
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
 )
 
 // TestGatewayStatus checks that the /gateway/status call is returning a corect

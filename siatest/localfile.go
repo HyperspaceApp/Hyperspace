@@ -1,14 +1,14 @@
 package siatest
 
 import (
-	"errors"
 	"io/ioutil"
 	"math"
+	"os"
 	"path/filepath"
 	"strconv"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/NebulousLabs/errors"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -30,8 +30,13 @@ func NewFile(size int) (*LocalFile, error) {
 	err := ioutil.WriteFile(path, bytes, 0600)
 	return &LocalFile{
 		path:     path,
-		checksum: crypto.HashObject(bytes),
+		checksum: crypto.HashBytes(bytes),
 	}, err
+}
+
+// Delete removes the LocalFile from disk.
+func (lf *LocalFile) Delete() error {
+	return os.Remove(lf.path)
 }
 
 // checkIntegrity compares the in-memory checksum to the checksum of the data
@@ -39,9 +44,9 @@ func NewFile(size int) (*LocalFile, error) {
 func (lf *LocalFile) checkIntegrity() error {
 	data, err := ioutil.ReadFile(lf.path)
 	if err != nil {
-		return build.ExtendErr("failed to read file from disk", err)
+		return errors.AddContext(err, "failed to read file from disk")
 	}
-	if crypto.HashAll(data) != lf.checksum {
+	if crypto.HashBytes(data) != lf.checksum {
 		return errors.New("checksums don't match")
 	}
 	return nil
@@ -50,4 +55,13 @@ func (lf *LocalFile) checkIntegrity() error {
 // fileName returns the file name of the file on disk
 func (lf *LocalFile) fileName() string {
 	return filepath.Base(lf.path)
+}
+
+// partialChecksum returns the checksum of a part of the file.
+func (lf *LocalFile) partialChecksum(from, to uint64) (crypto.Hash, error) {
+	data, err := ioutil.ReadFile(lf.path)
+	if err != nil {
+		return crypto.Hash{}, errors.AddContext(err, "failed to read file from disk")
+	}
+	return crypto.HashBytes(data[from:to]), nil
 }

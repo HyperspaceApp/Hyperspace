@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/NebulousLabs/errors"
 )
 
@@ -16,15 +16,22 @@ var (
 // GatewayConnectPost uses the /gateway/connect/:address endpoint to connect to
 // the gateway at address
 func (c *Client) GatewayConnectPost(address modules.NetAddress) (err error) {
-	err = c.Post("/gateway/connect/"+string(address), "", nil)
+	err = c.post("/gateway/connect/"+string(address), "", nil)
 	if err != nil && err.Error() == ErrPeerExists.Error() {
 		err = ErrPeerExists
 	}
 	return
 }
 
+// GatewayDisconnectPost uses the /gateway/disconnect/:address endpoint to
+// disconnect the gateway from a peer.
+func (c *Client) GatewayDisconnectPost(address modules.NetAddress) (err error) {
+	err = c.post("/gateway/disconnect/"+string(address), "", nil)
+	return
+}
+
 // GatewayGet requests the /gateway api resource
 func (c *Client) GatewayGet() (gwg api.GatewayGET, err error) {
-	err = c.Get("/gateway", &gwg)
+	err = c.get("/gateway", &gwg)
 	return
 }

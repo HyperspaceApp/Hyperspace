@@ -5,16 +5,16 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/contractor"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // renterTester contains all of the modules that are used while testing the renter.
@@ -27,6 +27,7 @@ type renterTester struct {
 	walletKey crypto.TwofishKey
 
 	renter *Renter
+	dir    string
 }
 
 // Close shuts down the renter tester.
@@ -85,66 +86,7 @@ func newRenterTester(name string) (*renterTester, error) {
 		wallet:  w,
 
 		renter: r,
-	}
-
-	// Mine blocks until there is money in the wallet.
-	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
-		_, err := rt.miner.AddBlock()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return rt, nil
-}
-
-// newContractorTester creates a renterTester, but with the supplied
-// hostContractor.
-func newContractorTester(name string, hdb hostDB, hc hostContractor) (*renterTester, error) {
-	// Create the modules.
-	testdir := build.TempDir("renter", name)
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
-	if err != nil {
-		return nil, err
-	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
-	if err != nil {
-		return nil, err
-	}
-	tp, err := transactionpool.New(cs, g, filepath.Join(testdir, modules.TransactionPoolDir))
-	if err != nil {
-		return nil, err
-	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
-	if err != nil {
-		return nil, err
-	}
-	key := crypto.GenerateTwofishKey()
-	_, err = w.Encrypt(key)
-	if err != nil {
-		return nil, err
-	}
-	err = w.Unlock(key)
-	if err != nil {
-		return nil, err
-	}
-	r, err := newRenter(g, cs, tp, hdb, hc, filepath.Join(testdir, modules.RenterDir))
-	if err != nil {
-		return nil, err
-	}
-	m, err := miner.New(cs, tp, w, filepath.Join(testdir, modules.MinerDir))
-	if err != nil {
-		return nil, err
-	}
-
-	// Assemble all pieces into a renter tester.
-	rt := &renterTester{
-		cs:      cs,
-		gateway: g,
-		miner:   m,
-		tpool:   tp,
-		wallet:  w,
-
-		renter: r,
+		dir:    testdir,
 	}
 
 	// Mine blocks until there is money in the wallet.
@@ -167,8 +109,8 @@ func (stubHostDB) AllHosts() []modules.HostDBEntry      { return nil }
 func (stubHostDB) AverageContractPrice() types.Currency { return types.Currency{} }
 func (stubHostDB) Close() error                         { return nil }
 func (stubHostDB) IsOffline(modules.NetAddress) bool    { return true }
-func (stubHostDB) RandomHosts(int, []types.SiaPublicKey) []modules.HostDBEntry {
-	return []modules.HostDBEntry{}
+func (stubHostDB) RandomHosts(int, []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
+	return []modules.HostDBEntry{}, nil
 }
 func (stubHostDB) EstimateHostScore(modules.HostDBEntry) modules.HostScoreBreakdown {
 	return modules.HostScoreBreakdown{}
@@ -203,8 +145,8 @@ type pricesStub struct {
 	dbEntries []modules.HostDBEntry
 }
 
-func (ps pricesStub) RandomHosts(n int, exclude []types.SiaPublicKey) []modules.HostDBEntry {
-	return ps.dbEntries
+func (ps pricesStub) RandomHosts(n int, exclude []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
+	return ps.dbEntries, nil
 }
 
 // TestRenterPricesVolatility verifies that the renter caches its price
@@ -247,5 +189,39 @@ func TestRenterPricesVolatility(t *testing.T) {
 	after = rt.renter.PriceEstimation()
 	if reflect.DeepEqual(initial, after) {
 		t.Fatal("expected renter price estimation to change after mining a block")
+	}
+}
+
+// TestRenterSiapathValidate verifies that the validateSiapath function correctly validates SiaPaths.
+func TestRenterSiapathValidate(t *testing.T) {
+	var pathtests = []struct {
+		in    string
+		valid bool
+	}{
+		{"valid/siapath", true},
+		{"../../../directory/traversal", false},
+		{"testpath", true},
+		{"valid/siapath/../with/directory/traversal", false},
+		{"validpath/test", true},
+		{"..validpath/..test", true},
+		{"./invalid/path", false},
+		{".../path", true},
+		{"valid./path", true},
+		{"valid../path", true},
+		{"valid/path./test", true},
+		{"valid/path../test", true},
+		{"test/path", true},
+		{"/leading/slash", false},
+		{"foo/./bar", false},
+		{"", false},
+	}
+	for _, pathtest := range pathtests {
+		err := validateSiapath(pathtest.in)
+		if err != nil && pathtest.valid {
+			t.Fatal("validateSiapath failed on valid path: ", pathtest.in)
+		}
+		if err == nil && !pathtest.valid {
+			t.Fatal("validateSiapath succeeded on invalid path: ", pathtest.in)
+		}
 	}
 }
