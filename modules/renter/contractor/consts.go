@@ -1,35 +1,33 @@
 package contractor
 
 import (
-	"time"
-
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // Constants related to contract formation parameters.
 var (
-	// To alleviate potential block propagation issues, the contractor sleeps
-	// between each contract formation.
-	contractFormationInterval = build.Select(build.Var{
-		Dev:      10 * time.Second,
-		Standard: 60 * time.Second,
-		Testing:  10 * time.Millisecond,
-	}).(time.Duration)
-
 	// minContractFundRenewalThreshold defines the ratio of remaining funds to
 	// total contract cost below which the contractor will prematurely renew a
 	// contract.
 	minContractFundRenewalThreshold = float64(0.03) // 3%
 
-	// minScoreHostBuffer defines how many extra hosts are queried when trying
+	// randomHostsBufferForScore defines how many extra hosts are queried when trying
 	// to figure out an appropriate minimum score for the hosts that we have.
-	minScoreHostBuffer = build.Select(build.Var{
+	randomHostsBufferForScore = build.Select(build.Var{
 		Dev:      2,
 		Standard: 10,
 		Testing:  1,
 	}).(int)
+
+	// consecutiveRenewalsBeforeReplacement is the number of times a contract
+	// attempt to be renewed before it is marked as !goodForRenew.
+	consecutiveRenewalsBeforeReplacement = build.Select(build.Var{
+		Dev:      types.BlockHeight(12),
+		Standard: types.BlockHeight(12), // ~2h
+		Testing:  types.BlockHeight(12),
+	}).(types.BlockHeight)
 )
 
 // Constants related to the safety values for when the contractor is forming

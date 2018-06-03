@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/errors"
 )
@@ -43,6 +43,7 @@ type unfinishedDownloadChunk struct {
 
 	// Fetch + Write instructions - read only or otherwise thread safe.
 	staticChunkIndex  uint64                                     // Required for deriving the encryption keys for each piece.
+	staticCacheID     string                                     // Used to uniquely identify a chunk in the chunk cache.
 	staticChunkMap    map[types.FileContractID]downloadPieceInfo // Maps from file contract ids to the info for the piece associated with that contract
 	staticChunkSize   uint64
 	staticFetchLength uint64 // Length within the logical chunk to fetch.
@@ -72,6 +73,9 @@ type unfinishedDownloadChunk struct {
 	// The download object, mostly to update download progress.
 	download *download
 	mu       sync.Mutex
+
+	// Caching related fields
+	staticStreamCache *streamCache
 }
 
 // fail will set the chunk status to failed. The physical chunk memory will be
@@ -84,6 +88,7 @@ func (udc *unfinishedDownloadChunk) fail(err error) {
 		udc.physicalChunkData[i] = nil
 	}
 	udc.download.managedFail(fmt.Errorf("chunk %v failed: %v", udc.staticChunkIndex, err))
+	udc.destination = nil
 }
 
 // managedCleanUp will check if the download has failed, and if not it will add
@@ -96,7 +101,6 @@ func (udc *unfinishedDownloadChunk) managedCleanUp() {
 	if udc.workersRemaining+udc.piecesCompleted < udc.erasureCode.MinPieces() && !udc.failed {
 		udc.fail(errors.New("not enough workers to continue download"))
 	}
-
 	// Return any excess memory.
 	udc.returnMemory()
 
@@ -211,10 +215,21 @@ func (udc *unfinishedDownloadChunk) threadedRecoverLogicalData() error {
 		udc.physicalChunkData[i] = nil
 	}
 
+	// Get recovered data
+	recoveredData := recoverWriter.Bytes()
+
+	// Add the chunk to the cache.
+	if udc.download.staticDestinationType == destinationTypeSeekStream {
+		// We only cache streaming chunks since browsers and media players tend
+		// to only request a few kib at once when streaming data. That way we can
+		// prevent scheduling the same chunk for download over and over.
+		udc.staticStreamCache.Add(udc.staticCacheID, recoveredData)
+	}
+
 	// Write the bytes to the requested output.
 	start := udc.staticFetchOffset
 	end := udc.staticFetchOffset + udc.staticFetchLength
-	_, err = udc.destination.WriteAt(recoverWriter.Bytes()[start:end], udc.staticWriteOffset)
+	_, err = udc.destination.WriteAt(recoveredData[start:end], udc.staticWriteOffset)
 	if err != nil {
 		udc.mu.Lock()
 		udc.fail(err)
@@ -241,7 +256,9 @@ func (udc *unfinishedDownloadChunk) threadedRecoverLogicalData() error {
 		// destination writer.
 		udc.download.endTime = time.Now()
 		close(udc.download.completeChan)
-		return udc.download.destination.Close()
+		err := udc.download.destination.Close()
+		udc.download.destination = nil
+		return err
 	}
 	return nil
 }

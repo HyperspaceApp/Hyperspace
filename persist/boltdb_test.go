@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/NebulousLabs/fastrand"
 	"github.com/coreos/bbolt"
 )

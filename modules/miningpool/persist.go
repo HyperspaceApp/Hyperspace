@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/config"
 )
 
 // persistence is the data that is kept when the pool is restarted.
@@ -31,7 +32,6 @@ type persistence struct {
 	Target types.Target `json:"blocktarget"`
 	// Address       types.UnlockHash `json:"pooladdress"`
 	BlocksFound   []types.BlockID `json:"blocksfound"`
-	UnsolvedBlock types.Block     `json:"unsolvedblock"`
 }
 
 func (p *persistence) GetBlockHeight() types.BlockHeight {
@@ -166,25 +166,6 @@ func (p *persistence) SetBlocksFound(bf []types.BlockID) {
 	p.BlocksFound = bf
 }
 
-func (p *persistence) GetCopyUnsolvedBlock() types.Block {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.UnsolvedBlock
-}
-
-// TODO: don't like this approach - needs to be resolved differently
-func (p *persistence) GetUnsolvedBlockPtr() *types.Block {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return &p.UnsolvedBlock
-}
-
-func (p *persistence) SetUnsolvedBlock(ub types.Block) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.UnsolvedBlock = ub
-}
-
 // persistData returns a copy of the data in the Pool that will be saved to disk.
 func (mp *Pool) persistData() persistence {
 	return persistence{
@@ -199,7 +180,6 @@ func (mp *Pool) persistData() persistence {
 		UnlockHash:     mp.persist.GetUnlockHash(),
 		Target:         mp.persist.GetTarget(),
 		BlocksFound:    mp.persist.GetBlocksFound(),
-		UnsolvedBlock:  mp.persist.GetCopyUnsolvedBlock(),
 	}
 }
 
@@ -207,16 +187,15 @@ func (mp *Pool) persistData() persistence {
 // any existing settings.
 func (mp *Pool) establishDefaults() error {
 	// Configure the settings object.
+	/*
 	mp.persist.SetSettings(modules.PoolInternalSettings{
 		PoolName:               "",
-		AcceptingShares:        false,
-		PoolOperatorPercentage: 0.0,
-		PoolOperatorWallet:     types.UnlockHash{},
 		PoolWallet:             types.UnlockHash{},
 		PoolNetworkPort:        3333,
 		PoolDBConnection:       "user:pass@127.0.0.1/HDCPool",
 	})
 	mp.newSourceBlock()
+	*/
 	return nil
 }
 
@@ -241,7 +220,23 @@ func (mp *Pool) loadPersistObject(p *persistence) {
 	mp.persist.SetUnlockHash(p.GetUnlockHash())
 	mp.persist.SetTarget(p.GetTarget())
 	mp.persist.SetBlocksFound(p.GetBlocksFound())
-	mp.persist.SetUnsolvedBlock(p.GetCopyUnsolvedBlock())
+}
+
+func (mp *Pool) setPoolSettings(initConfig config.MiningPoolConfig) error {
+	mp.log.Debugf("setPoolSettings called\n")
+	var poolWallet types.UnlockHash
+
+	poolWallet.LoadString(initConfig.PoolWallet)
+	internalSettings := modules.PoolInternalSettings{
+		PoolNetworkPort: initConfig.PoolNetworkPort,
+		PoolName: initConfig.PoolName,
+		PoolID: initConfig.PoolID,
+		PoolDBConnection: initConfig.PoolDBConnection,
+		PoolWallet: poolWallet,
+	}
+	mp.persist.SetSettings(internalSettings)
+	mp.newSourceBlock()
+	return nil
 }
 
 func (mp *Pool) hasSettings() bool {
@@ -264,8 +259,7 @@ func (mp *Pool) load() error {
 		// Copy in the persistence.
 		mp.loadPersistObject(p)
 	} else if os.IsNotExist(err) {
-		mp.log.Printf("Persistence metadata not found. Setting up new data.")
-		mp.newSourceBlock()
+		mp.log.Printf("Persistence metadata not found.")
 		// There is no pool.json file, set up sane defaults.
 		// return mp.establishDefaults()
 		return nil

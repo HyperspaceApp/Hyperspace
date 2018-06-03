@@ -4,11 +4,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/NebulousLabs/errors"
 )
 
 // contractorPersist defines what Contractor data persists across sessions.
@@ -126,7 +128,7 @@ func convertPersist(dir string) error {
 	}
 
 	// create the contracts directory if it does not yet exist
-	cs, err := proto.NewContractSet(filepath.Join(dir, "contracts"))
+	cs, err := proto.NewContractSet(filepath.Join(dir, "contracts"), modules.ProdDependencies)
 	if err != nil {
 		return err
 	}
@@ -141,6 +143,5 @@ func convertPersist(dir string) error {
 	}
 
 	// delete the journal file
-	os.RemoveAll(journalPath)
-	return nil
+	return errors.AddContext(os.Remove(journalPath), "failed to remove journal file")
 }

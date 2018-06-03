@@ -3,7 +3,7 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // TestBacktrackToCurrentPath probes the backtrackToCurrentPath method of the

@@ -6,12 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/persist"
-)
-
-const (
-	numSharesToAverage = 20
-	initialDifficulty  = 6.0
+	"github.com/HyperspaceApp/Hyperspace/persist"
 )
 
 //
@@ -20,6 +15,7 @@ const (
 //
 type Session struct {
 	mu               sync.RWMutex
+	authorized       bool
 	SessionID        uint64
 	CurrentJobs      []*Job
 	lastJobTimestamp time.Time
@@ -29,11 +25,14 @@ type Session struct {
 	ExtraNonce1      uint32
 	// vardiff
 	currentDifficulty    float64
+	highestDifficulty    float64
 	vardiff              Vardiff
 	lastShareSpot        uint64
-	shareTimes           [numSharesToAverage]float64
+	shareTimes           [numSharesToAverage]time.Time
 	lastVardiffRetarget  time.Time
 	lastVardiffTimestamp time.Time
+	sessionStartTimestamp time.Time
+	lastHeartbeat        time.Time
 	// utility
 	log *persist.Logger
 }
@@ -44,11 +43,15 @@ func newSession(p *Pool) (*Session, error) {
 		SessionID:            id(),
 		ExtraNonce1:          uint32(id() & 0xffffffff),
 		currentDifficulty:    initialDifficulty,
+		highestDifficulty:    initialDifficulty,
 		lastVardiffRetarget:  time.Now(),
 		lastVardiffTimestamp: time.Now(),
 	}
 
 	s.vardiff = *s.newVardiff()
+
+	s.sessionStartTimestamp = time.Now()
+	s.SetHeartbeat()
 
 	return s, nil
 }
@@ -99,31 +102,63 @@ func (s *Session) printNonce() string {
 	return hex.EncodeToString(ex1)
 }
 
-func (s *Session) LastShareDuration() float64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.shareTimes[s.lastShareSpot]
-}
-
-func (s *Session) SetLastShareDuration(seconds float64) {
+// SetLastShareTimestamp add a new time stamp
+func (s *Session) SetLastShareTimestamp(t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.log != nil {
+		s.log.Printf("Shares index: %d %s\n", s.lastShareSpot, t)
+	}
+	s.shareTimes[s.lastShareSpot] = t
 	s.lastShareSpot++
 	if s.lastShareSpot == s.vardiff.bufSize {
 		s.lastShareSpot = 0
 	}
-	//	fmt.Printf("Shares per minute: %.2f\n", w.ShareRate()*60)
-	s.shareTimes[s.lastShareSpot] = seconds
 }
 
-func (s *Session) ShareDurationAverage() float64 {
+// ShareDurationAverage caculate the average duration of the
+func (s *Session) ShareDurationAverage() (float64, float64) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	var average float64
+
+	var minTime, maxTime time.Time
+	var timestampCount int
+
 	for i := uint64(0); i < s.vardiff.bufSize; i++ {
-		average += s.shareTimes[i]
+		// s.log.Printf("ShareDurationAverage: %d %s %t\n", i, s.shareTimes[i], s.shareTimes[i].IsZero())
+		if s.shareTimes[i].IsZero() {
+			continue
+		}
+		timestampCount++
+		if minTime.IsZero() {
+			minTime = s.shareTimes[i]
+		}
+		if maxTime.IsZero() {
+			maxTime = s.shareTimes[i]
+		}
+		if s.shareTimes[i].Before(minTime) {
+			minTime = s.shareTimes[i]
+		}
+		if s.shareTimes[i].After(maxTime) {
+			maxTime = s.shareTimes[i]
+		}
 	}
-	return average / float64(s.vardiff.bufSize)
+
+	var unsubmitStart time.Time
+	if maxTime.IsZero() {
+		unsubmitStart = s.sessionStartTimestamp
+	} else {
+		unsubmitStart = maxTime
+	}
+	unsubmitDuration := time.Now().Sub(unsubmitStart).Seconds()
+	if timestampCount < 2 { // less than 2 stamp
+		return unsubmitDuration, 0
+	}
+
+	historyDuration := maxTime.Sub(minTime).Seconds() / float64(timestampCount-1)
+
+	return unsubmitDuration, historyDuration
 }
 
 func (s *Session) CurrentDifficulty() float64 {
@@ -135,5 +170,47 @@ func (s *Session) CurrentDifficulty() float64 {
 func (s *Session) SetCurrentDifficulty(d float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if d > s.highestDifficulty {
+		s.highestDifficulty = d
+	}
 	s.currentDifficulty = d
+}
+
+func (s *Session) HighestDifficulty() float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.highestDifficulty
+}
+
+func (s *Session) DetectDisconnected() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// disconnect if we haven't heard from the worker for a long time
+	if (time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout))) {
+		return true
+	}
+	// disconnect if the worker's difficulty has dropped too far from it's historical diff
+	if (s.currentDifficulty / s.highestDifficulty) < maxDifficultyDropRatio {
+		return true
+	} else {
+		return false
+	}
+}
+
+func (s *Session) SetAuthorized(b bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authorized = b
+}
+
+func (s *Session) Authorized() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.authorized
+}
+
+func (s *Session) SetHeartbeat() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastHeartbeat = time.Now()
 }

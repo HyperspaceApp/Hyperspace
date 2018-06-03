@@ -3,7 +3,7 @@ package modules
 import (
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -22,14 +22,11 @@ type (
 
 	// PoolInternalSettings contains a list of settings that can be changed.
 	PoolInternalSettings struct {
-		AcceptingShares        bool             `json:"acceptingshares"`
-		PoolOperatorPercentage float64          `json:"operatorpercentage"`
-		PoolNetworkPort        uint16           `json:"networkport"`
+		PoolNetworkPort        int              `json:"networkport"`
 		PoolName               string           `json:"name"`
-		PoolID                 string           `json:"poolid"`
+		PoolID                 uint64           `json:"poolid"`
 		PoolDBConnection       string           `json:"dbconnection"`
 		PoolDBName             string           `json:"dbname"`
-		PoolOperatorWallet     types.UnlockHash `json:"operatorwallet"`
 		PoolWallet             types.UnlockHash `json:"poolwallet"`
 	}
 
@@ -94,18 +91,18 @@ type (
 		SetInternalSettings(PoolInternalSettings) error
 
 		// ClientData returns a pointer to the client list
-		ClientData() []PoolClients
+		// ClientData() []PoolClients
 
 		// FindClient returns a Client pointer or nil if the client name doesn't exist
-		FindClient(name string) *PoolClients
+		// FindClient(name string) *PoolClients
 
 		ClientTransactions(name string) []PoolClientTransactions
 
 		// BlocksInfo returns a list of blocks information
-		BlocksInfo() []PoolBlocks
+		// BlocksInfo() []PoolBlocks
 
 		// BlockInfo returns a list of blocks information
-		BlockInfo(block uint64) []PoolBlock
+		// BlockInfo(block uint64) []PoolBlock
 
 		// Close closes the Pool.
 		Close() error
@@ -127,5 +124,11 @@ type (
 
 		// GetRunning returns the running status (or not) of the pool
 		GetRunning() bool
+
+		// returns the number of open tcp connections the pool currently is servicing
+		NumConnections() int
+
+		// returns the number of open tcp connections the pool has opened since startup
+		NumConnectionsOpened() uint64
 	}
 )

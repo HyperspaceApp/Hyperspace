@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // countFileLines is a helper function that will count the number of lines in a

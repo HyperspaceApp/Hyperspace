@@ -3,7 +3,7 @@ package miner
 import (
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // threadedMine starts a gothread that does CPU mining. threadedMine is the

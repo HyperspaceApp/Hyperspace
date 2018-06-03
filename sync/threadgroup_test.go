@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // TestThreadGroupStopEarly tests that a thread group can correctly interrupt

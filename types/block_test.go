@@ -3,8 +3,8 @@ package types
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 )
 
 // TestCalculateCoinbase probes the CalculateCoinbase function. The test code

@@ -3,11 +3,12 @@ package contractmanager
 import (
 	"encoding/json"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // syncResources will call Sync on all resources that the WAL has open. The
@@ -25,6 +26,11 @@ func (wal *writeAheadLog) syncResources() {
 	go func() {
 		defer wg.Done()
 
+		if wal.fileSettingsTmp == nil {
+			// nothing to sync
+			return
+		}
+
 		tmpFilename := filepath.Join(wal.cm.persistDir, settingsFileTmp)
 		filename := filepath.Join(wal.cm.persistDir, settingsFile)
 		err := wal.fileSettingsTmp.Sync()
@@ -39,13 +45,13 @@ func (wal *writeAheadLog) syncResources() {
 		// For testing, provide a place to interrupt the saving of the sync
 		// file. This makes it easy to simulate certain types of unclean
 		// shutdown.
-		if wal.cm.dependencies.disrupt("settingsSyncRename") {
+		if wal.cm.dependencies.Disrupt("settingsSyncRename") {
 			// The current settings file that is being re-written will not be
 			// saved.
 			return
 		}
 
-		err = wal.cm.dependencies.renameFile(tmpFilename, filename)
+		err = wal.cm.dependencies.RenameFile(tmpFilename, filename)
 		if err != nil {
 			wal.cm.log.Severe("ERROR: unable to atomically copy the contract manager settings:", err)
 		}
@@ -81,6 +87,10 @@ func (wal *writeAheadLog) syncResources() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		if len(wal.uncommittedChanges) == 0 {
+			// nothing to sync
+			return
+		}
 
 		err := wal.fileWALTmp.Sync()
 		if err != nil {
@@ -100,10 +110,10 @@ func (wal *writeAheadLog) syncResources() {
 
 	// Now that all the Sync calls have completed, rename the WAL tmp file to
 	// update the WAL.
-	if !wal.cm.dependencies.disrupt("walRename") {
+	if len(wal.uncommittedChanges) != 0 && !wal.cm.dependencies.Disrupt("walRename") {
 		walTmpName := filepath.Join(wal.cm.persistDir, walFileTmp)
 		walFileName := filepath.Join(wal.cm.persistDir, walFile)
-		err := wal.cm.dependencies.renameFile(walTmpName, walFileName)
+		err := wal.cm.dependencies.RenameFile(walTmpName, walFileName)
 		if err != nil {
 			// Log that the host is having trouble saving the uncommitted changes.
 			// Crash if the list of uncommitted changes has grown very large.
@@ -146,28 +156,28 @@ func (wal *writeAheadLog) commit() {
 	// Sync all open, non-WAL files on the host.
 	wal.syncResources()
 
-	// Extract any unfinished long-running jobs from the list of WAL items.
-	unfinishedAdditions := findUnfinishedStorageFolderAdditions(wal.uncommittedChanges)
-	unfinishedExtensions := findUnfinishedStorageFolderExtensions(wal.uncommittedChanges)
-
-	// Clear the set of uncommitted changes.
-	wal.uncommittedChanges = nil
-
 	// Begin writing to the settings file.
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
+		newSettings := wal.cm.savedSettings()
+		if reflect.DeepEqual(newSettings, wal.committedSettings) {
+			// no need to write the settings file
+			wal.fileSettingsTmp = nil
+			return
+		}
+		wal.committedSettings = newSettings
+
 		// Begin writing to the settings file, which will be synced during the
 		// next iteration of the sync loop.
 		var err error
-		wal.fileSettingsTmp, err = wal.cm.dependencies.createFile(filepath.Join(wal.cm.persistDir, settingsFileTmp))
+		wal.fileSettingsTmp, err = wal.cm.dependencies.CreateFile(filepath.Join(wal.cm.persistDir, settingsFileTmp))
 		if err != nil {
 			wal.cm.log.Severe("Unable to open temporary settings file for writing:", err)
 		}
-		ss := wal.cm.savedSettings()
-		b, err := json.MarshalIndent(ss, "", "\t")
+		b, err := json.MarshalIndent(newSettings, "", "\t")
 		if err != nil {
 			build.ExtendErr("unable to marshal settings data", err)
 		}
@@ -188,10 +198,19 @@ func (wal *writeAheadLog) commit() {
 	go func() {
 		defer wg.Done()
 
+		if len(wal.uncommittedChanges) == 0 {
+			// no need to recreate wal
+			return
+		}
+
+		// Extract any unfinished long-running jobs from the list of WAL items.
+		unfinishedAdditions := findUnfinishedStorageFolderAdditions(wal.uncommittedChanges)
+		unfinishedExtensions := findUnfinishedStorageFolderExtensions(wal.uncommittedChanges)
+
 		// Recreate the wal file so that it can receive new updates.
 		var err error
 		walTmpName := filepath.Join(wal.cm.persistDir, walFileTmp)
-		wal.fileWALTmp, err = wal.cm.dependencies.createFile(walTmpName)
+		wal.fileWALTmp, err = wal.cm.dependencies.CreateFile(walTmpName)
 		if err != nil {
 			wal.cm.log.Severe("ERROR: unable to create write-ahead-log:", err)
 		}
@@ -206,6 +225,9 @@ func (wal *writeAheadLog) commit() {
 			UnfinishedStorageFolderAdditions:  unfinishedAdditions,
 			UnfinishedStorageFolderExtensions: unfinishedExtensions,
 		})
+
+		// Clear the set of uncommitted changes.
+		wal.uncommittedChanges = nil
 	}()
 	wg.Wait()
 }
@@ -242,8 +264,8 @@ func (wal *writeAheadLog) spawnSyncLoop() (err error) {
 
 		// Allow unclean shutdown to be simulated by disrupting the removal of
 		// the WAL file.
-		if !wal.cm.dependencies.disrupt("cleanWALFile") {
-			err = wal.cm.dependencies.removeFile(filepath.Join(wal.cm.persistDir, walFile))
+		if !wal.cm.dependencies.Disrupt("cleanWALFile") {
+			err = wal.cm.dependencies.RemoveFile(filepath.Join(wal.cm.persistDir, walFile))
 			if err != nil {
 				wal.cm.log.Println("Error removing WAL during contract manager shutdown:", err)
 			}
@@ -258,7 +280,7 @@ func (wal *writeAheadLog) spawnSyncLoop() (err error) {
 // occasionally committed together.
 func (wal *writeAheadLog) threadedSyncLoop(threadsStopped chan struct{}, syncLoopStopped chan struct{}) {
 	// Provide a place for the testing to disable the sync loop.
-	if wal.cm.dependencies.disrupt("threadedSyncLoopStart") {
+	if wal.cm.dependencies.Disrupt("threadedSyncLoopStart") {
 		close(syncLoopStopped)
 		return
 	}

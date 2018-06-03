@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 
 	"github.com/coreos/bbolt"
 )

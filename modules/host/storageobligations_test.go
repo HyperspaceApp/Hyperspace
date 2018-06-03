@@ -3,7 +3,7 @@ package host
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestStorageObligationID checks that the return function of the storage

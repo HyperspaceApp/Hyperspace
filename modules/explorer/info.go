@@ -1,9 +1,9 @@
 package explorer
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/coreos/bbolt"
 )
 

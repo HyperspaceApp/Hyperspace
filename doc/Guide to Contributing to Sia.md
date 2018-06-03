@@ -1,13 +1,13 @@
-# Contributing to Sia
+# Contributing to Hyperspace
 
 #### Table of Contents
 * [Get started with Go](#go)
   * [Install Go](#install-go)
   * [Learn Go]("learn-go")
-* [Build Sia](#build-sia)
+* [Build Hyperspace](#build-sia)
 * [Contribute to the codebase](#contribute)
   * [Set up git](#setup-git)
-  * [Fork the Sia repository](#fork)
+  * [Fork the Hyperspace repository](#fork)
   * [Write some code](#write)
   * [Submit your code for review](#pull)
   * [More git resources](#git-resources)
@@ -27,20 +27,7 @@ To install Go on your computer, follow the
 
 You should install the latest [official Go binary][binary] for your system (if 
 not available, [install from source][source]).  If you plan to cross compile 
-Sia, see [Cross Compilation with Go 1.5][cross] by Dave Cheney.  
-
-Now make a workspace directory in which you will store source code and 
-dependencies.  You can choose any filepath except where you installed Go (don't 
-choose `/usr/local`).
-
-```bash
-# make a working directory called golang in your home directory
-$ mkdir $HOME/golang
-# store base path in an environmental variable
-$ echo 'export GOPATH=$HOME/golang' >> $HOME/.profile
-# add bin subdirectory to PATH environmental variable
-$ echo 'export PATH=$PATH:$GOPATH/bin' >> $HOME/.profile
-```
+Hyperspace, see [Cross Compilation with Go 1.5][cross] by Dave Cheney.  
 
 <a name="learn-go"/>
 
@@ -53,27 +40,33 @@ and use the go tool.
 
 <a name="build-sia"/>
 
-## Build Sia
+## Build Hyperspace
 
-To build Sia on your machine, enter the following on the command line:
+To build Hyperspace on your machine, enter the following on the command line:
 
 ```bash
-# Download Sia and its dependencies
+# Download Hyperspace and its dependencies
 # Binaries will be installed in $GOPATH/bin
-$ go get -u github.com/NebulousLabs/Sia/...
+$ go get -u github.com/HyperspaceApp/Hyperspace/...
 
-# Switch to directory containing Sia source code
-$ cd $GOPATH/src/github.com/NebulousLabs/Sia
+# Switch to directory containing Hyperspace source code
+$ cd $GOPATH/src/github.com/HyperspaceApp/Hyperspace
 
-# You have three Sia builds to choose from.
+# You have three Hyperspace builds to choose from.
 # To build the standard release binary:
-$ make release-std
+$ make release
 # Or to build the release binary with race detection and an array debugging 
 # asserts:
-$ make release
+$ make release-race
 # Or to build the developer binary (with a different genesis block, faster 
 # block times, and other changes):
-$ make
+$ make dev
+# Or build the developer binary with race detection:
+$ make dev-race
+# Build the debugger binary:
+$ make debug
+# Or build debugger binary with race detection:
+$ make debug-race
 ```
 
 <a name="contribute"/>
@@ -101,22 +94,24 @@ $ git config --global credential.helper "cache --timeout=[seconds]"
 ```
 <a name="fork"/>
 
-### Fork the Sia repository
+### Fork the Hyperspace repository
 
-While logged into your Github account, navigate to the [Sia repository][sia] 
+While logged into your Github account, navigate to the [Hyperspace repository][sia] 
 and click the 'Fork' button in the upper righthand corner.  Your account now 
 has a 'forked' copy of the original repo at 
-`https://github.com/<your GitHub username>/Sia`.
+`https://github.com/<your GitHub username>/Hyperspace`.
 
-When you installed Sia using `go get`, the go tool put the Sia source code in 
-$GOPATH/src/github.com/NebulousLabs/Sia. Change to that directory and set up
+When you installed Hyperspace using `go get`, the go tool put the Hyperspace source code in 
+$GOPATH/src/github.com/HyperspaceApp/Hyperspace. Change to that directory and set up
 your fork as a git [remote][remote]:
 
 ```bash
-$ cd $GOPATH/src/github.com/NebulousLabs/Sia
+$ cd $GOPATH/src/github.com/HyperspaceApp/Hyperspace
 # Add your fork as a remote.  Name it whatever is convenient,
 # e.g your GitHub username
-$ git remote add <remote name> https://github.com/<username>/Sia.git
+$ git remote add <remote name> https://github.com/<username>/Hyperspace.git
+# Or if you use an SSH key, create the remote with the following
+$ git remote add <remote name> git@github.com:<username>/Hyperspace.git
 ```
 
 <a name="write"/>
@@ -125,13 +120,13 @@ $ git remote add <remote name> https://github.com/<username>/Sia.git
 
 Right now your git local repository only has one branch (called 'master' by 
 default). If you want to make changes, add a new branch and make your changes 
-there. You should maintain master as an up-to-date copy of the NebulousLabs/Sia 
+there. You should maintain master as an up-to-date copy of the HyperspaceApp/Hyperspace 
 repository's master branch.
 
 To create and checkout a new branch:
 ```bash
 # If you're not already in the right directory:
-$ cd $GOPATH/src/github.com/NebulousLabs/Sia
+$ cd $GOPATH/src/github.com/HyperspaceApp/Hyperspace
 # Make sure you're on branch master
 $ git checkout master
 # Create and checkout a new branch
@@ -200,7 +195,7 @@ $ git push <fork remote> <branch>
 ### Submit your code for review
 
 Once you've tested your new code and pushed changes to your fork, navigate to 
-your fork at `https://github.com/<username>/Sia` in your browser.  
+your fork at `https://github.com/<username>/Hyperspace` in your browser.  
 Switch to the branch you've made changes on by selecting it from the list on 
 the upper left.  Then click 'New pull request' on the upper right.
 
@@ -241,8 +236,8 @@ $ git push <fork remote> master
 
 ## Where to start
 
-If you'd like to contribute to Sia but don't have any specific ideas, writing 
-tests is a good way to get your feet wet.  See [doc/Running and Writing Tests for Sia.md](Running%20and%20Writing%20Tests%20for%20Sia.md) to get started.
+If you'd like to contribute to Hyperspace but don't have any specific ideas, writing 
+tests is a good way to get your feet wet.  See [doc/Running and Writing Tests for Hyperspace.md](Running%20and%20Writing%20Tests%20for%20Hyperspace.md) to get started.
 
 <a name="contact"/>
 
@@ -261,13 +256,13 @@ Feel free to ask for help on the #core-dev channel on [discord][discord].
 [install-go]: https://golang.org/doc/install
 [signup]: https://github.com/join?source=header-home
 [effective]: https://golang.org/doc/effective_go.html
-[sia]: https://github.com/NebulousLabs/Sia
+[sia]: https://github.com/HyperspaceApp/Hyperspace
 [branch]: http://blog.scottlowe.org/2015/01/27/using-fork-branch-git-workflow/
-[developers.md]: https://github.com/NebulousLabs/Sia/blob/master/doc/Developers.md
+[developers.md]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Developers.md
 [gofmt]: https://golang.org/cmd/gofmt/
 [nutshell]: https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell
 [discord]: https://discord.gg/sia
 [install-git]: https://git-scm.com/book/en/v2/Getting-Started-Installing-Git
-[test-doc]: https://github.com/NebulousLabs/Sia/blob/master/doc/Testing.md
+[test-doc]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Testing.md
 [stashing]: https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning
 [remote]: https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes

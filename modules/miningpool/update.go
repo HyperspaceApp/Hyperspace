@@ -1,14 +1,145 @@
 package pool
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
+
+// addMapElementTxns places the splitSet from a mapElement into the correct
+// mapHeap.
+func (p *Pool) addMapElementTxns(elem *mapElement) {
+	candidateSet := elem.set
+
+	// Check if heap for highest fee transactions has space.
+	if p.blockMapHeap.size+candidateSet.size < types.BlockSizeLimit-5e3 {
+		p.pushToTxnList(elem)
+		return
+	}
+
+	// While the heap cannot fit this set s, and while the (weighted) average
+	// fee for the lowest sets from the block is less than the fee for the set
+	// s, continue removing from the heap. The block heap doesn't have enough
+	// space for this transaction. Check if removing sets from the blockMapHeap
+	// will be worth it. bottomSets will hold  the lowest fee sets from the
+	// blockMapHeap
+	bottomSets := make([]*mapElement, 0)
+	var sizeOfBottomSets uint64
+	var averageFeeOfBottomSets types.Currency
+	for {
+		// Check if the candidateSet can fit in the block.
+		if p.blockMapHeap.size-sizeOfBottomSets+candidateSet.size < types.BlockSizeLimit-5e3 {
+			// Place candidate into block,
+			p.pushToTxnList(elem)
+
+			// Place transactions removed from block heap into
+			// the overflow heap.
+			for _, v := range bottomSets {
+				p.pushToOverflow(v)
+			}
+			break
+		}
+
+		// If the blockMapHeap is empty, push all elements removed from it back
+		// in, and place the candidate set into the overflow. This should never
+		// happen since transaction sets are much smaller than the max block
+		// size.
+		_, exists := p.blockMapHeap.peek()
+		if !exists {
+			p.pushToOverflow(elem)
+			// Put back in transactions removed.
+			for _, v := range bottomSets {
+				p.pushToTxnList(v)
+			}
+			// Finished with this candidate set.
+			break
+		}
+		// Add the set to the bottomSets slice. Note that we don't increase
+		// sizeOfBottomSets until after calculating the average.
+		nextSet := p.popFromBlock()
+		bottomSets = append(bottomSets, nextSet)
+
+		// Calculating fees to compare total fee from those sets removed and the current set s.
+		totalFeeFromNextSet := nextSet.set.averageFee.Mul64(nextSet.set.size)
+		totalBottomFees := averageFeeOfBottomSets.Mul64(sizeOfBottomSets).Add(totalFeeFromNextSet)
+		sizeOfBottomSets += nextSet.set.size
+		averageFeeOfBottomSets := totalBottomFees.Div64(sizeOfBottomSets)
+
+		// If the average fee of the bottom sets from the block is higher than
+		// the fee from this candidate set, put the candidate into the overflow
+		// MapHeap.
+		if averageFeeOfBottomSets.Cmp(candidateSet.averageFee) == 1 {
+			// CandidateSet goes into the overflow.
+			p.pushToOverflow(elem)
+			// Put transaction sets from bottom back into the blockMapHeap.
+			for _, v := range bottomSets {
+				p.pushToTxnList(v)
+			}
+			// Finished with this candidate set.
+			break
+		}
+	}
+}
+
+// addNewTxns adds new unconfirmed transactions to the pool's transaction
+// selection and updates the splitSet and mapElement state of the pool.
+func (p *Pool) addNewTxns(diff *modules.TransactionPoolDiff) {
+	// Get new splitSets (in form of mapElement)
+	newElements := p.getNewSplitSets(diff)
+
+	// Place each elem in one of the MapHeaps.
+	for i := 0; i < len(newElements); i++ {
+		// Add splitSet to pool's global state using pointer and ID stored in
+		// the mapElement and then add the mapElement to the pool's global
+		// state.
+		p.splitSets[newElements[i].id] = newElements[i].set
+		p.addMapElementTxns(newElements[i])
+	}
+}
+
+// deleteMapElementTxns removes a splitSet (by id) from the pool's mapheaps and
+// readjusts the mapheap for the block if needed.
+func (p *Pool) deleteMapElementTxns(id splitSetID) {
+	_, inBlockMapHeap := p.blockMapHeap.selectID[id]
+	_, inOverflowMapHeap := p.overflowMapHeap.selectID[id]
+
+	// If the transaction set is in the overflow, we can just delete it.
+	if inOverflowMapHeap {
+		p.overflowMapHeap.removeSetByID(id)
+	} else if inBlockMapHeap {
+		// Remove from blockMapHeap.
+		p.blockMapHeap.removeSetByID(id)
+		p.removeSplitSetFromTxnList(id)
+
+		// Promote sets from overflow heap to block if possible.
+		for overflowElem, canPromote := p.overflowMapHeap.peek(); canPromote && p.blockMapHeap.size+overflowElem.set.size < types.BlockSizeLimit-5e3; {
+			promotedElem := p.popFromOverflow()
+			p.pushToTxnList(promotedElem)
+		}
+	}
+	delete(p.splitSets, id)
+}
+
+// deleteReverts deletes transactions from the mining pool's transaction selection
+// which are no longer in the transaction pool.
+func (p *Pool) deleteReverts(diff *modules.TransactionPoolDiff) {
+	// Delete the sets that are no longer useful. That means recognizing which
+	// of your splits belong to the missing sets.
+	for _, id := range diff.RevertedTransactions {
+		// Look up all of the split sets associated with the set being reverted,
+		// and delete them. Then delete the lookups from the list of full sets
+		// as well.
+		splitSetIndexes := p.fullSets[id]
+		for _, ss := range splitSetIndexes {
+			p.deleteMapElementTxns(splitSetID(ss))
+			delete(p.splitSets, splitSetID(ss))
+		}
+		delete(p.fullSets, id)
+	}
+}
 
 // getNewSplitSets creates split sets from a transaction pool diff, returns them
 // in a slice of map elements. Does not update the pool's global state.
@@ -48,174 +179,47 @@ func (p *Pool) getNewSplitSets(diff *modules.TransactionPoolDiff) []*mapElement 
 	return newElements
 }
 
-// addMapElementTxns places the splitSet from a mapElement into the correct
-// mapHeap.
-func (p *Pool) addMapElementTxns(elem *mapElement) {
-	candidateSet := elem.set
+// peekAtOverflow checks top of the overflowMapHeap, and returns the top element
+// (but does not remove it from the heap). Returns false if the heap is empty.
+func (p *Pool) peekAtOverflow() (*mapElement, bool) {
+	return p.overflowMapHeap.peek()
+}
 
-	// Check if heap for highest fee transactions has space.
-	if p.blockMapHeap.size+candidateSet.size < types.BlockSizeLimit-5e3 {
-		p.blockMapHeap.push(elem)
-		return
-	}
 
-	// While the heap cannot fit this set s, and while the (weighted) average
-	// fee for the lowest sets from the block is less than the fee for the set
-	// s, continue removing from the heap. The block heap doesn't have enough
-	// space for this transaction. Check if removing sets from the blockMapHeap
-	// will be worth it. bottomSets will hold  the lowest fee sets from the
-	// blockMapHeap
-	bottomSets := make([]*mapElement, 0)
-	var sizeOfBottomSets uint64
-	var averageFeeOfBottomSets types.Currency
-	for {
-		// Check if the candidateSet can fit in the block.
-		if p.blockMapHeap.size-sizeOfBottomSets+candidateSet.size < types.BlockSizeLimit-5e3 {
-			// Place candidate into block,
-			p.blockMapHeap.push(elem)
+// popFromBlock pops an element from the blockMapHeap, removes it from the
+// miner's unsolved block, and maintains proper set ordering within the block.
+func (p *Pool) popFromBlock() *mapElement {
+	elem := p.blockMapHeap.pop()
+	p.removeSplitSetFromTxnList(elem.id)
+	return elem
+}
 
-			// Place transactions removed from block heap into
-			// the overflow heap.
-			for _, v := range bottomSets {
-				p.overflowMapHeap.push(v)
-			}
-			break
-		}
+// popFromBlock pops an element from the overflowMapHeap.
+func (p *Pool) popFromOverflow() *mapElement {
+	return p.overflowMapHeap.pop()
+}
 
-		// If the blockMapHeap is empty, push all elements removed from it back
-		// in, and place the candidate set into the overflow. This should never
-		// happen since transaction sets are much smaller than the max block
-		// size.
-		_, exists := p.blockMapHeap.peek()
-		if !exists {
-			p.overflowMapHeap.push(elem)
-			// Put back in transactions removed.
-			for _, v := range bottomSets {
-				p.blockMapHeap.push(v)
-			}
-			// Finished with this candidate set.
-			break
-		}
-		// Add the set to the bottomSets slice. Note that we don't increase
-		// sizeOfBottomSets until after calculating the average.
-		nextSet := p.blockMapHeap.pop()
-		bottomSets = append(bottomSets, nextSet)
+// pushToTxnList inserts a blockElement into the list of transactions that
+// populates the unsolved block.
+func (p *Pool) pushToTxnList(elem *mapElement) {
+	p.blockMapHeap.push(elem)
+	transactions := elem.set.transactions
 
-		// Calculating fees to compare total fee from those sets removed and the current set s.
-		totalFeeFromNextSet := nextSet.set.averageFee.Mul64(nextSet.set.size)
-		totalBottomFees := averageFeeOfBottomSets.Mul64(sizeOfBottomSets).Add(totalFeeFromNextSet)
-		sizeOfBottomSets += nextSet.set.size
-		averageFeeOfBottomSets := totalBottomFees.Div64(sizeOfBottomSets)
-
-		// If the average fee of the bottom sets from the block is higher than
-		// the fee from this candidate set, put the candidate into the overflow
-		// MapHeap.
-		if averageFeeOfBottomSets.Cmp(candidateSet.averageFee) == 1 {
-			// CandidateSet goes into the overflow.
-			p.overflowMapHeap.push(elem)
-			// Put transaction sets from bottom back into the blockMapHeap.
-			for _, v := range bottomSets {
-				p.blockMapHeap.push(v)
-			}
-			// Finished with this candidate set.
-			break
-		}
+	// Place the transactions from this set into the block and store their indices.
+	for i := 0; i < len(transactions); i++ {
+		p.blockTxns.appendTxn(&transactions[i])
 	}
 }
 
-// addNewTxns adds new unconfirmed transactions to the pool's transaction
-// selection and updates the splitSet and mapElement state of the pool.
-func (p *Pool) addNewTxns(diff *modules.TransactionPoolDiff) {
-	// Get new splitSets (in form of mapElement)
-	newElements := p.getNewSplitSets(diff)
-
-	// Place each elem in one of the MapHeaps.
-	for i := 0; i < len(newElements); i++ {
-		// Add splitSet to pool's global state using pointer and ID stored in
-		// the mapElement and then add the mapElement to the pool's global
-		// state.
-		p.splitSets[newElements[i].id] = newElements[i].set
-		p.addMapElementTxns(newElements[i])
-	}
-}
-
-// Change the UnsolvedBlock so that it  has exactly those transactions in the
-// blockMapHeap.
-func (p *Pool) adjustUnsolvedBlock() {
-	numTxns := 0
-	for _, elem := range p.blockMapHeap.selectID {
-		numTxns += len(elem.set.transactions)
-	}
-	p.persist.mu.Lock()
-	defer p.persist.mu.Unlock()
-	// If the transactions that need to be added don't fit in the block,
-	// increase the size of the block by a constant factor to be more efficient.
-	if numTxns > cap(p.persist.UnsolvedBlock.Transactions) {
-		newCap := cap(p.persist.UnsolvedBlock.Transactions) * 6 / 5
-		if numTxns > newCap {
-			newCap = numTxns
-		}
-		p.persist.UnsolvedBlock.Transactions = make([]types.Transaction, 0, newCap)
-	} else {
-		p.persist.UnsolvedBlock.Transactions = p.persist.UnsolvedBlock.Transactions[:0]
-	}
-
-	// The current design removes all transactions from the block itself, so we
-	// have to take everything the blockMapHeap and put it into the unsolved
-	// block slice.
-	for _, elem := range p.blockMapHeap.selectID {
-		set := elem.set
-		p.persist.UnsolvedBlock.Transactions = append(p.persist.UnsolvedBlock.Transactions, set.transactions...)
-	}
-}
-
-// deleteReverts deletes transactions from the mining pool's transaction selection
-// which are no longer in the transaction pool.
-func (p *Pool) deleteReverts(diff *modules.TransactionPoolDiff) {
-	// Delete the sets that are no longer useful. That means recognizing which
-	// of your splits belong to the missing sets.
-	for _, id := range diff.RevertedTransactions {
-		// Look up all of the split sets associated with the set being reverted,
-		// and delete them. Then delete the lookups from the list of full sets
-		// as well.
-		splitSetIndexes := p.fullSets[id]
-		for _, ss := range splitSetIndexes {
-			p.deleteMapElementTxns(splitSetID(ss))
-		}
-		delete(p.fullSets, id)
-	}
-}
-
-// deleteMapElementTxns removes a splitSet (by id) from the pool's mapheaps and
-// readjusts the mapheap for the block if needed.
-func (p *Pool) deleteMapElementTxns(id splitSetID) {
-	_, inBlockMapHeap := p.blockMapHeap.selectID[id]
-	_, inOverflowMapHeap := p.overflowMapHeap.selectID[id]
-
-	// If the transaction set is in the overflow, we can just delete it.
-	if inOverflowMapHeap {
-		p.overflowMapHeap.removeSetByID(id)
-	} else if inBlockMapHeap {
-		// Remove from blockMapHeap.
-		p.blockMapHeap.removeSetByID(id)
-
-		// Promote sets from overflow heap to block if possible.
-		for overflowElem, canPromote := p.overflowMapHeap.peek(); canPromote && p.blockMapHeap.size+overflowElem.set.size < types.BlockSizeLimit-5e3; {
-			promotedElem := p.overflowMapHeap.pop()
-			p.blockMapHeap.push(promotedElem)
-		}
-	}
-	delete(p.splitSets, id)
+// pushToOverflow pushes a mapElement onto the overflowMapHeap.
+func (p *Pool) pushToOverflow(elem *mapElement) {
+	p.overflowMapHeap.push(elem)
 }
 
 // ProcessConsensusChange will update the pool's most recent block.
 func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
-	// p.log.Debugf("Waiting to lock pool\n")
 	p.mu.Lock()
-	defer func() {
-		// p.log.Debugf("Unlocking pool\n")
-		p.mu.Unlock()
-	}()
+	defer p.mu.Unlock()
 
 	p.log.Printf("CCID %v (height %v): %v applied blocks, %v reverted blocks", crypto.Hash(cc.ID).String()[:8], p.persist.GetBlockHeight(), len(cc.AppliedBlocks), len(cc.RevertedBlocks))
 	// Update the pool's understanding of the block height.
@@ -245,10 +249,11 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 	}
 
 	// Update the unsolved block.
+	// TODO do we really need to do this if we're not synced?
 	p.persist.mu.Lock()
-	p.persist.UnsolvedBlock.ParentID = cc.AppliedBlocks[len(cc.AppliedBlocks)-1].ID()
+	p.sourceBlock.ParentID = cc.AppliedBlocks[len(cc.AppliedBlocks)-1].ID()
+	p.sourceBlock.Timestamp = cc.MinimumValidChildTimestamp
 	p.persist.Target = cc.ChildTarget
-	p.persist.UnsolvedBlock.Timestamp = cc.MinimumValidChildTimestamp
 	p.persist.RecentChange = cc.ID
 	p.persist.mu.Unlock()
 	// There is a new parent block, the source block should be updated to keep
@@ -257,24 +262,11 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		p.log.Printf("Consensus change detected\n")
 		// we do this because the new block could have come from us
 		p.mu.Unlock()
+		// TODO: i think this is not useful and could be incorrect
 		p.setBlockCounterFromDB()
 		p.mu.Lock()
 
 		p.newSourceBlock()
-		if p.wallet != nil && p.wallet.Unlocked() == true {
-			addrs := p.wallet.AllAddresses()
-			fmt.Printf("length is %d\n", len(addrs))
-			p.mu.Unlock()
-			func() {
-				for _, uh := range addrs {
-					if uh == p.InternalSettings().PoolWallet {
-						p.processPayouts()
-						break
-					}
-				}
-			}()
-			p.mu.Lock()
-		}
 		if p.dispatcher != nil {
 			p.log.Printf("Notifying clients\n")
 			p.dispatcher.NotifyClients()
@@ -285,16 +277,11 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 // ReceiveUpdatedUnconfirmedTransactions will replace the current unconfirmed
 // set of transactions with the input transactions.
 func (p *Pool) ReceiveUpdatedUnconfirmedTransactions(diff *modules.TransactionPoolDiff) {
-	// p.log.Debugf("Waiting to lock pool\n")
 	p.mu.Lock()
-	defer func() {
-		// p.log.Debugf("Unlocking pool\n")
-		p.mu.Unlock()
-	}()
+	defer p.mu.Unlock()
 
 	p.deleteReverts(diff)
 	p.addNewTxns(diff)
-	p.adjustUnsolvedBlock()
 	since := time.Now().Sub(p.sourceBlockTime).Seconds()
 	if since > 30 {
 		p.log.Printf("Block update detected\n")
@@ -303,5 +290,17 @@ func (p *Pool) ReceiveUpdatedUnconfirmedTransactions(diff *modules.TransactionPo
 			p.log.Printf("Notifying clients\n")
 			p.dispatcher.NotifyClients()
 		}
+	}
+}
+
+// removeSplitSetFromTxnList removes a split set from the miner's unsolved
+// block.
+func (p *Pool) removeSplitSetFromTxnList(id splitSetID) {
+	transactions := p.splitSets[id].transactions
+
+	// Remove each transaction from this set from the block and track the
+	// transactions that were moved during that action.
+	for i := 0; i < len(transactions); i++ {
+		p.blockTxns.removeTxn(transactions[i].ID())
 	}
 }

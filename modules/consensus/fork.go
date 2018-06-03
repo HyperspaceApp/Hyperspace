@@ -3,8 +3,8 @@ package consensus
 import (
 	"errors"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 
 	"github.com/coreos/bbolt"
 )
@@ -49,8 +49,12 @@ func backtrackToCurrentPath(tx *bolt.Tx, pb *processedBlock) []*processedBlock {
 func (cs *ConsensusSet) revertToBlock(tx *bolt.Tx, pb *processedBlock) (revertedBlocks []*processedBlock) {
 	// Sanity check - make sure that pb is in the current path.
 	currentPathID, err := getPath(tx, pb.Height)
-	if build.DEBUG && (err != nil || currentPathID != pb.Block.ID()) {
-		panic(errExternalRevert)
+	if err != nil || currentPathID != pb.Block.ID() {
+		if build.DEBUG {
+			panic(errExternalRevert) // needs to be panic for TestRevertToNode
+		} else {
+			build.Critical(errExternalRevert)
+		}
 	}
 
 	// Rewind blocks until 'pb' is the current block.

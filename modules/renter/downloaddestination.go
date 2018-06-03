@@ -37,29 +37,65 @@ type downloadDestination interface {
 
 // downloadDestinationBuffer writes logical chunk data to an in-memory buffer.
 // This buffer is primarily used when performing repairs on uploads.
-type downloadDestinationBuffer []byte
+type downloadDestinationBuffer [][]byte
+
+// NewDownloadDestinationBuffer allocates the necessary number of shards for
+// the downloadDestinationBuffer and returns the new buffer.
+func NewDownloadDestinationBuffer(length uint64) downloadDestinationBuffer {
+	// Round length up to next multiple of SectorSize.
+	if length%pieceSize != 0 {
+		length += pieceSize - length%pieceSize
+	}
+	buf := make([][]byte, 0, length/pieceSize)
+	for length > 0 {
+		buf = append(buf, make([]byte, pieceSize))
+		length -= pieceSize
+	}
+	return buf
+}
 
 // Close implements Close for the downloadDestination interface.
 func (dw downloadDestinationBuffer) Close() error {
 	return nil
 }
 
+// ReadFrom reads data from a io.Reader until the buffer is full.
+func (dw downloadDestinationBuffer) ReadFrom(r io.Reader) (int64, error) {
+	var n int64
+	for len(dw) > 0 {
+		read, err := io.ReadFull(r, dw[0])
+		if err != nil {
+			return n, err
+		}
+		dw = dw[1:]
+		n += int64(read)
+	}
+	return n, nil
+}
+
 // WriteAt writes the provided data to the downloadDestinationBuffer.
 func (dw downloadDestinationBuffer) WriteAt(data []byte, offset int64) (int, error) {
-	if len(data)+int(offset) > len(dw) || offset < 0 {
+	if uint64(len(data))+uint64(offset) > uint64(len(dw))*pieceSize || offset < 0 {
 		return 0, errors.New("write at specified offset exceeds buffer size")
 	}
-	i := copy(dw[offset:], data)
-	return i, nil
+	written := len(data)
+	for len(data) > 0 {
+		shardIndex := offset / int64(pieceSize)
+		sliceIndex := offset % int64(pieceSize)
+		n := copy(dw[shardIndex][sliceIndex:], data)
+		data = data[n:]
+		offset += int64(n)
+	}
+	return written, nil
 }
 
 // downloadDestinationWriteCloser is a downloadDestination that writes to an
 // underlying data stream. The data stream is expecting sequential data while
-// the download chunks will be written in an aribtrary order using calls to
+// the download chunks will be written in an arbitrary order using calls to
 // WriteAt. We need to block the calls to WriteAt until all prior data has been
 // written.
 //
-// NOTE: If the caller accedentally leaves a gap between calls to WriteAt, for
+// NOTE: If the caller accidentally leaves a gap between calls to WriteAt, for
 // example writes bytes 0-100 and then writes bytes 110-200, and accidentally
 // never writes bytes 100-110, the downloadDestinationWriteCloser will block
 // forever waiting for those gap bytes to be written.

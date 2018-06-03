@@ -7,7 +7,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var errUnableToParseSize = errors.New("unable to parse size")

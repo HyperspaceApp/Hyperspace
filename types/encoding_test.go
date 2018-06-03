@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -716,5 +716,20 @@ func TestTransactionMarshalSiaSize(t *testing.T) {
 	}
 	if txn.MarshalSiaSize() != len(encoding.Marshal(txn)) {
 		t.Errorf("sizes do not match: expected %v, got %v", len(encoding.Marshal(txn)), txn.MarshalSiaSize())
+	}
+}
+
+// TestUnlockHashScan checks if the fmt.Scanner implementation of UnlockHash
+// works as expected.
+func TestUnlockHashScan(t *testing.T) {
+	// Create a random unlock hash.
+	var uh UnlockHash
+	fastrand.Read(uh[:])
+	// Convert it to a string and parse the string using Sscan.
+	var scannedHash UnlockHash
+	fmt.Sscan(uh.String(), &scannedHash)
+	// Check if they are equal.
+	if !bytes.Equal(uh[:], scannedHash[:]) {
+		t.Fatal("scanned hash is not equal to original hash")
 	}
 }

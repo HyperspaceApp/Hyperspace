@@ -4,14 +4,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 func calculateWeightFromUInt64Price(price uint64) (weight types.Currency) {
 	hdb := bareHostDB()
 	hdb.blockHeight = 0
 	var entry modules.HostDBEntry
+	entry.Version = build.Version
 	entry.RemainingStorage = 250e3
 	entry.StoragePrice = types.NewCurrency64(price).Mul(types.SiacoinPrecision).Div64(4032).Div64(1e9)
 	return hdb.calculateHostWeight(entry)

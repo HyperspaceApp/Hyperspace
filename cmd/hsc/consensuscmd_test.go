@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestEstimatedHeightAt tests that the expectedHeightAt function correctly

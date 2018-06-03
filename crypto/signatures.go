@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/NebulousLabs/fastrand"
 
 	"golang.org/x/crypto/ed25519"

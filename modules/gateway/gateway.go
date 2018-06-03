@@ -103,9 +103,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -152,7 +152,7 @@ type Gateway struct {
 	threads    siasync.ThreadGroup
 
 	// Unique ID
-	id gatewayID
+	staticId gatewayID
 }
 
 type gatewayID [8]byte
@@ -205,7 +205,7 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 	}
 
 	// Set Unique GatewayID
-	fastrand.Read(g.id[:])
+	fastrand.Read(g.staticId[:])
 
 	// Create the logger.
 	g.log, err = persist.NewFileLogger(filepath.Join(g.persistDir, logFile))
@@ -233,10 +233,12 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 
 	// Register RPCs.
 	g.RegisterRPC("ShareNodes", g.shareNodes)
+	g.RegisterRPC("DiscoverIP", g.discoverPeerIP)
 	g.RegisterConnectCall("ShareNodes", g.requestNodes)
 	// Establish the de-registration of the RPCs.
 	g.threads.OnStop(func() {
 		g.UnregisterRPC("ShareNodes")
+		g.UnregisterRPC("DiscoverIP")
 		g.UnregisterConnectCall("ShareNodes")
 	})
 

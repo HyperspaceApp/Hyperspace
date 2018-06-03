@@ -25,12 +25,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var journalMeta = persist.Metadata{

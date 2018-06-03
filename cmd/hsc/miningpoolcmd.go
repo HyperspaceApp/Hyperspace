@@ -6,10 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/node/api"
-	"github.com/HyperspaceProject/Hyperspace/types"
-
-	"net/url"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/spf13/cobra"
 )
@@ -63,8 +61,8 @@ Available settings:
 
 	poolClientCmd = &cobra.Command{
 		Use:   "client <clientname>",
-		Short: "Get Client details",
-		Long:  "Get Client details by name",
+		Short: "Get client details",
+		Long:  "Get client details by name",
 		Run:   wrap(poolclientcmd),
 	}
 
@@ -77,32 +75,30 @@ Available settings:
 
 	poolBlockCmd = &cobra.Command{
 		Use:   "block <blocknum>",
-		Short: "Get Block details",
-		Long:  "Get Block specific details by block number",
+		Short: "Get block details",
+		Long:  "Get block specific details by block number",
 		Run:   wrap(poolblockcmd),
 	}
 )
 
-// poolstartcmd is the handler for the command `hdcc pool start`.
+// poolstartcmd is the handler for the command `siac pool start`.
 // Starts the mining pool.
 func poolstartcmd() {
-	err := get("/pool/start")
+	err := httpClient.MiningPoolStartGet()
 	if err != nil {
 		die("Could not start mining pool:", err)
 	}
 	fmt.Println("Mining pool is now running.")
 }
 
-// poolcmd is the handler for the command `hdcc pool`.
+// poolcmd is the handler for the command `siac pool`.
 // Prints the status of the pool.
 func poolcmd() {
-	status := new(api.PoolGET)
-	err := getAPI("/pool", status)
+	status, err := httpClient.MiningPoolGet()
 	if err != nil {
 		die("Could not get pool status:", err)
 	}
-	config := new(api.PoolConfig)
-	err = getAPI("/pool/config", config)
+	config, err := httpClient.MiningPoolConfigGet()
 	if err != nil {
 		die("Could not get pool config:", err)
 	}
@@ -118,30 +114,26 @@ Blocks Mined: %d
 Pool config:
 Pool Name:              %s
 Pool ID:                %s
-Pool Accepting Shares   %t
 Pool Stratum Port       %d
 DB Connection           %s
-Operator Percentage     %.02f %%
-Operator Wallet:        %s
 Pool Wallet:            %s
 `,
 		poolStr, status.PoolHashrate/1000000000, status.BlocksMined,
-		config.Name, config.PoolID, config.AcceptingShares, config.NetworkPort,
-		config.DBConnection,
-		config.OperatorPercentage, config.OperatorWallet, config.PoolWallet)
+		config.Name, config.PoolID, config.NetworkPort,
+		config.DBConnection, config.PoolWallet)
 }
 
-// poolstopcmd is the handler for the command `hdcc pool stop`.
+// poolstopcmd is the handler for the command `siac pool stop`.
 // Stops the CPU miner.
 func poolstopcmd() {
-	err := get("/pool/stop")
+	err := httpClient.MiningPoolStopGet()
 	if err != nil {
 		die("Could not stop pool:", err)
 	}
 	fmt.Println("Stopped mining pool.")
 }
 
-// poolconfigcmd is the handler for the command `hdcc pool config [parameter] [value]`
+// poolconfigcmd is the handler for the command `siac pool config [parameter] [value]`
 func poolconfigcmd(param, value string) {
 	var err error
 	switch param {
@@ -156,7 +148,7 @@ func poolconfigcmd(param, value string) {
 	default:
 		die("Unknown pool config parameter: ", param)
 	}
-	err = post("/pool/config", param+"="+url.PathEscape(value))
+	err = httpClient.MiningPoolConfigPost(param, value)
 	if err != nil {
 		die("Could not update pool settings:", err)
 
@@ -164,8 +156,7 @@ func poolconfigcmd(param, value string) {
 }
 
 func poolclientscmd() {
-	clients := new(api.PoolClientsInfo)
-	err := getAPI("/pool/clients", clients)
+	clients, err := httpClient.MiningPoolClientsGet()
 	if err != nil {
 		die("Could not get pool clients:", err)
 	}
@@ -186,8 +177,7 @@ func poolclientscmd() {
 }
 
 func poolclientcmd(name string) {
-	client := new(api.PoolClientInfo)
-	err := getAPI("/pool/client?name="+name, client)
+	client, err := httpClient.MiningPoolClientGet(name)
 	if err != nil {
 		die("Could not get pool client: ", err)
 	}
@@ -213,15 +203,14 @@ func poolclientcmd(name string) {
 			stale, invalid, w.BlocksFound, shareTime(w.LastShareTime))
 	}
 
-	txs := new([]api.PoolClientTransactions)
-	err = getAPI("/pool/clienttx?name="+name, txs)
+	txs, err := httpClient.MiningPoolTransactionsGet(name)
 	if err != nil {
 		return
 	}
 	fmt.Printf("\nTransactions:\n")
 	fmt.Printf("%-19s    %-10s   %s\n", "Timestamp", "Change", "Memo")
 	fmt.Printf("-------------------    ----------   --------------------------------------------\n")
-	for _, t := range *txs {
+	for _, t := range txs {
 		change := big.NewInt(0)
 		change.SetString(t.BalanceChange, 10)
 		currency := types.NewCurrency(change)
@@ -249,15 +238,14 @@ func shareTime(t time.Time) string {
 }
 
 func poolblockscmd() {
-	blocks := new([]api.PoolBlocksInfo)
-	err := getAPI("/pool/blocks", blocks)
+	blocks, err := httpClient.MiningPoolBlocksGet()
 	if err != nil {
 		die("Could not get pool blocks: ", err)
 	}
 	fmt.Printf("Blocks List:\n")
 	fmt.Printf("%-10s %-10s   %-19s   %-10s   %s\n", "Blocks", "Height", "Timestamp", "Reward", "Status")
 	fmt.Printf("---------- ----------   -------------------   ------   -------------------\n")
-	for _, b := range *blocks {
+	for _, b := range blocks {
 		reward := big.NewInt(0)
 		reward.SetString(b.BlockReward, 10)
 		currency := types.NewCurrency(reward)
@@ -267,23 +255,21 @@ func poolblockscmd() {
 }
 
 func poolblockcmd(name string) {
-	blocks := new([]api.PoolBlocksInfo)
-	err := getAPI("/pool/blocks", blocks)
+	blocks, err := httpClient.MiningPoolBlocksGet()
 	if err != nil {
 		die("Could not get pool blocks: ", err)
 	}
 	var blockID uint64
-	var blocksInfo api.PoolBlocksInfo
+	var blocksInfo api.MiningPoolBlocksInfo
 	match := false
 	fmt.Sscanf(name, "%d", &blockID)
-	for _, blocksInfo = range *blocks {
+	for _, blocksInfo = range blocks {
 		if blocksInfo.BlockNumber == blockID {
 			match = true
 			break
 		}
 	}
-	block := new([]api.PoolBlockInfo)
-	err = getAPI("/pool/block?block="+name, block)
+	block, err := httpClient.MiningPoolBlockGet(name)
 	if err != nil {
 		die("Could not get pool block:", err)
 	}
@@ -300,7 +286,7 @@ func poolblockcmd(name string) {
 
 	fmt.Printf("Client Name                                                                   Reward %% Block Reward\n")
 	fmt.Printf("----------------------------------------------------------------------------  -------- ------------\n")
-	for _, b := range *block {
+	for _, b := range block {
 		reward := big.NewInt(0)
 		reward.SetString(b.ClientReward, 10)
 		currency := types.NewCurrency(reward)
@@ -308,7 +294,7 @@ func poolblockcmd(name string) {
 	}
 }
 
-type ByClientName []api.PoolClientInfo
+type ByClientName []api.MiningPoolClientInfo
 
 func (a ByClientName) Len() int           { return len(a) }
 func (a ByClientName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

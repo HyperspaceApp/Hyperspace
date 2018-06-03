@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // Error is a type that is encoded as JSON and returned in an API response in
@@ -88,17 +88,19 @@ func HttpPOSTAuthenticated(url string, data string, password string) (resp *http
 // API encapsulates a collection of modules and implements a http.Handler
 // to access their methods.
 type API struct {
-	cs       modules.ConsensusSet
-	explorer modules.Explorer
-	gateway  modules.Gateway
-	host     modules.Host
-	miner    modules.Miner
-	renter   modules.Renter
-	tpool    modules.TransactionPool
-	wallet   modules.Wallet
-	pool     modules.Pool
+	cs               modules.ConsensusSet
+	explorer         modules.Explorer
+	gateway          modules.Gateway
+	host             modules.Host
+	miner            modules.Miner
+	renter           modules.Renter
+	tpool            modules.TransactionPool
+	wallet           modules.Wallet
+	pool             modules.Pool
+	stratumminer     modules.StratumMiner
+	index            modules.Index
 
-	router http.Handler
+	router           http.Handler
 }
 
 // api.ServeHTTP implements the http.Handler interface.
@@ -109,20 +111,23 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // New creates a new Sia API from the provided modules.  The API will require
 // authentication using HTTP basic auth for certain endpoints of the supplied
 // password is not the empty string.  Usernames are ignored for authentication.
-func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool) *API {
+func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool, sm modules.StratumMiner, index modules.Index) *API {
 	api := &API{
-		cs:       cs,
-		explorer: e,
-		gateway:  g,
-		host:     h,
-		miner:    m,
-		renter:   r,
-		tpool:    tp,
-		wallet:   w,
-		pool:     p,
+		cs:               cs,
+		explorer:         e,
+		gateway:          g,
+		host:             h,
+		miner:            m,
+		renter:           r,
+		tpool:            tp,
+		wallet:           w,
+		pool:             p,
+		stratumminer:     sm,
+		index:            index,
 	}
 
-	api.buildHttpRoutes(requiredUserAgent, requiredPassword)
+	// Register API handlers
+	api.buildHTTPRoutes(requiredUserAgent, requiredPassword)
 
 	return api
 }

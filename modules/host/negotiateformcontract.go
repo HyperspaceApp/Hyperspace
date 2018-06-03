@@ -4,10 +4,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -38,7 +38,10 @@ func (h *Host) managedAddCollateral(settings modules.HostExternalSettings, txnSe
 	parents := txnSet[:len(txnSet)-1]
 	fc := txn.FileContracts[0]
 	hostPortion := contractCollateral(settings, fc)
-	builder = h.wallet.RegisterTransaction(txn, parents)
+	builder, err = h.wallet.RegisterTransaction(txn, parents)
+	if err != nil {
+		return
+	}
 	err = builder.FundSiacoins(hostPortion)
 	if err != nil {
 		builder.Drop()
@@ -73,9 +76,9 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	// If the host is not accepting contracts, the connection can be closed.
 	// The renter has been given enough information in the host settings to
 	// understand that the connection is going to be closed.
-	h.mu.RLock()
+	h.mu.Lock()
 	settings := h.externalSettings()
-	h.mu.RUnlock()
+	h.mu.Unlock()
 	if !settings.AcceptingContracts {
 		h.log.Debugln("Turning down contract because the host is not accepting contracts.")
 		return nil
@@ -237,7 +240,7 @@ func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, renterPK cry
 	}
 	// WindowEnd must not be more than settings.MaxDuration blocks into the
 	// future.
-	if fc.WindowStart > blockHeight+eSettings.MaxDuration {
+	if fc.WindowEnd > blockHeight+eSettings.MaxDuration {
 		return errLongDuration
 	}
 

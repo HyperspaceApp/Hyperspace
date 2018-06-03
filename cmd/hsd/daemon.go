@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	fileConfig "github.com/HyperspaceProject/Hyperspace/config"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/profile"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	fileConfig "github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/profile"
 	mnemonics "github.com/NebulousLabs/entropy-mnemonics"
 
 	"github.com/spf13/cobra"
@@ -39,9 +39,9 @@ func verifyAPISecurity(config Config) error {
 		addr := modules.NetAddress(config.Siad.APIaddr)
 		if !addr.IsLoopback() {
 			if addr.Host() == "" {
-				return fmt.Errorf("a blank host will listen on all interfaces, did you mean localhost:%v?\nyou must pass --disable-api-security to bind Siad to a non-localhost address", addr.Port())
+				return fmt.Errorf("a blank host will listen on all interfaces, did you mean localhost:%v?\nyou must pass --disable-api-security to bind Hsd to a non-localhost address", addr.Port())
 			}
-			return errors.New("you must pass --disable-api-security to bind Siad to a non-localhost address")
+			return errors.New("you must pass --disable-api-security to bind Hsd to a non-localhost address")
 		}
 		return nil
 	}
@@ -69,7 +69,7 @@ func processNetAddr(addr string) string {
 // invalid module character.
 func processModules(modules string) (string, error) {
 	modules = strings.ToLower(modules)
-	validModules := "cghmrtwep"
+	validModules := "cghmrtwepsi"
 	invalidModules := modules
 	for _, m := range validModules {
 		invalidModules = strings.Replace(invalidModules, string(m), "", 1)
@@ -141,7 +141,6 @@ func readFileConfig(config Config) error {
 	if strings.Contains(config.Siad.Modules, "p") {
 		err := viper.ReadInConfig() // Find and read the config file
 		if err != nil { // Handle errors reading the config file
-			fmt.Errorf("Fatal error config file: %s \n", err)
 			return err
 		}
 		poolViper := viper.Sub("miningpool")
@@ -167,19 +166,41 @@ func readFileConfig(config Config) error {
 		dbPass := poolViper.GetString("dbpass")
 		dbAddress := poolViper.GetString("dbaddress")
 		dbPort := poolViper.GetString("dbport")
-		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/", dbUser, dbPass, dbAddress, dbPort)
+		dbName := poolViper.GetString("dbname")
+		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbAddress, dbPort, dbName)
 		poolConfig := fileConfig.MiningPoolConfig{
-			AcceptingShares: poolViper.GetBool("acceptingcontracts"),
-			PoolOperatorPercentage: poolViper.GetFloat64("operatorpercentage"),
-			PoolNetworkPort: uint16(poolViper.GetInt("networkport")),
+			PoolNetworkPort: int(poolViper.GetInt("networkport")),
 			PoolName: poolViper.GetString("name"),
-			PoolID: poolViper.GetString("id"),
+			PoolID: uint64(poolViper.GetInt("id")),
 			PoolDBConnection: dbConnection,
-			PoolDBName: poolViper.GetString("dbname"),
-			PoolOperatorWallet: poolViper.GetString("operatorwallet"),
 			PoolWallet: poolViper.GetString("poolwallet"),
 		}
 		globalConfig.MiningPoolConfig = poolConfig
+	}
+	if strings.Contains(config.Siad.Modules, "i") {
+		err := viper.ReadInConfig() // Find and read the config file
+		if err != nil { // Handle errors reading the config file
+			return err
+		}
+		poolViper := viper.Sub("index")
+		poolViper.SetDefault("dbaddress", "127.0.0.1")
+		poolViper.SetDefault("dbname", "siablocks")
+		poolViper.SetDefault("dbport", "3306")
+		if !poolViper.IsSet("dbuser") {
+			return errors.New("Must specify a dbuser")
+		}
+		if !poolViper.IsSet("dbpass") {
+			return errors.New("Must specify a dbpass")
+		}
+		dbUser := poolViper.GetString("dbuser")
+		dbPass := poolViper.GetString("dbpass")
+		dbAddress := poolViper.GetString("dbaddress")
+		dbPort := poolViper.GetString("dbport")
+		dbName := poolViper.GetString("dbname")
+		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbAddress, dbPort, dbName)
+		globalConfig.IndexConfig = fileConfig.IndexConfig{
+			PoolDBConnection: dbConnection,
+		}
 	}
 	return nil
 }
@@ -205,8 +226,13 @@ func startDaemon(config Config) (err error) {
 		}
 	}
 
-	// Print the siad version
-	fmt.Println("Sia Daemon v" + build.Version)
+	// Print the siad Version and GitRevision
+	fmt.Println("Hyperspace Daemon v" + build.Version)
+	if build.GitRevision == "" {
+		fmt.Println("WARN: compiled without build commit or version. To compile correctly, please use the makefile")
+	} else {
+		fmt.Println("Git Revision " + build.GitRevision)
+	}
 
 	// Install a signal handler that will catch exceptions thrown by mmap'd
 	// files.
@@ -241,7 +267,7 @@ func startDaemon(config Config) (err error) {
 
 	// listen for kill signals
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, os.Kill)
+	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM)
 
 	// Print a 'startup complete' message.
 	startupTime := time.Since(loadStart)

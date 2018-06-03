@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -32,7 +32,10 @@ func TestStorageProof(t *testing.T) {
 		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.NewCurrency64(1)}, {Value: types.NewCurrency64(0)}},
 		MissedProofOutputs: []types.SiacoinOutput{{Value: types.NewCurrency64(1)}, {Value: types.NewCurrency64(0)}},
 	}
-	txnBuilder := ht.wallet.StartTransaction()
+	txnBuilder, err := ht.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = txnBuilder.FundSiacoins(fc.Payout)
 	if err != nil {
 		t.Fatal(err)

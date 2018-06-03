@@ -12,17 +12,21 @@ package node
 import (
 	"path/filepath"
 
-	"github.com/HyperspaceProject/Hyperspace/config"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/host"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/miningpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-
+	"github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/host"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/miningpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/modules/stratumminer"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/NebulousLabs/errors"
 )
 
@@ -57,6 +61,7 @@ type NodeParams struct {
 	CreateHost            bool
 	CreateMiner           bool
 	CreateMiningPool      bool
+	CreateStratumMiner    bool
 	CreateRenter          bool
 	CreateTransactionPool bool
 	CreateWallet          bool
@@ -71,9 +76,23 @@ type NodeParams struct {
 	Host            modules.Host
 	Miner           modules.TestMiner
 	MiningPool      modules.Pool
+	StratumMiner    modules.StratumMiner
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
+
+	// Dependencies for each module supporting dependency injection.
+	ContractorDeps  modules.Dependencies
+	ContractSetDeps modules.Dependencies
+	HostDBDeps      modules.Dependencies
+	RenterDeps      modules.Dependencies
+	WalletDeps      modules.Dependencies
+
+	// Custom settings for modules
+	Allowance modules.Allowance
+
+	// The following fields are used to skip parts of the node set up
+	SkipSetAllowance bool
 
 	// The high level directory where all the persistence gets stored for the
 	// moudles.
@@ -89,6 +108,7 @@ type Node struct {
 	Host            modules.Host
 	Miner           modules.TestMiner
 	MiningPool      modules.Pool
+	StratumMiner    modules.StratumMiner
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
@@ -109,6 +129,9 @@ func (n *Node) Close() (err error) {
 	}
 	if n.MiningPool != nil {
 		err = errors.Compose(n.MiningPool.Close())
+	}
+	if n.StratumMiner != nil {
+		err = errors.Compose(n.StratumMiner.Close())
 	}
 	if n.Host != nil {
 		err = errors.Compose(n.Host.Close())
@@ -213,7 +236,11 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateWallet {
 			return nil, nil
 		}
-		return wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir))
+		walletDeps := params.WalletDeps
+		if walletDeps == nil {
+			walletDeps = modules.ProdDependencies
+		}
+		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), walletDeps)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create wallet"))
@@ -247,7 +274,44 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateRenter {
 			return nil, nil
 		}
-		return renter.New(g, cs, w, tp, filepath.Join(dir, modules.RenterDir))
+		contractorDeps := params.ContractorDeps
+		if contractorDeps == nil {
+			contractorDeps = modules.ProdDependencies
+		}
+		contractSetDeps := params.ContractSetDeps
+		if contractSetDeps == nil {
+			contractSetDeps = modules.ProdDependencies
+		}
+		hostDBDeps := params.HostDBDeps
+		if hostDBDeps == nil {
+			hostDBDeps = modules.ProdDependencies
+		}
+		renterDeps := params.RenterDeps
+		if renterDeps == nil {
+			renterDeps = modules.ProdDependencies
+		}
+		persistDir := filepath.Join(dir, modules.RenterDir)
+
+		// HostDB
+		hdb, err := hostdb.NewCustomHostDB(g, cs, persistDir, hostDBDeps)
+		if err != nil {
+			return nil, err
+		}
+		// ContractSet
+		contractSet, err := proto.NewContractSet(filepath.Join(persistDir, "contracts"), contractSetDeps)
+		if err != nil {
+			return nil, err
+		}
+		// Contractor
+		logger, err := persist.NewFileLogger(filepath.Join(persistDir, "contractor.log"))
+		if err != nil {
+			return nil, err
+		}
+		hc, err := contractor.NewCustomContractor(cs, &contractor.WalletBridge{W: w}, tp, hdb, contractSet, contractor.NewPersist(persistDir), logger, contractorDeps)
+		if err != nil {
+			return nil, err
+		}
+		return renter.NewCustomRenter(g, cs, tp, hdb, hc, persistDir, renterDeps)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create renter"))
@@ -292,6 +356,24 @@ func New(params NodeParams) (*Node, error) {
 		return p, nil
 	}()
 
+	// Stratum Miner.
+	sm, err := func() (modules.StratumMiner, error) {
+		if params.CreateStratumMiner && params.StratumMiner != nil {
+			return nil, errors.New("cannot create stratum miner and also use custom stratum miner")
+		}
+		if params.StratumMiner != nil {
+			return params.StratumMiner, nil
+		}
+		if !params.CreateStratumMiner {
+			return nil, nil
+		}
+		sm, err := stratumminer.New(filepath.Join(dir, modules.StratumMinerDir))
+		if err != nil {
+			return nil, err
+		}
+		return sm, nil
+	}()
+
 	// Explorer.
 	e, err := func() (modules.Explorer, error) {
 		if !params.CreateExplorer && params.Explorer != nil {
@@ -317,6 +399,7 @@ func New(params NodeParams) (*Node, error) {
 		Host:            h,
 		Miner:           m,
 		MiningPool:      p,
+		StratumMiner:    sm,
 		Renter:          r,
 		TransactionPool: tp,
 		Wallet:          w,

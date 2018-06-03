@@ -3,7 +3,7 @@ package siatest
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // TestCreateTestGroup tests the behavior of NewGroup.

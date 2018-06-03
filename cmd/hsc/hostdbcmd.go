@@ -8,8 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const scanHistoryLen = 30
@@ -52,8 +53,7 @@ func printScoreBreakdown(info *api.HostdbHostsGET) {
 
 func hostdbcmd() {
 	if !hostdbVerbose {
-		info := new(api.HostdbActiveGET)
-		err := getAPI("/hostdb/active", info)
+		info, err := httpClient.HostDbActiveGet()
 		if err != nil {
 			die("Could not fetch host list:", err)
 		}
@@ -76,8 +76,7 @@ func hostdbcmd() {
 		}
 		w.Flush()
 	} else {
-		info := new(api.HostdbAllGET)
-		err := getAPI("/hostdb/all", info)
+		info, err := httpClient.HostDbAllGet()
 		if err != nil {
 			die("Could not fetch host list:", err)
 		}
@@ -113,7 +112,7 @@ func hostdbcmd() {
 		fmt.Println()
 		fmt.Println(len(offlineHosts), "Offline Hosts:")
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "\t\tPubkey\tAddress\tUptime\tPrice (/ TB / Month)\tDownload Price (/ TB)\tRecent Scans")
+		fmt.Fprintln(w, "\t\tPubkey\tAddress\tPrice (/ TB / Month)\tDownload Price (/ TB)\tUptime\tRecent Scans")
 		for i, host := range offlineHosts {
 			// Compute the total measured uptime and total measured downtime for this
 			// host.
@@ -153,7 +152,8 @@ func hostdbcmd() {
 			// recent scans.
 			price := host.StoragePrice.Mul(modules.BlockBytesPerMonthTerabyte)
 			downloadBWPrice := host.StoragePrice.Mul(modules.BytesPerTerabyte)
-			fmt.Fprintf(w, "\t%v:\t%v\t%v\t%v\t%v\t%.3f\t%s\n", len(offlineHosts)-i, host.PublicKeyString, host.NetAddress, currencyUnits(price), currencyUnits(downloadBWPrice), uptimeRatio, scanHistStr)
+			fmt.Fprintf(w, "\t%v:\t%v\t%v\t%v\t%v\t%.3f\t%s\n", len(offlineHosts)-i, host.PublicKeyString,
+				host.NetAddress, currencyUnits(price), currencyUnits(downloadBWPrice), uptimeRatio, scanHistStr)
 		}
 		w.Flush()
 
@@ -209,8 +209,7 @@ func hostdbcmd() {
 		referenceScore := big.NewRat(1, 1)
 		if len(activeHosts) > 0 {
 			referenceIndex := len(activeHosts) / 5
-			hostInfo := new(api.HostdbHostsGET)
-			err := getAPI("/hostdb/hosts/"+activeHosts[referenceIndex].PublicKeyString, hostInfo)
+			hostInfo, err := httpClient.HostDbHostsGet(activeHosts[referenceIndex].PublicKey)
 			if err != nil {
 				die("Could not fetch provided host:", err)
 			}
@@ -260,8 +259,7 @@ func hostdbcmd() {
 			}
 
 			// Grab the score information for the active hosts.
-			hostInfo := new(api.HostdbHostsGET)
-			err := getAPI("/hostdb/hosts/"+host.PublicKeyString, hostInfo)
+			hostInfo, err := httpClient.HostDbHostsGet(host.PublicKey)
 			if err != nil {
 				die("Could not fetch provided host:", err)
 			}
@@ -276,8 +274,9 @@ func hostdbcmd() {
 }
 
 func hostdbviewcmd(pubkey string) {
-	info := new(api.HostdbHostsGET)
-	err := getAPI("/hostdb/hosts/"+pubkey, info)
+	var publicKey types.SiaPublicKey
+	publicKey.LoadString(pubkey)
+	info, err := httpClient.HostDbHostsGet(publicKey)
 	if err != nil {
 		die("Could not fetch provided host:", err)
 	}
@@ -300,7 +299,7 @@ func hostdbviewcmd(pubkey string) {
 	fmt.Fprintln(w, "\t\tVersion:\t", info.Entry.Version)
 	w.Flush()
 
-	printScoreBreakdown(info)
+	printScoreBreakdown(&info)
 
 	// Compute the total measured uptime and total measured downtime for this
 	// host.

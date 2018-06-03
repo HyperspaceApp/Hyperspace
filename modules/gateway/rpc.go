@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // rpcID is an 8-byte signature that is added to all RPCs to tell the gatway

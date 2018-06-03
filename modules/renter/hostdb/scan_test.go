@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestUpdateEntry checks that the various components of updateEntry are
@@ -15,7 +15,7 @@ func TestUpdateEntry(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	hdbt, err := newHDBTesterDeps(t.Name(), disableScanLoopDeps{})
+	hdbt, err := newHDBTesterDeps(t.Name(), &disableScanLoopDeps{})
 	if err != nil {
 		t.Fatal(err)
 	}

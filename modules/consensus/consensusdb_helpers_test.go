@@ -4,8 +4,8 @@ package consensus
 // compatibility with the test suite.
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )

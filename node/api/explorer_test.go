@@ -3,7 +3,7 @@ package api
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestIntegrationExplorerGET probes the GET call to /explorer.

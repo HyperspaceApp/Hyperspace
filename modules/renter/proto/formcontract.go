@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -98,7 +98,11 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 
 	// Create initial transaction set.
 	txn, parentTxns := txnBuilder.View()
-	txnSet := append(parentTxns, txn)
+	unconfirmedParents, err := txnBuilder.UnconfirmedParents()
+	if err != nil {
+		return modules.RenterContract{}, err
+	}
+	txnSet := append(unconfirmedParents, append(parentTxns, txn)...)
 
 	// Increase Successful/Failed interactions accordingly
 	defer func() {
@@ -270,6 +274,10 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 		ContractFee: host.ContractPrice,
 		TxnFee:      txnFee,
 		SiafundFee:  types.Tax(startHeight, fc.Payout),
+		Utility: modules.ContractUtility{
+			GoodForUpload: true,
+			GoodForRenew:  true,
+		},
 	}
 
 	// Add contract to set.

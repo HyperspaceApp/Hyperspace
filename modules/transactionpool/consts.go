@@ -3,9 +3,9 @@ package transactionpool
 import (
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // Consts related to the persisting structures of the transactoin pool.

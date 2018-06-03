@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -600,7 +600,7 @@ func TestConnectRejectsVersions(t *testing.T) {
 		{
 			version:         minimumAcceptablePeerVersion,
 			msg:             "Connect should not succeed when peer is connecting to itself",
-			uniqueID:        g.id,
+			uniqueID:        g.staticId,
 			genesisID:       types.GenesisID,
 			errWant:         errOurAddress.Error(),
 			localErrWant:    errOurAddress.Error(),

@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -82,6 +82,14 @@ var (
 // sectors are being stored in the folder. What sectors are being stored is
 // managed by the contract manager's sectorLocations map.
 type storageFolder struct {
+	// mu needs to be RLocked to safetly write new sectors into the storage
+	// folder. mu needs to be Locked when the folder is being added, removed,
+	// or resized.
+	//
+	// NOTE: this field must come first in the struct to ensure proper
+	// alignment.
+	mu sync.TryRWMutex
+
 	// Progress statistics that can be reported to the user. Typically for long
 	// running actions like adding or resizing a storage folder.
 	atomicProgressNumerator   uint64
@@ -113,16 +121,11 @@ type storageFolder struct {
 	availableSectors map[sectorID]uint32
 	sectors          uint64
 
-	// mu needs to be RLocked to safetly write new sectors into the storage
-	// folder. mu needs to be Locked when the folder is being added, removed,
-	// or resized.
-	mu sync.TryRWMutex
-
 	// An open file handle is kept so that writes can easily be made to the
 	// storage folder without needing to grab a new file handle. This also
 	// makes it easy to do delayed-syncing.
-	metadataFile file
-	sectorFile   file
+	metadataFile modules.File
+	sectorFile   modules.File
 }
 
 // mostSignificantBit returns the index of the most significant bit of an input
@@ -282,7 +285,7 @@ func (cm *ContractManager) availableStorageFolders() []*storageFolder {
 // if they have been mounted or restored by the user.
 func (cm *ContractManager) threadedFolderRecheck() {
 	// Don't spawn the loop if 'noRecheck' disruption is set.
-	if cm.dependencies.disrupt("noRecheck") {
+	if cm.dependencies.Disrupt("noRecheck") {
 		return
 	}
 
@@ -301,8 +304,8 @@ func (cm *ContractManager) threadedFolderRecheck() {
 		for _, sf := range cm.storageFolders {
 			if atomic.LoadUint64(&sf.atomicUnavailable) == 1 {
 				var err1, err2 error
-				sf.metadataFile, err1 = cm.dependencies.openFile(filepath.Join(sf.path, metadataFile), os.O_RDWR, 0700)
-				sf.sectorFile, err2 = cm.dependencies.openFile(filepath.Join(sf.path, sectorFile), os.O_RDWR, 0700)
+				sf.metadataFile, err1 = cm.dependencies.OpenFile(filepath.Join(sf.path, metadataFile), os.O_RDWR, 0700)
+				sf.sectorFile, err2 = cm.dependencies.OpenFile(filepath.Join(sf.path, sectorFile), os.O_RDWR, 0700)
 				if err1 == nil && err2 == nil {
 					// The storage folder has been found, and loading can be
 					// completed.

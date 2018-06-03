@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // TestRemoveStorageFolder tries removing a storage folder that has no sectors

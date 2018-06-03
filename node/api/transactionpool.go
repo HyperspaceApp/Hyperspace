@@ -6,10 +6,10 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 type (
@@ -124,7 +124,12 @@ func (api *API) tpoolConfirmedGET(w http.ResponseWriter, req *http.Request, ps h
 		WriteError(w, Error{"error decoding transaction id:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
+	confirmed, err := api.tpool.TransactionConfirmed(txid)
+	if err != nil {
+		WriteError(w, Error{"error fetching transaction status:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
 	WriteJSON(w, TpoolConfirmedGET{
-		Confirmed: api.tpool.TransactionConfirmed(txid),
+		Confirmed: confirmed,
 	})
 }

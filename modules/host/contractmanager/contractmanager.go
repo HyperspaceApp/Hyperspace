@@ -30,10 +30,11 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 )
 
 // ContractManager is responsible for managing contracts that the host has with
@@ -93,11 +94,11 @@ type ContractManager struct {
 	lockedSectors map[sectorID]*sectorLock
 
 	// Utilities.
-	dependencies
-	log        *persist.Logger
-	persistDir string
-	tg         siasync.ThreadGroup
-	wal        writeAheadLog
+	dependencies modules.Dependencies
+	log          *persist.Logger
+	persistDir   string
+	tg           siasync.ThreadGroup
+	wal          writeAheadLog
 }
 
 // Close will cleanly shutdown the contract manager.
@@ -107,7 +108,7 @@ func (cm *ContractManager) Close() error {
 
 // newContractManager returns a contract manager that is ready to be used with
 // the provided dependencies.
-func newContractManager(dependencies dependencies, persistDir string) (*ContractManager, error) {
+func newContractManager(dependencies modules.Dependencies, persistDir string) (*ContractManager, error) {
 	cm := &ContractManager{
 		storageFolders:  make(map[uint16]*storageFolder),
 		sectorLocations: make(map[sectorID]sectorLocation),
@@ -118,10 +119,8 @@ func newContractManager(dependencies dependencies, persistDir string) (*Contract
 		persistDir:   persistDir,
 	}
 	cm.wal.cm = cm
-
-	dependencies.init()
 	cm.tg.AfterStop(func() {
-		dependencies.destruct()
+		dependencies.Destruct()
 	})
 
 	// Perform clean shutdown of already-initialized features if startup fails.
@@ -135,13 +134,13 @@ func newContractManager(dependencies dependencies, persistDir string) (*Contract
 	}()
 
 	// Create the perist directory if it does not yet exist.
-	err = dependencies.mkdirAll(cm.persistDir, 0700)
+	err = dependencies.MkdirAll(cm.persistDir, 0700)
 	if err != nil {
 		return nil, build.ExtendErr("error while creating the persist directory for the contract manager", err)
 	}
 
 	// Logger is always the first thing initialized.
-	cm.log, err = dependencies.newLogger(filepath.Join(cm.persistDir, logFile))
+	cm.log, err = dependencies.NewLogger(filepath.Join(cm.persistDir, logFile))
 	if err != nil {
 		return nil, build.ExtendErr("error while creating the logger for the contract manager", err)
 	}
@@ -214,7 +213,7 @@ func newContractManager(dependencies dependencies, persistDir string) (*Contract
 	go cm.threadedFolderRecheck()
 
 	// Simulate an error to make sure the cleanup code is triggered correctly.
-	if cm.dependencies.disrupt("erroredStartup") {
+	if cm.dependencies.Disrupt("erroredStartup") {
 		err = errors.New("startup disrupted")
 		return nil, err
 	}
@@ -223,5 +222,5 @@ func newContractManager(dependencies dependencies, persistDir string) (*Contract
 
 // New returns a new ContractManager.
 func New(persistDir string) (*ContractManager, error) {
-	return newContractManager(new(productionDependencies), persistDir)
+	return newContractManager(new(modules.ProductionDependencies), persistDir)
 }

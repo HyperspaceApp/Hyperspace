@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 const (

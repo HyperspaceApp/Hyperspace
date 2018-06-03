@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -249,7 +249,10 @@ func (m *Miner) Close() error {
 // checkAddress checks that the miner has an address, fetching an address from
 // the wallet if not.
 func (m *Miner) checkAddress() error {
-	addrs := m.wallet.AllAddresses()
+	addrs, err := m.wallet.AllAddresses()
+	if err != nil {
+		return err
+	}
 	hasAddr := false
 	for _, addr := range addrs {
 		if m.persist.Address == addr {

@@ -3,8 +3,8 @@ package miner
 import (
 	"sort"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // addMapElementTxns places the splitSet from a mapElement into the correct

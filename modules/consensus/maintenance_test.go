@@ -6,8 +6,8 @@ import (
 
 	"github.com/coreos/bbolt"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // TestApplyMinerPayouts probes the applyMinerPayouts method of the consensus

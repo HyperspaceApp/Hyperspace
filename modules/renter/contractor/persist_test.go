@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/proto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // memPersist implements the persister interface in-memory.
@@ -63,7 +63,7 @@ func TestSaveLoad(t *testing.T) {
 	}
 
 	// use stdPersist instead of mock
-	c.persist = newPersist(build.TempDir("contractor", t.Name()))
+	c.persist = NewPersist(build.TempDir("contractor", t.Name()))
 	os.MkdirAll(build.TempDir("contractor", t.Name()), 0700)
 
 	// save, clear, and reload
@@ -115,7 +115,7 @@ func TestConvertPersist(t *testing.T) {
 
 	// load the persist
 	var p contractorPersist
-	err = newPersist(dir).load(&p)
+	err = NewPersist(dir).load(&p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestConvertPersist(t *testing.T) {
 	}
 
 	// load the contracts
-	cs, err := proto.NewContractSet(filepath.Join(dir, "contracts"))
+	cs, err := proto.NewContractSet(filepath.Join(dir, "contracts"), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}

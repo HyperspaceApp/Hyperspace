@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // TestCheckBuildConstants checks that the required build constants have been

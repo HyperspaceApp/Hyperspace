@@ -4,14 +4,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -69,7 +69,10 @@ func (cst *consensusSetTester) addSiafunds() {
 	}
 
 	// Check that the siafunds made it to the wallet.
-	_, siafundBalance, _ := cst.wallet.ConfirmedBalance()
+	_, siafundBalance, _, err := cst.wallet.ConfirmedBalance()
+	if err != nil {
+		panic(err)
+	}
 	if !siafundBalance.Equals64(1e3) {
 		panic("wallet does not have the siafunds")
 	}
@@ -88,7 +91,7 @@ func (cst *consensusSetTester) mineSiacoins() {
 
 // blankConsensusSetTester creates a consensusSetTester that has only the
 // genesis block.
-func blankConsensusSetTester(name string) (*consensusSetTester, error) {
+func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensusSetTester, error) {
 	testdir := build.TempDir(modules.ConsensusDir, name)
 
 	// Create modules.
@@ -96,7 +99,7 @@ func blankConsensusSetTester(name string) (*consensusSetTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := NewCustomConsensusSet(g, false, filepath.Join(testdir, modules.ConsensusDir), deps)
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +143,7 @@ func blankConsensusSetTester(name string) (*consensusSetTester, error) {
 // createConsensusSetTester creates a consensusSetTester that's ready for use,
 // including siacoins and siafunds available in the wallet.
 func createConsensusSetTester(name string) (*consensusSetTester, error) {
-	cst, err := blankConsensusSetTester(name)
+	cst, err := blankConsensusSetTester(name, modules.ProdDependencies)
 	if err != nil {
 		return nil, err
 	}

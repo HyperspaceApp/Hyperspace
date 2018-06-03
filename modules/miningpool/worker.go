@@ -5,20 +5,32 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/persist"
 )
 
+type ShareRecord struct {
+	jobID             uint32
+	extraNonce2       string
+	ntime             string
+	nonce             string
+	nonce1            string
+}
+
 type WorkerRecord struct {
-	workerID          uint64
 	name              string
+	accountID         uint32
+	workerID          int64
+	remoteID          uint32
+
 	averageDifficulty float64
+	shareDifficulty   float64
+
 	blocksFound       uint64
 	parent            *Client
 }
 
-//
-// A Worker is an instance of one miner.  A Client often represents a user and the worker represents a single miner.  There
-// is a one to many client worker relationship
+// A Worker is an instance of one miner.  A Client often represents a user and the
+// worker represents a single miner.  There is a one to many client worker relationship
 //
 type Worker struct {
 	mu sync.RWMutex
@@ -30,19 +42,20 @@ type Worker struct {
 
 func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 	p := c.Pool()
-	id := p.newStratumID()
+	// id := p.newStratumID()
 	w := &Worker{
 		wr: WorkerRecord{
-			workerID: id(),
+			// workerID: id(),
 			name:     name,
 			parent:   c,
 		},
 		s: s,
 	}
 
-	// check if this worker instance is an oiginal or copy
+	// check if this worker instance is an original or copy
 	if c.Worker(name) != nil {
-		return w, nil
+		//return w, nil
+		return c.Worker(name), nil
 	}
 
 	var err error
@@ -65,7 +78,7 @@ func (w *Worker) printID() string {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	return sPrintID(w.wr.workerID)
+	return ssPrintID(w.wr.workerID)
 }
 
 func (w *Worker) Name() string {
@@ -107,32 +120,17 @@ func (w *Worker) SetSession(s *Session) {
 	w.s = s
 }
 
-func (w *Worker) SharesThisBlock() uint64 {
-	return w.s.Shift().Shares()
-	// return w.getUint64Field("Shares")
-}
+// func (w *Worker) SharesThisBlock() uint64 {
+// 	return w.s.Shift().Shares()
+// 	// return w.getUint64Field("Shares")
+// }
 
 func (w *Worker) IncrementShares(currentDifficulty float64) {
-	w.s.Shift().IncrementShares()
-	w.s.Shift().IncrementCumulativeDifficulty(currentDifficulty)
-}
-
-func (w *Worker) InvalidShares() uint64 {
-	return w.s.Shift().Invalid()
-	// return w.getUint64Field("InvalidShares")
+	w.s.Shift().IncrementShares(currentDifficulty)
 }
 
 func (w *Worker) IncrementInvalidShares() {
 	w.s.Shift().IncrementInvalid()
-}
-
-func (w *Worker) StaleShares() uint64 {
-	return w.s.Shift().Stale()
-	// return w.getUint64Field("StaleShares")
-}
-
-func (w *Worker) IncrementStaleShares() {
-	w.s.Shift().IncrementStale()
 }
 
 func (w *Worker) SetLastShareTime(t time.Time) {
@@ -154,10 +152,10 @@ func (w *Worker) IncrementBlocksFound() {
 	w.updateWorkerRecord()
 }
 
-func (w *Worker) CumulativeDifficulty() float64 {
-	return w.s.Shift().CumulativeDifficulty()
-	// return w.getFloatField("CumulativeDifficulty")
-}
+// func (w *Worker) CumulativeDifficulty() float64 {
+// 	return w.s.Shift().CumulativeDifficulty()
+// 	// return w.getFloatField("CumulativeDifficulty")
+// }
 
 // CurrentDifficulty returns the average difficulty of all instances of this worker
 func (w *Worker) CurrentDifficulty() float64 {

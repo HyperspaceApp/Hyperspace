@@ -3,9 +3,10 @@ package wallet
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
@@ -90,7 +91,7 @@ func TestScanLoop(t *testing.T) {
 	}
 
 	// create a wallet
-	wt, err := createWalletTester("TestScanLoop", &ProductionDependencies{})
+	wt, err := createWalletTester("TestScanLoop", modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}

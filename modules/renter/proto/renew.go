@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // Renew negotiates a new contract for data already stored with a host, and
@@ -97,9 +97,13 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	// add miner fee
 	txnBuilder.AddMinerFee(txnFee)
 
-	// create initial transaction set
+	// Create initial transaction set.
 	txn, parentTxns := txnBuilder.View()
-	txnSet := append(parentTxns, txn)
+	unconfirmedParents, err := txnBuilder.UnconfirmedParents()
+	if err != nil {
+		return modules.RenterContract{}, err
+	}
+	txnSet := append(unconfirmedParents, append(parentTxns, txn)...)
 
 	// Increase Successful/Failed interactions accordingly
 	defer func() {
@@ -270,17 +274,28 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 
 	// Construct contract header.
 	header := contractHeader{
-		Transaction: revisionTxn,
-		SecretKey:   ourSK,
-		StartHeight: startHeight,
-		TotalCost:   funding,
-		ContractFee: host.ContractPrice,
-		TxnFee:      txnFee,
-		SiafundFee:  types.Tax(startHeight, fc.Payout),
+		Transaction:     revisionTxn,
+		SecretKey:       ourSK,
+		StartHeight:     startHeight,
+		TotalCost:       funding,
+		ContractFee:     host.ContractPrice,
+		TxnFee:          txnFee,
+		SiafundFee:      types.Tax(startHeight, fc.Payout),
+		StorageSpending: basePrice,
+		Utility: modules.ContractUtility{
+			GoodForUpload: true,
+			GoodForRenew:  true,
+		},
+	}
+
+	// Get old roots
+	oldRoots, err := oldContract.merkleRoots.merkleRoots()
+	if err != nil {
+		return modules.RenterContract{}, err
 	}
 
 	// Add contract to set.
-	meta, err := cs.managedInsertContract(header, oldContract.merkleRoots)
+	meta, err := cs.managedInsertContract(header, oldRoots)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}

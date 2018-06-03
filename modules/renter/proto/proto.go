@@ -3,9 +3,9 @@ package proto
 import (
 	"fmt"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // Dependencies.
@@ -19,6 +19,7 @@ type (
 		AddTransactionSignature(types.TransactionSignature) uint64
 		FundSiacoins(types.Currency) error
 		Sign(bool) ([]types.Transaction, error)
+		UnconfirmedParents() ([]types.Transaction, error)
 		View() (types.Transaction, []types.Transaction)
 		ViewAdded() (parents, coins, funds, signatures []int)
 	}

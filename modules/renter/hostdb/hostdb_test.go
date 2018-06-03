@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/hostdb/hosttree"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb/hosttree"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // hdbTester contains a hostdb and all dependencies.
@@ -62,12 +62,12 @@ func makeHostDBEntry() modules.HostDBEntry {
 // newHDBTester returns a tester object wrapping a HostDB and some extra
 // information for testing.
 func newHDBTester(name string) (*hdbTester, error) {
-	return newHDBTesterDeps(name, prodDependencies{})
+	return newHDBTesterDeps(name, modules.ProdDependencies)
 }
 
 // newHDBTesterDeps returns a tester object wrapping a HostDB and some extra
 // information for testing, using the provided dependencies for the hostdb.
-func newHDBTesterDeps(name string, deps dependencies) (*hdbTester, error) {
+func newHDBTesterDeps(name string, deps modules.Dependencies) (*hdbTester, error) {
 	if testing.Short() {
 		panic("should not be calling newHDBTester during short tests")
 	}
@@ -93,7 +93,7 @@ func newHDBTesterDeps(name string, deps dependencies) (*hdbTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	hdb, err := newHostDB(g, cs, filepath.Join(testDir, modules.RenterDir), deps)
+	hdb, err := NewCustomHostDB(g, cs, filepath.Join(testDir, modules.RenterDir), deps)
 	if err != nil {
 		return nil, err
 	}
@@ -200,11 +200,11 @@ func TestNew(t *testing.T) {
 
 // quitAfterLoadDeps will quit startup in newHostDB
 type disableScanLoopDeps struct {
-	prodDependencies
+	modules.ProductionDependencies
 }
 
 // Send a disrupt signal to the quitAfterLoad codebreak.
-func (disableScanLoopDeps) disrupt(s string) bool {
+func (*disableScanLoopDeps) Disrupt(s string) bool {
 	if s == "disableScanLoop" {
 		return true
 	}
@@ -216,7 +216,7 @@ func TestRandomHosts(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	hdbt, err := newHDBTesterDeps(t.Name(), disableScanLoopDeps{})
+	hdbt, err := newHDBTesterDeps(t.Name(), &disableScanLoopDeps{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,10 @@ func TestRandomHosts(t *testing.T) {
 
 	// Check that all hosts can be queried.
 	for i := 0; i < 25; i++ {
-		hosts := hdbt.hdb.RandomHosts(nEntries, nil)
+		hosts, err := hdbt.hdb.RandomHosts(nEntries, nil)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(hosts) != nEntries {
 			t.Errorf("RandomHosts returned few entries. got %v wanted %v\n", len(hosts), nEntries)
 		}
@@ -254,7 +257,10 @@ func TestRandomHosts(t *testing.T) {
 
 	// Base case, fill out a map exposing hosts from a single RH query.
 	dupCheck1 := make(map[string]modules.HostDBEntry)
-	hosts := hdbt.hdb.RandomHosts(nEntries/2, nil)
+	hosts, err := hdbt.hdb.RandomHosts(nEntries/2, nil)
+	if err != nil {
+		t.Fatal("Failed to get hosts", err)
+	}
 	if len(hosts) != nEntries/2 {
 		t.Fatalf("RandomHosts returned few entries. got %v wanted %v\n", len(hosts), nEntries/2)
 	}
@@ -275,7 +281,10 @@ func TestRandomHosts(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		dupCheck2 := make(map[string]modules.HostDBEntry)
 		var overlap, disjoint bool
-		hosts = hdbt.hdb.RandomHosts(nEntries/2, nil)
+		hosts, err = hdbt.hdb.RandomHosts(nEntries/2, nil)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(hosts) != nEntries/2 {
 			t.Fatalf("RandomHosts returned few entries. got %v wanted %v\n", len(hosts), nEntries/2)
 		}
@@ -306,12 +315,18 @@ func TestRandomHosts(t *testing.T) {
 	// Try exclude list by excluding every host except for the last one, and
 	// doing a random select.
 	for i := 0; i < 25; i++ {
-		hosts := hdbt.hdb.RandomHosts(nEntries, nil)
+		hosts, err := hdbt.hdb.RandomHosts(nEntries, nil)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		var exclude []types.SiaPublicKey
 		for j := 1; j < len(hosts); j++ {
 			exclude = append(exclude, hosts[j].PublicKey)
 		}
-		rand := hdbt.hdb.RandomHosts(1, exclude)
+		rand, err := hdbt.hdb.RandomHosts(1, exclude)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(rand) != 1 {
 			t.Fatal("wrong number of hosts returned")
 		}
@@ -320,7 +335,10 @@ func TestRandomHosts(t *testing.T) {
 		}
 
 		// Try again but request more hosts than are available.
-		rand = hdbt.hdb.RandomHosts(5, exclude)
+		rand, err = hdbt.hdb.RandomHosts(5, exclude)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(rand) != 1 {
 			t.Fatal("wrong number of hosts returned")
 		}
@@ -339,7 +357,10 @@ func TestRandomHosts(t *testing.T) {
 
 		// Select only 20 hosts.
 		dupCheck := make(map[string]struct{})
-		rand = hdbt.hdb.RandomHosts(20, exclude)
+		rand, err = hdbt.hdb.RandomHosts(20, exclude)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(rand) != 20 {
 			t.Error("random hosts is returning the wrong number of hosts")
 		}
@@ -357,7 +378,10 @@ func TestRandomHosts(t *testing.T) {
 
 		// Select exactly 50 hosts.
 		dupCheck = make(map[string]struct{})
-		rand = hdbt.hdb.RandomHosts(50, exclude)
+		rand, err = hdbt.hdb.RandomHosts(50, exclude)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(rand) != 50 {
 			t.Error("random hosts is returning the wrong number of hosts")
 		}
@@ -375,7 +399,10 @@ func TestRandomHosts(t *testing.T) {
 
 		// Select 100 hosts.
 		dupCheck = make(map[string]struct{})
-		rand = hdbt.hdb.RandomHosts(100, exclude)
+		rand, err = hdbt.hdb.RandomHosts(100, exclude)
+		if err != nil {
+			t.Fatal("Failed to get hosts", err)
+		}
 		if len(rand) != 50 {
 			t.Error("random hosts is returning the wrong number of hosts")
 		}
@@ -420,7 +447,7 @@ func TestUpdateHistoricInteractions(t *testing.T) {
 
 	// create a HostDB tester without scanloop to be able to manually increment
 	// the interactions without interference.
-	hdbt, err := newHDBTesterDeps(t.Name(), disableScanLoopDeps{})
+	hdbt, err := newHDBTesterDeps(t.Name(), &disableScanLoopDeps{})
 	if err != nil {
 		t.Fatal(err)
 	}

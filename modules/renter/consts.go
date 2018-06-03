@@ -3,10 +3,60 @@ package renter
 import (
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+)
+
+var (
+	// defaultMemory establishes the default amount of memory that the renter
+	// will use when performing uploads and downloads. The mapping is currently
+	// not perfect due to GC overhead and other places where we don't count all
+	// of the memory usage accurately.
+	defaultMemory = build.Select(build.Var{
+		Dev:      uint64(1 << 28),     // 256 MiB
+		Standard: uint64(3 * 1 << 28), // 768 MiB
+		Testing:  uint64(1 << 17),     // 128 KiB - 4 KiB sector size, need to test memory exhaustion
+	}).(uint64)
+)
+
+var (
+	// defaultDataPieces is the number of data pieces per erasure-coded chunk
+	defaultDataPieces = func() int {
+		switch build.Release {
+		case "dev":
+			return 1
+		case "standard":
+			return 10
+		case "testing":
+			return 1
+		}
+		panic("undefined defaultDataPieces")
+	}()
+
+	// defaultParityPieces is the number of parity pieces per erasure-coded
+	// chunk
+	defaultParityPieces = func() int {
+		switch build.Release {
+		case "dev":
+			return 1
+		case "standard":
+			return 20
+		case "testing":
+			return 8
+		}
+		panic("undefined defaultParityPieces")
+	}()
+
+	// Erasure-coded piece size
+	pieceSize = modules.SectorSize - crypto.TwofishOverhead
 )
 
 const (
+	// persistVersion defines the Sia version that the persistence was
+	// last updated
+	persistVersion = "1.3.3"
+
 	// defaultFilePerm defines the default permissions used for a new file if no
 	// permissions are supplied.
 	defaultFilePerm = 0666
@@ -20,6 +70,22 @@ const (
 
 	// memoryPriorityHigh is used to request high priority memory
 	memoryPriorityHigh = true
+
+	// destinationTypeSeekStream is the destination type used for downloads
+	// from the /renter/stream endpoint.
+	destinationTypeSeekStream = "httpseekstream"
+
+	// DefaultStreamCacheSize is the default cache size of the /renter/stream cache in
+	// chunks, the user can set a custom cache size through the API
+	DefaultStreamCacheSize = 2
+
+	// DefaultMaxDownloadSpeed is set to zero to indicate no limit, the user
+	// can set a custom MaxDownloadSpeed through the API
+	DefaultMaxDownloadSpeed = 0
+
+	// DefaultMaxUploadSpeed is set to zero to indicate no limit, the user
+	// can set a custom MaxUploadSpeed through the API
+	DefaultMaxUploadSpeed = 0
 )
 
 var (
@@ -32,17 +98,8 @@ var (
 		Testing:  1 * time.Minute,
 	}).(time.Duration)
 
-	// defaultMemory establishes the default amount of memory that the renter
-	// will use when performing uploads and downloads. Const should be a factor
-	// of 4 MiB, since most operations will be on data pieces that are 4 MiB
-	// each.
-	defaultMemory = build.Select(build.Var{
-		Dev:      uint64(1 << 28),     // 256 MiB
-		Standard: uint64(3 * 1 << 28), // 768 MiB
-		Testing:  uint64(1 << 17),     // 128 KiB - 4 KiB sector size, need to test memory exhaustion
-	}).(uint64)
-
-	// Limit the number of doublings to prevent overflows.
+	// maxConsecutivePenalty determines how many times the timeout/cooldown for
+	// being a bad host can be doubled before a maximum cooldown is reached.
 	maxConsecutivePenalty = build.Select(build.Var{
 		Dev:      4,
 		Standard: 10,
@@ -73,6 +130,14 @@ var (
 		Standard: 15 * time.Minute,
 		Testing:  3 * time.Second,
 	}).(time.Duration)
+
+	// RemoteRepairDownloadThreshold defines the threshold in percent under
+	// which the renter starts repairing a file that is not available on disk.
+	RemoteRepairDownloadThreshold = build.Select(build.Var{
+		Dev:      0.25,
+		Standard: 0.25,
+		Testing:  0.25,
+	}).(float64)
 
 	// Prime to avoid intersecting with regular events.
 	uploadFailureCooldown = build.Select(build.Var{

@@ -29,12 +29,14 @@ func (w *worker) managedDownload(udc *unfinishedDownloadChunk) {
 	// unregistered with the chunk.
 	d, err := w.renter.hostContractor.Downloader(w.contract.ID, w.renter.tg.StopChan())
 	if err != nil {
+		w.renter.log.Debugln("worker failed to create downloader:", err)
 		udc.managedUnregisterWorker(w)
 		return
 	}
 	defer d.Close()
 	data, err := d.Sector(udc.staticChunkMap[w.contract.ID].root)
 	if err != nil {
+		w.renter.log.Debugln("worker failed to download sector:", err)
 		udc.managedUnregisterWorker(w)
 		return
 	}
@@ -43,7 +45,7 @@ func (w *worker) managedDownload(udc *unfinishedDownloadChunk) {
 	// in. Perhaps even include the data from creating the downloader and other
 	// data sent to and received from the host (like signatures) that aren't
 	// actually payload data.
-	atomic.AddUint64(&udc.download.atomicTotalDataTransfered, udc.staticPieceSize)
+	atomic.AddUint64(&udc.download.atomicTotalDataTransferred, udc.staticPieceSize)
 
 	// Mark the piece as completed. Perform chunk recovery if we newly have
 	// enough pieces to do so. Chunk recovery is an expensive operation that

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
 // TestSaveLoadJSON creates a simple object and then tries saving and loading

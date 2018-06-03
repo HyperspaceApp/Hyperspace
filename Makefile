@@ -1,6 +1,13 @@
-# all will build and install developer binaries, which have debugging enabled
-# and much faster mining and block constants.
-all: release-std
+# These variables get inserted into ./build/commit.go
+BUILD_TIME=$(shell date)
+GIT_REVISION=$(shell git rev-parse --short HEAD)
+GIT_DIRTY=$(shell git diff-index --quiet HEAD -- || echo "✗-")
+
+ldflags= -X github.com/HyperspaceApp/Hyperspace/build.GitRevision=${GIT_DIRTY}${GIT_REVISION} \
+-X "github.com/HyperspaceApp/Hyperspace/build.BuildTime=${BUILD_TIME}"
+
+# all will build and install release binaries
+all: release
 
 # dependencies installs all of the dependencies that are required for building
 # Sia.
@@ -16,6 +23,7 @@ dependencies:
 	go get -u github.com/NebulousLabs/entropy-mnemonics
 	go get -u github.com/NebulousLabs/errors
 	go get -u github.com/NebulousLabs/go-upnp
+	go get -u github.com/NebulousLabs/ratelimit
 	go get -u github.com/NebulousLabs/threadgroup
 	go get -u github.com/NebulousLabs/writeaheadlog
 	go get -u github.com/klauspost/reedsolomon
@@ -29,8 +37,9 @@ dependencies:
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
 	go get -u github.com/spf13/viper
+	go get -u github.com/inconshreveable/mousetrap
 	# Developer Dependencies
-	go install -race std
+	#go install -race std
 	go get -u github.com/client9/misspell/cmd/misspell
 	go get -u github.com/golang/lint/golint
 	go get -u github.com/NebulousLabs/glyphcheck
@@ -41,8 +50,8 @@ run = .
 pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
        ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
-       ./modules/wallet ./modules/transactionpool ./node ./node/api ./persist ./siatest ./siatest/consensus ./siatest/renter \
-       ./node/api/server ./sync ./types
+       ./modules/wallet ./modules/transactionpool ./modules/stratumminer ./node ./node/api ./persist ./siatest \
+       ./siatest/consensus ./siatest/renter ./siatest/wallet ./node/api/server ./sync ./types
 
 # fmt calls go fmt on all packages.
 fmt:
@@ -53,34 +62,35 @@ fmt:
 vet: release-std
 	go vet $(pkgs)
 
-# will always run on some packages for a while.
-lintpkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
-           ./modules/gateway ./modules/host ./modules/miner ./modules/miningpool ./modules/host/contractmanager ./modules/renter \
-           ./modules/renter/contractor ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/wallet \
-           ./modules/transactionpool ./node ./node/api ./node/api/server ./persist ./siatest ./siatest/consensus ./siatest/renter
 lint:
-	golint -min_confidence=1.0 -set_exit_status $(lintpkgs)
+	golint -min_confidence=1.0 -set_exit_status $(pkgs)
 
 # spellcheck checks for misspelled words in comments or strings.
 spellcheck:
 	misspell -error .
 
+# debug builds and installs debug binaries.
+debug:
+	go install -tags='debug profile netgo' -ldflags='$(ldflags)' $(pkgs)
+debug-race:
+	go install -race -tags='debug profile netgo' -ldflags='$(ldflags)' $(pkgs)
+
 # dev builds and installs developer binaries.
 dev:
-	go install -race -tags='dev debug profile netgo' $(pkgs)
+	go install -tags='dev debug profile netgo' -ldflags='$(ldflags)' $(pkgs)
+dev-race:
+	go install -race -tags='dev debug profile netgo' -ldflags='$(ldflags)' $(pkgs)
 
 # release builds and installs release binaries.
 release:
-	go install -tags='debug profile netgo' $(pkgs)
+	go install -tags='netgo' -a -ldflags='-s -w $(ldflags)' $(pkgs)
 release-race:
-	go install -race -tags='debug profile netgo' $(pkgs)
-release-std:
-	go install -tags 'netgo' -a -ldflags='-s -w' $(pkgs)
+	go install -race -tags='netgo' -a -ldflags='-s -w $(ldflags)' $(pkgs)
 
 # clean removes all directories that get automatically created during
 # development.
 clean:
-	rm -rf release doc/whitepaper.aux doc/whitepaper.log doc/whitepaper.pdf
+	rm -rf cover doc/whitepaper.aux doc/whitepaper.log doc/whitepaper.pdf release
 
 test:
 	go test -short -tags='debug testing netgo' -timeout=5s $(pkgs) -run=$(run)
@@ -94,16 +104,17 @@ test-cpu:
 	go test -v -tags='testing debug netgo' -timeout=500s -cpuprofile cpu.prof $(pkgs) -run=$(run)
 test-mem:
 	go test -v -tags='testing debug netgo' -timeout=500s -memprofile mem.prof $(pkgs) -run=$(run)
+test-pool:
+	go test -short -tags='testing debug pool' -timeout=60s ./modules/miningpool -run=$(run)
 bench: clean fmt
 	go test -tags='debug testing netgo' -timeout=500s -run=XXX -bench=$(run) $(pkgs)
 cover: clean
-	@mkdir -p cover/modules
-	@mkdir -p cover/modules/renter
-	@mkdir -p cover/modules/host
-	@for package in $(pkgs); do                                                                                                 \
-		go test -tags='testing debug' -timeout=500s -covermode=atomic -coverprofile=cover/$$package.out ./$$package -run=$(run) \
-		&& go tool cover -html=cover/$$package.out -o=cover/$$package.html                                                      \
-		&& rm cover/$$package.out ;                                                                                             \
+	@mkdir -p cover
+	@for package in $(pkgs); do                                                                                                          \
+		mkdir -p `dirname cover/$$package`                                                                                        \
+		&& go test -tags='testing debug netgo' -timeout=500s -covermode=atomic -coverprofile=cover/$$package.out ./$$package -run=$(run) \
+		&& go tool cover -html=cover/$$package.out -o=cover/$$package.html                                                               \
+		&& rm cover/$$package.out ;                                                                                                      \
 	done
 
 # whitepaper builds the whitepaper from whitepaper.tex. pdflatex has to be

@@ -3,10 +3,12 @@ package siatest
 import (
 	"errors"
 
-	"github.com/HyperspaceProject/Hyperspace/node"
-	"github.com/HyperspaceProject/Hyperspace/node/api/client"
-	"github.com/HyperspaceProject/Hyperspace/node/api/server"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/node"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
+	"github.com/HyperspaceApp/Hyperspace/node/api/server"
+	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/NebulousLabs/errors"
 )
 
 // TestNode is a helper struct for testing that contains a server and a client
@@ -14,7 +16,41 @@ import (
 type TestNode struct {
 	server.Server
 	client.Client
+	params      node.NodeParams
 	primarySeed string
+}
+
+// RestartNode restarts a TestNode
+func (tn *TestNode) RestartNode() error {
+	err := tn.StopNode()
+	if err != nil {
+		return errors.AddContext(err, "Could not stop node")
+	}
+	err = tn.StartNode()
+	if err != nil {
+		return errors.AddContext(err, "Could not start node")
+	}
+	return nil
+}
+
+// StartNode starts a TestNode from an active group
+func (tn *TestNode) StartNode() error {
+	userAgent := "Sia-Agent"
+	password := "password"
+
+	// Create server
+	s, err := server.New(":0", userAgent, password, tn.params)
+	if err != nil {
+		return err
+	}
+	tn.Server = *s
+
+	return nil
+}
+
+// StopNode stops a TestNode
+func (tn *TestNode) StopNode() error {
+	return errors.AddContext(tn.Close(), "failed to stop node")
 }
 
 // NewNode creates a new funded TestNode
@@ -29,7 +65,7 @@ func NewNode(nodeParams node.NodeParams) (*TestNode, error) {
 		return nil, err
 	}
 	// Fund the node
-	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
+	for i := types.BlockHeight(0); i <= types.MaturityDelay+types.TaxHardforkHeight; i++ {
 		if err := tn.MineBlock(); err != nil {
 			return nil, err
 		}
@@ -55,7 +91,7 @@ func NewCleanNode(nodeParams node.NodeParams) (*TestNode, error) {
 	c.Password = password
 
 	// Create TestNode
-	tn := &TestNode{*s, *c, ""}
+	tn := &TestNode{*s, *c, nodeParams, ""}
 
 	// Init wallet
 	wip, err := tn.WalletInitPost("", false)

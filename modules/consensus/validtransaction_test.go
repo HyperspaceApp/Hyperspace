@@ -3,9 +3,9 @@ package consensus
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 
 	"github.com/coreos/bbolt"
@@ -126,7 +126,10 @@ func TestStorageProofBoundaries(t *testing.T) {
 
 			// Create a transaction around the file contract and add it to the
 			// transaction pool.
-			b := cst.wallet.StartTransaction()
+			b, err := cst.wallet.StartTransaction()
+			if err != nil {
+				t.Fatal(err)
+			}
 			err = b.FundSiacoins(types.NewCurrency64(500))
 			if err != nil {
 				t.Fatal(err)
@@ -255,7 +258,10 @@ func TestEmptyStorageProof(t *testing.T) {
 
 			// Create a transaction around the file contract and add it to the
 			// transaction pool.
-			b := cst.wallet.StartTransaction()
+			b, err := cst.wallet.StartTransaction()
+			if err != nil {
+				t.Fatal(err)
+			}
 			err = b.FundSiacoins(types.NewCurrency64(500))
 			if err != nil {
 				t.Fatal(err)

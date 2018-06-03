@@ -4,16 +4,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/consensus"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/modules/miner"
-	"github.com/HyperspaceProject/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceProject/Hyperspace/modules/wallet"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/modules/miner"
+	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // Explorer tester struct is the helper object for explorer

@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -35,13 +35,27 @@ var (
 	// ErrNonShareSuffix is an error when the suffix of a file does not match the defined share extension
 	ErrNonShareSuffix = errors.New("suffix of file must be " + ShareExtension)
 
-	saveMetadata = persist.Metadata{
+	settingsMetadata = persist.Metadata{
 		Header:  "Renter Persistence",
-		Version: "0.4",
+		Version: persistVersion,
 	}
 
 	shareHeader  = [15]byte{'S', 'i', 'a', ' ', 'S', 'h', 'a', 'r', 'e', 'd', ' ', 'F', 'i', 'l', 'e'}
 	shareVersion = "0.4"
+
+	// Persist Version Numbers
+	persistVersion040 = "0.4"
+	persistVersion133 = "1.3.3"
+)
+
+type (
+	// persist contains all of the persistent renter data.
+	persistence struct {
+		MaxDownloadSpeed int64
+		MaxUploadSpeed   int64
+		StreamCacheSize  uint64
+		Tracking         map[string]trackedFile
+	}
 )
 
 // MarshalSia implements the encoding.SiaMarshaller interface, writing the
@@ -117,6 +131,7 @@ func (f *file) UnmarshalSia(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	f.staticUID = persist.RandomSuffix()
 
 	// Decode erasure coder.
 	var codeType string
@@ -160,6 +175,9 @@ func (f *file) UnmarshalSia(r io.Reader) error {
 
 // saveFile saves a file to the renter directory.
 func (r *Renter) saveFile(f *file) error {
+	if f.deleted {
+		return errors.New("can't save deleted file")
+	}
 	// Create directory structure specified in nickname.
 	fullPath := filepath.Join(r.persistDir, f.name+ShareExtension)
 	err := os.MkdirAll(filepath.Dir(fullPath), 0700)
@@ -186,18 +204,15 @@ func (r *Renter) saveFile(f *file) error {
 
 // saveSync stores the current renter data to disk and then syncs to disk.
 func (r *Renter) saveSync() error {
-	data := struct {
-		Tracking map[string]trackedFile
-	}{r.tracking}
-
-	return persist.SaveJSON(saveMetadata, data, filepath.Join(r.persistDir, PersistFilename))
+	return persist.SaveJSON(settingsMetadata, r.persist, filepath.Join(r.persistDir, PersistFilename))
 }
 
-// load fetches the saved renter data from disk.
-func (r *Renter) load() error {
+// loadSiaFiles walks through the directory searching for siafiles and loading
+// them into memory.
+func (r *Renter) loadSiaFiles() error {
 	// Recursively load all files found in renter directory. Errors
 	// encountered during loading are logged, but are not considered fatal.
-	err := filepath.Walk(r.persistDir, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(r.persistDir, func(path string, info os.FileInfo, err error) error {
 		// This error is non-nil if filepath.Walk couldn't stat a file or
 		// folder.
 		if err != nil {
@@ -226,24 +241,39 @@ func (r *Renter) load() error {
 		}
 		return nil
 	})
-	if err != nil {
+}
+
+// load fetches the saved renter data from disk.
+func (r *Renter) loadSettings() error {
+	r.persist = persistence{
+		Tracking: make(map[string]trackedFile),
+	}
+	err := persist.LoadJSON(settingsMetadata, &r.persist, filepath.Join(r.persistDir, PersistFilename))
+	if os.IsNotExist(err) {
+		// No persistence yet, set the defaults and continue.
+		r.persist.MaxDownloadSpeed = DefaultMaxDownloadSpeed
+		r.persist.MaxUploadSpeed = DefaultMaxUploadSpeed
+		r.persist.StreamCacheSize = DefaultStreamCacheSize
+		err = r.saveSync()
+		if err != nil {
+			return err
+		}
+	} else if err == persist.ErrBadVersion {
+		// Outdated version, try the 040 to 133 upgrade.
+		err = convertPersistVersionFrom040To133(filepath.Join(r.persistDir, PersistFilename))
+		if err != nil {
+			// Nothing left to try.
+			return err
+		}
+		// Re-load the settings now that the file has been upgraded.
+		return r.loadSettings()
+	} else if err != nil {
 		return err
 	}
 
-	// Load contracts, repair set, and entropy.
-	data := struct {
-		Tracking  map[string]trackedFile
-		Repairing map[string]string // COMPATv0.4.8
-	}{}
-	err = persist.LoadJSON(saveMetadata, &data, filepath.Join(r.persistDir, PersistFilename))
-	if err != nil {
-		return err
-	}
-	if data.Tracking != nil {
-		r.tracking = data.Tracking
-	}
-
-	return nil
+	// Set the bandwidth limits on the contractor, which was already initialized
+	// without bandwidth limits.
+	return r.setBandwidthLimits(r.persist.MaxDownloadSpeed, r.persist.MaxUploadSpeed)
 }
 
 // shareFiles writes the specified files to w. First a header is written,
@@ -412,11 +442,13 @@ func (r *Renter) initPersist() error {
 	}
 
 	// Load the prior persistence structures.
-	err = r.load()
-	if err != nil && !os.IsNotExist(err) {
+	err = r.loadSettings()
+	if err != nil {
 		return err
 	}
-	return nil
+
+	// Load the siafiles into memory.
+	return r.loadSiaFiles()
 }
 
 // LoadSharedFiles loads a .sia file into the renter. It returns the nicknames
@@ -441,4 +473,26 @@ func (r *Renter) LoadSharedFilesASCII(asciiSia string) ([]string, error) {
 
 	dec := base64.NewDecoder(base64.URLEncoding, bytes.NewBufferString(asciiSia))
 	return r.loadSharedFiles(dec)
+}
+
+// convertPersistVersionFrom040to133 upgrades a legacy persist file to the next
+// version, adding new fields with their default values.
+func convertPersistVersionFrom040To133(path string) error {
+	metadata := persist.Metadata{
+		Header:  settingsMetadata.Header,
+		Version: persistVersion040,
+	}
+	p := persistence{
+		Tracking: make(map[string]trackedFile),
+	}
+
+	err := persist.LoadJSON(metadata, &p, path)
+	if err != nil {
+		return err
+	}
+	metadata.Version = persistVersion133
+	p.MaxDownloadSpeed = DefaultMaxDownloadSpeed
+	p.MaxUploadSpeed = DefaultMaxUploadSpeed
+	p.StreamCacheSize = DefaultStreamCacheSize
+	return persist.SaveJSON(metadata, p, path)
 }

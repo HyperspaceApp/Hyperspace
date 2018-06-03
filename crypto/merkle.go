@@ -3,7 +3,7 @@ package crypto
 import (
 	"bytes"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 
 	"github.com/NebulousLabs/merkletree"
 )
@@ -80,6 +80,12 @@ func (ct *CachedMerkleTree) Prove(base []byte, cachedHashSet []Hash) []Hash {
 // safety of only accepting a hash.
 func (ct *CachedMerkleTree) Push(h Hash) {
 	ct.CachedTree.Push(h[:])
+}
+
+// PushSubTree is a redefinition of merkletree.CachedTree.PushSubTree, with the
+// added type safety of only accepting a hash.
+func (ct *CachedMerkleTree) PushSubTree(height int, h Hash) error {
+	return ct.CachedTree.PushSubTree(height, h[:])
 }
 
 // Root is a redefinition of merkletree.CachedTree.Root, returning a Hash

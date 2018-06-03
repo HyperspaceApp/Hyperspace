@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 )
 
 // BenchmarkEncodeEmptyBlock benchmarks encoding an empty block.

@@ -6,8 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/HyperspaceProject/Hyperspace/node/api"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -22,8 +21,7 @@ var (
 // consensuscmd is the handler for the command `hdcc consensus`.
 // Prints the current state of consensus.
 func consensuscmd() {
-	var cg api.ConsensusGET
-	err := getAPI("/consensus", &cg)
+	cg, err := httpClient.ConsensusGet()
 	if err != nil {
 		die("Could not get current consensus state:", err)
 	}

@@ -3,7 +3,7 @@ package modules
 import (
 	"io"
 
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (

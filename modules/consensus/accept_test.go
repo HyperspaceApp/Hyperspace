@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -504,7 +504,10 @@ func TestIntegrationDoSBlockHandling(t *testing.T) {
 
 	// Mine a block that is valid except for containing a buried invalid
 	// transaction. The transaction has more siacoin inputs than outputs.
-	txnBuilder := cst.wallet.StartTransaction()
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = txnBuilder.FundSiacoins(types.NewCurrency64(50))
 	if err != nil {
 		t.Fatal(err)
@@ -794,7 +797,10 @@ func TestBuriedBadTransaction(t *testing.T) {
 
 	// Create a good transaction using the wallet.
 	txnValue := types.NewCurrency64(1200)
-	txnBuilder := cst.wallet.StartTransaction()
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = txnBuilder.FundSiacoins(txnValue)
 	if err != nil {
 		t.Fatal(err)
@@ -890,7 +896,10 @@ func TestTaxHardfork(t *testing.T) {
 	}
 
 	// Create and fund a transaction with a file contract.
-	txnBuilder := cst.wallet.StartTransaction()
+	txnBuilder, err := cst.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	err = txnBuilder.FundSiacoins(payout)
 	if err != nil {
 		t.Fatal(err)
@@ -937,7 +946,10 @@ func TestTaxHardfork(t *testing.T) {
 		NewValidProofOutputs:  fc.ValidProofOutputs,
 		NewMissedProofOutputs: fc.MissedProofOutputs,
 	}
-	txnBuilder = cst.wallet.StartTransaction()
+	txnBuilder, err = cst.wallet.StartTransaction()
+	if err != nil {
+		t.Fatal(err)
+	}
 	txnBuilder.AddFileContractRevision(fcr)
 	txnSet, err = txnBuilder.Sign(true)
 	if err != nil {
@@ -989,7 +1001,7 @@ func TestAcceptBlockBroadcasts(t *testing.T) {
 		t.SkipNow()
 	}
 	t.Parallel()
-	cst, err := blankConsensusSetTester(t.Name())
+	cst, err := blankConsensusSetTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1068,7 +1080,7 @@ func TestChainedAcceptBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cst.Close()
-	cst2, err := blankConsensusSetTester(t.Name() + "2")
+	cst2, err := blankConsensusSetTester(t.Name()+"2", modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}

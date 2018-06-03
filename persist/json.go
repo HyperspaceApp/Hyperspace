@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 )
 
 // readJSON will try to read a persisted json object from a file.

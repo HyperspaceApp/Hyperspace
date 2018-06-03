@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/node/api"
-	"github.com/HyperspaceProject/Hyperspace/node/api/client"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 )
 
 // TestLatestRelease tests that the latestRelease function properly processes a
@@ -79,6 +78,9 @@ func TestLatestRelease(t *testing.T) {
 
 // TestNewServer verifies that NewServer creates a Sia API server correctly.
 func TestNewServer(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
 	var wg sync.WaitGroup
 	config := Config{}
 	config.Siad.APIaddr = "localhost:0"
@@ -99,15 +101,13 @@ func TestNewServer(t *testing.T) {
 	}()
 	// verify that startup routes can be called correctly
 	c := client.New(srv.listener.Addr().String())
-	var daemonVersion DaemonVersion
-	err = c.Get("/daemon/version", &daemonVersion)
+	_, err = c.DaemonVersionGet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var cg api.ConsensusGET
-	err = c.Get("/consensus", &cg)
-	if err == nil || !strings.Contains(err.Error(), "hdcd is not ready") {
-		t.Fatal("expected consensus call on unloaded server to fail with hdcd not ready")
+	_, err = c.ConsensusGet()
+	if err == nil || !strings.Contains(err.Error(), "siad is not ready") {
+		t.Fatal("expected consensus call on unloaded server to fail with siad not ready")
 	}
 	// create a goroutine that continuously makes API requests to test that
 	// loading modules doesn't cause a race
@@ -122,7 +122,7 @@ func TestNewServer(t *testing.T) {
 			default:
 			}
 			time.Sleep(time.Millisecond)
-			c.Get("/consensus", nil)
+			c.ConsensusGet()
 		}
 	}()
 	// load the modules, verify routes succeed
@@ -131,7 +131,7 @@ func TestNewServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	close(stopchan)
-	err = c.Get("/consensus", &cg)
+	_, err = c.ConsensusGet()
 	if err != nil {
 		t.Fatal(err)
 	}

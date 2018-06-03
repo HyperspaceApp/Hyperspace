@@ -2,12 +2,26 @@ package pool
 
 import (
 	"time"
+
+	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
-const (
-	targetDuration   = float64(4)  // targeted seconds between shares
-	retargetDuration = float64(60) // how often do we consider changing difficulty
-	variancePercent  = 15          // how much we let the share duration vary between retargetting
+var (
+	targetDuration   = build.Select(build.Var{
+		Standard: 5.0,
+		Dev:      5.0,
+		Testing:  3.0,
+	}).(float64) // targeted seconds between shares
+	retargetDuration = build.Select(build.Var{
+		Standard: 15.0,
+		Dev:      15.0,
+		Testing:  9.0,
+	}).(float64) // how often do we consider changing difficulty
+	variancePercent  = build.Select(build.Var{
+		Standard: 15,
+		Dev:      15,
+		Testing:  15,
+	}).(int)     // how much we let the share duration vary between retargetting
 )
 
 type Vardiff struct {
@@ -36,28 +50,55 @@ func (s *Session) newVardiff() *Vardiff {
 
 func (s *Session) checkDiffOnNewShare() bool {
 
-	sinceLast := time.Now().Sub(s.lastVardiffTimestamp).Seconds()
-	s.SetLastShareDuration(sinceLast)
 	s.lastVardiffTimestamp = time.Now()
-	if s.log != nil {
-		s.log.Debugf("Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
-	}
 	if time.Now().Sub(s.lastVardiffRetarget).Seconds() < retargetDuration {
 		return false
 	}
+	if s.log != nil {
+		s.log.Printf("Retargeted Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
+	}
 	s.lastVardiffRetarget = time.Now()
 
-	average := s.ShareDurationAverage()
-	var deltaDiff float64
-	deltaDiff = float64(targetDuration) / float64(average)
-	if s.log != nil {
-		s.log.Debugf("Average: %f Delta %f\n", average, deltaDiff)
+	unsubmitDuration, historyDuration := s.ShareDurationAverage()
+
+	if unsubmitDuration > retargetDuration {
+		s.SetCurrentDifficulty(s.CurrentDifficulty() / 2)
+		if s.log != nil {
+			s.log.Printf("UnsubmitDuration too long: %f, Set new difficulty to half: %v\n", unsubmitDuration, s.currentDifficulty)
+		}
+		return true
 	}
-	if average < s.vardiff.tmax && average > s.vardiff.tmin { // close enough
+
+	if historyDuration == 0 {
+		if s.log != nil {
+			s.log.Printf("No historyDuration yet\n")
+		}
 		return false
 	}
+
+	if historyDuration < s.vardiff.tmax && historyDuration > s.vardiff.tmin { // close enough
+		if s.log != nil {
+			s.log.Printf("HistoryDuration: %f is inside range\n", historyDuration)
+		}
+		return false
+	}
+
+	var deltaDiff float64
+	deltaDiff = float64(targetDuration) / float64(historyDuration)
+	deltaDiff = 1 - (1 - deltaDiff)/2
+	if deltaDiff > 2.0 {
+		deltaDiff = 2.0
+	}
+	if deltaDiff < 0.5 {
+		deltaDiff = 0.5
+	}
+
 	if s.log != nil {
-		s.log.Debugf("Old difficulty was %v\n", s.currentDifficulty)
+		s.log.Printf("HistoryDuration: %f Delta %f\n", historyDuration, deltaDiff)
+	}
+
+	if s.log != nil {
+		s.log.Printf("Old difficulty was %v\n", s.currentDifficulty)
 	}
 	s.SetCurrentDifficulty(s.CurrentDifficulty() * deltaDiff)
 	if s.log != nil {

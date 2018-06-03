@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/gateway"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // BenchmarkAcceptEmptyBlocks measures how quckly empty blocks are integrated
@@ -129,7 +129,10 @@ func BenchmarkAcceptSmallBlocks(b *testing.B) {
 	for j := 0; j < b.N; j++ {
 		// Create a transaction with a miner fee, a normal siacoin output, and
 		// a funded file contract.
-		txnBuilder := cst.wallet.StartTransaction()
+		txnBuilder, err := cst.wallet.StartTransaction()
+		if err != nil {
+			b.Fatal(err)
+		}
 		err = txnBuilder.FundSiacoins(types.NewCurrency64(125e6))
 		if err != nil {
 			b.Fatal(err)

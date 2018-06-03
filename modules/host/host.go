@@ -70,13 +70,13 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/host/contractmanager"
-	"github.com/HyperspaceProject/Hyperspace/persist"
-	siasync "github.com/HyperspaceProject/Hyperspace/sync"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/host/contractmanager"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -135,10 +135,10 @@ type Host struct {
 	atomicNormalErrors        uint64
 
 	// Dependencies.
-	cs     modules.ConsensusSet
-	tpool  modules.TransactionPool
-	wallet modules.Wallet
-	dependencies
+	cs           modules.ConsensusSet
+	tpool        modules.TransactionPool
+	wallet       modules.Wallet
+	dependencies modules.Dependencies
 	modules.StorageManager
 
 	// Host ACID fields - these fields need to be updated in serial, ACID
@@ -180,7 +180,10 @@ type Host struct {
 // from the wallet. That may fail due to the wallet being locked, in which case
 // an error is returned.
 func (h *Host) checkUnlockHash() error {
-	addrs := h.wallet.AllAddresses()
+	addrs, err := h.wallet.AllAddresses()
+	if err != nil {
+		return err
+	}
 	hasAddr := false
 	for _, addr := range addrs {
 		if h.unlockHash == addr {
@@ -211,7 +214,7 @@ func (h *Host) checkUnlockHash() error {
 // mocked such that the dependencies can return unexpected errors or unique
 // behaviors during testing, enabling easier testing of the failure modes of
 // the Host.
-func newHost(dependencies dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, wallet modules.Wallet, listenerAddress string, persistDir string) (*Host, error) {
+func newHost(dependencies modules.Dependencies, cs modules.ConsensusSet, tpool modules.TransactionPool, wallet modules.Wallet, listenerAddress string, persistDir string) (*Host, error) {
 	// Check that all the dependencies were provided.
 	if cs == nil {
 		return nil, errNilCS
@@ -244,14 +247,14 @@ func newHost(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	}()
 
 	// Create the perist directory if it does not yet exist.
-	err = dependencies.mkdirAll(h.persistDir, 0700)
+	err = dependencies.MkdirAll(h.persistDir, 0700)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.
-	h.log, err = dependencies.newLogger(filepath.Join(h.persistDir, logFile))
+	h.log, err = dependencies.NewLogger(filepath.Join(h.persistDir, logFile))
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +305,7 @@ func newHost(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 
 // New returns an initialized Host.
 func New(cs modules.ConsensusSet, tpool modules.TransactionPool, wallet modules.Wallet, address string, persistDir string) (*Host, error) {
-	return newHost(productionDependencies{}, cs, tpool, wallet, address, persistDir)
+	return newHost(modules.ProdDependencies, cs, tpool, wallet, address, persistDir)
 }
 
 // Close shuts down the host.
@@ -314,8 +317,8 @@ func (h *Host) Close() error {
 // set by the user (host is configured through InternalSettings), and are the
 // values that get displayed to other hosts on the network.
 func (h *Host) ExternalSettings() modules.HostExternalSettings {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	err := h.tg.Add()
 	if err != nil {
 		build.Critical("Call to ExternalSettings after close")

@@ -1,14 +1,14 @@
 package wallet
 
 import (
-	"errors"
 	"runtime"
 	"sync"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
-	"github.com/HyperspaceProject/Hyperspace/encoding"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/errors"
 	"github.com/NebulousLabs/fastrand"
 	"github.com/coreos/bbolt"
 )
@@ -200,7 +200,7 @@ func (w *Wallet) NextAddresses(n uint64) ([]types.UnlockConditions, error) {
 	// time.
 	w.mu.Lock()
 	ucs, err := w.nextPrimarySeedAddresses(w.dbTx, n)
-	w.syncDB() // ensure durability of reported address
+	err = errors.Compose(err, w.syncDB())
 	w.mu.Unlock()
 	if err != nil {
 		return []types.UnlockConditions{}, err
@@ -405,7 +405,15 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 		var txnCoins, txnFunds types.Currency
 
 		// construct a transaction that spends the outputs
-		tb := w.StartTransaction()
+		tb, err := w.StartTransaction()
+		if err != nil {
+			return types.ZeroCurrency, types.ZeroCurrency, err
+		}
+		defer func() {
+			if err != nil {
+				tb.Drop()
+			}
+		}()
 		var sweptCoins, sweptFunds types.Currency // total values of swept outputs
 		for _, output := range txnSiacoinOutputs {
 			// construct a siacoin input that spends the output
@@ -512,7 +520,7 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 		// submit the transactions
 		err = w.tpool.AcceptTransactionSet(txnSet)
 		if err != nil {
-			return
+			return types.ZeroCurrency, types.ZeroCurrency, err
 		}
 
 		w.log.Println("Creating a transaction set to sweep a seed, IDs:")

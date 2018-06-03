@@ -14,17 +14,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HyperspaceProject/Hyperspace/build"
-	"github.com/HyperspaceProject/Hyperspace/modules"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter"
-	"github.com/HyperspaceProject/Hyperspace/modules/renter/contractor"
-	"github.com/HyperspaceProject/Hyperspace/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
 
 const (
-	testFunds  = "10000000000000000000000000000" // 10k SC
-	testPeriod = "5"
+	testFunds       = "10000000000000000000000000000" // 10k SC
+	testPeriod      = "5"
+	testRenewWindow = "2"
 )
 
 // createRandFile creates a file on disk and fills it with random bytes.
@@ -58,8 +59,11 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 	allowanceValues := url.Values{}
 	testFunds := testFunds
 	testPeriod := "10"
+	renewWindow := "5"
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", renewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	err = st.stdPostAPI("/renter", allowanceValues)
 	if err != nil {
 		t.Fatal(err)
@@ -85,7 +89,7 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 
 	if waitOnAvailability {
 		// wait for the file to become available
-		err = retry(200, time.Second, func() error {
+		err = build.Retry(200, time.Second, func() error {
 			var rf RenterFiles
 			st.getAPI("/renter/files", &rf)
 			if len(rf.Files) != 1 || !rf.Files[0].Available {
@@ -156,7 +160,7 @@ func runDownloadTest(t *testing.T, filesize, offset, length int64, useHttpResp b
 			return err
 		}
 		// wait for the download to complete
-		err = retry(30, time.Second, func() error {
+		err = build.Retry(30, time.Second, func() error {
 			var rdq RenterDownloadQueue
 			err = st.getAPI("/renter/downloads", &rdq)
 			if err != nil {
@@ -617,6 +621,8 @@ func TestRenterHandlerContracts(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -657,7 +663,7 @@ func TestRenterHandlerContracts(t *testing.T) {
 	for _, contract := range contracts.Contracts {
 		expectedContractSpending = expectedContractSpending.Add(contract.TotalCost)
 	}
-	if got := get.FinancialMetrics.ContractSpending; got.Cmp(expectedContractSpending) != 0 {
+	if got := get.FinancialMetrics.TotalAllocated; got.Cmp(expectedContractSpending) != 0 {
 		t.Fatalf("expected contract spending to be %v; got %v", expectedContractSpending, got)
 	}
 }
@@ -691,6 +697,8 @@ func TestRenterHandlerGetAndPost(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -722,33 +730,30 @@ func TestRenterHandlerGetAndPost(t *testing.T) {
 	if got := get.Settings.Allowance.RenewWindow; got != expectedRenewWindow {
 		t.Fatalf("expected renew window to be %v; got %v", expectedRenewWindow, got)
 	}
-
-	// Try an empty funds string.
-	allowanceValues = url.Values{}
-	allowanceValues.Set("funds", "")
-	allowanceValues.Set("period", testPeriod)
-	err = st.stdPostAPI("/renter", allowanceValues)
-	if err == nil || err.Error() != "unable to parse funds" {
-		t.Errorf("expected error to be 'unable to parse funds'; got %v", err)
-	}
-	// Try a empty period string.
-	allowanceValues.Set("funds", testFunds)
-	allowanceValues.Set("period", "")
-	err = st.stdPostAPI("/renter", allowanceValues)
-	if err == nil || !strings.HasPrefix(err.Error(), "unable to parse period: ") {
-		t.Errorf("expected error to begin with 'unable to parse period: '; got %v", err)
-	}
 	// Try an invalid period string.
 	allowanceValues.Set("period", "-1")
 	err = st.stdPostAPI("/renter", allowanceValues)
 	if err == nil || !strings.Contains(err.Error(), "unable to parse period") {
 		t.Errorf("expected error to begin with 'unable to parse period'; got %v", err)
 	}
-	// Try a period that will lead to a length-zero RenewWindow.
-	allowanceValues.Set("period", "1")
+	// Try to set a zero renew window
+	allowanceValues.Set("period", "2")
+	allowanceValues.Set("renewwindow", "0")
 	err = st.stdPostAPI("/renter", allowanceValues)
 	if err == nil || err.Error() != contractor.ErrAllowanceZeroWindow.Error() {
 		t.Errorf("expected error to be %v, got %v", contractor.ErrAllowanceZeroWindow, err)
+	}
+	// Try to set a negative bandwidth limit
+	allowanceValues.Set("maxdownloadspeed", "-1")
+	allowanceValues.Set("renewwindow", "1")
+	err = st.stdPostAPI("/renter", allowanceValues)
+	if err == nil {
+		t.Errorf("expected error to be 'download/upload rate limit...'; got %v", err)
+	}
+	allowanceValues.Set("maxuploadspeed", "-1")
+	err = st.stdPostAPI("/renter", allowanceValues)
+	if err == nil {
+		t.Errorf("expected error to be 'download/upload rate limit...'; got %v", err)
 	}
 }
 
@@ -780,6 +785,8 @@ func TestRenterLoadNonexistent(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -847,6 +854,8 @@ func TestRenterHandlerRename(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -953,6 +962,8 @@ func TestRenterHandlerDelete(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1018,6 +1029,8 @@ func TestRenterRelativePathErrorUpload(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1079,6 +1092,8 @@ func TestRenterRelativePathErrorDownload(t *testing.T) {
 	allowanceValues := url.Values{}
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
+	allowanceValues.Set("renewwindow", testRenewWindow)
+	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1599,7 +1614,7 @@ func TestContractorHostRemoval(t *testing.T) {
 
 	// redundancy should reach 2
 	var rf RenterFiles
-	err = retry(120, 250*time.Millisecond, func() error {
+	err = build.Retry(120, 250*time.Millisecond, func() error {
 		st.getAPI("/renter/files", &rf)
 		if len(rf.Files) >= 1 && rf.Files[0].Redundancy == 2 {
 			return nil
@@ -1724,7 +1739,7 @@ func TestContractorHostRemoval(t *testing.T) {
 	}
 
 	// Block until redundancy is restored to 2.
-	err = retry(120, 250*time.Millisecond, func() error {
+	err = build.Retry(120, 250*time.Millisecond, func() error {
 		st.getAPI("/renter/files", &rf)
 		if len(rf.Files) == 1 && rf.Files[0].Redundancy == 2 {
 			return nil
@@ -1862,7 +1877,7 @@ func TestContractorHostRemoval(t *testing.T) {
 		}
 	}
 	// Redundancy should still be 2.
-	err = retry(120, 250*time.Millisecond, func() error {
+	err = build.Retry(120, 250*time.Millisecond, func() error {
 		st.getAPI("/renter/files", &rf)
 		if len(rf.Files) >= 1 && rf.Files[0].Redundancy == 2 {
 			return nil

@@ -3,7 +3,7 @@ package types
 import (
 	"testing"
 
-	"github.com/HyperspaceProject/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 )
 
 // TestTransactionIDs probes all of the ID functions of the Transaction type.

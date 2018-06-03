@@ -1,6 +1,6 @@
-# [![Sia Logo](http://sia.tech/img/svg/sia-green-logo.svg)](http://sia.tech) v1.3.2 (Capricorn)
+# [![Sia Logo](http://sia.tech/img/svg/sia-green-logo.svg)](http://sia.tech) v1.3.3 (Capricorn)
 
-[![Build Status](https://travis-ci.org/NebulousLabs/Sia.svg?branch=master)](https://travis-ci.org/NebulousLabs/Sia)
+[![Build Status](https://travis-ci.org/HyperspaceApp/Hyperspace.svg?branch=master)](https://travis-ci.org/HyperspaceApp/Hyperspace)
 [![GoDoc](https://godoc.org/github.com/HardDriveCoin/HardDriveCoin?status.svg)](https://godoc.org/github.com/HardDriveCoin/HardDriveCoin)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HardDriveCoin/HardDriveCoin)](https://goreportcard.com/report/github.com/HardDriveCoin/HardDriveCoin)
 
@@ -100,7 +100,7 @@ This will download the Sia repo to your `$GOPATH/src` folder and install the
 
 To stay up-to-date, run the previous `go get` command again. Alternatively, you
 can use the Makefile provided in this repo. Run `git pull origin master` to
-pull the latest changes, and `make release-std` to build the new binaries. You
+pull the latest changes, and `make release` to build the new binaries. You
 can also run `make test` and `make test-long` to run the short and full test
 suites, respectively. Finally, `make cover` will generate code coverage reports
 for each package; they are stored in the `cover` folder and can be viewed in
