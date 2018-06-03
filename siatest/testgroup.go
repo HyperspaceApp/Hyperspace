@@ -87,7 +87,7 @@ func NewGroup(nodeParams ...node.NodeParams) (*TestGroup, error) {
 		return nil, errors.New("cannot fund group without miners")
 	}
 	miner := tg.Miners()[0]
-	for i := types.BlockHeight(0); i <= types.MaturityDelay+types.TaxHardforkHeight; i++ {
+	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
 		if err := miner.MineBlock(); err != nil {
 			return nil, errors.AddContext(err, "failed to mine block for funding")
 		}

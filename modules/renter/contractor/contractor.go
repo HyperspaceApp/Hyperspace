@@ -94,7 +94,6 @@ func (c *Contractor) PeriodSpending() modules.ContractorSpending {
 		// Calculate ContractFees
 		spending.ContractFees = spending.ContractFees.Add(contract.ContractFee)
 		spending.ContractFees = spending.ContractFees.Add(contract.TxnFee)
-		spending.ContractFees = spending.ContractFees.Add(contract.SiafundFee)
 		// Calculate TotalAllocated
 		spending.TotalAllocated = spending.TotalAllocated.Add(contract.TotalCost)
 		spending.ContractSpendingDeprecated = spending.TotalAllocated
@@ -110,7 +109,6 @@ func (c *Contractor) PeriodSpending() modules.ContractorSpending {
 			// Calculate ContractFees
 			spending.ContractFees = spending.ContractFees.Add(old.ContractFee)
 			spending.ContractFees = spending.ContractFees.Add(old.TxnFee)
-			spending.ContractFees = spending.ContractFees.Add(old.SiafundFee)
 			// Calculate TotalAllocated
 			spending.TotalAllocated = spending.TotalAllocated.Add(old.TotalCost)
 			// Calculate Spending

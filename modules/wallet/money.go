@@ -31,14 +31,14 @@ func (w *Wallet) DustThreshold() (types.Currency, error) {
 // confirmed transactions.
 func (w *Wallet) ConfirmedBalance() (siacoinBalance types.Currency, err error) {
 	if err := w.tg.Add(); err != nil {
-		return types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, modules.ErrWalletShutdown
+		return types.ZeroCurrency, modules.ErrWalletShutdown
 	}
 	defer w.tg.Done()
 
 	// dustThreshold has to be obtained separate from the lock
 	dustThreshold, err := w.DustThreshold()
 	if err != nil {
-		return types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, modules.ErrWalletShutdown
+		return types.ZeroCurrency, modules.ErrWalletShutdown
 	}
 
 	w.mu.Lock()

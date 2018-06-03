@@ -106,16 +106,6 @@ func (c *Client) WalletSiacoinsPost(amount types.Currency, destination types.Unl
 	return
 }
 
-// WalletSiafundsPost uses the /wallet/siafunds api endpoint to send siafunds
-// to a single address.
-func (c *Client) WalletSiafundsPost(amount types.Currency, destination types.UnlockHash) (wsp api.WalletSiafundsPOST, err error) {
-	values := url.Values{}
-	values.Set("amount", amount.String())
-	values.Set("destination", destination.String())
-	err = c.post("/wallet/siafunds", values.Encode(), &wsp)
-	return
-}
-
 // WalletSiagKeyPost uses the /wallet/siagkey endpoint to load a siag key into
 // the wallet.
 func (c *Client) WalletSiagKeyPost(keyfiles, password string) (err error) {

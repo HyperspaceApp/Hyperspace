@@ -61,8 +61,6 @@ type ConsensusTransaction struct {
 	FileContracts         map[string]ConsensusFileContract         `json:"filecontracts"`
 	FileContractRevisions map[string]ConsensusFileContractRevision `json:"filecontractrevisions"`
 	StorageProofs         map[string]types.StorageProof            `json:"storageproofs"`
-	SiafundInputs         map[string]types.SiafundInput            `json:"siafundinputs"`
-	SiafundOutputs        map[string]types.SiafundOutput           `json:"siafundoutputs"`
 	MinerFees             map[string]types.Currency                `json:"minerfees"`
 	ArbitraryData         [][]byte                                 `json:"arbitrarydata"`
 	TransactionSignatures map[string]types.TransactionSignature    `json:"transactionsignatures"`
@@ -108,8 +106,6 @@ type ConsensusBlocksGetTxn struct {
 	FileContracts         []ConsensusBlocksGetFileContract  `json:"filecontracts"`
 	FileContractRevisions []types.FileContractRevision      `json:"filecontractrevisions"`
 	StorageProofs         []types.StorageProof              `json:"storageproofs"`
-	SiafundInputs         []types.SiafundInput              `json:"siafundinputs"`
-	SiafundOutputs        []ConsensusBlocksGetSiafundOutput `json:"siafundoutputs"`
 	MinerFees             []types.Currency                  `json:"minerfees"`
 	ArbitraryData         [][]byte                          `json:"arbitrarydata"`
 	TransactionSignatures []types.TransactionSignature      `json:"transactionsignatures"`
@@ -138,14 +134,6 @@ type ConsensusBlocksGetSiacoinOutput struct {
 	UnlockHash types.UnlockHash      `json:"unlockhash"`
 }
 
-// ConsensusBlocksGetSiafundOutput contains all fields of a types.SiafundOutput
-// and an additional ID field.
-type ConsensusBlocksGetSiafundOutput struct {
-	ID         types.SiafundOutputID `json:"id"`
-	Value      types.Currency        `json:"value"`
-	UnlockHash types.UnlockHash      `json:"unlockhash"`
-}
-
 // ConsensusBlocksGetFromBlock is a helper method that uses a types.Block and
 // types.BlockHeight to create a ConsensusBlocksGet object.
 func consensusBlocksGetFromBlock(b types.Block, h types.BlockHeight) ConsensusBlocksGet {
@@ -158,15 +146,6 @@ func consensusBlocksGetFromBlock(b types.Block, h types.BlockHeight) ConsensusBl
 				ID:         t.SiacoinOutputID(uint64(i)),
 				Value:      sco.Value,
 				UnlockHash: sco.UnlockHash,
-			})
-		}
-		// Get the transaction's SiafundOutputs.
-		sfos := make([]ConsensusBlocksGetSiafundOutput, 0, len(t.SiafundOutputs))
-		for i, sfo := range t.SiafundOutputs {
-			sfos = append(sfos, ConsensusBlocksGetSiafundOutput{
-				ID:         t.SiafundOutputID(uint64(i)),
-				Value:      sfo.Value,
-				UnlockHash: sfo.UnlockHash,
 			})
 		}
 		// Get the transaction's FileContracts.
@@ -211,8 +190,6 @@ func consensusBlocksGetFromBlock(b types.Block, h types.BlockHeight) ConsensusBl
 			FileContracts:         fcos,
 			FileContractRevisions: t.FileContractRevisions,
 			StorageProofs:         t.StorageProofs,
-			SiafundInputs:         t.SiafundInputs,
-			SiafundOutputs:        sfos,
 			MinerFees:             t.MinerFees,
 			ArbitraryData:         t.ArbitraryData,
 			TransactionSignatures: t.TransactionSignatures,
@@ -409,25 +386,12 @@ func (api *API) consensusBlocksHandlerSanasol(w http.ResponseWriter, req *http.R
 			storageproofs[sp.ParentID.String()] = sp
 		}
 
-		sfinputs := map[string]types.SiafundInput{}
-		for _, sfi := range txn.SiafundInputs {
-			sfinputs[sfi.ParentID.String()] = sfi
-		}
-
-		sfoutputs := map[string]types.SiafundOutput{}
-		for k, sfo := range txn.SiafundOutputs {
-			sfoid := txn.SiafundOutputID(uint64(k)).String()
-			sfoutputs[sfoid] = sfo
-		}
-
 		ct[txid.String()] = ConsensusTransaction{
 			SiacoinInputs:  inputs,
 			SiacoinOutputs: outputs,
 			FileContracts: filecontracts,
 			FileContractRevisions: filecontractrevisions,
 			StorageProofs: storageproofs,
-			SiafundInputs: sfinputs,
-			SiafundOutputs: sfoutputs,
 			ArbitraryData: txn.ArbitraryData,
 		}
 	}

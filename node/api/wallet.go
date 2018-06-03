@@ -116,7 +116,7 @@ func encryptionKeys(seedStr string) (validKeys []crypto.TwofishKey) {
 
 // walletHander handles API calls to /wallet.
 func (api *API) walletHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	siacoinBal, siaclaimBal, err := api.wallet.ConfirmedBalance()
+	siacoinBal, err := api.wallet.ConfirmedBalance()
 	if err != nil {
 		WriteError(w, Error{fmt.Sprintf("Error when calling /wallet: %v", err)}, http.StatusBadRequest)
 		return

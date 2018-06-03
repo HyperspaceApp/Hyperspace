@@ -81,8 +81,6 @@ type v132ContractHeader struct {
 	TotalCost        types.Currency
 	ContractFee      types.Currency
 	TxnFee           types.Currency
-	SiafundFee       types.Currency
->>>>>>> master
 }
 
 // validate returns an error if the contractHeader is invalid.
@@ -623,7 +621,6 @@ func unmarshalHeader(b []byte, u *updateSetHeader) error {
 			TotalCost:        oldHeader.Header.TotalCost,
 			ContractFee:      oldHeader.Header.ContractFee,
 			TxnFee:           oldHeader.Header.TxnFee,
-			SiafundFee:       oldHeader.Header.SiafundFee,
 		}
 	}
 	return nil

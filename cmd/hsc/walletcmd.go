@@ -380,23 +380,6 @@ func walletsendsiacoinscmd(amount, dest string) {
 	fmt.Printf("Sent %s hastings to %s\n", hastings, dest)
 }
 
-// walletsendsiafundscmd sends siafunds to a destination address.
-func walletsendsiafundscmd(amount, dest string) {
-	var value types.Currency
-	if _, err := fmt.Sscan(amount, &value); err != nil {
-		die("Failed to parse amount", err)
-	}
-	var hash types.UnlockHash
-	if _, err := fmt.Sscan(dest, &hash); err != nil {
-		die("Failed to parse destination address", err)
-	}
-	_, err := httpClient.WalletSiafundsPost(value, hash)
-	if err != nil {
-		die("Could not send siafunds:", err)
-	}
-	fmt.Printf("Sent %s siafunds to %s\n", amount, dest)
-}
-
 // walletbalancecmd retrieves and displays information about the wallet.
 func walletbalancecmd() {
 	status, err := httpClient.WalletGet()
