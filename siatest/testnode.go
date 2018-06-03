@@ -1,8 +1,6 @@
 package siatest
 
 import (
-	"errors"
-
 	"github.com/HyperspaceApp/Hyperspace/node"
 	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/node/api/server"
