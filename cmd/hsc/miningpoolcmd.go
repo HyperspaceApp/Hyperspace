@@ -113,7 +113,7 @@ Blocks Mined: %d
 
 Pool config:
 Pool Name:              %s
-Pool ID:                %s
+Pool ID:                %d
 Pool Stratum Port       %d
 DB Connection           %s
 Pool Wallet:            %s
