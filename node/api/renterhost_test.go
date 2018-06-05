@@ -975,11 +975,53 @@ func TestRenterCancelAllowance(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Give it some time to mark the contracts as !goodForUpload and
+	// !goodForRenew.
+	err = build.Retry(600, 100*time.Millisecond, func() error {
+		var rc RenterContracts
+		err = st.getAPI("/renter/contracts", &rc)
+		if err != nil {
+			return errors.New("couldn't get renter stats")
+		}
+		// Should still have 1 contract.
+		if uint64(len(rc.Contracts)) != recommendedHosts {
+			return errors.New("expected the same number of contracts as before")
+		}
+		for _, c := range rc.Contracts {
+			if c.GoodForUpload {
+				return errors.New("contract shouldn't be goodForUpload")
+			}
+			if c.GoodForRenew {
+				return errors.New("contract shouldn't be goodForRenew")
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Try downloading the file; should succeed.
 	downpath := filepath.Join(st.dir, "testdown.dat")
 	err = st.stdGetAPI("/renter/download/test?destination=" + downpath)
 	if err != nil {
 		t.Fatal("downloading file failed", err)
+	}
+
+	// Try to upload a file after the allowance was cancelled. Should fail.
+	err = st.stdPostAPI("/renter/upload/test2", uploadValues)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Give it some time to upload.
+	time.Sleep(time.Second)
+	// Redundancy should still be 0.
+	if err := st.getAPI("/renter/files", &rf); err != nil {
+		t.Fatal(err)
+	}
+	if len(rf.Files) != 2 || rf.Files[1].UploadProgress > 0 || rf.Files[1].Redundancy > 0 {
+		t.Fatal("uploading a file after cancelling allowance should fail",
+			rf.Files[1].UploadProgress, rf.Files[1].Redundancy)
 	}
 
 	// Mine enough blocks for the period to pass and the contracts to expire.
@@ -993,6 +1035,20 @@ func TestRenterCancelAllowance(t *testing.T) {
 	err = st.stdGetAPI("/renter/download/test?destination=" + downpath)
 	if err == nil || !strings.Contains(err.Error(), "download failed") {
 		t.Fatal("expected insufficient hosts error, got", err)
+	}
+
+	// The uploaded file should have 0x redundancy now.
+	err = build.Retry(600, 100*time.Millisecond, func() error {
+		if err := st.getAPI("/renter/files", &rf); err != nil {
+			return err
+		}
+		if len(rf.Files) != 2 || rf.Files[0].Redundancy != 0 {
+			return errors.New("file redundancy should be 0 now")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
