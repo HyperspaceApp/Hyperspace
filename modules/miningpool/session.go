@@ -21,7 +21,7 @@ const (
 var (
 	initialDifficulty  = build.Select(build.Var{
 		Standard: 6400.0,
-		Dev:      6400.0,
+		Dev:      10.0,
 		Testing:  0.00001,
 	}).(float64) // change from 6.0 to 1.0
 )
@@ -182,6 +182,13 @@ func (s *Session) CurrentDifficulty() float64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.currentDifficulty
+}
+
+func (s *Session) SetHighestDifficulty(d float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.highestDifficulty = d
 }
 
 func (s *Session) SetCurrentDifficulty(d float64) {

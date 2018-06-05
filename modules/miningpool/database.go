@@ -174,7 +174,7 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	defer stmt.Close()
 
 	currentTarget, _ := pool.cs.ChildTarget(b.ID())
-	difficulty, _ := currentTarget.Difficulty().Uint64()
+	difficulty, _ := currentTarget.Difficulty().Uint64() // TODO: maybe should use parent ChildTarget
 	// TODO: figure out right difficulty_user
 	_, err = stmt.Exec(bh, b.ID().String(), SiaCoinID, w.Parent().cr.clientID,
 		w.wr.workerID, "new", difficulty, timeStamp, SiaCoinAlgo)
@@ -228,12 +228,12 @@ func (s *Shift) UpdateOrSaveShift() error {
 	client := worker.Parent()
 	pool := client.Pool()
 	var buffer bytes.Buffer
-	buffer.WriteString("INSERT INTO shares(userid, workerid, coinid, valid, difficulty, time, algo) VALUES ")
+	buffer.WriteString("INSERT INTO shares(userid, workerid, coinid, valid, difficulty, time, algo, reward, block_difficulty, status) VALUES ")
 	for i, share := range s.Shares() {
 		if i != 0 {
 			buffer.WriteString(",")
 		}
-		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s')", share.userid, share.workerid, SiaCoinID, share.valid, share.difficulty, time.Now().Unix(), SiaCoinAlgo))
+		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %f, %d)", share.userid, share.workerid, SiaCoinID, share.valid, share.difficulty, time.Now().Unix(), SiaCoinAlgo, share.reward, share.block_difficulty, 0))
 	}
 	buffer.WriteString(";")
 
