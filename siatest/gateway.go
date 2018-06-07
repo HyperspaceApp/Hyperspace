@@ -1,6 +1,8 @@
 package siatest
 
-import "github.com/HyperspaceApp/Hyperspace/build"
+import (
+	"github.com/HyperspaceApp/Hyperspace/build"
+)
 
 // hasPeer checks if peer is a peer of tn.
 func (tn *TestNode) hasPeer(peer *TestNode) (bool, error) {
