@@ -184,6 +184,13 @@ func (s *Session) CurrentDifficulty() float64 {
 	return s.currentDifficulty
 }
 
+func (s *Session) SetHighestDifficulty(d float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.highestDifficulty = d
+}
+
 func (s *Session) SetCurrentDifficulty(d float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -1,6 +1,38 @@
 package renter
 
-import "github.com/HyperspaceApp/Hyperspace/siatest"
+import (
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/siatest"
+)
+
+// dependencyBlockScan blocks the scan progress of the hostdb until Scan is
+// called on the dependency.
+type dependencyBlockScan struct {
+	modules.ProductionDependencies
+	closed bool
+	c      chan struct{}
+}
+
+// Disrupt will block the scan progress of the hostdb. The scan can be started
+// by calling Scan on the dependency.
+func (d *dependencyBlockScan) Disrupt(s string) bool {
+	if d.c == nil {
+		d.c = make(chan struct{})
+	}
+	if s == "BlockScan" {
+		<-d.c
+	}
+	return false
+}
+
+// Scan resumes the blocked scan.
+func (d *dependencyBlockScan) Scan() {
+	if d.closed {
+		return
+	}
+	close(d.c)
+	d.closed = true
+}
 
 // newDependencyInterruptDownloadBeforeSendingRevision creates a new dependency
 // that interrupts the download on the renter side before sending the signed

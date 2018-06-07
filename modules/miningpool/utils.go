@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	"strconv"
 
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -122,6 +123,12 @@ func difficultyToTarget(difficulty float64) (target types.Target, err error) {
 	targetAsBigInt, _ := targetAsBigFloat.Int(nil)
 	target, err = intToTarget(targetAsBigInt)
 	return
+}
+
+func currencyToAmount(value types.Currency) float64 {
+	v := value.String()[0:len(value.String()) - 16]
+	f, _ := strconv.ParseFloat(v, 64)
+	return f / 1e8
 }
 
 //

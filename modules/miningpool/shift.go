@@ -11,6 +11,8 @@ type Share struct {
 	workerid int64
 	valid bool
 	difficulty float64
+	reward float64
+	block_difficulty float64
 }
 
 type Shift struct {
@@ -65,15 +67,17 @@ func (s *Shift) Shares() []Share {
 	return s.shares
 }
 
-func (s *Shift) IncrementShares(currentDifficulty float64) {
+func (s *Shift) IncrementShares(currentDifficulty float64, reward float64, block_difficulty float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	share := &Share{
-		userid:     s.worker.Parent().cr.clientID,
-		workerid:   s.worker.wr.workerID,
-		valid:      true,
-		difficulty: currentDifficulty,
+		userid:           s.worker.Parent().cr.clientID,
+		workerid:         s.worker.wr.workerID,
+		valid:            true,
+		difficulty:       currentDifficulty,
+		reward:           reward,
+		block_difficulty: block_difficulty,
 	}
 	s.shares = append(s.shares, *share)
 }
