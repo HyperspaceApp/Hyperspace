@@ -7,7 +7,18 @@ import (
 
 	"github.com/NebulousLabs/Sia/crypto"
 	"github.com/NebulousLabs/Sia/types"
+
+	"github.com/NebulousLabs/errors"
 )
+
+// ErrHostFault is an error that is usually extended to indicate that an error
+// is the host's fault.
+var ErrHostFault = errors.New("host has returned an error")
+
+// IsHostsFault indicates if a returned error is the host's fault.
+func IsHostsFault(err error) bool {
+	return errors.Contains(err, ErrHostFault)
+}
 
 const (
 	// RenterDir is the name of the directory that is used to store the
@@ -335,6 +346,10 @@ type Renter interface {
 
 	// Host provides the DB entry and score breakdown for the requested host.
 	Host(pk types.SiaPublicKey) (HostDBEntry, bool)
+
+	// InitialScanComplete returns a boolean indicating if the initial scan of the
+	// hostdb is completed.
+	InitialScanComplete() (bool, error)
 
 	// LoadSharedFiles loads a '.sia' file into the renter. A .sia file may
 	// contain multiple files. The paths of the added files are returned.
