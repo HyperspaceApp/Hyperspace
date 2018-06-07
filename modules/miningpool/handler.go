@@ -235,6 +235,11 @@ func (h *Handler) sendRequest(r types.StratumRequest) error {
 //
 // TODO: Pull the appropriate data from either in memory or persistent store as required
 func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
+	if len(m.Params) > 0 && m.Params[0].(string) == "gominer" {
+		h.s.SetHighestDifficulty(0.1)
+		h.s.SetCurrentDifficulty(0.1)
+	}
+
 	r := types.StratumResponse{ID: m.ID}
 	r.Method = m.Method
 	/*
@@ -473,7 +478,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		h.s.CurrentWorker.log.Printf("Block is greater than target\n")
 		h.s.CurrentWorker.log.Printf("Share Accepted\n")
-		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
+		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty(), currencyToAmount(b.MinerPayouts[0].Value))
 		h.s.CurrentWorker.SetLastShareTime(time.Now())
 		return h.sendResponse(r)
 	}
@@ -488,7 +493,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
-	h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty())
+	h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty(), currencyToAmount(b.MinerPayouts[0].Value))
 	h.s.CurrentWorker.SetLastShareTime(time.Now())
 
 	// TODO: why not err == nil ?

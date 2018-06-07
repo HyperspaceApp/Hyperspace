@@ -125,8 +125,13 @@ func (w *Worker) SetSession(s *Session) {
 // 	// return w.getUint64Field("Shares")
 // }
 
-func (w *Worker) IncrementShares(currentDifficulty float64) {
-	w.s.Shift().IncrementShares(currentDifficulty)
+func (w *Worker) IncrementShares(currentDifficulty float64, reward float64) {
+	p := w.s.Client.pool
+	cbid := p.cs.CurrentBlock().ID()
+	currentTarget, _ := p.cs.ChildTarget(cbid)
+	block_difficulty, _ := currentTarget.Difficulty().Uint64()
+
+	w.s.Shift().IncrementShares(currentDifficulty, reward, float64(block_difficulty))
 }
 
 func (w *Worker) IncrementInvalidShares() {
