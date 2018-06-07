@@ -311,7 +311,10 @@ func TestCurrencyUnsafeDecode(t *testing.T) {
 // the Transaction type do not change its encoding.
 func TestTransactionEncoding(t *testing.T) {
 	var txn Transaction
-	if h := hashStr(txn); h != "143aa0da2b6a4ca39eee3ee50a6536d75eedff3b5ef0229a6d603afa7854d5b8" {
+	// with Siafunds
+	//if h := hashStr(txn); h != "143aa0da2b6a4ca39eee3ee50a6536d75eedff3b5ef0229a6d603afa7854d5b8" {
+	// without Siafunds
+	if h := hashStr(txn); h != "0eb923b0cbd24df54401d998531feead35a47a99f4deed205de4af81120f9761" {
 		t.Error("encoding mismatch:", h)
 	}
 
@@ -325,7 +328,10 @@ func TestTransactionEncoding(t *testing.T) {
 		ArbitraryData:         [][]byte{{}},
 		TransactionSignatures: []TransactionSignature{{}},
 	}
-	if h := hashStr(txn); h != "a6c0f41cb89aaede0682ab06c1e757e12d662a0156ec878f85b935bc219fb3ca" {
+	// with Siafunds
+	//if h := hashStr(txn); h != "a6c0f41cb89aaede0682ab06c1e757e12d662a0156ec878f85b935bc219fb3ca" {
+	// without Siafunds
+	if h := hashStr(txn); h != "c792e4d5034dd6b168bd67d34cf08feba77a388b641b84a91f59d68ca804bfe7" {
 		t.Error("encoding mismatch:", h)
 	}
 }
@@ -368,7 +374,10 @@ func TestSiacoinOutputEncoding(t *testing.T) {
 // of the CoveredFields type do not change its encoding.
 func TestCoveredFieldsEncoding(t *testing.T) {
 	var cf CoveredFields
-	if h := hashStr(cf); h != "aecfdceb8b630b5b00668d229221f876b3be1630703c4615a642db2c666b4fd7" {
+	// with Siafunds
+	//if h := hashStr(cf); h != "aecfdceb8b630b5b00668d229221f876b3be1630703c4615a642db2c666b4fd7" {
+	// without Siafunds
+	if h := hashStr(cf); h != "d34e94d74d0cb9665a8bc42e8954f50606ba7be3daec7f5bdf1a35e291941770" {
 		t.Error("encoding mismatch:", h)
 	}
 
@@ -383,7 +392,10 @@ func TestCoveredFieldsEncoding(t *testing.T) {
 		ArbitraryData:         []uint64{8},
 		TransactionSignatures: []uint64{9, 10},
 	}
-	if h := hashStr(cf); h != "5b10cd6b50b09447aae02829643e62b513ce99b969a80aeb620f74e77ca9bbba" {
+	// with Siafunds
+	//if h := hashStr(cf); h != "5b10cd6b50b09447aae02829643e62b513ce99b969a80aeb620f74e77ca9bbba" {
+	// without Siafunds
+	if h := hashStr(cf); h != "18386a03eae92ac1ae9a8b57acfd938365511f95e39fd5519714604ae5a20fe5" {
 		t.Error("encoding mismatch:", h)
 	}
 }
@@ -479,7 +491,10 @@ func TestSpecifierMarshaling(t *testing.T) {
 // encoding of the TransactionSignature type do not change its encoding.
 func TestTransactionSignatureEncoding(t *testing.T) {
 	var ts TransactionSignature
-	if h := hashStr(ts); h != "5801097b0ae98fe7cedd4569afc11c0a433f284681ad4d66dd7181293f6d2bba" {
+	// with Siafunds
+	//if h := hashStr(ts); h != "5801097b0ae98fe7cedd4569afc11c0a433f284681ad4d66dd7181293f6d2bba" {
+	// without Siafunds
+	if h := hashStr(ts); h != "55deeb00fbd06b068640094a9aec213446b334b5c8d8318399cb5b6f70605e14" {
 		t.Error("encoding mismatch:", h)
 	}
 
@@ -490,7 +505,10 @@ func TestTransactionSignatureEncoding(t *testing.T) {
 		CoveredFields:  CoveredFields{},
 		Signature:      []byte{6, 7, 8},
 	}
-	if h := hashStr(ts); h != "a3ce36fd8e1d6b7e5b030cdc2630d24a44472072bbd06e94d32d11132d817db0" {
+	// with Siafunds
+	//if h := hashStr(ts); h != "a3ce36fd8e1d6b7e5b030cdc2630d24a44472072bbd06e94d32d11132d817db0" {
+	// without Siafunds
+	if h := hashStr(ts); h != "a48442bfaffb437aa3bf52912423387ec526a63c0f53ba9c6ebae79e705216a9" {
 		t.Error("encoding mismatch:", h)
 	}
 }
