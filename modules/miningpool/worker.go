@@ -129,8 +129,9 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 
 	sessionTarget, _ := difficultyToTarget(sessionDifficulty)
 	siaSessionDifficulty, _ := sessionTarget.Difficulty().Uint64()
-	shareReward := float64(siaSessionDifficulty)/float64(blockDifficulty) * reward
-	w.log.Printf("shareRatio: %f, shareReward: %f", float64(siaSessionDifficulty)/float64(blockDifficulty), shareReward)
+	shareRatio := caculateRewardRatio(sessionTarget.Difficulty().Big(), blockTarget.Difficulty().Big())
+	shareReward := shareRatio * reward
+	w.log.Printf("shareRatio: %f, shareReward: %f", shareRatio, shareReward)
 
 	share := &Share{
 		userid:          w.Parent().cr.clientID,
