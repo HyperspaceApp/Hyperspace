@@ -93,11 +93,6 @@ type (
 		// ClientData returns a pointer to the client list
 		// ClientData() []PoolClients
 
-		// FindClient returns a Client pointer or nil if the client name doesn't exist
-		// FindClient(name string) *PoolClients
-
-		ClientTransactions(name string) []PoolClientTransactions
-
 		// BlocksInfo returns a list of blocks information
 		// BlocksInfo() []PoolBlocks
 

@@ -121,18 +121,31 @@ func (w *Worker) SetSession(s *Session) {
 	w.s = s
 }
 
-// func (w *Worker) SharesThisBlock() uint64 {
-// 	return w.s.Shift().Shares()
-// 	// return w.getUint64Field("Shares")
-// }
-
-func (w *Worker) IncrementShares(currentDifficulty float64, reward float64) {
+func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 	p := w.s.Client.pool
 	cbid := p.cs.CurrentBlock().ID()
-	currentTarget, _ := p.cs.ChildTarget(cbid)
-	block_difficulty, _ := currentTarget.Difficulty().Uint64()
+	blockTarget, _ := p.cs.ChildTarget(cbid)
+	blockDifficulty, _ := blockTarget.Difficulty().Uint64()
 
-	w.s.Shift().IncrementShares(currentDifficulty, reward, float64(block_difficulty))
+	sessionTarget, _ := difficultyToTarget(sessionDifficulty)
+	siaSessionDifficulty, _ := sessionTarget.Difficulty().Uint64()
+	shareReward := float64(siaSessionDifficulty)/float64(blockDifficulty) * reward
+	w.log.Printf("shareRatio: %f, shareReward: %f", float64(siaSessionDifficulty)/float64(blockDifficulty), shareReward)
+
+	share := &Share{
+		userid:          w.Parent().cr.clientID,
+		workerid:        w.wr.workerID,
+	    height:          int64(p.cs.Height())+1,
+		valid:           true,
+		difficulty:      sessionDifficulty,
+		shareDifficulty: float64(siaSessionDifficulty),
+		reward:          reward,
+		blockDifficulty: float64(blockDifficulty),
+		shareReward:     shareReward,
+		time: time.Now(),
+	}
+
+	w.s.Shift().IncrementShares(share)
 }
 
 func (w *Worker) IncrementInvalidShares() {
