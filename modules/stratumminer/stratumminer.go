@@ -12,7 +12,7 @@ import (
 	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/crypto"
 	"github.com/NebulousLabs/Sia/persist"
-	siasync "github.com/NebulousLabs/Sia/sync"
+	"github.com/NebulousLabs/threadgroup"
 )
 
 //miningWork is sent to the mining routines and defines what ranges should be searched for a matching nonce
@@ -46,7 +46,7 @@ type StratumMiner struct {
 
 	// tg signals the Miner's goroutines to shut down and blocks until all
 	// goroutines have exited before returning from Close().
-	tg siasync.ThreadGroup
+	tg threadgroup.ThreadGroup
 }
 
 func New(persistDir string) (*StratumMiner, error) {
