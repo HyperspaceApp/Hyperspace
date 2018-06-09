@@ -49,7 +49,7 @@ type Config struct {
 	}
 
 	MiningPoolConfig config.MiningPoolConfig
-	IndexConfig config.IndexConfig
+	IndexConfig      config.IndexConfig
 }
 
 // die prints its arguments to stderr, then exits the program with the default

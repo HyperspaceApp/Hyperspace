@@ -30,8 +30,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-const ()
-
 var (
 	// persistMetadata is the header that gets written to the persist file, and is
 	// used to recognize other persist files.
@@ -53,8 +51,8 @@ var (
 	// Required settings to run pool
 	errNoAddressSet = errors.New("pool operators address must be set")
 
-	running bool  // indicates if the mining pool is actually running
-	hashRate   int64 // indicates hashes per second
+	running  bool  // indicates if the mining pool is actually running
+	hashRate int64 // indicates hashes per second
 	// HeaderMemory is the number of previous calls to 'header'
 	// that are remembered. Additionally, 'header' will only poll for a
 	// new block every 'headerMemory / blockMemory' times it is
@@ -122,7 +120,7 @@ type Pool struct {
 	blockTxns       *txnList                                       // list of transactions that are supposed to be solved in the next block
 	arbDataMem      map[types.BlockHeader][crypto.EntropySize]byte // Mappings from the headers to their unique arb data.
 	headerMem       []types.BlockHeader                            // A circular list of headers that have been given out from the api recently.
-	sourceBlock     types.Block                                   // The block from which new headers for mining are created.
+	sourceBlock     types.Block                                    // The block from which new headers for mining are created.
 	sourceBlockTime time.Time                                      // How long headers have been using the same block (different from 'recent block').
 	memProgress     int                                            // The index of the most recent header used in headerMem.
 
@@ -151,26 +149,26 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	sqldb                   *sql.DB
-	listener                net.Listener
-	log                     *persist.Logger
-	yiilog                  *persist.Logger
-	mu                      sync.RWMutex
-	persistDir              string
-	port                    string
-	tg                      threadgroup.ThreadGroup
-	persist                 persistence
-	dispatcher              *Dispatcher
-	stratumID               uint64
-	shiftID                 uint64
-	shiftChan               chan bool
-	shiftTimestamp          time.Time
-	blockCounter            uint64
-	clients                 map[string]*Client //client name to client pointer mapping
+	sqldb          *sql.DB
+	listener       net.Listener
+	log            *persist.Logger
+	yiilog         *persist.Logger
+	mu             sync.RWMutex
+	persistDir     string
+	port           string
+	tg             threadgroup.ThreadGroup
+	persist        persistence
+	dispatcher     *Dispatcher
+	stratumID      uint64
+	shiftID        uint64
+	shiftChan      chan bool
+	shiftTimestamp time.Time
+	blockCounter   uint64
+	clients        map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex        sync.Mutex
-	runningMutex            sync.RWMutex
-	running                 bool
+	clientSetupMutex sync.Mutex
+	runningMutex     sync.RWMutex
+	running          bool
 }
 
 // startupRescan will rescan the blockchain in the event that the pool
@@ -309,13 +307,13 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		wallet:       wallet,
 		dependencies: dependencies,
 
-		blockMem:     make(map[types.BlockHeader]*types.Block),
-		blockTxns:    newTxnList(),
-		arbDataMem:   make(map[types.BlockHeader][crypto.EntropySize]byte),
-		headerMem:    make([]types.BlockHeader, HeaderMemory),
+		blockMem:   make(map[types.BlockHeader]*types.Block),
+		blockTxns:  newTxnList(),
+		arbDataMem: make(map[types.BlockHeader][crypto.EntropySize]byte),
+		headerMem:  make([]types.BlockHeader, HeaderMemory),
 
-		fullSets:     make(map[modules.TransactionSetID][]int),
-		splitSets:    make(map[splitSetID]*splitSet),
+		fullSets:  make(map[modules.TransactionSetID][]int),
+		splitSets: make(map[splitSetID]*splitSet),
 		blockMapHeap: &mapHeap{
 			selectID: make(map[splitSetID]*mapElement),
 			data:     nil,
@@ -327,9 +325,9 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			minHeap:  false,
 		},
 
-		persistDir:   persistDir,
-		stratumID:    rand.Uint64(),
-		clients:      make(map[string]*Client),
+		persistDir: persistDir,
+		stratumID:  rand.Uint64(),
+		clients:    make(map[string]*Client),
 	}
 	var err error
 

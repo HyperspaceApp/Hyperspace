@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
 	"github.com/NebulousLabs/Sia/persist"
+	"github.com/NebulousLabs/Sia/types"
 )
 
 const (
@@ -151,19 +151,19 @@ type (
 	// A SiafundOutputDiff indicates the addition or removal of a SiafundOutput in
 	// the consensus set.
 	SiafundOutputDiff struct {
-		Direction     DiffDirection `json:"dir"`
+		Direction     DiffDirection         `json:"dir"`
 		ID            types.SiafundOutputID `json:"id"`
-		SiafundOutput types.SiafundOutput `json:"sco"`
+		SiafundOutput types.SiafundOutput   `json:"sco"`
 	}
 
 	// A DelayedSiacoinOutputDiff indicates the introduction of a siacoin output
 	// that cannot be spent until after maturing for 144 blocks. When the output
 	// has matured, a SiacoinOutputDiff will be provided.
 	DelayedSiacoinOutputDiff struct {
-		Direction      DiffDirection `json:"dir"`
+		Direction      DiffDirection         `json:"dir"`
 		ID             types.SiacoinOutputID `json:"id"`
-		SiacoinOutput  types.SiacoinOutput `json:"sco"`
-		MaturityHeight types.BlockHeight `json:"mh"`
+		SiacoinOutput  types.SiacoinOutput   `json:"sco"`
+		MaturityHeight types.BlockHeight     `json:"mh"`
 	}
 
 	// A SiafundPoolDiff contains the value of the siafundPool before the block

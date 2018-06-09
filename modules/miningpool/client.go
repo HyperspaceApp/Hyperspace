@@ -36,7 +36,7 @@ func newClient(p *Pool, name string) (*Client, error) {
 	c := &Client{
 		cr: ClientRecord{
 			// clientID: id(),
-			name:     name,
+			name: name,
 		},
 		pool:    p,
 		workers: make(map[string]*Worker),

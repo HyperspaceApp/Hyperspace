@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	targetDuration   = build.Select(build.Var{
+	targetDuration = build.Select(build.Var{
 		Standard: 5.0,
 		Dev:      5.0,
 		Testing:  3.0,
@@ -17,11 +17,11 @@ var (
 		Dev:      15.0,
 		Testing:  9.0,
 	}).(float64) // how often do we consider changing difficulty
-	variancePercent  = build.Select(build.Var{
+	variancePercent = build.Select(build.Var{
 		Standard: 15,
 		Dev:      15,
 		Testing:  15,
-	}).(int)     // how much we let the share duration vary between retargetting
+	}).(int) // how much we let the share duration vary between retargetting
 )
 
 type Vardiff struct {
@@ -85,7 +85,7 @@ func (s *Session) checkDiffOnNewShare() bool {
 
 	var deltaDiff float64
 	deltaDiff = float64(targetDuration) / float64(historyDuration)
-	deltaDiff = 1 - (1 - deltaDiff)/2
+	deltaDiff = 1 - (1-deltaDiff)/2
 	if deltaDiff > 2.0 {
 		deltaDiff = 2.0
 	}

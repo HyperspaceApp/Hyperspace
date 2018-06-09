@@ -74,7 +74,7 @@ func (e *Explorer) initPersist() error {
 				return err
 			}
 		}
-		
+
 		//err = b.Put(internalBlockHeight, encoding.Marshal(types.BlockHeight(98112)))
 		//if err != nil {
 		//	fmt.Printf("internal err %v", err)

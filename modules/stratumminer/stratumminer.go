@@ -4,10 +4,10 @@ package stratumminer
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"sync"
 	"time"
-	"encoding/binary"
 
 	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/crypto"
@@ -33,16 +33,16 @@ type StratumMiner struct {
 	Client            GenericClient
 
 	// Miner variables.
-	miningOn   bool  // indicates if the miner is supposed to be running
-	mining   bool  // indicates if the miner is actually running
-	hashRate float64 // indicates hashes per second
-	submissions uint64 // indicates how many shares the miner has submitted
-	workThreadRunning bool // indicates if a workthread is still running
+	miningOn          bool    // indicates if the miner is supposed to be running
+	mining            bool    // indicates if the miner is actually running
+	hashRate          float64 // indicates hashes per second
+	submissions       uint64  // indicates how many shares the miner has submitted
+	workThreadRunning bool    // indicates if a workthread is still running
 
 	// Utils
-	log               *persist.Logger
-	mu                sync.RWMutex
-	persistDir        string
+	log        *persist.Logger
+	mu         sync.RWMutex
+	persistDir string
 
 	// tg signals the Miner's goroutines to shut down and blocks until all
 	// goroutines have exited before returning from Close().
@@ -54,7 +54,7 @@ func New(persistDir string) (*StratumMiner, error) {
 	var hashRateReportsChannel = make(chan float64, 10)
 	sm := &StratumMiner{
 		HashRateReports: hashRateReportsChannel,
-		persistDir: persistDir,
+		persistDir:      persistDir,
 	}
 	err := sm.initPersist()
 	if err != nil {
@@ -336,8 +336,8 @@ func (sm *StratumMiner) mine() {
 		}
 		id := crypto.HashBytes(work.Header)
 		/*
-		sm.log.Println("nonce: ", nonce[:])
-		sm.log.Println("header: ", work.Header[:])
+			sm.log.Println("nonce: ", nonce[:])
+			sm.log.Println("header: ", work.Header[:])
 		*/
 		//Check if match found
 		if bytes.Compare(work.Target[:], id[:]) >= 0 {
@@ -346,9 +346,9 @@ func (sm *StratumMiner) mine() {
 			// Copy nonce to a new header.
 			header := append([]byte(nil), work.Header...)
 			/*
-			for i := 0; i < 8; i++ {
-				header[i+32] = nonce[i]
-			}
+				for i := 0; i < 8; i++ {
+					header[i+32] = nonce[i]
+				}
 			*/
 			go func() {
 				if e := sm.Client.SubmitHeader(header, work.Job); e != nil {

@@ -12,7 +12,7 @@ type stratumminerTester struct {
 	//mpool modules.Pool
 	stratumminer *StratumMiner
 
-	persistDir  string
+	persistDir string
 }
 
 func newStratumMinerTester(name string) (*stratumminerTester, error) {

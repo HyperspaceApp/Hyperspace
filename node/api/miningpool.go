@@ -20,12 +20,12 @@ type (
 	}
 	// MiningPoolConfig contains the parameters you can set to config your pool
 	MiningPoolConfig struct {
-		NetworkPort        int           `json:"networkport"`
-		DBConnection       string           `json:"dbconnection"`
-		Name               string           `json:"name"`
-		PoolID             uint64           `json:"poolid"`
-		PoolWallet         types.UnlockHash `json:"poolwallet"`
-		OperatorWallet     types.UnlockHash `json:"operatorwallet"`
+		NetworkPort    int              `json:"networkport"`
+		DBConnection   string           `json:"dbconnection"`
+		Name           string           `json:"name"`
+		PoolID         uint64           `json:"poolid"`
+		PoolWallet     types.UnlockHash `json:"poolwallet"`
+		OperatorWallet types.UnlockHash `json:"operatorwallet"`
 	}
 	MiningPoolClientsInfo struct {
 		NumberOfClients uint64                 `json:"numberofclients"`
@@ -102,11 +102,11 @@ func (api *API) poolConfigHandler(w http.ResponseWriter, req *http.Request, _ ht
 		return
 	}
 	pg := MiningPoolConfig{
-		Name:               settings.PoolName,
-		NetworkPort:        settings.PoolNetworkPort,
-		DBConnection:       settings.PoolDBConnection,
-		PoolID:             settings.PoolID,
-		PoolWallet:         settings.PoolWallet,
+		Name:         settings.PoolName,
+		NetworkPort:  settings.PoolNetworkPort,
+		DBConnection: settings.PoolDBConnection,
+		PoolID:       settings.PoolID,
+		PoolWallet:   settings.PoolWallet,
 	}
 	WriteJSON(w, pg)
 }

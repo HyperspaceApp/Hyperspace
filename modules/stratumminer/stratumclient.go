@@ -45,7 +45,7 @@ type StratumClient struct {
 	target          types.Target
 	currentJob      stratumJob
 
-	tg              siasync.ThreadGroup
+	tg siasync.ThreadGroup
 	BaseClient
 }
 
@@ -58,7 +58,7 @@ func (sc *StratumClient) RestartOnError(err error) {
 	defer sc.tg.Done()
 	log.Println("Error in connection to stratumserver:", err)
 	select {
-	case <- sc.tg.StopChan():
+	case <-sc.tg.StopChan():
 		log.Println("... tried restarting stratumclient from error, but stop has already been called. exiting")
 		return
 	default:
@@ -134,11 +134,11 @@ func (sc *StratumClient) Start() {
 		build.Critical(err)
 	}
 	/*
-	else {
-		// we can get here if we stop the client before we finished starting it,
-		// so just return
-		return
-	}
+		else {
+			// we can get here if we stop the client before we finished starting it,
+			// so just return
+			return
+		}
 	*/
 	defer func() {
 		sc.tg.Done()
@@ -166,7 +166,7 @@ func (sc *StratumClient) Start() {
 	// Connect to the stratum server
 	for {
 		select {
-		case <- sc.tg.StopChan():
+		case <-sc.tg.StopChan():
 			return
 		default:
 		}

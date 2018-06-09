@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/NebulousLabs/Sia/crypto"
-	"github.com/NebulousLabs/Sia/types"
 	"github.com/NebulousLabs/Sia/encoding"
 	"github.com/NebulousLabs/Sia/modules"
+	"github.com/NebulousLabs/Sia/types"
 
 	"github.com/coreos/bbolt"
 	"github.com/julienschmidt/httprouter"
@@ -71,20 +71,20 @@ type ConsensusTransaction struct {
 // ConsensusBlockGET is the object returned by a GET request to
 // /consensus/block.
 type ConsensusBlock struct {
-	BlockID             types.BlockID                    `json:"id"`
-	BlockHeight         types.BlockHeight                `json:"blockheight"`
-	BlockHeader         types.BlockHeader                `json:"blockheader"`
-	Target              types.Target                     `json:"target"`
-	Difficulty          types.Currency                   `json:"difficulty"`
-	TotalCoins          types.Currency                   `json:"totalcoins"`
-	EstimatedHashrate   types.Currency                   `json:"estimatedhashrate"`
+	BlockID           types.BlockID     `json:"id"`
+	BlockHeight       types.BlockHeight `json:"blockheight"`
+	BlockHeader       types.BlockHeader `json:"blockheader"`
+	Target            types.Target      `json:"target"`
+	Difficulty        types.Currency    `json:"difficulty"`
+	TotalCoins        types.Currency    `json:"totalcoins"`
+	EstimatedHashrate types.Currency    `json:"estimatedhashrate"`
 
 	MinerPayouts map[string]types.SiacoinOutput  `json:"minerpayouts"`
 	Transactions map[string]ConsensusTransaction `json:"transactions"`
 }
 
 type Scods struct {
-	scods []modules.SiacoinOutputDiff  `json:"scods"`
+	scods []modules.SiacoinOutputDiff `json:"scods"`
 }
 
 // ConsensusBlocksGet contains all fields of a types.Block and additional
@@ -421,14 +421,14 @@ func (api *API) consensusBlocksHandlerSanasol(w http.ResponseWriter, req *http.R
 		}
 
 		ct[txid.String()] = ConsensusTransaction{
-			SiacoinInputs:  inputs,
-			SiacoinOutputs: outputs,
-			FileContracts: filecontracts,
+			SiacoinInputs:         inputs,
+			SiacoinOutputs:        outputs,
+			FileContracts:         filecontracts,
 			FileContractRevisions: filecontractrevisions,
-			StorageProofs: storageproofs,
-			SiafundInputs: sfinputs,
-			SiafundOutputs: sfoutputs,
-			ArbitraryData: txn.ArbitraryData,
+			StorageProofs:         storageproofs,
+			SiafundInputs:         sfinputs,
+			SiafundOutputs:        sfoutputs,
+			ArbitraryData:         txn.ArbitraryData,
 		}
 	}
 
@@ -440,7 +440,7 @@ func (api *API) consensusBlocksHandlerSanasol(w http.ResponseWriter, req *http.R
 	// hashrateEstimationBlocks is the number of blocks that are used to
 	// estimate the current hashrate.
 	hashrateEstimationBlocks = 200 // 33 hours
-	if height > hashrateEstimationBlocks  {
+	if height > hashrateEstimationBlocks {
 		var totalDifficulty = currentTarget
 		var oldestTimestamp types.Timestamp
 		for i := types.BlockHeight(1); i < hashrateEstimationBlocks; i++ {
@@ -460,18 +460,17 @@ func (api *API) consensusBlocksHandlerSanasol(w http.ResponseWriter, req *http.R
 	}
 
 	WriteJSON(w, ConsensusBlock{
-		BlockID:  block.ID(),
-		BlockHeight:  height,
-		BlockHeader:  block.Header(),
-		Transactions: ct,
-		MinerPayouts: minerpayouts,
-		Difficulty: currentTarget.Difficulty(),
-		Target: currentTarget,
-		TotalCoins: types.CalculateNumSiacoins(height),
+		BlockID:           block.ID(),
+		BlockHeight:       height,
+		BlockHeader:       block.Header(),
+		Transactions:      ct,
+		MinerPayouts:      minerpayouts,
+		Difficulty:        currentTarget.Difficulty(),
+		Target:            currentTarget,
+		TotalCoins:        types.CalculateNumSiacoins(height),
 		EstimatedHashrate: estimatedHashrate,
 	})
 }
-
 
 // consensusBlocksHandler handles API calls to /consensus/blocks/:height.
 func (api *API) consensusFutureBlocksHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
@@ -482,7 +481,6 @@ func (api *API) consensusFutureBlocksHandler(w http.ResponseWriter, req *http.Re
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
 	}
-
 
 	var (
 		prefixDSCO = []byte("dsco_")
@@ -511,7 +509,6 @@ func (api *API) consensusFutureBlocksHandler(w http.ResponseWriter, req *http.Re
 		})
 		return nil
 	})
-
 
 	WriteJSON(w, scods)
 }

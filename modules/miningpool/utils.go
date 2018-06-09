@@ -20,11 +20,11 @@ func interfaceify(strs []string) []interface{} {
 }
 
 func trace() {
-    pc := make([]uintptr, 10)  // at least 1 entry needed
-    runtime.Callers(2, pc)
-    f := runtime.FuncForPC(pc[0])
-    file, line := f.FileLine(pc[0])
-    fmt.Printf("%s:%d %s\n", file, line, f.Name())
+	pc := make([]uintptr, 10) // at least 1 entry needed
+	runtime.Callers(2, pc)
+	f := runtime.FuncForPC(pc[0])
+	file, line := f.FileLine(pc[0])
+	fmt.Printf("%s:%d %s\n", file, line, f.Name())
 }
 
 func sPrintID(id uint64) string {
@@ -138,7 +138,7 @@ func caculateRewardRatio(siaSessionDifficulty, blockDifficulty *big.Int) float64
 }
 
 func currencyToAmount(value types.Currency) float64 {
-	v := value.String()[0:len(value.String()) - 16]
+	v := value.String()[0 : len(value.String())-16]
 	f, _ := strconv.ParseFloat(v, 64)
 	return f / 1e8
 }
