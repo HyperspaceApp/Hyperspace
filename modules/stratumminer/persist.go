@@ -27,10 +27,11 @@ func (sm *StratumMiner) initPersist() error {
 	if err != nil {
 		return err
 	}
-	sm.tg.AfterStop(func() {
+	sm.tg.AfterStop(func() error {
 		if err := sm.log.Close(); err != nil {
-			fmt.Errorf("log.Close failed: %v", err)
+			return fmt.Errorf("log.Close failed: %v", err)
 		}
+		return nil
 	})
 	return nil
 }

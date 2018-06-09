@@ -14,7 +14,7 @@ import (
 	//"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/NebulousLabs/threadgroup"
 )
 
 //ErrorCallback is the type of function that be registered to be notified of errors requiring a client
@@ -39,7 +39,7 @@ type TcpClient struct {
 	ErrorCallback        ErrorCallback
 	notificationHandlers map[string]NotificationHandler
 
-	tg siasync.ThreadGroup
+	tg threadgroup.ThreadGroup
 }
 
 // Dial connects to a stratum+tcp at the specified network address.
@@ -71,10 +71,11 @@ func (c *TcpClient) Dial(host string) (err error) {
 		c.dispatchError(err)
 		return err
 	} else {
-		c.tg.OnStop(func() {
+		c.tg.OnStop(func() error {
 			fmt.Println("TCPClient: Closing c.socket")
 			c.cancelAllRequests()
 			c.socket.Close()
+			return nil
 		})
 		c.connected = true
 	}
@@ -249,7 +250,7 @@ func (c *TcpClient) Call(serviceMethod string, args []string) (reply interface{}
 
 	rawmsg, err := json.Marshal(r)
 	if err != nil {
-		fmt.Errorf("json.Marshal failed: %v", err)
+		err = fmt.Errorf("json.Marshal failed: %v", err)
 		return
 	}
 	call := c.registerRequest(r.ID)
@@ -260,12 +261,12 @@ func (c *TcpClient) Call(serviceMethod string, args []string) (reply interface{}
 	if c.connected {
 		_, err = c.socket.Write(rawmsg)
 	} else {
-		fmt.Errorf("Can't write to socket, socket has been closed")
-		return nil, errors.New("Can't write to socket, socket has been closed")
+		err = fmt.Errorf("Can't write to socket, socket has been closed")
+		return nil, err
 	}
 	c.mu.Unlock()
 	if err != nil {
-		fmt.Errorf("socket.Write failed: %v", err)
+		err = fmt.Errorf("socket.Write failed: %v", err)
 		return
 	}
 	//Make sure the request is cancelled if no response is given

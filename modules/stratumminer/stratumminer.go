@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/persist"
-	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/NebulousLabs/threadgroup"
 )
 
 //miningWork is sent to the mining routines and defines what ranges should be searched for a matching nonce
@@ -46,7 +46,7 @@ type StratumMiner struct {
 
 	// tg signals the Miner's goroutines to shut down and blocks until all
 	// goroutines have exited before returning from Close().
-	tg siasync.ThreadGroup
+	tg threadgroup.ThreadGroup
 }
 
 func New(persistDir string) (*StratumMiner, error) {
