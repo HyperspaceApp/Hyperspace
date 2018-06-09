@@ -211,29 +211,37 @@ func TestTransactionValidSignatures(t *testing.T) {
 		{
 			CoveredFields: CoveredFields{WholeTransaction: true},
 		},
+		/*
 		{
 			CoveredFields: CoveredFields{WholeTransaction: true},
 		},
+		*/
 
 		// The second signatures should always work for being unrecognized
 		// types.
 		{PublicKeyIndex: 1},
 		{PublicKeyIndex: 1},
+		/*
 		{PublicKeyIndex: 1},
+		*/
 	}
 	txn.TransactionSignatures[1].ParentID[0] = 1
-	txn.TransactionSignatures[2].ParentID[0] = 2
+	//txn.TransactionSignatures[2].ParentID[0] = 2
+	/*
 	txn.TransactionSignatures[4].ParentID[0] = 1
-	txn.TransactionSignatures[5].ParentID[0] = 2
+	*/
+	// modified
+	txn.TransactionSignatures[3].ParentID[0] = 1
+	//txn.TransactionSignatures[5].ParentID[0] = 2
 	sigHash0 := txn.SigHash(0)
 	sigHash1 := txn.SigHash(1)
-	sigHash2 := txn.SigHash(2)
+	//sigHash2 := txn.SigHash(2)
 	sig0 := crypto.SignHash(sigHash0, sk)
 	sig1 := crypto.SignHash(sigHash1, sk)
-	sig2 := crypto.SignHash(sigHash2, sk)
+	//sig2 := crypto.SignHash(sigHash2, sk)
 	txn.TransactionSignatures[0].Signature = sig0[:]
 	txn.TransactionSignatures[1].Signature = sig1[:]
-	txn.TransactionSignatures[2].Signature = sig2[:]
+	//txn.TransactionSignatures[2].Signature = sig2[:]
 
 	// Check that the signing was successful.
 	err := txn.validSignatures(10)
@@ -272,10 +280,6 @@ func TestTransactionValidSignatures(t *testing.T) {
 		t.Error("failed to double spend a file contract termination")
 	}
 	txn.FileContractRevisions = txn.FileContractRevisions[:len(txn.FileContractRevisions)-1]
-	err = txn.validSignatures(10)
-	if err == nil {
-		t.Error("failed to double spend a siafund input")
-	}
 
 	// Add a frivolous signature
 	txn.TransactionSignatures = append(txn.TransactionSignatures, TransactionSignature{})
