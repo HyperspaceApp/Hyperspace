@@ -125,6 +125,18 @@ func difficultyToTarget(difficulty float64) (target types.Target, err error) {
 	return
 }
 
+func caculateRewardRatio(siaSessionDifficulty, blockDifficulty *big.Int) float64 {
+	sessionAsBigFloat := &big.Float{}
+	sessionAsBigFloat.SetInt(siaSessionDifficulty)
+	blockAsBigFloat := &big.Float{}
+	blockAsBigFloat.SetInt(blockDifficulty)
+	resultAsBigFloat := &big.Float{}
+
+	resultAsBigFloat.Quo(sessionAsBigFloat, blockAsBigFloat)
+	result, _ := resultAsBigFloat.Float64()
+	return result
+}
+
 func currencyToAmount(value types.Currency) float64 {
 	v := value.String()[0:len(value.String()) - 16]
 	f, _ := strconv.ParseFloat(v, 64)
