@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"runtime"
+	"strconv"
 
 	"github.com/NebulousLabs/Sia/types"
 )
@@ -122,6 +123,24 @@ func difficultyToTarget(difficulty float64) (target types.Target, err error) {
 	targetAsBigInt, _ := targetAsBigFloat.Int(nil)
 	target, err = intToTarget(targetAsBigInt)
 	return
+}
+
+func caculateRewardRatio(siaSessionDifficulty, blockDifficulty *big.Int) float64 {
+	sessionAsBigFloat := &big.Float{}
+	sessionAsBigFloat.SetInt(siaSessionDifficulty)
+	blockAsBigFloat := &big.Float{}
+	blockAsBigFloat.SetInt(blockDifficulty)
+	resultAsBigFloat := &big.Float{}
+
+	resultAsBigFloat.Quo(sessionAsBigFloat, blockAsBigFloat)
+	result, _ := resultAsBigFloat.Float64()
+	return result
+}
+
+func currencyToAmount(value types.Currency) float64 {
+	v := value.String()[0:len(value.String()) - 16]
+	f, _ := strconv.ParseFloat(v, 64)
+	return f / 1e8
 }
 
 //
