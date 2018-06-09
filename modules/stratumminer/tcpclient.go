@@ -261,8 +261,7 @@ func (c *TcpClient) Call(serviceMethod string, args []string) (reply interface{}
 	if c.connected {
 		_, err = c.socket.Write(rawmsg)
 	} else {
-		err = errors.New("Can't write to socket, socket has been closed")
-		fmt.Println(err)
+		err = fmt.Errorf("Can't write to socket, socket has been closed")
 		return nil, err
 	}
 	c.mu.Unlock()
