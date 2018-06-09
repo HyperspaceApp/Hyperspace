@@ -27,9 +27,7 @@ type (
 	// for 'ValidProofOutputs' are created. If the party does not submit a
 	// storage proof by 'WindowEnd', then the outputs for 'MissedProofOutputs'
 	// are created instead. The sum of 'MissedProofOutputs' and the sum of
-	// 'ValidProofOutputs' must equal 'Payout' minus the siafund fee. This fee
-	// is sent to the siafund pool, which is a set of siacoins only spendable
-	// by siafund owners.
+	// 'ValidProofOutputs' must equal 'Payout'.
 	//
 	// Under normal circumstances, the payout will be funded by both the host and
 	// the renter, which gives the host incentive not to lose the file. The

@@ -14,13 +14,17 @@ func TestTransactionCorrectFileContracts(t *testing.T) {
 				WindowStart: 35,
 				WindowEnd:   40,
 				Payout:      NewCurrency64(1e6),
+				// no tax from siafunds
 				ValidProofOutputs: []SiacoinOutput{
 					{Value: NewCurrency64(70e3)},
-					{Value: NewCurrency64(900e3)},
+					//{Value: NewCurrency64(900e3)},
+					{Value: NewCurrency64(930e3)},
 				},
+				// no tax from siafunds
 				MissedProofOutputs: []SiacoinOutput{
 					{Value: NewCurrency64(70e3)},
-					{Value: NewCurrency64(900e3)},
+					//{Value: NewCurrency64(900e3)},
+					{Value: NewCurrency64(930e3)},
 				},
 			},
 		},
@@ -192,23 +196,14 @@ func TestTransactionFollowsMinimumValues(t *testing.T) {
 	if err != ErrZeroOutput {
 		t.Error(err)
 	}
+	txn.SiacoinOutputs[0].Value = NewCurrency64(1)
 	txn.FileContracts[0].Payout = NewCurrency64(1)
-	err = txn.followsMinimumValues()
-	if err != ErrZeroOutput {
-		t.Error(err)
-	}
 	txn.MinerFees[0] = ZeroCurrency
 	err = txn.followsMinimumValues()
 	if err != ErrZeroMinerFee {
 		t.Error(err)
 	}
 	txn.MinerFees[0] = NewCurrency64(1)
-
-	// Try a non-zero value for the ClaimStart field of a siafund output.
-	err = txn.followsMinimumValues()
-	if err != ErrNonZeroClaimStart {
-		t.Error(err)
-	}
 }
 
 // TestTransactionFollowsStorageProofRules probes the followsStorageProofRules
@@ -251,12 +246,6 @@ func TestTransactionFollowsStorageProofRules(t *testing.T) {
 		t.Error(err)
 	}
 	txn.FileContractRevisions = nil
-
-	// Try a transaction with a storage proof and a FileContractRevision.
-	err = txn.followsStorageProofRules()
-	if err != ErrStorageProofWithOutputs {
-		t.Error(err)
-	}
 }
 
 // TestTransactionNoRepeats probes the noRepeats method of the Transaction

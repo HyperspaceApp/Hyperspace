@@ -22,9 +22,6 @@ var (
 	// ErrFileContractWindowStartViolation is an error when a file contract
 	// window must start in the future
 	ErrFileContractWindowStartViolation = errors.New("file contract window must start in the future")
-	// ErrNonZeroClaimStart is an error when a transaction has a siafund
-	// output with a non-zero siafund claim
-	ErrNonZeroClaimStart = errors.New("transaction has a siafund output with a non-zero siafund claim")
 	// ErrNonZeroRevision is an error when a new file contract has a
 	// nonzero revision number
 	ErrNonZeroRevision = errors.New("new file contract has a nonzero revision number")
@@ -60,8 +57,7 @@ func (t Transaction) correctFileContracts(currentHeight BlockHeight) error {
 			return ErrFileContractWindowEndViolation
 		}
 
-		// Check that the proof outputs sum to the payout after the
-		// siafund fee has been applied.
+		// Check that the proof outputs sum to the payout
 		var validProofOutputSum, missedProofOutputSum Currency
 		for _, output := range fc.ValidProofOutputs {
 			/* - Future hardforking code.

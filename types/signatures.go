@@ -98,7 +98,7 @@ type (
 	// UnlockConditions of the transaction. This key is specified first by
 	// 'ParentID', which specifies the UnlockConditions, and then
 	// 'PublicKeyIndex', which indicates the key in the UnlockConditions. There
-	// are three types that use UnlockConditions: SiacoinInputs,
+	// are two types that use UnlockConditions: SiacoinInputs
 	// and FileContractTerminations. Each of these types also references a
 	// ParentID, and this is the hash that 'ParentID' must match. The 'Timelock'
 	// prevents the signature from being used until a certain height.
