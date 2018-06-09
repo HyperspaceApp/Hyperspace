@@ -10,18 +10,18 @@ type (
 	// StratumMinerGET contains the information that is returned after a GET request
 	// to /stratumminer.
 	StratumMinerGET struct {
-		Hashrate      float64  `json:"hashrate"`
-		Mining        bool     `json:"mining"`
-		Submissions   uint64   `json:"submissions"`
+		Hashrate    float64 `json:"hashrate"`
+		Mining      bool    `json:"mining"`
+		Submissions uint64  `json:"submissions"`
 	}
 )
 
 // stratumminerHandler handles the API call that queries the stratum miner's status.
 func (api *API) stratumminerHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	smg := StratumMinerGET{
-		Hashrate:      api.stratumminer.Hashrate(),
-		Mining:        api.stratumminer.Mining(),
-		Submissions:   api.stratumminer.Submissions(),
+		Hashrate:    api.stratumminer.Hashrate(),
+		Mining:      api.stratumminer.Mining(),
+		Submissions: api.stratumminer.Submissions(),
 	}
 	WriteJSON(w, smg)
 }

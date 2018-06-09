@@ -18,8 +18,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/NebulousLabs/threadgroup"
 	"github.com/NebulousLabs/errors"
+	"github.com/NebulousLabs/threadgroup"
 )
 
 const (

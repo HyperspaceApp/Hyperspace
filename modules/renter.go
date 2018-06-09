@@ -266,7 +266,7 @@ type RenterContract struct {
 	// the renter contract on the blockchain.
 	ContractFee types.Currency
 
-	TxnFee      types.Currency
+	TxnFee types.Currency
 }
 
 // ContractorSpending contains the metrics about how much the Contractor has

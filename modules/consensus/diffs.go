@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	errDiffsNotGenerated             = errors.New("applying diff set before generating errors")
-	errInvalidSuccessor              = errors.New("generating diffs for a block that's an invalid successsor to the current block")
-	errNegativePoolAdjustment        = errors.New("committing a siafund pool diff with a negative adjustment")
-	errWrongAppliedDiffSet           = errors.New("applying a diff set that isn't the current block")
-	errWrongRevertDiffSet            = errors.New("reverting a diff set that isn't the current block")
+	errDiffsNotGenerated      = errors.New("applying diff set before generating errors")
+	errInvalidSuccessor       = errors.New("generating diffs for a block that's an invalid successsor to the current block")
+	errNegativePoolAdjustment = errors.New("committing a siafund pool diff with a negative adjustment")
+	errWrongAppliedDiffSet    = errors.New("applying a diff set that isn't the current block")
+	errWrongRevertDiffSet     = errors.New("reverting a diff set that isn't the current block")
 )
 
 // commitDiffSetSanity performs a series of sanity checks before committing a

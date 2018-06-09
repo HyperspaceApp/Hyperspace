@@ -40,9 +40,9 @@ var (
 	GenesisID BlockID
 
 	// GenesisTimestamp is the timestamp when genesis block was mined
-	GenesisTimestamp         Timestamp
+	GenesisTimestamp Timestamp
 	// InitialCoinbase is the coinbase reward of the Genesis block.
-	InitialCoinbase          = uint64(300e3)
+	InitialCoinbase = uint64(300e3)
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or
@@ -51,24 +51,24 @@ var (
 	// payout, as a tiny reorg may change the value of the payout, and thus invalidate
 	// any transactions spending the payout. File contract payouts also are subject to
 	// a maturity delay.
-	MaturityDelay            BlockHeight
+	MaturityDelay BlockHeight
 	// MaxTargetAdjustmentDown restrict how much the block difficulty is allowed to
 	// change in a single step, which is important to limit the effect of difficulty
 	// raising and lowering attacks.
-	MaxTargetAdjustmentDown        *big.Rat
+	MaxTargetAdjustmentDown *big.Rat
 	// MaxTargetAdjustmentUp restrict how much the block difficulty is allowed to
 	// change in a single step, which is important to limit the effect of difficulty
 	// raising and lowering attacks.
-	MaxTargetAdjustmentUp          *big.Rat
+	MaxTargetAdjustmentUp *big.Rat
 	// MedianTimestampWindow tells us how many blocks to look back when calculating
 	// the median timestamp over the previous n blocks. The timestamp of a block is
 	// not allowed to be less than or equal to the median timestamp of the previous n
 	// blocks, where for Sia this number is typically 11.
-	MedianTimestampWindow    = uint64(11)
+	MedianTimestampWindow = uint64(11)
 	// MinimumCoinbase is the minimum coinbase reward for a block.
 	// The coinbase decreases in each block after the Genesis block,
 	// but it will not decrease past MinimumCoinbase.
-	MinimumCoinbase          uint64
+	MinimumCoinbase uint64
 
 	// Oak hardfork constants. Oak is the name of the difficulty algorithm for
 	// Sia following a hardfork at block 135e3.
@@ -114,7 +114,7 @@ var (
 	// TargetWindow is the number of blocks to look backwards when determining how much
 	// time has passed vs. how many blocks have been created. It's only used in the old,
 	// broken difficulty adjustment algorithm.
-	TargetWindow     BlockHeight
+	TargetWindow BlockHeight
 )
 
 // init checks which build constant is in place and initializes the variables
@@ -126,8 +126,8 @@ func init() {
 		// can coordinate their actions over a the developer testnets, but fast
 		// enough that there isn't much time wasted on waiting for things to
 		// happen.
-		BlockFrequency = 120                      // 12 seconds: slow enough for developers to see ~each block, fast enough that blocks don't waste time.
-		MaturityDelay = 100                       // 60 seconds before a delayed output matures.
+		BlockFrequency = 120                     // 12 seconds: slow enough for developers to see ~each block, fast enough that blocks don't waste time.
+		MaturityDelay = 100                      // 60 seconds before a delayed output matures.
 		GenesisTimestamp = Timestamp(1528293910) // Change as necessary.
 		RootTarget = Target{0, 0, 2}             // Standard developer CPUs will be able to mine blocks with the race library activated.
 
@@ -281,9 +281,8 @@ func init() {
 
 	// Create the genesis block.
 	GenesisBlock = Block{
-		Timestamp: GenesisTimestamp,
-		Transactions: []Transaction{
-		},
+		Timestamp:    GenesisTimestamp,
+		Transactions: []Transaction{},
 	}
 	// Calculate the genesis ID.
 	GenesisID = GenesisBlock.ID()

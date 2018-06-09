@@ -7,27 +7,27 @@ import (
 )
 
 type Share struct {
-	userid int64
-	workerid int64
-	height int64
-	valid bool
-	difficulty float64
-	reward float64
+	userid          int64
+	workerid        int64
+	height          int64
+	valid           bool
+	difficulty      float64
+	reward          float64
 	blockDifficulty float64
-	shareReward float64
+	shareReward     float64
 	shareDifficulty float64
-	time time.Time
+	time            time.Time
 }
 
 type Shift struct {
-	mu                   sync.RWMutex
-	shiftID              uint64
-	pool                 uint64
-	worker               *Worker
-	blockID              uint64
-	shares               []Share
-	lastShareTime        time.Time
-	startShiftTime       time.Time
+	mu             sync.RWMutex
+	shiftID        uint64
+	pool           uint64
+	worker         *Worker
+	blockID        uint64
+	shares         []Share
+	lastShareTime  time.Time
+	startShiftTime time.Time
 }
 
 func (p *Pool) newShift(w *Worker) *Shift {
@@ -82,10 +82,10 @@ func (s *Shift) IncrementInvalid() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	share := &Share{
-		userid:     s.worker.Parent().cr.clientID,
-		workerid:   s.worker.wr.workerID,
-		valid:      false,
-		time:       time.Now(),
+		userid:   s.worker.Parent().cr.clientID,
+		workerid: s.worker.wr.workerID,
+		valid:    false,
+		time:     time.Now(),
 	}
 	s.shares = append(s.shares, *share)
 }

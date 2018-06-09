@@ -212,9 +212,9 @@ func TestTransactionValidSignatures(t *testing.T) {
 			CoveredFields: CoveredFields{WholeTransaction: true},
 		},
 		/*
-		{
-			CoveredFields: CoveredFields{WholeTransaction: true},
-		},
+			{
+				CoveredFields: CoveredFields{WholeTransaction: true},
+			},
 		*/
 
 		// The second signatures should always work for being unrecognized
@@ -222,13 +222,13 @@ func TestTransactionValidSignatures(t *testing.T) {
 		{PublicKeyIndex: 1},
 		{PublicKeyIndex: 1},
 		/*
-		{PublicKeyIndex: 1},
+			{PublicKeyIndex: 1},
 		*/
 	}
 	txn.TransactionSignatures[1].ParentID[0] = 1
 	//txn.TransactionSignatures[2].ParentID[0] = 2
 	/*
-	txn.TransactionSignatures[4].ParentID[0] = 1
+		txn.TransactionSignatures[4].ParentID[0] = 1
 	*/
 	// modified
 	txn.TransactionSignatures[3].ParentID[0] = 1

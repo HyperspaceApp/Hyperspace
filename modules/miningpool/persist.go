@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/HyperspaceApp/Hyperspace/config"
 )
 
 // persistence is the data that is kept when the pool is restarted.
@@ -31,7 +31,7 @@ type persistence struct {
 	// Block info
 	Target types.Target `json:"blocktarget"`
 	// Address       types.UnlockHash `json:"pooladdress"`
-	BlocksFound   []types.BlockID `json:"blocksfound"`
+	BlocksFound []types.BlockID `json:"blocksfound"`
 }
 
 func (p *persistence) GetBlockHeight() types.BlockHeight {
@@ -188,13 +188,13 @@ func (mp *Pool) persistData() persistence {
 func (mp *Pool) establishDefaults() error {
 	// Configure the settings object.
 	/*
-	mp.persist.SetSettings(modules.PoolInternalSettings{
-		PoolName:               "",
-		PoolWallet:             types.UnlockHash{},
-		PoolNetworkPort:        3333,
-		PoolDBConnection:       "user:pass@127.0.0.1/HDCPool",
-	})
-	mp.newSourceBlock()
+		mp.persist.SetSettings(modules.PoolInternalSettings{
+			PoolName:               "",
+			PoolWallet:             types.UnlockHash{},
+			PoolNetworkPort:        3333,
+			PoolDBConnection:       "user:pass@127.0.0.1/HDCPool",
+		})
+		mp.newSourceBlock()
 	*/
 	return nil
 }
@@ -228,11 +228,11 @@ func (mp *Pool) setPoolSettings(initConfig config.MiningPoolConfig) error {
 
 	poolWallet.LoadString(initConfig.PoolWallet)
 	internalSettings := modules.PoolInternalSettings{
-		PoolNetworkPort: initConfig.PoolNetworkPort,
-		PoolName: initConfig.PoolName,
-		PoolID: initConfig.PoolID,
+		PoolNetworkPort:  initConfig.PoolNetworkPort,
+		PoolName:         initConfig.PoolName,
+		PoolID:           initConfig.PoolID,
 		PoolDBConnection: initConfig.PoolDBConnection,
-		PoolWallet: poolWallet,
+		PoolWallet:       poolWallet,
 	}
 	mp.persist.SetSettings(internalSettings)
 	mp.newSourceBlock()
@@ -240,10 +240,14 @@ func (mp *Pool) setPoolSettings(initConfig config.MiningPoolConfig) error {
 }
 
 func (mp *Pool) hasSettings() bool {
-    _, err := os.Stat(filepath.Join(mp.persistDir, settingsFile))
-    if err == nil { return true }
-    if os.IsNotExist(err) { return false }
-    return true
+	_, err := os.Stat(filepath.Join(mp.persistDir, settingsFile))
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 // load loads the Hosts's persistent data from disk.

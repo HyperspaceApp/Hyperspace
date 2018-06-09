@@ -481,12 +481,12 @@ func dbAddGenesisBlock(tx *bolt.Tx) {
 	dbAddTransactionID(tx, txid, 0)
 	dbAddBlockFacts(tx, blockFacts{
 		BlockFacts: modules.BlockFacts{
-			BlockID:            id,
-			Height:             0,
-			Difficulty:         types.RootTarget.Difficulty(),
-			Target:             types.RootTarget,
-			TotalCoins:         types.CalculateCoinbase(0),
-			TransactionCount:   1,
+			BlockID:          id,
+			Height:           0,
+			Difficulty:       types.RootTarget.Difficulty(),
+			Target:           types.RootTarget,
+			TotalCoins:       types.CalculateCoinbase(0),
+			TransactionCount: 1,
 		},
 		Timestamp: types.GenesisBlock.Timestamp,
 	})

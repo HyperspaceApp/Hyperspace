@@ -64,9 +64,9 @@ type (
 	// SiacoinOutputID uniquely identifies a siacoin output
 	SiacoinOutputID crypto.Hash
 	// FileContractID uniquely identifies a file contract
-	FileContractID  crypto.Hash
+	FileContractID crypto.Hash
 	// OutputID uniquely identifies an output
-	OutputID        crypto.Hash
+	OutputID crypto.Hash
 
 	// A Transaction is an atomic component of a block. Transactions can contain
 	// inputs and outputs, file contracts, storage proofs, and even arbitrary

@@ -4,8 +4,8 @@ import (
 	"errors"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
-	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -143,10 +143,10 @@ type (
 	// that cannot be spent until after maturing for 144 blocks. When the output
 	// has matured, a SiacoinOutputDiff will be provided.
 	DelayedSiacoinOutputDiff struct {
-		Direction      DiffDirection `json:"dir"`
+		Direction      DiffDirection         `json:"dir"`
 		ID             types.SiacoinOutputID `json:"id"`
-		SiacoinOutput  types.SiacoinOutput `json:"sco"`
-		MaturityHeight types.BlockHeight `json:"mh"`
+		SiacoinOutput  types.SiacoinOutput   `json:"sco"`
+		MaturityHeight types.BlockHeight     `json:"mh"`
 	}
 
 	// A ConsensusSet accepts blocks and builds an understanding of network

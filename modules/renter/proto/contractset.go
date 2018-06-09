@@ -8,8 +8,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/NebulousLabs/ratelimit"
 	"github.com/NebulousLabs/errors"
+	"github.com/NebulousLabs/ratelimit"
 	"github.com/NebulousLabs/writeaheadlog"
 )
 

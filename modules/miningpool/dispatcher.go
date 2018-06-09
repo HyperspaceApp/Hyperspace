@@ -11,11 +11,11 @@ import (
 
 // Dispatcher contains a map of ip addresses to handlers
 type Dispatcher struct {
-	handlers map[string]*Handler
-	ln       net.Listener
-	mu       sync.RWMutex
-	p        *Pool
-	log      *persist.Logger
+	handlers          map[string]*Handler
+	ln                net.Listener
+	mu                sync.RWMutex
+	p                 *Pool
+	log               *persist.Logger
 	connectionsOpened uint64
 }
 

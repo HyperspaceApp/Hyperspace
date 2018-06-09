@@ -16,8 +16,8 @@ type (
 	// fields, a string and a base64 encoded byte slice.
 	ExtendedHostDBEntry struct {
 		modules.HostDBEntry
-		PublicKeyString string `json:"publickeystring"`
-		ScoreBreakdown modules.HostScoreBreakdown `json:"scorebreakdown"`
+		PublicKeyString string                     `json:"publickeystring"`
+		ScoreBreakdown  modules.HostScoreBreakdown `json:"scorebreakdown"`
 	}
 
 	// HostdbActiveGET lists active hosts on the network.

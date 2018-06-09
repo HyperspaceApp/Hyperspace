@@ -1,16 +1,16 @@
 package pool
 
 import (
-	"testing"
-	"fmt"
-	"net"
-	"time"
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"net"
+	"testing"
+	"time"
 
-	"github.com/NebulousLabs/errors"
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/errors"
 )
 
 // TestStratumServer would test before and after a connections is made to the server
@@ -54,7 +54,7 @@ func TestStratumServer(t *testing.T) {
 
 func createAuthorizeRequest(t *testing.T, port int, waitchan chan int, tID uint64, autoclose bool) net.Conn {
 	//fmt.Printf("listening on port: %v\n", pt.mpool.InternalSettings().PoolNetworkPort)
-	socket, err := net.DialTimeout("tcp", fmt.Sprintf(":%d", port), 3 * time.Second)
+	socket, err := net.DialTimeout("tcp", fmt.Sprintf(":%d", port), 3*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func createAuthorizeRequest(t *testing.T, port int, waitchan chan int, tID uint6
 		}
 
 		if r.ID == tID {
-			break;
+			break
 		} else {
 			t.Fatal("got a wrong message: ", rawmessage)
 		}
@@ -221,7 +221,7 @@ func createSubscribeRequest(t *testing.T, socket net.Conn, waitchan chan int, tI
 				t.Fatal(errors.New(fmt.Sprintf("wrong response number %d", len(resp))))
 			}
 
-			break;
+			break
 		} else {
 			//fmt.Printf("%d: %s\n", r.ID, rawmessage)
 		}

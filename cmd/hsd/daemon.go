@@ -140,7 +140,7 @@ func readFileConfig(config Config) error {
 
 	if strings.Contains(config.Siad.Modules, "p") {
 		err := viper.ReadInConfig() // Find and read the config file
-		if err != nil { // Handle errors reading the config file
+		if err != nil {             // Handle errors reading the config file
 			return err
 		}
 		poolViper := viper.Sub("miningpool")
@@ -169,17 +169,17 @@ func readFileConfig(config Config) error {
 		dbName := poolViper.GetString("dbname")
 		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbAddress, dbPort, dbName)
 		poolConfig := fileConfig.MiningPoolConfig{
-			PoolNetworkPort: int(poolViper.GetInt("networkport")),
-			PoolName: poolViper.GetString("name"),
-			PoolID: uint64(poolViper.GetInt("id")),
+			PoolNetworkPort:  int(poolViper.GetInt("networkport")),
+			PoolName:         poolViper.GetString("name"),
+			PoolID:           uint64(poolViper.GetInt("id")),
 			PoolDBConnection: dbConnection,
-			PoolWallet: poolViper.GetString("poolwallet"),
+			PoolWallet:       poolViper.GetString("poolwallet"),
 		}
 		globalConfig.MiningPoolConfig = poolConfig
 	}
 	if strings.Contains(config.Siad.Modules, "i") {
 		err := viper.ReadInConfig() // Find and read the config file
-		if err != nil { // Handle errors reading the config file
+		if err != nil {             // Handle errors reading the config file
 			return err
 		}
 		poolViper := viper.Sub("index")
@@ -204,7 +204,6 @@ func readFileConfig(config Config) error {
 	}
 	return nil
 }
-
 
 // startDaemon uses the config parameters to initialize Sia modules and start
 // hdcd.

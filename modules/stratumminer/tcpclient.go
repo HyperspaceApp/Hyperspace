@@ -3,10 +3,10 @@
 package stratumminer
 
 import (
-	"fmt"
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -26,8 +26,8 @@ type NotificationHandler func(args []interface{})
 
 // TcpClient maintains a connection to the stratum server and (de)serializes requests/reponses/notifications
 type TcpClient struct {
-	socket net.Conn
-	mu sync.Mutex // protects connected state
+	socket    net.Conn
+	mu        sync.Mutex // protects connected state
 	connected bool
 
 	seqmutex sync.Mutex // protects following
@@ -39,7 +39,7 @@ type TcpClient struct {
 	ErrorCallback        ErrorCallback
 	notificationHandlers map[string]NotificationHandler
 
-	tg              siasync.ThreadGroup
+	tg siasync.ThreadGroup
 }
 
 // Dial connects to a stratum+tcp at the specified network address.
@@ -141,9 +141,9 @@ func (c *TcpClient) dispatch(r types.StratumResponse) {
 		}
 		result = errors.New(message)
 		/*
-		var message []byte
-		r.Error.UnmarshalJSON(message)
-		result = errors.New(string(message[:]))
+			var message []byte
+			r.Error.UnmarshalJSON(message)
+			result = errors.New(string(message[:]))
 		*/
 	} else {
 		result = r.Result
@@ -157,7 +157,7 @@ func (c *TcpClient) dispatchError(err error) {
 	fmt.Println("dispatching error")
 	select {
 	// don't dispatch any errors if we've been shutdown!
-	case <- c.tg.StopChan():
+	case <-c.tg.StopChan():
 		fmt.Println("stop called, not dispatching error")
 		return
 	default:
@@ -171,17 +171,17 @@ func (c *TcpClient) dispatchError(err error) {
 // This is a blocking function and will continue to listen until an error occurs (io or deserialization)
 func (c *TcpClient) Listen() {
 	/*
-	if err := c.tg.Add(); err != nil {
-		build.Critical(err)
-	}
-	defer c.tg.Done()
+		if err := c.tg.Add(); err != nil {
+			build.Critical(err)
+		}
+		defer c.tg.Done()
 	*/
 	reader := bufio.NewReader(c.socket)
 	for {
 		rawmessage, err := reader.ReadString('\n')
 		// bail out if we've called stop
 		select {
-		case <- c.tg.StopChan():
+		case <-c.tg.StopChan():
 			fmt.Println("TCPCLIENT StopChan called, done Listen()ing")
 			return
 		default:
@@ -271,7 +271,7 @@ func (c *TcpClient) Call(serviceMethod string, args []string) (reply interface{}
 	//Make sure the request is cancelled if no response is given
 	go func() {
 		// cancel after 10 seconds
-		for timeElapsed := 0; timeElapsed < 10; timeElapsed += 1{
+		for timeElapsed := 0; timeElapsed < 10; timeElapsed += 1 {
 			// cancel the request if we've called stop
 			select {
 			case <-c.tg.StopChan():

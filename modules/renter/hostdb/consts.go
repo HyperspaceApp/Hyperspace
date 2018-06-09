@@ -6,7 +6,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 )
 
-
 const (
 	// historicInteractionDecay defines the decay of the HistoricSuccessfulInteractions
 	// and HistoricFailedInteractions after every block for a host entry.
@@ -63,7 +62,6 @@ const (
 	// empty itself and for waiting on the consensus set to be synced.
 	scanCheckInterval = time.Second
 )
-
 
 var (
 	// hostCheckupQuantity specifies the number of hosts that get scanned every
