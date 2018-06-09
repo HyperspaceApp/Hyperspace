@@ -1,8 +1,8 @@
 package pool
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -231,12 +231,12 @@ func (s *Shift) UpdateOrSaveShift() error {
 			buffer.WriteString(",")
 		}
 		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %f, %d, %d, %f, %f)",
-		  share.userid, share.workerid, SiaCoinID, share.valid, share.difficulty, share.time.Unix(),
-		  SiaCoinAlgo, share.reward, share.blockDifficulty, 0, share.height, share.shareReward, share.shareDifficulty))
+			share.userid, share.workerid, SiaCoinID, share.valid, share.difficulty, share.time.Unix(),
+			SiaCoinAlgo, share.reward, share.blockDifficulty, 0, share.height, share.shareReward, share.shareDifficulty))
 	}
 	buffer.WriteString(";")
 
-	rows, err := pool.sqldb.Query(buffer.String());
+	rows, err := pool.sqldb.Query(buffer.String())
 	defer rows.Close()
 	if err != nil {
 		worker.log.Println(buffer.String())

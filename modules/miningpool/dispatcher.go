@@ -11,11 +11,11 @@ import (
 
 // Dispatcher contains a map of ip addresses to handlers
 type Dispatcher struct {
-	handlers map[string]*Handler
-	ln       net.Listener
-	mu       sync.RWMutex
-	p        *Pool
-	log      *persist.Logger
+	handlers          map[string]*Handler
+	ln                net.Listener
+	mu                sync.RWMutex
+	p                 *Pool
+	log               *persist.Logger
 	connectionsOpened uint64
 }
 
@@ -77,7 +77,7 @@ func (d *Dispatcher) ListenHandlers(port string) {
 		d.log.Println(err)
 		panic(err)
 		// TODO: add error chan to report this
-		return
+		//return
 	}
 
 	defer d.ln.Close()

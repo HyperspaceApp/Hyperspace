@@ -88,19 +88,19 @@ func HttpPOSTAuthenticated(url string, data string, password string) (resp *http
 // API encapsulates a collection of modules and implements a http.Handler
 // to access their methods.
 type API struct {
-	cs               modules.ConsensusSet
-	explorer         modules.Explorer
-	gateway          modules.Gateway
-	host             modules.Host
-	miner            modules.Miner
-	renter           modules.Renter
-	tpool            modules.TransactionPool
-	wallet           modules.Wallet
-	pool             modules.Pool
-	stratumminer     modules.StratumMiner
-	index            modules.Index
+	cs           modules.ConsensusSet
+	explorer     modules.Explorer
+	gateway      modules.Gateway
+	host         modules.Host
+	miner        modules.Miner
+	renter       modules.Renter
+	tpool        modules.TransactionPool
+	wallet       modules.Wallet
+	pool         modules.Pool
+	stratumminer modules.StratumMiner
+	index        modules.Index
 
-	router           http.Handler
+	router http.Handler
 }
 
 // api.ServeHTTP implements the http.Handler interface.
@@ -113,17 +113,17 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // password is not the empty string.  Usernames are ignored for authentication.
 func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool, sm modules.StratumMiner, index modules.Index) *API {
 	api := &API{
-		cs:               cs,
-		explorer:         e,
-		gateway:          g,
-		host:             h,
-		miner:            m,
-		renter:           r,
-		tpool:            tp,
-		wallet:           w,
-		pool:             p,
-		stratumminer:     sm,
-		index:            index,
+		cs:           cs,
+		explorer:     e,
+		gateway:      g,
+		host:         h,
+		miner:        m,
+		renter:       r,
+		tpool:        tp,
+		wallet:       w,
+		pool:         p,
+		stratumminer: sm,
+		index:        index,
 	}
 
 	// Register API handlers

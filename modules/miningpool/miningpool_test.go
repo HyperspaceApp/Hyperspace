@@ -1,16 +1,16 @@
 package pool
 
 import (
+	"database/sql"
 	"fmt"
+	"net"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
-	"path/filepath"
-	"database/sql"
-	"net"
 
-	"github.com/NebulousLabs/fastrand"
 	"github.com/HyperspaceApp/Hyperspace/build"
+	fileConfig "github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/consensus"
@@ -19,7 +19,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	fileConfig "github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/NebulousLabs/fastrand"
 
 	"github.com/NebulousLabs/errors"
 
@@ -27,16 +27,16 @@ import (
 )
 
 const (
-	tdbUser = "miningpool_test"
-	tdbPass = "miningpool_test"
-	tdbAddress = "127.0.0.1"
-	tdbPort = "3306"
-	tdbName = "miningpool_test"
+	tdbUser     = "miningpool_test"
+	tdbPass     = "miningpool_test"
+	tdbAddress  = "127.0.0.1"
+	tdbPort     = "3306"
+	tdbName     = "miningpool_test"
 	tPoolWallet = "6f24f36a94c052ea0f706e03914c693dc8c668bd1bf844690c221e98439b5e8b0a11711977da"
 
 	tAddress = "b197ffe829605b03d6ba478fff68a7ac59788ca9174f8a8a5d13ba9ce0c251e9db553643b15a"
-	tUser = "tester"
-	tID = uint64(123)
+	tUser    = "tester"
+	tID      = uint64(123)
 )
 
 type poolTester struct {
@@ -102,23 +102,23 @@ func newPoolTester(name string, port int) (*poolTester, error) {
 	//
 	createPoolDBConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/", tdbUser, tdbPass, tdbAddress, tdbPort)
 	err = createPoolDatabase(createPoolDBConnection, tdbName)
-	if err !=  nil {
+	if err != nil {
 		return nil, err
 	}
 
 	if port == 0 {
 		port, err = GetFreePort()
-		if err !=  nil {
+		if err != nil {
 			return nil, err
 		}
 	}
 
 	poolConfig := fileConfig.MiningPoolConfig{
-		PoolNetworkPort: port,
-		PoolName: "miningpool_test",
-		PoolID: 99,
+		PoolNetworkPort:  port,
+		PoolName:         "miningpool_test",
+		PoolID:           99,
 		PoolDBConnection: fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", tdbUser, tdbPass, tdbAddress, tdbPort, tdbName),
-		PoolWallet: tPoolWallet,
+		PoolWallet:       tPoolWallet,
 	}
 
 	mpool, err := New(cs, tp, g, w, filepath.Join(testdir, modules.PoolDir), poolConfig)
@@ -145,7 +145,7 @@ func newPoolTester(name string, port int) (*poolTester, error) {
 
 func createPoolDatabase(connection string, dbname string) error {
 	sqldb, err := sql.Open("mysql", connection)
-	if err !=  nil {
+	if err != nil {
 		return err
 	}
 
@@ -162,7 +162,7 @@ func createPoolDatabase(connection string, dbname string) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(fmt.Sprintf("USE %s;", dbname));
+	_, err = tx.Exec(fmt.Sprintf("USE %s;", dbname))
 	if err != nil {
 		return err
 	}

@@ -11,10 +11,9 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
-
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -27,7 +26,7 @@ const (
 
 // Index is the main type of this module
 type Index struct {
-	currentHeight     types.BlockHeight                                            // The current running height
+	currentHeight types.BlockHeight // The current running height
 
 	// Dependencies.
 	cs     modules.ConsensusSet
@@ -36,11 +35,11 @@ type Index struct {
 	gw     modules.Gateway
 
 	// Utilities.
-	sqldb          *sql.DB
-	log            *persist.Logger
-	mu             sync.RWMutex
-	persistDir     string
-	tg             siasync.ThreadGroup
+	sqldb      *sql.DB
+	log        *persist.Logger
+	mu         sync.RWMutex
+	persistDir string
+	tg         siasync.ThreadGroup
 }
 
 var (
@@ -64,10 +63,10 @@ func newIndex(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules
 
 	// Create the index object.
 	index := &Index{
-		cs:           cs,
-		tpool:        tpool,
-		gw:           gw,
-		wallet:       wallet,
+		cs:            cs,
+		tpool:         tpool,
+		gw:            gw,
+		wallet:        wallet,
 		currentHeight: 0,
 
 		persistDir: persistDir,
@@ -108,7 +107,6 @@ func New(cs modules.ConsensusSet, tpool modules.TransactionPool, gw modules.Gate
 func (index *Index) managedScan() error {
 	index.tg.Add()
 	defer index.tg.Done()
-
 
 	err := index.setCurrentHeightFromDB()
 	if err != nil {

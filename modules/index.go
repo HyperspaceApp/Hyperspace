@@ -1,7 +1,7 @@
 package modules
 
 import (
-	// "github.com/HyperspaceApp/Hyperspace/types"
+// "github.com/NebulousLabs/Sia/types"
 )
 
 const (

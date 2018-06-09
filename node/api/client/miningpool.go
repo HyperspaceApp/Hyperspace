@@ -21,8 +21,8 @@ func (c *Client) MiningPoolConfigGet() (config api.MiningPoolConfig, err error) 
 // MiningPoolConfigPost uses the /pool/config endpoint to tell mining pool
 // to use a new configuration value
 func (c *Client) MiningPoolConfigPost(key string, val string) (err error) {
-        values := url.Values{}
-        values.Set(key, val)
+	values := url.Values{}
+	values.Set(key, val)
 	err = c.post("/pool/config", values.Encode(), nil)
 	return
 }
@@ -41,7 +41,7 @@ func (c *Client) MiningPoolClientGet(name string) (clientInfo api.MiningPoolClie
 
 // MiningPoolTransactionsGet requests /pool/clienttx?name=foo to retrieve transaction info about one client.
 func (c *Client) MiningPoolTransactionsGet(name string) (txs []api.MiningPoolClientTransactions, err error) {
-        err = c.get("/pool/clienttx?name="+name, &txs)
+	err = c.get("/pool/clienttx?name="+name, &txs)
 	return
 }
 

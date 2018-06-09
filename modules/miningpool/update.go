@@ -185,7 +185,6 @@ func (p *Pool) peekAtOverflow() (*mapElement, bool) {
 	return p.overflowMapHeap.peek()
 }
 
-
 // popFromBlock pops an element from the blockMapHeap, removes it from the
 // miner's unsolved block, and maintains proper set ordering within the block.
 func (p *Pool) popFromBlock() *mapElement {

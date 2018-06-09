@@ -9,24 +9,24 @@ import (
 )
 
 type ShareRecord struct {
-	jobID             uint32
-	extraNonce2       string
-	ntime             string
-	nonce             string
-	nonce1            string
+	jobID       uint32
+	extraNonce2 string
+	ntime       string
+	nonce       string
+	nonce1      string
 }
 
 type WorkerRecord struct {
-	name              string
-	accountID         uint32
-	workerID          int64
-	remoteID          uint32
+	name      string
+	accountID uint32
+	workerID  int64
+	remoteID  uint32
 
 	averageDifficulty float64
 	shareDifficulty   float64
 
-	blocksFound       uint64
-	parent            *Client
+	blocksFound uint64
+	parent      *Client
 }
 
 // A Worker is an instance of one miner.  A Client often represents a user and the
@@ -46,8 +46,8 @@ func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 	w := &Worker{
 		wr: WorkerRecord{
 			// workerID: id(),
-			name:     name,
-			parent:   c,
+			name:   name,
+			parent: c,
 		},
 		s: s,
 	}
@@ -135,14 +135,14 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 	share := &Share{
 		userid:          w.Parent().cr.clientID,
 		workerid:        w.wr.workerID,
-	    height:          int64(p.cs.Height())+1,
+		height:          int64(p.cs.Height()) + 1,
 		valid:           true,
 		difficulty:      sessionDifficulty,
 		shareDifficulty: float64(siaSessionDifficulty),
 		reward:          reward,
 		blockDifficulty: float64(blockDifficulty),
 		shareReward:     shareReward,
-		time: time.Now(),
+		time:            time.Now(),
 	}
 
 	w.s.Shift().IncrementShares(share)
