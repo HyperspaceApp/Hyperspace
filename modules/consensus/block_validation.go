@@ -44,15 +44,33 @@ func NewBlockValidator() stdBlockValidator {
 // checkMinerPayouts compares a block's miner payouts to the block's subsidy and
 // returns true if they are equal.
 func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
+	// Make sure we have enough payouts to cover both miner subsidy
+	// and the dev fund
+	if len(b.MinerPayouts) < 2 {
+		return false
+	}
 	// Add up the payouts and check that all values are legal.
-	var payoutSum types.Currency
-	for _, payout := range b.MinerPayouts {
-		if payout.Value.IsZero() {
+	var minerPayoutSum types.Currency
+	for _, minerPayout := range b.MinerPayouts[:len(b.MinerPayouts)-1] {
+		if minerPayout.Value.IsZero() {
 			return false
 		}
-		payoutSum = payoutSum.Add(payout.Value)
+		minerPayoutSum = minerPayoutSum.Add(minerPayout.Value)
 	}
-	return b.CalculateSubsidy(height).Equals(payoutSum)
+	// The last payout in a block is for the dev fund
+	devSubsidyPayout := b.MinerPayouts[len(b.MinerPayouts)-1]
+
+	// Make sure the dev subsidy is correct
+	minerBlockSubsidy, devBlockSubsidy := b.CalculateSubsidies(height)
+	if !devSubsidyPayout.Value.Equals(devBlockSubsidy) {
+		return false
+	}
+	if bytes.Compare(devSubsidyPayout.UnlockHash[:], types.DevFundUnlockHash[:]) != 0 {
+		return false
+	}
+
+	// Finally, make sure the miner subsidy is correct
+	return minerBlockSubsidy.Equals(minerPayoutSum)
 }
 
 // checkTarget returns true if the block's ID meets the given target.

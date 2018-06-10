@@ -26,14 +26,18 @@ func (p *Pool) blockForWork() types.Block {
 		b.Timestamp = types.CurrentTimestamp()
 	}
 
-	payoutVal := b.CalculateSubsidy(p.persist.BlockHeight + 1)
+	devPayoutVal, minerPayoutVal := b.CalculateSubsidies(p.persist.BlockHeight + 1)
 	p.log.Printf("building a new source block, block id is: %s\n", b.ID())
 	p.log.Printf("miner fees cost: %s", b.CalculateMinerFees().String())
 	p.log.Printf("# transactions: %d", len(b.Transactions))
-	p.log.Printf("payout value is: %s", payoutVal.String())
+	p.log.Printf("miner payout value is: %s", minerPayoutVal.String())
+	p.log.Printf("dev payout value is: %s", devPayoutVal.String())
 	b.MinerPayouts = []types.SiacoinOutput{{
-		Value:      payoutVal,
+		Value:      minerPayoutVal,
 		UnlockHash: p.persist.Settings.PoolWallet,
+	}, {
+		Value:      devPayoutVal,
+		UnlockHash: types.DevFundUnlockHash,
 	}}
 
 	return b

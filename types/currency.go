@@ -114,9 +114,6 @@ func (x Currency) Mul64(y uint64) (c Currency) {
 	return
 }
 
-// COMPATv0.4.0 - until the first 10e3 blocks have been archived, MulFloat is
-// needed while verifying the first set of blocks.
-
 // MulFloat returns a new Currency value y = c * x, where x is a float64.
 // Behavior is undefined when x is negative.
 func (x Currency) MulFloat(y float64) (c Currency) {
