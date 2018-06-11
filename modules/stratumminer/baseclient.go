@@ -10,7 +10,7 @@ func NewClient(connectionstring, pooluser string) (sc GenericClient) {
 	if strings.HasPrefix(connectionstring, "stratum+tcp://") {
 		sc = &StratumClient{
 			connectionstring: strings.TrimPrefix(connectionstring, "stratum+tcp://"),
-			User: pooluser,
+			User:             pooluser,
 		}
 	} else {
 		s := SiadClient{}

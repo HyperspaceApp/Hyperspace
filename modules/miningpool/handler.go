@@ -1,6 +1,7 @@
 package pool
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
@@ -13,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"bufio"
 
 	"github.com/sasha-s/go-deadlock"
 
@@ -86,7 +86,7 @@ func (h *Handler) parseRequest() (*types.StratumRequest, error) {
 			}
 
 			return nil, nil
-		// if we don't timeout but have some other error
+			// if we don't timeout but have some other error
 		} else if err != nil {
 			if err == io.EOF {
 				//fmt.Println("End connection")
@@ -183,13 +183,13 @@ func (h *Handler) Listen() {
 		// if we timed out
 		if m == nil && err == nil {
 			continue
-		// else if we got a request
+			// else if we got a request
 		} else if m != nil {
 			err = h.handleRequest(m)
 			if err != nil {
 				return
 			}
-		// else if we got an error
+			// else if we got an error
 		} else if err != nil {
 			return
 		}
@@ -245,11 +245,11 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 	r := types.StratumResponse{ID: m.ID}
 	r.Method = m.Method
 	/*
-	if !h.s.Authorized() {
-		r.Result = false
-		r.Error = interfaceify([]string{"Session not authorized - authorize before subscribe"})
-		return h.sendResponse(r)
-	}
+		if !h.s.Authorized() {
+			r.Result = false
+			r.Error = interfaceify([]string{"Session not authorized - authorize before subscribe"})
+			return h.sendResponse(r)
+		}
 	*/
 
 	//	diff := "b4b6693b72a50c7116db18d6497cac52"
@@ -393,12 +393,12 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	r.Result = true
 	r.Error = nil
 	/*
-	err := json.Unmarshal(m.Params, &p)
-	if err != nil {
-		h.log.Printf("Unable to parse mining.submit params: %v\n", err)
-		r.Result = false //json.RawMessage(`false`)
-		r.Error = interfaceify([]string{"20","Parse Error"}) //json.RawMessage(`["20","Parse Error"]`)
-	}
+		err := json.Unmarshal(m.Params, &p)
+		if err != nil {
+			h.log.Printf("Unable to parse mining.submit params: %v\n", err)
+			r.Result = false //json.RawMessage(`false`)
+			r.Error = interfaceify([]string{"20","Parse Error"}) //json.RawMessage(`["20","Parse Error"]`)
+		}
 	*/
 	// name := m.Params[0].(string)
 	var jobID uint64
@@ -443,7 +443,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 	if len(b.MinerPayouts) == 0 {
 		r.Result = false
-		r.Error = interfaceify([]string{"22","Stale - old/unknown job"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		r.Error = interfaceify([]string{"22", "Stale - old/unknown job"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
 		h.s.CurrentWorker.log.Printf("Stale Share rejected - old/unknown job\n")
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
@@ -476,7 +476,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	// h.s.CurrentWorker.log.Printf("Session target:   %064x\n", sessionPoolTarget.Int())
 	if bytes.Compare(sessionPoolTarget[:], blockHash[:]) < 0 {
 		r.Result = false
-		r.Error = interfaceify([]string{"22","Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		r.Error = interfaceify([]string{"22", "Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
 		h.s.CurrentWorker.log.Printf("Submit nonce not reach pool diff target\n")
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
@@ -500,7 +500,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		h.log.Printf("Failed to SubmitBlock(): %v\n", err)
 		h.log.Printf(sPrintBlock(b))
 		r.Result = false //json.RawMessage(`false`)
-		r.Error = interfaceify([]string{"20","Stale share"})
+		r.Error = interfaceify([]string{"20", "Stale share"})
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
 	}

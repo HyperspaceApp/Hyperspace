@@ -602,7 +602,6 @@ func (srv *Server) loadModules() error {
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "idx", Closer: idx})
 	}
 
-
 	// Create the Sia API
 	a := api.New(
 		srv.config.Siad.RequiredUserAgent,

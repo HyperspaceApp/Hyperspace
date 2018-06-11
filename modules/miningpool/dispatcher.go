@@ -78,7 +78,7 @@ func (d *Dispatcher) ListenHandlers(port string) {
 		d.log.Println(err)
 		panic(err)
 		// TODO: add error chan to report this
-		return
+		//return
 	}
 	fmt.Printf("Listening: %s\n", port)
 

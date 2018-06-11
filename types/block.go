@@ -208,4 +208,3 @@ func (b Block) MerkleBranches() []string {
 	}
 	return merkle
 }
-

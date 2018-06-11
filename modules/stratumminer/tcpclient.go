@@ -3,10 +3,10 @@
 package stratumminer
 
 import (
-	"fmt"
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -14,7 +14,7 @@ import (
 	//"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/types"
 
-	siasync "github.com/NebulousLabs/Sia/sync"
+	"github.com/NebulousLabs/threadgroup"
 )
 
 //ErrorCallback is the type of function that be registered to be notified of errors requiring a client
@@ -26,8 +26,8 @@ type NotificationHandler func(args []interface{})
 
 // TcpClient maintains a connection to the stratum server and (de)serializes requests/reponses/notifications
 type TcpClient struct {
-	socket net.Conn
-	mu sync.Mutex // protects connected state
+	socket    net.Conn
+	mu        sync.Mutex // protects connected state
 	connected bool
 
 	seqmutex sync.Mutex // protects following
@@ -39,7 +39,7 @@ type TcpClient struct {
 	ErrorCallback        ErrorCallback
 	notificationHandlers map[string]NotificationHandler
 
-	tg              siasync.ThreadGroup
+	tg threadgroup.ThreadGroup
 }
 
 // Dial connects to a stratum+tcp at the specified network address.
@@ -71,10 +71,11 @@ func (c *TcpClient) Dial(host string) (err error) {
 		c.dispatchError(err)
 		return err
 	} else {
-		c.tg.OnStop(func() {
+		c.tg.OnStop(func() error {
 			fmt.Println("TCPClient: Closing c.socket")
 			c.cancelAllRequests()
 			c.socket.Close()
+			return nil
 		})
 		c.connected = true
 	}
@@ -141,9 +142,9 @@ func (c *TcpClient) dispatch(r types.StratumResponse) {
 		}
 		result = errors.New(message)
 		/*
-		var message []byte
-		r.Error.UnmarshalJSON(message)
-		result = errors.New(string(message[:]))
+			var message []byte
+			r.Error.UnmarshalJSON(message)
+			result = errors.New(string(message[:]))
 		*/
 	} else {
 		result = r.Result
@@ -157,7 +158,7 @@ func (c *TcpClient) dispatchError(err error) {
 	fmt.Println("dispatching error")
 	select {
 	// don't dispatch any errors if we've been shutdown!
-	case <- c.tg.StopChan():
+	case <-c.tg.StopChan():
 		fmt.Println("stop called, not dispatching error")
 		return
 	default:
@@ -171,17 +172,17 @@ func (c *TcpClient) dispatchError(err error) {
 // This is a blocking function and will continue to listen until an error occurs (io or deserialization)
 func (c *TcpClient) Listen() {
 	/*
-	if err := c.tg.Add(); err != nil {
-		build.Critical(err)
-	}
-	defer c.tg.Done()
+		if err := c.tg.Add(); err != nil {
+			build.Critical(err)
+		}
+		defer c.tg.Done()
 	*/
 	reader := bufio.NewReader(c.socket)
 	for {
 		rawmessage, err := reader.ReadString('\n')
 		// bail out if we've called stop
 		select {
-		case <- c.tg.StopChan():
+		case <-c.tg.StopChan():
 			fmt.Println("TCPCLIENT StopChan called, done Listen()ing")
 			return
 		default:
@@ -249,7 +250,7 @@ func (c *TcpClient) Call(serviceMethod string, args []string) (reply interface{}
 
 	rawmsg, err := json.Marshal(r)
 	if err != nil {
-		fmt.Errorf("json.Marshal failed: %v", err)
+		err = fmt.Errorf("json.Marshal failed: %v", err)
 		return
 	}
 	call := c.registerRequest(r.ID)
@@ -260,18 +261,18 @@ func (c *TcpClient) Call(serviceMethod string, args []string) (reply interface{}
 	if c.connected {
 		_, err = c.socket.Write(rawmsg)
 	} else {
-		fmt.Errorf("Can't write to socket, socket has been closed")
-		return nil, errors.New("Can't write to socket, socket has been closed")
+		err = fmt.Errorf("Can't write to socket, socket has been closed")
+		return nil, err
 	}
 	c.mu.Unlock()
 	if err != nil {
-		fmt.Errorf("socket.Write failed: %v", err)
+		err = fmt.Errorf("socket.Write failed: %v", err)
 		return
 	}
 	//Make sure the request is cancelled if no response is given
 	go func() {
 		// cancel after 10 seconds
-		for timeElapsed := 0; timeElapsed < 10; timeElapsed += 1{
+		for timeElapsed := 0; timeElapsed < 10; timeElapsed += 1 {
 			// cancel the request if we've called stop
 			select {
 			case <-c.tg.StopChan():

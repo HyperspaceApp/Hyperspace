@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	initialDifficulty  = build.Select(build.Var{
+	initialDifficulty = build.Select(build.Var{
 		Standard: 6400.0,
 		Dev:      6400.0,
 		Testing:  0.00001,
@@ -42,15 +42,15 @@ type Session struct {
 	CurrentShift     *Shift
 	ExtraNonce1      uint32
 	// vardiff
-	currentDifficulty    float64
-	highestDifficulty    float64
-	vardiff              Vardiff
-	lastShareSpot        uint64
-	shareTimes           [numSharesToAverage]time.Time
-	lastVardiffRetarget  time.Time
-	lastVardiffTimestamp time.Time
+	currentDifficulty     float64
+	highestDifficulty     float64
+	vardiff               Vardiff
+	lastShareSpot         uint64
+	shareTimes            [numSharesToAverage]time.Time
+	lastVardiffRetarget   time.Time
+	lastVardiffTimestamp  time.Time
 	sessionStartTimestamp time.Time
-	lastHeartbeat        time.Time
+	lastHeartbeat         time.Time
 	// utility
 	log *persist.Logger
 }
@@ -221,7 +221,7 @@ func (s *Session) DetectDisconnected() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// disconnect if we haven't heard from the worker for a long time
-	if (time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout))) {
+	if time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout)) {
 		return true
 	}
 	// disconnect if the worker's difficulty has dropped too far from it's historical diff
