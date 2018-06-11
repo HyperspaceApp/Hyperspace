@@ -14,6 +14,7 @@ func TestBlockForWork(t *testing.T) {
 		return
 	}
 	pt, err := newPoolTester(t.Name(), 0)
+	defer pt.Close()
 	if err != nil {
 		t.Fatal(err)
 	}

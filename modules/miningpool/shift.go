@@ -1,9 +1,10 @@
 package pool
 
 import (
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 type Share struct {
@@ -20,7 +21,7 @@ type Share struct {
 }
 
 type Shift struct {
-	mu                   sync.RWMutex
+	mu                   deadlock.RWMutex
 	shiftID              uint64
 	pool                 uint64
 	worker               *Worker

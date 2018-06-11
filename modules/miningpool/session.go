@@ -3,8 +3,9 @@ package pool
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/persist"
@@ -31,7 +32,7 @@ var (
 // closed.  A session is tied to a single client and has many jobs associated with it
 //
 type Session struct {
-	mu               sync.RWMutex
+	mu               deadlock.RWMutex
 	authorized       bool
 	SessionID        uint64
 	CurrentJobs      []*Job
@@ -173,9 +174,19 @@ func (s *Session) ShareDurationAverage() (float64, float64) {
 		return unsubmitDuration, 0
 	}
 
+	// sort, caculate duration array, weight recent more
+
 	historyDuration := maxTime.Sub(minTime).Seconds() / float64(timestampCount-1)
 
 	return unsubmitDuration, historyDuration
+}
+
+func (s *Session) IsStable() bool {
+	if s.shareTimes[s.vardiff.bufSize-1].IsZero() {
+		return false
+	}
+	s.log.Printf("is stable!")
+	return true
 }
 
 func (s *Session) CurrentDifficulty() float64 {

@@ -119,6 +119,9 @@ func createAuthorizeRequest(t *testing.T, port int, waitchan chan int, tID uint6
 }
 
 func TestStratumAuthorize(t *testing.T) {
+	if !build.POOL {
+		return
+	}
 	pt, err := newPoolTester(t.Name(), 0)
 	defer pt.Close()
 	if err != nil {
@@ -130,6 +133,9 @@ func TestStratumAuthorize(t *testing.T) {
 }
 
 func TestStratumAuthorizeHeavyLoad(t *testing.T) {
+	if !build.POOL {
+		return
+	}
 	pt, err := newPoolTester(t.Name(), 0)
 	defer pt.Close()
 	if err != nil {
@@ -239,6 +245,9 @@ func createSubscribeRequest(t *testing.T, socket net.Conn, waitchan chan int, tI
 
 func TestStratumSubscribe(t *testing.T) {
 	//fmt.Println("TestStratumSubscribe")
+	if !build.POOL {
+		return
+	}
 	pt, err := newPoolTester(t.Name(), 0)
 	defer pt.Close()
 	if err != nil {
@@ -251,7 +260,9 @@ func TestStratumSubscribe(t *testing.T) {
 }
 
 func TestStratumSubscribeHeavyLoad(t *testing.T) {
-	//fmt.Println("TestStratumSubscribe")
+	if !build.POOL {
+		return
+	}
 	pt, err := newPoolTester(t.Name(), 0)
 	defer pt.Close()
 	if err != nil {

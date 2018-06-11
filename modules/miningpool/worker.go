@@ -2,8 +2,9 @@ package pool
 
 import (
 	"path/filepath"
-	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/NebulousLabs/Sia/persist"
 )
@@ -18,11 +19,8 @@ type ShareRecord struct {
 
 type WorkerRecord struct {
 	name              string
-	accountID         uint32
 	workerID          int64
-	remoteID          uint32
 
-	averageDifficulty float64
 	shareDifficulty   float64
 
 	blocksFound       uint64
@@ -34,7 +32,7 @@ type WorkerRecord struct {
 // worker represents a single miner.  There is a one to many client worker relationship
 //
 type Worker struct {
-	mu sync.RWMutex
+	mu deadlock.RWMutex
 	wr WorkerRecord
 	s  *Session
 	// utility
@@ -51,12 +49,6 @@ func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 			parent:   c,
 		},
 		s: s,
-	}
-
-	// check if this worker instance is an original or copy
-	if c.Worker(name) != nil {
-		//return w, nil
-		return c.Worker(name), nil
 	}
 
 	var err error
@@ -131,7 +123,7 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 	siaSessionDifficulty, _ := sessionTarget.Difficulty().Uint64()
 	shareRatio := caculateRewardRatio(sessionTarget.Difficulty().Big(), blockTarget.Difficulty().Big())
 	shareReward := shareRatio * reward
-	w.log.Printf("shareRatio: %f, shareReward: %f", shareRatio, shareReward)
+	// w.log.Printf("shareRatio: %f, shareReward: %f", shareRatio, shareReward)
 
 	share := &Share{
 		userid:          w.Parent().cr.clientID,

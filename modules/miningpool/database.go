@@ -241,6 +241,7 @@ func (s *Shift) UpdateOrSaveShift() error {
 	if err != nil {
 		worker.log.Println(buffer.String())
 		worker.log.Printf("Error saving shares: %s\n", err)
+		fmt.Println(err)
 		return err
 	}
 	// TODO: add share_diff which is client submitted diff
@@ -249,7 +250,7 @@ func (s *Shift) UpdateOrSaveShift() error {
 		worker.log.Printf("Error adding record of last shift: %s\n", err)
 		return err
 	}
-	worker.log.Debugf(buffer.String())
+	// worker.log.Debugf(buffer.String())
 	return nil
 }
 
@@ -258,7 +259,6 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.workers[w.Name()] = w
 	c.log.Printf("Adding client %s worker %s to database\n", c.cr.name, w.Name())
 	tx, err := c.pool.sqldb.Begin()
 	if err != nil {
@@ -267,15 +267,15 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	defer tx.Rollback()
 	// TODO: add ip etc info
 	stmt, err := tx.Prepare(`
-		INSERT INTO workers (userid, name, difficulty, worker, algo, time, pid)
-		VALUES (?, ?, ?, ?, ?, ?, ?);
+		INSERT INTO workers (userid, name, worker, algo, time, pid)
+		VALUES (?, ?, ?, ?, ?, ?);
 	`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.averageDifficulty, w.wr.name, SiaCoinAlgo, time.Now().Unix(), c.pool.InternalSettings().PoolID)
+	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.name, SiaCoinAlgo, time.Now().Unix(), c.pool.InternalSettings().PoolID)
 	if err != nil {
 		return err
 	}

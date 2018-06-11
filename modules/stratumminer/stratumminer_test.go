@@ -41,7 +41,7 @@ func TestBadServerStratumMinerStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	poolAddress := "stratum+tcp://localhost:3333"
+	poolAddress := "stratum+tcp://localhost:53333"
 	walletAddress := "1234"
 	st.stratumminer.StartStratumMining(poolAddress, walletAddress)
 	// give the miner a bit to start running
@@ -56,7 +56,7 @@ func TestStratumMinerStartAndStop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	poolAddress := "stratum+tcp://localhost:3333"
+	poolAddress := "stratum+tcp://localhost:53333"
 	walletAddress := "1234"
 	st.stratumminer.StartStratumMining(poolAddress, walletAddress)
 	// give the miner a bit to start running

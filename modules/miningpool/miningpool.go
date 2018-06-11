@@ -13,12 +13,12 @@ import (
 	"math/rand"
 	"net"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/NebulousLabs/threadgroup"
+	"github.com/sasha-s/go-deadlock"
 
+	"github.com/NebulousLabs/threadgroup"
 	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/config"
 	"github.com/NebulousLabs/Sia/crypto"
@@ -155,7 +155,7 @@ type Pool struct {
 	listener                net.Listener
 	log                     *persist.Logger
 	yiilog                  *persist.Logger
-	mu                      sync.RWMutex
+	mu                      deadlock.RWMutex
 	persistDir              string
 	port                    string
 	tg                      threadgroup.ThreadGroup
@@ -168,8 +168,8 @@ type Pool struct {
 	blockCounter            uint64
 	clients                 map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex        sync.Mutex
-	runningMutex            sync.RWMutex
+	clientSetupMutex        deadlock.Mutex
+	runningMutex            deadlock.RWMutex
 	running                 bool
 }
 
@@ -341,6 +341,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.
+	// fmt.Println("log path:", filepath.Join(p.persistDir, logFile))
 	p.log, err = dependencies.newLogger(filepath.Join(p.persistDir, logFile))
 	if err != nil {
 		return nil, err
@@ -435,7 +436,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	})
 
 	p.runningMutex.Lock()
-	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: sync.RWMutex{}, p: p}
+	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: deadlock.RWMutex{}, p: p}
 	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
 	p.running = true
 	p.runningMutex.Unlock()
