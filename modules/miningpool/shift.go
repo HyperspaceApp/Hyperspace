@@ -33,8 +33,7 @@ type Shift struct {
 
 func (p *Pool) newShift(w *Worker) *Shift {
 	currentShiftID := atomic.LoadUint64(&p.shiftID)
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+
 	currentBlock := p.blockCounter
 	s := &Shift{
 		shiftID:        currentShiftID,
