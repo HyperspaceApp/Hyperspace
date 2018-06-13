@@ -229,9 +229,11 @@ func (p *Pool) monitorShifts() {
 			h.mu.RLock()
 			s := h.s.Shift()
 			h.mu.RUnlock()
-			if s != nil {
-				s.UpdateOrSaveShift()
-			}
+			go func (savingShift *Shift) {
+				if savingShift != nil {
+					savingShift.SaveShift()
+				}
+			}(s)
 			sh := p.newShift(h.s.CurrentWorker)
 			h.s.addShift(sh)
 		}

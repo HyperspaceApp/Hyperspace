@@ -216,7 +216,7 @@ func (p *Pool) setBlockCounterFromDB() error {
 	return nil
 }
 
-func (s *Shift) UpdateOrSaveShift() error {
+func (s *Shift) SaveShift() error {
 	if len(s.Shares()) == 0 {
 		return nil
 	}
@@ -244,7 +244,7 @@ func (s *Shift) UpdateOrSaveShift() error {
 		fmt.Println(err)
 		return err
 	}
-	// TODO: add share_diff which is client submitted diff
+
 	if err != nil {
 		worker.log.Println(buffer.String())
 		worker.log.Printf("Error adding record of last shift: %s\n", err)
