@@ -86,26 +86,6 @@ func (p *Pool) FindClientDB(name string) *Client {
 	return c
 }
 
-// updateWorkerRecord update worker in workers
-func (w *Worker) updateWorkerRecord() error {
-	stmt, err := w.Parent().pool.sqldb.Prepare(`
-		UPDATE workers
-		SET difficulty = ?
-		WHERE id = ?
-		`)
-	if err != nil {
-		w.log.Printf("Error preparing to update worker: %s\n", err)
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.Exec(w.CurrentDifficulty(), w.wr.workerID)
-	if err != nil {
-		w.log.Printf("Error updating record: %s\n", err)
-		return err
-	}
-	return nil
-}
-
 func (w *Worker) deleteWorkerRecord() error {
 	stmt, err := w.Parent().pool.sqldb.Prepare(`
 		DELETE FROM workers

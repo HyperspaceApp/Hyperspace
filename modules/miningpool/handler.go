@@ -513,7 +513,6 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		h.s.CurrentWorker.Parent().log.Printf("Yay!!! Solved a block!!\n")
 		// h.s.CurrentWorker.log.Printf("Yay!!! Solved a block!!\n")
 		h.s.CurrentJobs = nil
-		h.s.CurrentWorker.IncrementBlocksFound()
 		err = h.s.CurrentWorker.addFoundBlock(&b)
 		if err != nil {
 			h.s.CurrentWorker.log.Printf("Failed to update block in database: %s\n", err)

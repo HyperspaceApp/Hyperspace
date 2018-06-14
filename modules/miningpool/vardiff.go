@@ -114,9 +114,5 @@ func (s *Session) checkDiffOnNewShare() bool {
 	if s.log != nil {
 		s.log.Printf("Set new difficulty to %v\n", s.currentDifficulty)
 	}
-	err := s.CurrentWorker.updateWorkerRecord()
-	if s.log != nil && err != nil {
-		s.log.Printf("Error updating worker record: %s\n", err)
-	}
 	return true
 }

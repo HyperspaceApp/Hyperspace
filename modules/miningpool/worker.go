@@ -23,7 +23,6 @@ type WorkerRecord struct {
 
 	shareDifficulty   float64
 
-	blocksFound uint64
 	parent      *Client
 }
 
@@ -154,20 +153,6 @@ func (w *Worker) LastShareTime() time.Time {
 	// unixTime := w.getUint64Field("LastShareTime")
 	// return time.Unix(int64(unixTime), 0)
 }
-
-func (w *Worker) BlocksFound() uint64 {
-	return w.wr.blocksFound
-}
-
-func (w *Worker) IncrementBlocksFound() {
-	w.wr.blocksFound++
-	w.updateWorkerRecord()
-}
-
-// func (w *Worker) CumulativeDifficulty() float64 {
-// 	return w.s.Shift().CumulativeDifficulty()
-// 	// return w.getFloatField("CumulativeDifficulty")
-// }
 
 // CurrentDifficulty returns the average difficulty of all instances of this worker
 func (w *Worker) CurrentDifficulty() float64 {
