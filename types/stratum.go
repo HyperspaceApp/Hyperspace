@@ -40,7 +40,7 @@ type StratumResponse struct {
 	StratumNotification `json:",inline"`
 }
 
-// notification is a special kind of Request, it has no ID and is sent from the server
+// StratumNotification is a special kind of Request, it has no ID and is sent from the server
 // to the client
 type StratumNotification struct {
 	Method string        `json:"method"`

@@ -182,6 +182,8 @@ func (s *Session) ShareDurationAverage() (float64, float64) {
 	return unsubmitDuration, historyDuration
 }
 
+// IsStable checks if the session has been running long enough to fill up the
+// vardiff buffer
 func (s *Session) IsStable() bool {
 	if s.shareTimes[s.vardiff.bufSize-1].IsZero() {
 		return false

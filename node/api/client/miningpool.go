@@ -47,14 +47,14 @@ func (c *Client) MiningPoolTransactionsGet(name string) (txs []api.MiningPoolCli
 }
 
 // MiningPoolBlocksGet requests the /pool/blocks block info list.
-func (c *Client) MiningPoolBlocksGet() (blockInfos []api.MiningPoolBlocksInfo, err error) {
+func (c *Client) MiningPoolBlocksGet() (blockInfos []api.MiningPoolBlockInfo, err error) {
 	err = c.get("/pool/blocks", &blockInfos)
 	return
 }
 
 // MiningPoolBlockGet requests the /pool/block?block=foo block info for a given client..
 // TODO this API seems poorly named
-func (c *Client) MiningPoolBlockGet(name string) (blockInfo []api.MiningPoolBlockInfo, err error) {
+func (c *Client) MiningPoolBlockGet(name string) (blockInfo []api.MiningPoolBlockClientInfo, err error) {
 	err = c.get("/pool/block?block="+name, &blockInfo)
 	return
 }

@@ -66,19 +66,22 @@ func (s *Shift) PoolID() uint64 {
 	return s.pool
 }
 
-// BlockID is the id of the block worked on in the current shift.
+// BlockID is the id of the block worked on in the current shift
 func (s *Shift) BlockID() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.blockID
 }
 
+// Shares returns the slice of shares submitted during the shift
 func (s *Shift) Shares() []Share {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.shares
 }
 
+// IncrementShares adds a new share to the slice of shares processed during
+// the shift
 func (s *Shift) IncrementShares(share *Share) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -86,6 +89,7 @@ func (s *Shift) IncrementShares(share *Share) {
 	s.shares = append(s.shares, *share)
 }
 
+// IncrementInvalid marks a share as having been invalid
 func (s *Shift) IncrementInvalid() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -98,18 +102,23 @@ func (s *Shift) IncrementInvalid() {
 	s.shares = append(s.shares, *share)
 }
 
+// LastShareTime returns the most recent time a share was submitted during this
+// shift
 func (s *Shift) LastShareTime() time.Time {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.lastShareTime
 }
 
+// SetLastShareTime specifies the most recent time a share was submitted during
+// this shift
 func (s *Shift) SetLastShareTime(t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastShareTime = t
 }
 
+// StartShiftTime returns the time this shift started
 func (s *Shift) StartShiftTime() time.Time {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

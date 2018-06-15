@@ -11,7 +11,7 @@ import (
 )
 
 type (
-	// PoolGET contains the stats that is returned after a GET request
+	// MiningPoolGET contains the stats that are returned after a GET request
 	// to /pool.
 	MiningPoolGET struct {
 		BlocksMined  int  `json:"blocksmined"`
@@ -26,23 +26,27 @@ type (
 		PoolWallet     types.UnlockHash `json:"poolwallet"`
 		OperatorWallet types.UnlockHash `json:"operatorwallet"`
 	}
+	// MiningPoolClientsInfo returns the stats are return after a GET request
+	// to /pool/clients
 	MiningPoolClientsInfo struct {
 		NumberOfClients uint64                 `json:"numberofclients"`
 		NumberOfWorkers uint64                 `json:"numberofworkers"`
 		Clients         []MiningPoolClientInfo `json:"clientinfo"`
 	}
+	// MiningPoolClientInfo returns the stats for a single client
 	MiningPoolClientInfo struct {
 		ClientName  string           `json:"clientname"`
 		BlocksMined uint64           `json:"blocksminer"`
 		Balance     string           `json:"balance"`
 		Workers     []PoolWorkerInfo `json:"workers"`
 	}
-	MiningPoolClientTransactions struct {
+	// MiningPoolClientTransaction returns info for a single transaction
+	MiningPoolClientTransaction struct {
 		BalanceChange string    `json:"balancechange"`
 		TxTime        time.Time `json:"txtime"`
 		Memo          string    `json:"memo"`
 	}
-
+	// PoolWorkerInfo returns info about one of a client's workers
 	PoolWorkerInfo struct {
 		WorkerName             string    `json:"workername"`
 		LastShareTime          time.Time `json:"lastsharetime"`
@@ -53,14 +57,16 @@ type (
 		StaleSharesThisBlock   uint64    `json:"stalesharesthisblock"`
 		BlocksFound            uint64    `json:"blocksfound"`
 	}
-	MiningPoolBlocksInfo struct {
+	// MiningPoolBlockInfo returns info about one of the pool's blocks
+	MiningPoolBlockInfo struct {
 		BlockNumber uint64    `json:"blocknumber"`
 		BlockHeight uint64    `json:"blockheight"`
 		BlockReward string    `json:"blockreward"`
 		BlockTime   time.Time `json:"blocktime"`
 		BlockStatus string    `json:"blockstatus"`
 	}
-	MiningPoolBlockInfo struct {
+	// MiningPoolBlockClientInfo returns info about one of the pool's block's clients
+	MiningPoolBlockClientInfo struct {
 		ClientName       string  `json:"clientname"`
 		ClientPercentage float64 `json:"clientpercentage"`
 		ClientReward     string  `json:"clientreward"`

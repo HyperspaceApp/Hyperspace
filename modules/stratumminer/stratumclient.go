@@ -49,6 +49,8 @@ type StratumClient struct {
 	BaseClient
 }
 
+// RestartOnError closes the old tcpclient and starts the process of opening
+// a new tcp connection
 func (sc *StratumClient) RestartOnError(err error) {
 	if err := sc.tg.Add(); err != nil {
 		//build.Critical(err)
@@ -79,6 +81,8 @@ func (sc *StratumClient) RestartOnError(err error) {
 	sc.Start()
 }
 
+// SubscribeAndAuthorize first attempts to authorize and, if successful,
+// subscribes
 func (sc *StratumClient) SubscribeAndAuthorize() {
 	log.Println("About to launch authorization goroutine")
 	// Authorize the miner
@@ -207,6 +211,7 @@ func (sc *StratumClient) subscribeToStratumDifficultyChanges() {
 	})
 }
 
+// Stop shuts down the stratumclient and closes the tcp connection
 func (sc *StratumClient) Stop() {
 	log.Println("Stopping StratumClient")
 	if err := sc.tg.Stop(); err != nil {
@@ -226,14 +231,15 @@ func (sc *StratumClient) Stop() {
 	}
 }
 
+// Connected returns whether or not the stratumclient has an open tcp
+// connection
 func (sc *StratumClient) Connected() bool {
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
 	if sc.tcpinited {
 		return sc.tcpclient.Connected()
-	} else {
-		return false
 	}
+	return false
 }
 
 func (sc *StratumClient) subscribeToStratumJobNotifications() {

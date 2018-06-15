@@ -1,4 +1,4 @@
-//Package stratum implements the basic stratum protocol.
+// Package stratumminer implements the basic stratum protocol.
 // This is normal jsonrpc but the go standard library is insufficient since we need features like notifications.
 package stratumminer
 
@@ -70,15 +70,14 @@ func (c *TcpClient) Dial(host string) (err error) {
 		//fmt.Println(err)
 		c.dispatchError(err)
 		return err
-	} else {
-		c.tg.OnStop(func() error {
-			fmt.Println("TCPClient: Closing c.socket")
-			c.cancelAllRequests()
-			c.socket.Close()
-			return nil
-		})
-		c.connected = true
 	}
+	c.tg.OnStop(func() error {
+		fmt.Println("TCPClient: Closing c.socket")
+		c.cancelAllRequests()
+		c.socket.Close()
+		return nil
+	})
+	c.connected = true
 	//fmt.Println("TcpClient Done Dialing")
 	go c.Listen()
 	return
@@ -97,6 +96,7 @@ func (c *TcpClient) Close() {
 	//fmt.Println("Done closing TcpClient")
 }
 
+// Connected returns whether or not the tcp client has an open tcp socket
 func (c *TcpClient) Connected() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
