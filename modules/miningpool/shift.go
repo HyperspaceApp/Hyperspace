@@ -7,6 +7,7 @@ import (
 	"github.com/sasha-s/go-deadlock"
 )
 
+// A Share is how we track each worker's submissions and their difficulty
 type Share struct {
 	userid          int64
 	workerid        int64
@@ -20,6 +21,8 @@ type Share struct {
 	time            time.Time
 }
 
+// A Shift is a period over which a worker submits shares. At the end of the
+// period, we record those shares into the database.
 type Shift struct {
 	mu                   deadlock.RWMutex
 	shiftID              uint64
@@ -47,18 +50,23 @@ func (p *Pool) newShift(w *Worker) *Shift {
 	return s
 }
 
+// ShiftID returns the shift's unique ID
 func (s *Shift) ShiftID() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.shiftID
 }
 
+// PoolID returns the pool's unique ID. Multiple stratum servers connecting to
+// the same database should use unique ids so that workers can be tracked as
+// belonging to which server.
 func (s *Shift) PoolID() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.pool
 }
 
+// BlockID is the id of the block worked on in the current shift.
 func (s *Shift) BlockID() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

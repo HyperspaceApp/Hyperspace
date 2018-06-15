@@ -278,9 +278,8 @@ func (p *Pool) startServer() {
 				return nil
 			})
 			return
-		} else {
-			time.Sleep(100 * time.Millisecond)
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -500,6 +499,8 @@ func (p *Pool) checkAddress() error {
 	return nil
 }
 
+// Client returns the client with the specified name that has been stored in
+// memory
 func (p *Pool) Client(name string) *Client {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -507,6 +508,7 @@ func (p *Pool) Client(name string) *Client {
 	return p.clients[name]
 }
 
+// AddClient stores the client with the specified name into memory
 func (p *Pool) AddClient(c *Client) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -558,22 +560,24 @@ func (p *Pool) coinB2() string {
 	return "0000000000000000"
 }
 
+// NumConnections returns the number of tcp connections from clients the pool
+// currently has open
 func (p *Pool) NumConnections() int {
 	p.runningMutex.RLock()
 	defer p.runningMutex.RUnlock()
 	if p.running {
 		return p.dispatcher.NumConnections()
-	} else {
-		return 0
 	}
+	return 0
 }
 
+// NumConnectionsOpened returns the total number of tcp connections from clients the
+// pool has opened since startup
 func (p *Pool) NumConnectionsOpened() uint64 {
 	p.runningMutex.RLock()
 	defer p.runningMutex.RUnlock()
 	if p.running {
 		return p.dispatcher.NumConnectionsOpened()
-	} else {
-		return 0
 	}
+	return 0
 }

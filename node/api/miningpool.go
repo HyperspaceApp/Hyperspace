@@ -14,7 +14,6 @@ type (
 	// PoolGET contains the stats that is returned after a GET request
 	// to /pool.
 	MiningPoolGET struct {
-		PoolRunning  bool `json:"poolrunning"`
 		BlocksMined  int  `json:"blocksmined"`
 		PoolHashrate int  `json:"poolhashrate"`
 	}
@@ -71,7 +70,6 @@ type (
 // poolHandler handles the API call that queries the pool's status.
 func (api *API) poolHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	pg := MiningPoolGET{
-		PoolRunning:  api.pool.GetRunning(),
 		BlocksMined:  0,
 		PoolHashrate: 0,
 	}

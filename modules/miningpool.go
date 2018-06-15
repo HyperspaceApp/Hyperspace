@@ -27,20 +27,23 @@ type (
 		PoolWallet       types.UnlockHash `json:"poolwallet"`
 	}
 
-	PoolClients struct {
+	// PoolClient contains summary info for a mining client
+	PoolClient struct {
 		ClientName  string        `json:"clientname"`
 		Balance     string        `json:"balance"`
 		BlocksMined uint64        `json:"blocksminer"`
-		Workers     []PoolWorkers `json:"workers"`
+		Workers     []PoolWorker  `json:"workers"`
 	}
 
-	PoolClientTransactions struct {
+	// PoolClientTransaction represents a mining client transaction
+	PoolClientTransaction struct {
 		BalanceChange string    `json:"balancechange"`
 		TxTime        time.Time `json:"txtime"`
 		Memo          string    `json:"memo"`
 	}
 
-	PoolWorkers struct {
+	// PoolWorker represents a mining client worker
+	PoolWorker struct {
 		WorkerName             string    `json:"workername"`
 		LastShareTime          time.Time `json:"lastsharetime"`
 		CurrentDifficulty      float64   `json:"currentdifficulty"`
@@ -51,14 +54,17 @@ type (
 		BlocksFound            uint64    `json:"blocksfound"`
 	}
 
-	PoolBlocks struct {
+	// PoolBlock represents a block mined by the pool
+	PoolBlock struct {
 		BlockNumber uint64    `json:"blocknumber"`
 		BlockHeight uint64    `json:"blockheight"`
 		BlockReward string    `json:"blockreward"`
 		BlockTime   time.Time `json:"blocktime"`
 		BlockStatus string    `json:"blockstatus"`
 	}
-	PoolBlock struct {
+
+	// PoolBlockClient represents a block mined by the pool
+	PoolBlockClient struct {
 		ClientName       string  `json:"clientname"`
 		ClientPercentage float64 `json:"clientpercentage"`
 		ClientReward     string  `json:"clientreward"`

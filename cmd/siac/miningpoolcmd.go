@@ -248,7 +248,7 @@ func (a ByClientName) Len() int           { return len(a) }
 func (a ByClientName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByClientName) Less(i, j int) bool { return a[i].ClientName < a[j].ClientName }
 
-// ByClientName contains mining pool worker info
+// ByWorkerName contains mining pool worker info
 type ByWorkerName []api.PoolWorkerInfo
 
 func (a ByWorkerName) Len() int           { return len(a) }

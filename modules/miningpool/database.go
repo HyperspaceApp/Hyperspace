@@ -80,7 +80,7 @@ func (p *Pool) FindClientDB(name string) *Client {
 	}
 	var wallet types.UnlockHash
 	wallet.LoadString(Wallet)
-	c.addWallet(wallet)
+	c.SetWallet(wallet)
 	c.cr.clientID = clientID
 
 	return c
@@ -104,6 +104,9 @@ func (w *Worker) deleteWorkerRecord() error {
 	return nil
 }
 
+// DeleteAllWorkerRecords deletes all worker records associated with a pool.
+// This should be used on pool startup and shutdown to ensure the database
+// is clean and isn't storing any worker records for non-connected workers.
 func (p *Pool) DeleteAllWorkerRecords() error {
 	stmt, err := p.sqldb.Prepare(`
 		DELETE FROM workers
@@ -196,6 +199,7 @@ func (p *Pool) setBlockCounterFromDB() error {
 	return nil
 }
 
+// SaveShift periodically saves the shares for a given worker to the db
 func (s *Shift) SaveShift() error {
 	if len(s.Shares()) == 0 {
 		return nil

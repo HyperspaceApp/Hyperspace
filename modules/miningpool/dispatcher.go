@@ -21,18 +21,23 @@ type Dispatcher struct {
 	connectionsOpened uint64
 }
 
+// NumConnections returns the number of open tcp connections
 func (d *Dispatcher) NumConnections() int {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return len(d.handlers)
 }
 
+// NumConnectionsOpened returns the number of tcp connections that the pool
+// has ever opened
 func (d *Dispatcher) NumConnectionsOpened() uint64 {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.connectionsOpened
 }
 
+// IncrementConnectionsOpened increments the number of tcp connections that the
+// pool has ever opened
 func (d *Dispatcher) IncrementConnectionsOpened() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -116,6 +121,8 @@ func (d *Dispatcher) ListenHandlers(port string) {
 	}
 }
 
+// NotifyClients tells the dispatcher to notify all clients that the block has
+// changed
 func (d *Dispatcher) NotifyClients() {
 	d.mu.Lock()
 	defer d.mu.Unlock()

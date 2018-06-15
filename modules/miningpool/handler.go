@@ -73,10 +73,11 @@ func (h *Handler) parseRequest() (*types.StratumRequest, error) {
 			if h.s.DetectDisconnected() {
 				h.log.Println("Non-responsive disconnect detected!")
 				return nil, errors.New("Non-responsive disconnect detected")
-			} else {
-				ratio := h.s.CurrentDifficulty() / h.s.HighestDifficulty()
-				h.log.Printf("Non-responsive disconnect ratio: %f\n", ratio)
 			}
+
+			ratio := h.s.CurrentDifficulty() / h.s.HighestDifficulty()
+			h.log.Printf("Non-responsive disconnect ratio: %f\n", ratio)
+
 			if h.s.checkDiffOnNewShare() {
 				err = h.sendSetDifficulty(h.s.CurrentDifficulty())
 				if err != nil {
@@ -202,16 +203,14 @@ func (h *Handler) sendResponse(r types.StratumResponse) error {
 	if err != nil {
 		h.log.Debugln("json marshal failed for id: ", r.ID, err)
 		return err
-	} else {
-		b = append(b, '\n')
-		_, err = h.conn.Write(b)
-		if err != nil {
-			h.log.Debugln("connection write failed for id: ", r.ID, err)
-			return err
-		} else {
-			return nil
-		}
 	}
+	b = append(b, '\n')
+	_, err = h.conn.Write(b)
+	if err != nil {
+		h.log.Debugln("connection write failed for id: ", r.ID, err)
+		return err
+	}
+	return nil
 }
 
 func (h *Handler) sendRequest(r types.StratumRequest) error {
@@ -219,17 +218,15 @@ func (h *Handler) sendRequest(r types.StratumRequest) error {
 	if err != nil {
 		h.log.Debugln("json marshal failed for id: ", r.ID, err)
 		return err
-	} else {
-		b = append(b, '\n')
-		_, err = h.conn.Write(b)
-		h.log.Debugln("sending request: ", string(b))
-		if err != nil {
-			h.log.Debugln("connection write failed for id: ", r.ID, err)
-			return err
-		} else {
-			return nil
-		}
 	}
+	b = append(b, '\n')
+	_, err = h.conn.Write(b)
+	h.log.Debugln("sending request: ", string(b))
+	if err != nil {
+		h.log.Debugln("connection write failed for id: ", r.ID, err)
+		return err
+	}
+	return nil
 }
 
 // handleStratumSubscribe message is the first message received and allows the pool to tell the miner
@@ -309,11 +306,10 @@ func (h *Handler) setupWorker(c *Client, workerName string) (*Worker, error) {
 	if err != nil {
 		c.log.Printf("Failed to add worker: %s\n", err)
 		return nil, err
-	} else {
-		h.s.log = w.log
-		c.log.Printf("Adding new worker: %s, %d\n", workerName, w.wr.workerID)
-		w.log.Printf("Adding new worker: %s, %d\n", workerName, w.wr.workerID)
 	}
+	h.s.log = w.log
+	c.log.Printf("Adding new worker: %s, %d\n", workerName, w.wr.workerID)
+	w.log.Printf("Adding new worker: %s, %d\n", workerName, w.wr.workerID)
 	h.log.Debugln("client = " + c.Name() + ", worker = " + workerName)
 	return w, nil
 }
