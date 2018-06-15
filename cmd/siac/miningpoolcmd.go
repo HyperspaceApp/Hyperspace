@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"sort"
 
+	"github.com/NebulousLabs/Sia/node/api"
 	"github.com/spf13/cobra"
 )
 
