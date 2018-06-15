@@ -19,6 +19,7 @@ func HexStringToBytes(v interface{}) (result []byte, err error) {
 	return
 }
 
+// BytesToHexString converts a byte slice to a hex encoded string
 func BytesToHexString(bytes []byte) (result string) {
 	return hex.EncodeToString(bytes)
 }
