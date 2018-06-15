@@ -64,6 +64,7 @@ func newClient(p *Pool, name string) (*Client, error) {
 	return c, err
 }
 
+// Name returns the client's name, which is usually the wallet address
 func (c *Client) Name() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -71,6 +72,7 @@ func (c *Client) Name() string {
 	return c.cr.name
 }
 
+// SetName sets the client's name
 func (c *Client) SetName(n string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -78,6 +80,7 @@ func (c *Client) SetName(n string) {
 
 }
 
+// Wallet returns the unlockhash associated with the client
 func (c *Client) Wallet() *types.UnlockHash {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -85,12 +88,14 @@ func (c *Client) Wallet() *types.UnlockHash {
 	return &c.cr.wallet
 }
 
-func (c *Client) addWallet(w types.UnlockHash) {
+// SetWallet sets the unlockhash associated with the client
+func (c *Client) SetWallet(w types.UnlockHash) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cr.wallet = w
 }
 
+// Pool returns the client's pool
 func (c *Client) Pool() *Pool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()

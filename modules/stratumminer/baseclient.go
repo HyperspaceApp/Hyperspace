@@ -1,4 +1,4 @@
-// Package clients provides some utilities and common code for specific client implementations
+// Package stratumminer provides some utilities and common code for specific client implementations
 package stratumminer
 
 import (
@@ -38,7 +38,7 @@ type HeaderProvider interface {
 // the server indicates that all previous jobs should be abandoned
 type DeprecatedJobCall func()
 
-// Client defines the interface for a client towards a work provider
+// GenericClient defines the interface for a client towards a work provider
 type GenericClient interface {
 	HeaderProvider
 	HeaderReporter

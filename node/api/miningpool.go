@@ -11,10 +11,9 @@ import (
 )
 
 type (
-	// PoolGET contains the stats that is returned after a GET request
+	// MiningPoolGET contains the stats that are returned after a GET request
 	// to /pool.
 	MiningPoolGET struct {
-		PoolRunning  bool `json:"poolrunning"`
 		BlocksMined  int  `json:"blocksmined"`
 		PoolHashrate int  `json:"poolhashrate"`
 	}
@@ -27,23 +26,27 @@ type (
 		PoolWallet     types.UnlockHash `json:"poolwallet"`
 		OperatorWallet types.UnlockHash `json:"operatorwallet"`
 	}
+	// MiningPoolClientsInfo returns the stats are return after a GET request
+	// to /pool/clients
 	MiningPoolClientsInfo struct {
 		NumberOfClients uint64                 `json:"numberofclients"`
 		NumberOfWorkers uint64                 `json:"numberofworkers"`
 		Clients         []MiningPoolClientInfo `json:"clientinfo"`
 	}
+	// MiningPoolClientInfo returns the stats for a single client
 	MiningPoolClientInfo struct {
 		ClientName  string           `json:"clientname"`
 		BlocksMined uint64           `json:"blocksminer"`
 		Balance     string           `json:"balance"`
 		Workers     []PoolWorkerInfo `json:"workers"`
 	}
-	MiningPoolClientTransactions struct {
+	// MiningPoolClientTransaction returns info for a single transaction
+	MiningPoolClientTransaction struct {
 		BalanceChange string    `json:"balancechange"`
 		TxTime        time.Time `json:"txtime"`
 		Memo          string    `json:"memo"`
 	}
-
+	// PoolWorkerInfo returns info about one of a client's workers
 	PoolWorkerInfo struct {
 		WorkerName             string    `json:"workername"`
 		LastShareTime          time.Time `json:"lastsharetime"`
@@ -54,14 +57,16 @@ type (
 		StaleSharesThisBlock   uint64    `json:"stalesharesthisblock"`
 		BlocksFound            uint64    `json:"blocksfound"`
 	}
-	MiningPoolBlocksInfo struct {
+	// MiningPoolBlockInfo returns info about one of the pool's blocks
+	MiningPoolBlockInfo struct {
 		BlockNumber uint64    `json:"blocknumber"`
 		BlockHeight uint64    `json:"blockheight"`
 		BlockReward string    `json:"blockreward"`
 		BlockTime   time.Time `json:"blocktime"`
 		BlockStatus string    `json:"blockstatus"`
 	}
-	MiningPoolBlockInfo struct {
+	// MiningPoolBlockClientInfo returns info about one of the pool's block's clients
+	MiningPoolBlockClientInfo struct {
 		ClientName       string  `json:"clientname"`
 		ClientPercentage float64 `json:"clientpercentage"`
 		ClientReward     string  `json:"clientreward"`
@@ -71,7 +76,6 @@ type (
 // poolHandler handles the API call that queries the pool's status.
 func (api *API) poolHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	pg := MiningPoolGET{
-		PoolRunning:  api.pool.GetRunning(),
 		BlocksMined:  0,
 		PoolHashrate: 0,
 	}
@@ -151,16 +155,4 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 	}
 	err := api.pool.SetInternalSettings(settings)
 	return settings, err
-}
-
-// poolStartHandler handles the API call that starts the pool.
-func (api *API) poolStartHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.pool.StartPool()
-	WriteSuccess(w)
-}
-
-// poolStopHandler handles the API call to stop the pool.
-func (api *API) poolStopHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.pool.StopPool()
-	WriteSuccess(w)
 }

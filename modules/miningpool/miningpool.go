@@ -148,26 +148,26 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	sqldb                   *sql.DB
-	listener                net.Listener
-	log                     *persist.Logger
-	yiilog                  *persist.Logger
-	mu                      deadlock.RWMutex
-	persistDir              string
-	port                    string
-	tg                      threadgroup.ThreadGroup
-	persist                 persistence
-	dispatcher              *Dispatcher
-	stratumID               uint64
-	shiftID                 uint64
-	shiftChan               chan bool
-	shiftTimestamp          time.Time
-	blockCounter            uint64
-	clients                 map[string]*Client //client name to client pointer mapping
+	sqldb          *sql.DB
+	listener       net.Listener
+	log            *persist.Logger
+	yiilog         *persist.Logger
+	mu             deadlock.RWMutex
+	persistDir     string
+	port           string
+	tg             threadgroup.ThreadGroup
+	persist        persistence
+	dispatcher     *Dispatcher
+	stratumID      uint64
+	shiftID        uint64
+	shiftChan      chan bool
+	shiftTimestamp time.Time
+	blockCounter   uint64
+	clients        map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex        deadlock.Mutex
-	runningMutex            deadlock.RWMutex
-	running                 bool
+	clientSetupMutex deadlock.Mutex
+	runningMutex     deadlock.RWMutex
+	running          bool
 }
 
 // startupRescan will rescan the blockchain in the event that the pool
@@ -228,7 +228,7 @@ func (p *Pool) monitorShifts() {
 			h.mu.RLock()
 			s := h.s.Shift()
 			h.mu.RUnlock()
-			go func (savingShift *Shift) {
+			go func(savingShift *Shift) {
 				if savingShift != nil {
 					savingShift.SaveShift()
 				}
@@ -277,9 +277,8 @@ func (p *Pool) startServer() {
 				return nil
 			})
 			return
-		} else {
-			time.Sleep(100 * time.Millisecond)
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -456,52 +455,6 @@ func (p *Pool) Close() error {
 	return p.tg.Stop()
 }
 
-// TODO Start and Stop Pool are currently unused, maybe eliminate them
-// StartPool starts the pool running
-func (p *Pool) StartPool() {
-	p.running = true
-}
-
-// StopPool stops the pool running
-func (p *Pool) StopPool() {
-	p.running = false
-}
-
-// GetRunning returns the running (or not) status of the pool
-func (p *Pool) GetRunning() bool {
-	p.runningMutex.Lock()
-	defer p.runningMutex.Unlock()
-	return p.running
-}
-
-// WorkingStatus returns the working state of the pool, where working is
-// defined as having received more than workingStatusThreshold settings calls
-// over the period of workingStatusFrequency.
-func (p *Pool) WorkingStatus() modules.PoolWorkingStatus {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.workingStatus
-}
-
-// ConnectabilityStatus returns the connectability state of the pool, whether
-// the pool can connect to itself on its configured netaddress.
-func (p *Pool) ConnectabilityStatus() modules.PoolConnectabilityStatus {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.connectabilityStatus
-}
-
-// MiningMetrics returns information about the financial commitments,
-// rewards, and activities of the pool.
-func (p *Pool) MiningMetrics() modules.PoolMiningMetrics {
-	err := p.tg.Add()
-	if err != nil {
-		build.Critical("Call to MiningMetrics after close")
-	}
-	defer p.tg.Done()
-	return p.persist.GetMiningMetrics()
-}
-
 // SetInternalSettings updates the pool's internal PoolInternalSettings object.
 func (p *Pool) SetInternalSettings(settings modules.PoolInternalSettings) error {
 	p.mu.Lock()
@@ -544,6 +497,8 @@ func (p *Pool) checkAddress() error {
 	return nil
 }
 
+// Client returns the client with the specified name that has been stored in
+// memory
 func (p *Pool) Client(name string) *Client {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -551,6 +506,7 @@ func (p *Pool) Client(name string) *Client {
 	return p.clients[name]
 }
 
+// AddClient stores the client with the specified name into memory
 func (p *Pool) AddClient(c *Client) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -602,22 +558,24 @@ func (p *Pool) coinB2() string {
 	return "0000000000000000"
 }
 
+// NumConnections returns the number of tcp connections from clients the pool
+// currently has open
 func (p *Pool) NumConnections() int {
 	p.runningMutex.RLock()
 	defer p.runningMutex.RUnlock()
 	if p.running {
 		return p.dispatcher.NumConnections()
-	} else {
-		return 0
 	}
+	return 0
 }
 
+// NumConnectionsOpened returns the total number of tcp connections from clients the
+// pool has opened since startup
 func (p *Pool) NumConnectionsOpened() uint64 {
 	p.runningMutex.RLock()
 	defer p.runningMutex.RUnlock()
 	if p.running {
 		return p.dispatcher.NumConnectionsOpened()
-	} else {
-		return 0
 	}
+	return 0
 }

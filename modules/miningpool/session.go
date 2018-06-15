@@ -99,6 +99,7 @@ func (s *Session) addShift(shift *Shift) {
 	s.CurrentShift = shift
 }
 
+// Shift returns the current Shift associated with a session
 func (s *Session) Shift() *Shift {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -180,6 +181,8 @@ func (s *Session) ShareDurationAverage() (float64, float64) {
 	return unsubmitDuration, historyDuration
 }
 
+// IsStable checks if the session has been running long enough to fill up the
+// vardiff buffer
 func (s *Session) IsStable() bool {
 	if s.shareTimes[s.vardiff.bufSize-1].IsZero() {
 		return false
@@ -188,12 +191,14 @@ func (s *Session) IsStable() bool {
 	return true
 }
 
+// CurrentDifficulty returns the session's current difficulty
 func (s *Session) CurrentDifficulty() float64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.currentDifficulty
 }
 
+// SetHighestDifficulty records the highest difficulty the session has seen
 func (s *Session) SetHighestDifficulty(d float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -201,6 +206,7 @@ func (s *Session) SetHighestDifficulty(d float64) {
 	s.highestDifficulty = d
 }
 
+// SetCurrentDifficulty sets the current difficulty for the session
 func (s *Session) SetCurrentDifficulty(d float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -210,12 +216,18 @@ func (s *Session) SetCurrentDifficulty(d float64) {
 	s.currentDifficulty = d
 }
 
+// HighestDifficulty returns the highest difficulty the session has seen
 func (s *Session) HighestDifficulty() float64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.highestDifficulty
 }
 
+// DetectDisconnected checks to see if we haven't heard from a client for too
+// long of a time. It does this via 2 mechanisms:
+// 1) how long ago was the last share submitted? (the hearbeat)
+// 2) how low has the difficulty dropped from the highest difficulty the client
+//    ever faced?
 func (s *Session) DetectDisconnected() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -226,23 +238,25 @@ func (s *Session) DetectDisconnected() bool {
 	// disconnect if the worker's difficulty has dropped too far from it's historical diff
 	if (s.currentDifficulty / s.highestDifficulty) < maxDifficultyDropRatio {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
+// SetAuthorized specifies whether or not the session has been authorized
 func (s *Session) SetAuthorized(b bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.authorized = b
 }
 
+// Authorized returns whether or not the session has been authorized
 func (s *Session) Authorized() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.authorized
 }
 
+// SetHeartbeat indicates that we just received a share submission
 func (s *Session) SetHeartbeat() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

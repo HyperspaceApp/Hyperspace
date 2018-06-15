@@ -33,6 +33,7 @@ func (c *Client) MiningPoolClientsGet() (clientInfos api.MiningPoolClientsInfo, 
 	return
 }
 
+/*
 // MiningPoolClientGet requests /pool/client?name=foo to retrieve info about one client.
 func (c *Client) MiningPoolClientGet(name string) (clientInfo api.MiningPoolClientInfo, err error) {
 	err = c.get("/pool/client?name="+name, &clientInfo)
@@ -46,26 +47,15 @@ func (c *Client) MiningPoolTransactionsGet(name string) (txs []api.MiningPoolCli
 }
 
 // MiningPoolBlocksGet requests the /pool/blocks block info list.
-func (c *Client) MiningPoolBlocksGet() (blockInfos []api.MiningPoolBlocksInfo, err error) {
+func (c *Client) MiningPoolBlocksGet() (blockInfos []api.MiningPoolBlockInfo, err error) {
 	err = c.get("/pool/blocks", &blockInfos)
 	return
 }
 
 // MiningPoolBlockGet requests the /pool/block?block=foo block info for a given client..
 // TODO this API seems poorly named
-func (c *Client) MiningPoolBlockGet(name string) (blockInfo []api.MiningPoolBlockInfo, err error) {
+func (c *Client) MiningPoolBlockGet(name string) (blockInfo []api.MiningPoolBlockClientInfo, err error) {
 	err = c.get("/pool/block?block="+name, &blockInfo)
 	return
 }
-
-// MiningPoolStartGet uses the /pool/start endpoint to start the cpu miner.
-func (c *Client) MiningPoolStartGet() (err error) {
-	err = c.get("/pool/start", nil)
-	return
-}
-
-// MiningPoolStopGet uses the /pool/stop endpoint to stop the cpu miner.
-func (c *Client) MiningPoolStopGet() (err error) {
-	err = c.get("/pool/stop", nil)
-	return
-}
+*/
