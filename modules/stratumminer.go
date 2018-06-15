@@ -25,7 +25,7 @@ type StratumMiner interface {
 	// blocks.
 	StartStratumMining(server, username string)
 
-	// StopStratumMining turns off the miner.
+	// StopStratumMining turns off the miner
 	StopStratumMining()
 
 	io.Closer

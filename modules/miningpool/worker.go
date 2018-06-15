@@ -8,26 +8,16 @@ import (
 	"github.com/sasha-s/go-deadlock"
 )
 
-type ShareRecord struct {
-	jobID       uint32
-	extraNonce2 string
-	ntime       string
-	nonce       string
-	nonce1      string
-}
-
+// A WorkerRecord is used to track worker information in memory
 type WorkerRecord struct {
 	name              string
 	workerID          int64
-
 	shareDifficulty   float64
-
 	parent      *Client
 }
 
 // A Worker is an instance of one miner.  A Client often represents a user and the
 // worker represents a single miner.  There is a one to many client worker relationship
-//
 type Worker struct {
 	mu deadlock.RWMutex
 	wr WorkerRecord
@@ -71,6 +61,7 @@ func (w *Worker) printID() string {
 	return ssPrintID(w.wr.workerID)
 }
 
+// Name return the worker's name, typically a wallet address
 func (w *Worker) Name() string {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
@@ -78,12 +69,14 @@ func (w *Worker) Name() string {
 	return w.wr.name
 }
 
+// SetName sets the worker's name
 func (w *Worker) SetName(n string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.wr.name = n
 }
 
+// Parent returns the worker's client
 func (w *Worker) Parent() *Client {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
@@ -91,12 +84,14 @@ func (w *Worker) Parent() *Client {
 	return w.wr.parent
 }
 
+// SetParent sets the worker's client
 func (w *Worker) SetParent(p *Client) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.wr.parent = p
 }
 
+// Session returns the tcp session associated with the worker
 func (w *Worker) Session() *Session {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
@@ -104,12 +99,15 @@ func (w *Worker) Session() *Session {
 	return w.s
 }
 
+// SetSession sets the tcp session associated with the worker
 func (w *Worker) SetSession(s *Session) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.s = s
 }
 
+// IncrementShares creates a new share according to current session difficulty
+// for the worker to work on
 func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 	p := w.s.Client.pool
 	cbid := p.cs.CurrentBlock().ID()
@@ -138,18 +136,21 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 	w.s.Shift().IncrementShares(share)
 }
 
+// IncrementInvalidShares adds a record of an invalid share submission
 func (w *Worker) IncrementInvalidShares() {
 	w.s.Shift().IncrementInvalid()
 }
 
+// SetLastShareTime specifies the last time a share was submitted during the
+// current shift
 func (w *Worker) SetLastShareTime(t time.Time) {
 	w.s.Shift().SetLastShareTime(t)
 }
 
+// LastShareTime returns the last time a share was submitted during the
+// current shift
 func (w *Worker) LastShareTime() time.Time {
 	return w.s.Shift().LastShareTime()
-	// unixTime := w.getUint64Field("LastShareTime")
-	// return time.Unix(int64(unixTime), 0)
 }
 
 // CurrentDifficulty returns the average difficulty of all instances of this worker
@@ -172,6 +173,7 @@ func (w *Worker) CurrentDifficulty() float64 {
 	return currentDiff / float64(workerCount)
 }
 
+// Online checks if the worker has a tcp session associated with it
 func (w *Worker) Online() bool {
 	return w.s != nil
 }

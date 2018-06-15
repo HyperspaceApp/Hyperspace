@@ -49,6 +49,7 @@ type StratumMiner struct {
 	tg threadgroup.ThreadGroup
 }
 
+// New returns a new StratumMiner
 func New(persistDir string) (*StratumMiner, error) {
 	// Assemble the stratum miner.
 	var hashRateReportsChannel = make(chan float64, 10)
@@ -63,18 +64,22 @@ func New(persistDir string) (*StratumMiner, error) {
 	return sm, nil
 }
 
+// Hashrate returns the miner's hashrate
 func (sm *StratumMiner) Hashrate() float64 {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	return sm.hashRate
 }
 
+// Submissions returns the count of submissions submitted by the miner
 func (sm *StratumMiner) Submissions() uint64 {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	return sm.submissions
 }
 
+// Connected returns whether or not the miner has an open tcp connection
+// to the stratum server
 func (sm *StratumMiner) Connected() bool {
 	if err := sm.tg.Add(); err != nil {
 		build.Critical(err)
@@ -86,6 +91,7 @@ func (sm *StratumMiner) Connected() bool {
 	return sm.Client.Connected()
 }
 
+// Mining returns whether or not the miner is both connected and hashing
 func (sm *StratumMiner) Mining() bool {
 	if err := sm.tg.Add(); err != nil {
 		build.Critical(err)
@@ -97,7 +103,7 @@ func (sm *StratumMiner) Mining() bool {
 	return sm.mining
 }
 
-// Starting the stratum miner spins off two goroutines:
+// StartStratumMining spins off two goroutines:
 // One listens for work via a tcp connection and pushes it into a work channel
 // The other waits for work from the channel and then grinds on it and submits solutions
 func (sm *StratumMiner) StartStratumMining(server, username string) {
@@ -123,6 +129,7 @@ func (sm *StratumMiner) StartStratumMining(server, username string) {
 	sm.log.Println("Finished starting stratum mining.")
 }
 
+// StopStratumMining tells the miner to stop mining
 func (sm *StratumMiner) StopStratumMining() {
 	//sm.log.Println("StopStratumMining called")
 	if err := sm.tg.Add(); err != nil {
@@ -146,6 +153,7 @@ func (sm *StratumMiner) StopStratumMining() {
 	}
 }
 
+// Close is called when the module is shutting down and shuts down the miner
 func (sm *StratumMiner) Close() error {
 	sm.log.Println("StratumMiner.Close() called")
 	if err := sm.tg.Stop(); err != nil {

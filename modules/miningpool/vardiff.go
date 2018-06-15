@@ -24,6 +24,9 @@ var (
 	}).(int) // how much we let the share duration vary between retargetting
 )
 
+// Vardiff is a structure representing maximum and minimum share submission
+// times, along with the size of the buffer over which share submission times
+// should be monitored
 type Vardiff struct {
 	tmax    float64
 	tmin    float64

@@ -29,6 +29,7 @@ type ConsensusHeadersGET struct {
 	BlockID types.BlockID `json:"blockid"`
 }
 
+// ConsensusFileContract contains information about a file contract
 type ConsensusFileContract struct {
 	FileSize           uint64                         `json:"filesize"`
 	FileMerkleRoot     crypto.Hash                    `json:"filemerkleroot"`
@@ -41,6 +42,7 @@ type ConsensusFileContract struct {
 	RevisionNumber     uint64                         `json:"revisionnumber"`
 }
 
+// ConsensusFileContractRevision contains information about a file contract revision
 type ConsensusFileContractRevision struct {
 	ParentID          types.FileContractID   `json:"parentid"`
 	UnlockConditions  types.UnlockConditions `json:"unlockconditions"`
@@ -55,6 +57,7 @@ type ConsensusFileContractRevision struct {
 	NewUnlockHash         types.UnlockHash               `json:"newunlockhash"`
 }
 
+// ConsensusTransaction contains information about a transaction
 type ConsensusTransaction struct {
 	SiacoinInputs         map[string]types.SiacoinInput            `json:"siacoininputs"`
 	SiacoinOutputs        map[string]types.SiacoinOutput           `json:"siacoinoutputs"`
@@ -66,7 +69,7 @@ type ConsensusTransaction struct {
 	TransactionSignatures map[string]types.TransactionSignature    `json:"transactionsignatures"`
 }
 
-// ConsensusBlockGET is the object returned by a GET request to
+// ConsensusBlock is the object returned by a GET request to
 // /consensus/block.
 type ConsensusBlock struct {
 	BlockID           types.BlockID     `json:"id"`
@@ -81,6 +84,7 @@ type ConsensusBlock struct {
 	Transactions map[string]ConsensusTransaction `json:"transactions"`
 }
 
+// Scods is a list of Siacoin output diffs
 type Scods struct {
 	scods []modules.SiacoinOutputDiff `json:"scods"`
 }

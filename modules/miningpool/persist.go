@@ -21,9 +21,6 @@ type persistence struct {
 	RecentChange modules.ConsensusChangeID `json:"recentchange"`
 
 	// Pool Identity.
-	Announced      bool                         `json:"announced"`
-	AutoAddress    modules.NetAddress           `json:"autoaddress"`
-	MiningMetrics  modules.PoolMiningMetrics    `json:"miningmetrics"`
 	PublicKey      types.SiaPublicKey           `json:"publickey"`
 	RevisionNumber uint64                       `json:"revisionnumber"`
 	Settings       modules.PoolInternalSettings `json:"settings"`
@@ -57,42 +54,6 @@ func (p *persistence) SetRecentChange(rc modules.ConsensusChangeID) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.RecentChange = rc
-}
-
-func (p *persistence) GetAnnounced() bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.Announced
-}
-
-func (p *persistence) SetAnnounced(an bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.Announced = an
-}
-
-func (p *persistence) GetAutoAddress() modules.NetAddress {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.AutoAddress
-}
-
-func (p *persistence) SetAutoAddress(aa modules.NetAddress) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.AutoAddress = aa
-}
-
-func (p *persistence) GetMiningMetrics() modules.PoolMiningMetrics {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.MiningMetrics
-}
-
-func (p *persistence) SetMiningMetrics(mm modules.PoolMiningMetrics) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.MiningMetrics = mm
 }
 
 func (p *persistence) GetPublicKey() types.SiaPublicKey {
@@ -172,9 +133,6 @@ func (mp *Pool) persistData() persistence {
 	return persistence{
 		BlockHeight:    mp.persist.GetBlockHeight(),
 		RecentChange:   mp.persist.GetRecentChange(),
-		Announced:      mp.persist.GetAnnounced(),
-		AutoAddress:    mp.persist.GetAutoAddress(),
-		MiningMetrics:  mp.persist.GetMiningMetrics(),
 		PublicKey:      mp.persist.GetPublicKey(),
 		RevisionNumber: mp.persist.GetRevisionNumber(),
 		Settings:       mp.persist.GetSettings(),
@@ -207,14 +165,6 @@ func (mp *Pool) loadPersistObject(p *persistence) {
 	mp.persist.SetBlockHeight(p.GetBlockHeight())
 	mp.persist.SetRecentChange(p.GetRecentChange())
 
-	// Copy over host identity.
-	mp.persist.SetAnnounced(p.GetAnnounced())
-	mp.persist.SetAutoAddress(p.GetAutoAddress())
-	if err := p.GetAutoAddress().IsValid(); err != nil {
-		mp.log.Printf("WARN: AutoAddress '%v' loaded from persist is invalid: %v", p.AutoAddress, err)
-		p.SetAutoAddress("")
-	}
-	mp.persist.SetMiningMetrics(p.GetMiningMetrics())
 	mp.persist.SetPublicKey(p.GetPublicKey())
 	mp.persist.SetRevisionNumber(p.GetRevisionNumber())
 	mp.persist.SetSettings(p.GetSettings())

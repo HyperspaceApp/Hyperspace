@@ -2,12 +2,9 @@ package main
 
 import (
 	"fmt"
-	"math/big"
 	"sort"
-	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/node/api"
-	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/spf13/cobra"
 )
@@ -28,30 +25,15 @@ var (
 Available settings:
 	name:               Name you select for your pool
 	poolid              Unique string for this pool (needed when sharing database)
-    acceptingshares:    Is your pool accepting shares
+    	acceptingshares:    Is your pool accepting shares
 	networkport:        Stratum port for your pool
 	dbconnection:       "internal" or connection string for shared database (pgsql only for now)
-    operatorpercentage: What percentage of the block reward goes to the pool operator
+    	operatorpercentage: What percentage of the block reward goes to the pool operator
 	operatorwallet:     Pool operator sia wallet address <required if percentage is not 0>
 	poolwallet:         Operating account for the pool <required>
  `,
 		Run: wrap(poolconfigcmd),
 	}
-
-	poolStartCmd = &cobra.Command{
-		Use:   "start",
-		Short: "Start mining pool",
-		Long:  "Start mining pool, if the pool is already running, this command does nothing",
-		Run:   wrap(poolstartcmd),
-	}
-
-	poolStopCmd = &cobra.Command{
-		Use:   "stop",
-		Short: "Stop mining pool",
-		Long:  "Stop mining pool (this may take a few moments).",
-		Run:   wrap(poolstopcmd),
-	}
-
 	poolClientsCmd = &cobra.Command{
 		Use:   "clients",
 		Short: "List clients",
@@ -59,6 +41,7 @@ Available settings:
 		Run:   wrap(poolclientscmd),
 	}
 
+	/*
 	poolClientCmd = &cobra.Command{
 		Use:   "client <clientname>",
 		Short: "Get client details",
@@ -79,37 +62,17 @@ Available settings:
 		Long:  "Get block specific details by block number",
 		Run:   wrap(poolblockcmd),
 	}
+	*/
 )
-
-// poolstartcmd is the handler for the command `siac pool start`.
-// Starts the mining pool.
-func poolstartcmd() {
-	err := httpClient.MiningPoolStartGet()
-	if err != nil {
-		die("Could not start mining pool:", err)
-	}
-	fmt.Println("Mining pool is now running.")
-}
 
 // poolcmd is the handler for the command `siac pool`.
 // Prints the status of the pool.
 func poolcmd() {
-	status, err := httpClient.MiningPoolGet()
-	if err != nil {
-		die("Could not get pool status:", err)
-	}
 	config, err := httpClient.MiningPoolConfigGet()
 	if err != nil {
 		die("Could not get pool config:", err)
 	}
-	poolStr := "off"
-	if status.PoolRunning {
-		poolStr = "on"
-	}
 	fmt.Printf(`Pool status:
-Mining Pool:   %s
-Pool Hashrate: %v GH/s
-Blocks Mined: %d
 
 Pool config:
 Pool Name:              %s
@@ -118,19 +81,8 @@ Pool Stratum Port       %d
 DB Connection           %s
 Pool Wallet:            %s
 `,
-		poolStr, status.PoolHashrate/1000000000, status.BlocksMined,
 		config.Name, config.PoolID, config.NetworkPort,
 		config.DBConnection, config.PoolWallet)
-}
-
-// poolstopcmd is the handler for the command `siac pool stop`.
-// Stops the CPU miner.
-func poolstopcmd() {
-	err := httpClient.MiningPoolStopGet()
-	if err != nil {
-		die("Could not stop pool:", err)
-	}
-	fmt.Println("Stopped mining pool.")
 }
 
 // poolconfigcmd is the handler for the command `siac pool config [parameter] [value]`
@@ -162,20 +114,15 @@ func poolclientscmd() {
 	}
 	fmt.Printf("Clients List:\n\n")
 	fmt.Printf("Number of Clients: %d\nNumber of Workers: %d\n\n", clients.NumberOfClients, clients.NumberOfWorkers)
-	fmt.Printf("Client Name                                                                   Blocks Mined Last Share Submitted\n")
-	fmt.Printf("----------------------------------------------------------------------------  ------------ --------------------\n")
+	fmt.Printf("Client Name                                                                  \n")
+	fmt.Printf("---------------------------------------------------------------------------- \n")
 	sort.Sort(ByClientName(clients.Clients))
 	for _, c := range clients.Clients {
-		var latest time.Time
-		for _, w := range c.Workers {
-			if w.LastShareTime.Unix() > latest.Unix() {
-				latest = w.LastShareTime
-			}
-		}
-		fmt.Printf("% 76.76s  %12d%v\n", c.ClientName, c.BlocksMined, shareTime(latest))
+		fmt.Printf("% 76.76s \n", c.ClientName)
 	}
 }
 
+/*
 func poolclientcmd(name string) {
 	client, err := httpClient.MiningPoolClientGet(name)
 	if err != nil {
@@ -293,13 +240,16 @@ func poolblockcmd(name string) {
 		fmt.Printf("%-76.76s %9.2f %12.12s\n", b.ClientName, b.ClientPercentage, currencyUnits(currency))
 	}
 }
+*/
 
+// ByClientName contains mining pool client info
 type ByClientName []api.MiningPoolClientInfo
 
 func (a ByClientName) Len() int           { return len(a) }
 func (a ByClientName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByClientName) Less(i, j int) bool { return a[i].ClientName < a[j].ClientName }
 
+// ByWorkerName contains mining pool worker info
 type ByWorkerName []api.PoolWorkerInfo
 
 func (a ByWorkerName) Len() int           { return len(a) }

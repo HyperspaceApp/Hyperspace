@@ -86,6 +86,7 @@ func (h BlockHeader) ID() BlockID {
 	return BlockID(crypto.HashObject(h))
 }
 
+// CalculateMinerFees calculates the sum of a block's miner transaction fees
 func (b Block) CalculateMinerFees() Currency {
 	fees := NewCurrency64(0)
 	for _, txn := range b.Transactions {
@@ -166,6 +167,8 @@ func (b Block) MinerPayoutID(i uint64) SiacoinOutputID {
 	))
 }
 
+// MerkleBranches returns the merkle branches of a block, as used in stratum
+// mining.
 func (b Block) MerkleBranches() []string {
 	mbranch := crypto.NewTree()
 	var buf bytes.Buffer

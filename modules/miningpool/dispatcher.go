@@ -2,6 +2,7 @@ package pool
 
 import (
 	// "fmt"
+
 	"net"
 	"time"
 
@@ -11,26 +12,31 @@ import (
 
 // Dispatcher contains a map of ip addresses to handlers
 type Dispatcher struct {
-	handlers map[string]*Handler
-	ln       net.Listener
-	mu       deadlock.RWMutex
-	p        *Pool
-	log      *persist.Logger
+	handlers          map[string]*Handler
+	ln                net.Listener
+	mu                deadlock.RWMutex
+	p                 *Pool
+	log               *persist.Logger
 	connectionsOpened uint64
 }
 
+// NumConnections returns the number of open tcp connections
 func (d *Dispatcher) NumConnections() int {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return len(d.handlers)
 }
 
+// NumConnectionsOpened returns the number of tcp connections that the pool
+// has ever opened
 func (d *Dispatcher) NumConnectionsOpened() uint64 {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.connectionsOpened
 }
 
+// IncrementConnectionsOpened increments the number of tcp connections that the
+// pool has ever opened
 func (d *Dispatcher) IncrementConnectionsOpened() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -51,7 +57,7 @@ func (d *Dispatcher) AddHandler(conn net.Conn) {
 	d.handlers[addr] = handler
 	d.mu.Unlock()
 
-	// fmt.Println("AddHandler listen() called")
+	// fmt.Printf("AddHandler listen() called: %s\n", addr)
 	handler.Listen()
 
 	<-handler.closed // when connection closed, remove handler from handlers
@@ -114,6 +120,8 @@ func (d *Dispatcher) ListenHandlers(port string) {
 	}
 }
 
+// NotifyClients tells the dispatcher to notify all clients that the block has
+// changed
 func (d *Dispatcher) NotifyClients() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
