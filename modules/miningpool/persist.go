@@ -3,7 +3,8 @@ package pool
 import (
 	"os"
 	"path/filepath"
-	"sync"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -13,7 +14,7 @@ import (
 
 // persistence is the data that is kept when the pool is restarted.
 type persistence struct {
-	mu sync.RWMutex
+	mu deadlock.RWMutex
 
 	// Consensus Tracking.
 	BlockHeight  types.BlockHeight         `json:"blockheight"`

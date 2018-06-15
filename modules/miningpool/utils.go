@@ -134,6 +134,10 @@ func caculateRewardRatio(siaSessionDifficulty, blockDifficulty *big.Int) float64
 
 	resultAsBigFloat.Quo(sessionAsBigFloat, blockAsBigFloat)
 	result, _ := resultAsBigFloat.Float64()
+
+	if result > 1.0 {
+		return 1.0
+	}
 	return result
 }
 

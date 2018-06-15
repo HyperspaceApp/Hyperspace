@@ -33,6 +33,7 @@ dependencies:
 	go get -u github.com/inconshreveable/mousetrap
 	go get -u github.com/go-sql-driver/mysql
 	go get -u github.com/lib/pq
+	go get github.com/sasha-s/go-deadlock/...
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
@@ -105,7 +106,7 @@ test-cpu:
 test-mem:
 	go test -v -tags='testing debug netgo' -timeout=500s -memprofile mem.prof $(pkgs) -run=$(run)
 test-pool:
-	go test -short -tags='testing debug pool' -timeout=60s ./modules/miningpool -run=$(run)
+	go test -short -parallel=1 -tags='testing debug pool' -timeout=60s ./modules/miningpool -run=$(run)
 bench: clean fmt
 	go test -tags='debug testing netgo' -timeout=500s -run=XXX -bench=$(run) $(pkgs)
 cover: clean

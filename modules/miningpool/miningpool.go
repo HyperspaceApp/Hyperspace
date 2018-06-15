@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"net"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -23,8 +22,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
-
 	"github.com/NebulousLabs/threadgroup"
+	"github.com/sasha-s/go-deadlock"
 
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"
@@ -149,26 +148,26 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	sqldb          *sql.DB
-	listener       net.Listener
-	log            *persist.Logger
-	yiilog         *persist.Logger
-	mu             sync.RWMutex
-	persistDir     string
-	port           string
-	tg             threadgroup.ThreadGroup
-	persist        persistence
-	dispatcher     *Dispatcher
-	stratumID      uint64
-	shiftID        uint64
-	shiftChan      chan bool
-	shiftTimestamp time.Time
-	blockCounter   uint64
-	clients        map[string]*Client //client name to client pointer mapping
+	sqldb                   *sql.DB
+	listener                net.Listener
+	log                     *persist.Logger
+	yiilog                  *persist.Logger
+	mu                      deadlock.RWMutex
+	persistDir              string
+	port                    string
+	tg                      threadgroup.ThreadGroup
+	persist                 persistence
+	dispatcher              *Dispatcher
+	stratumID               uint64
+	shiftID                 uint64
+	shiftChan               chan bool
+	shiftTimestamp          time.Time
+	blockCounter            uint64
+	clients                 map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex sync.Mutex
-	runningMutex     sync.RWMutex
-	running          bool
+	clientSetupMutex        deadlock.Mutex
+	runningMutex            deadlock.RWMutex
+	running                 bool
 }
 
 // startupRescan will rescan the blockchain in the event that the pool
@@ -229,9 +228,11 @@ func (p *Pool) monitorShifts() {
 			h.mu.RLock()
 			s := h.s.Shift()
 			h.mu.RUnlock()
-			if s != nil {
-				s.UpdateOrSaveShift()
-			}
+			go func (savingShift *Shift) {
+				if savingShift != nil {
+					savingShift.SaveShift()
+				}
+			}(s)
 			sh := p.newShift(h.s.CurrentWorker)
 			h.s.addShift(sh)
 		}
@@ -339,6 +340,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.
+	// fmt.Println("log path:", filepath.Join(p.persistDir, logFile))
 	p.log, err = dependencies.newLogger(filepath.Join(p.persistDir, logFile))
 	if err != nil {
 		return nil, err
@@ -432,7 +434,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	})
 
 	p.runningMutex.Lock()
-	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: sync.RWMutex{}, p: p}
+	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: deadlock.RWMutex{}, p: p}
 	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
 	p.running = true
 	p.runningMutex.Unlock()

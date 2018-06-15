@@ -2,10 +2,10 @@ package pool
 
 import (
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/sasha-s/go-deadlock"
 )
 
 type ShareRecord struct {
@@ -17,15 +17,11 @@ type ShareRecord struct {
 }
 
 type WorkerRecord struct {
-	name      string
-	accountID uint32
-	workerID  int64
-	remoteID  uint32
+	name              string
+	workerID          int64
 
-	averageDifficulty float64
 	shareDifficulty   float64
 
-	blocksFound uint64
 	parent      *Client
 }
 
@@ -33,7 +29,7 @@ type WorkerRecord struct {
 // worker represents a single miner.  There is a one to many client worker relationship
 //
 type Worker struct {
-	mu sync.RWMutex
+	mu deadlock.RWMutex
 	wr WorkerRecord
 	s  *Session
 	// utility
@@ -50,12 +46,6 @@ func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 			parent: c,
 		},
 		s: s,
-	}
-
-	// check if this worker instance is an original or copy
-	if c.Worker(name) != nil {
-		//return w, nil
-		return c.Worker(name), nil
 	}
 
 	var err error
@@ -130,7 +120,7 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 	siaSessionDifficulty, _ := sessionTarget.Difficulty().Uint64()
 	shareRatio := caculateRewardRatio(sessionTarget.Difficulty().Big(), blockTarget.Difficulty().Big())
 	shareReward := shareRatio * reward
-	w.log.Printf("shareRatio: %f, shareReward: %f", shareRatio, shareReward)
+	// w.log.Printf("shareRatio: %f, shareReward: %f", shareRatio, shareReward)
 
 	share := &Share{
 		userid:          w.Parent().cr.clientID,
@@ -161,20 +151,6 @@ func (w *Worker) LastShareTime() time.Time {
 	// unixTime := w.getUint64Field("LastShareTime")
 	// return time.Unix(int64(unixTime), 0)
 }
-
-func (w *Worker) BlocksFound() uint64 {
-	return w.wr.blocksFound
-}
-
-func (w *Worker) IncrementBlocksFound() {
-	w.wr.blocksFound++
-	w.updateWorkerRecord()
-}
-
-// func (w *Worker) CumulativeDifficulty() float64 {
-// 	return w.s.Shift().CumulativeDifficulty()
-// 	// return w.getFloatField("CumulativeDifficulty")
-// }
 
 // CurrentDifficulty returns the average difficulty of all instances of this worker
 func (w *Worker) CurrentDifficulty() float64 {

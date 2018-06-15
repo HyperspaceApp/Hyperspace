@@ -1,9 +1,10 @@
 package pool
 
 import (
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 )
 
 type Share struct {
@@ -20,20 +21,19 @@ type Share struct {
 }
 
 type Shift struct {
-	mu             sync.RWMutex
-	shiftID        uint64
-	pool           uint64
-	worker         *Worker
-	blockID        uint64
-	shares         []Share
-	lastShareTime  time.Time
-	startShiftTime time.Time
+	mu                   deadlock.RWMutex
+	shiftID              uint64
+	pool                 uint64
+	worker               *Worker
+	blockID              uint64
+	shares               []Share
+	lastShareTime        time.Time
+	startShiftTime       time.Time
 }
 
 func (p *Pool) newShift(w *Worker) *Shift {
 	currentShiftID := atomic.LoadUint64(&p.shiftID)
-	p.mu.RLock()
-	defer p.mu.RUnlock()
+
 	currentBlock := p.blockCounter
 	s := &Shift{
 		shiftID:        currentShiftID,
