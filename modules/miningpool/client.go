@@ -2,7 +2,8 @@ package pool
 
 import (
 	"path/filepath"
-	"sync"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -23,10 +24,9 @@ type ClientRecord struct {
 //
 type Client struct {
 	cr      ClientRecord
-	mu      sync.RWMutex
+	mu      deadlock.RWMutex
 	pool    *Pool
 	log     *persist.Logger
-	workers map[string]*Worker //worker name to worker pointer mapping
 }
 
 // newClient creates a new Client record
@@ -35,12 +35,11 @@ func newClient(p *Pool, name string) (*Client, error) {
 	// id := p.newStratumID()
 	c := &Client{
 		cr: ClientRecord{
-			// clientID: id(),
-			name: name,
+			name:   name,
 		},
 		pool:    p,
-		workers: make(map[string]*Worker),
 	}
+	c.cr.wallet.LoadString(name)
 	// check if this worker instance is an original or copy
 	// TODO why do we need to make a copy instead of the original?
 	if p.Client(name) != nil {
@@ -96,34 +95,4 @@ func (c *Client) Pool() *Pool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.pool
-}
-
-func (c *Client) Worker(wn string) *Worker {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return c.workers[wn]
-}
-
-func (c *Client) AddWorker(w *Worker) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.workers[w.Name()] = w
-}
-
-//
-// Workers returns a copy of the workers map.  Caution however since the map contains pointers to the actual live
-// worker data
-//
-func (c *Client) Workers() map[string]*Worker {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.workers
-}
-
-func (c *Client) printID() string {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return ssPrintID(c.cr.clientID)
 }

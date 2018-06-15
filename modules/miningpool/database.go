@@ -86,26 +86,6 @@ func (p *Pool) FindClientDB(name string) *Client {
 	return c
 }
 
-// updateWorkerRecord update worker in workers
-func (w *Worker) updateWorkerRecord() error {
-	stmt, err := w.Parent().pool.sqldb.Prepare(`
-		UPDATE workers
-		SET difficulty = ?
-		WHERE id = ?
-		`)
-	if err != nil {
-		w.log.Printf("Error preparing to update worker: %s\n", err)
-		return err
-	}
-	defer stmt.Close()
-	_, err = stmt.Exec(w.CurrentDifficulty(), w.wr.workerID)
-	if err != nil {
-		w.log.Printf("Error updating record: %s\n", err)
-		return err
-	}
-	return nil
-}
-
 func (w *Worker) deleteWorkerRecord() error {
 	stmt, err := w.Parent().pool.sqldb.Prepare(`
 		DELETE FROM workers
@@ -216,7 +196,7 @@ func (p *Pool) setBlockCounterFromDB() error {
 	return nil
 }
 
-func (s *Shift) UpdateOrSaveShift() error {
+func (s *Shift) SaveShift() error {
 	if len(s.Shares()) == 0 {
 		return nil
 	}
@@ -241,15 +221,16 @@ func (s *Shift) UpdateOrSaveShift() error {
 	if err != nil {
 		worker.log.Println(buffer.String())
 		worker.log.Printf("Error saving shares: %s\n", err)
+		fmt.Println(err)
 		return err
 	}
-	// TODO: add share_diff which is client submitted diff
+
 	if err != nil {
 		worker.log.Println(buffer.String())
 		worker.log.Printf("Error adding record of last shift: %s\n", err)
 		return err
 	}
-	worker.log.Debugf(buffer.String())
+	// worker.log.Debugf(buffer.String())
 	return nil
 }
 
@@ -258,7 +239,6 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.workers[w.Name()] = w
 	c.log.Printf("Adding client %s worker %s to database\n", c.cr.name, w.Name())
 	tx, err := c.pool.sqldb.Begin()
 	if err != nil {
@@ -267,15 +247,15 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	defer tx.Rollback()
 	// TODO: add ip etc info
 	stmt, err := tx.Prepare(`
-		INSERT INTO workers (userid, name, difficulty, worker, algo, time, pid)
-		VALUES (?, ?, ?, ?, ?, ?, ?);
+		INSERT INTO workers (userid, name, worker, algo, time, pid)
+		VALUES (?, ?, ?, ?, ?, ?);
 	`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.averageDifficulty, w.wr.name, SiaCoinAlgo, time.Now().Unix(), c.pool.InternalSettings().PoolID)
+	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.name, SiaCoinAlgo, time.Now().Unix(), c.pool.InternalSettings().PoolID)
 	if err != nil {
 		return err
 	}

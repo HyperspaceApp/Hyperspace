@@ -1,21 +1,21 @@
 package pool
 
 import (
-	//"fmt"
+	// "fmt"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/sasha-s/go-deadlock"
 )
 
 // Dispatcher contains a map of ip addresses to handlers
 type Dispatcher struct {
-	handlers          map[string]*Handler
-	ln                net.Listener
-	mu                sync.RWMutex
-	p                 *Pool
-	log               *persist.Logger
+	handlers map[string]*Handler
+	ln       net.Listener
+	mu       deadlock.RWMutex
+	p        *Pool
+	log      *persist.Logger
 	connectionsOpened uint64
 }
 
@@ -51,7 +51,7 @@ func (d *Dispatcher) AddHandler(conn net.Conn) {
 	d.handlers[addr] = handler
 	d.mu.Unlock()
 
-	//fmt.Println("AddHandler listen() called")
+	// fmt.Println("AddHandler listen() called")
 	handler.Listen()
 
 	<-handler.closed // when connection closed, remove handler from handlers
@@ -79,6 +79,7 @@ func (d *Dispatcher) ListenHandlers(port string) {
 		// TODO: add error chan to report this
 		//return
 	}
+	// fmt.Printf("Listening: %s\n", port)
 
 	defer d.ln.Close()
 	defer d.p.tg.Done()

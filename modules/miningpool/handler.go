@@ -9,17 +9,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
+	// "math/big"
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/sasha-s/go-deadlock"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 
 // Handler represents the status (open/closed) of each connection
 type Handler struct {
-	mu     sync.RWMutex
+	mu     deadlock.RWMutex
 	conn   net.Conn
 	closed chan bool
 	notify chan bool
@@ -297,9 +298,13 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 }
 
 func (h *Handler) setupWorker(c *Client, workerName string) (*Worker, error) {
-	w, _ := newWorker(c, workerName, h.s)
-	c.AddWorker(w)
-	err := c.addWorkerDB(w)
+	w, err := newWorker(c, workerName, h.s)
+	if err != nil {
+		c.log.Printf("Failed to add worker: %s\n", err)
+		return nil, err
+	}
+
+	err = c.addWorkerDB(w)
 	if err != nil {
 		c.log.Printf("Failed to add worker: %s\n", err)
 		return nil, err
@@ -328,39 +333,42 @@ func (h *Handler) handleStratumAuthorize(m *types.StratumRequest) error {
 		clientName = s[0]
 		workerName = s[1]
 	}
+
+	// load wallet and check validity
+	var walletTester types.UnlockHash
+	err = walletTester.LoadString(clientName)
+	if err != nil {
+		r.Result = false
+		r.Error = interfaceify([]string{"Client Name must be valid wallet address"})
+		h.log.Println("Client Name must be valid wallet address. Client name is: " + clientName)
+		err = errors.New("Client name must be a valid wallet address")
+		h.sendResponse(r)
+		return err
+	}
+
 	c, err := h.setupClient(clientName, workerName)
 	if err != nil {
 		return err
 	}
-	_, err = h.setupWorker(c, workerName)
+	w, err := h.setupWorker(c, workerName)
 	if err != nil {
 		return err
 	}
 
-	// load wallet and check validity
-	if c.Wallet().LoadString(c.Name()) != nil {
-		r.Result = false
-		r.Error = interfaceify([]string{"Client Name must be valid wallet address"})
-		h.log.Println("Client Name must be valid wallet address. Client name is: " + c.Name())
-		err = errors.New("Client name must be a valid wallet address")
-		h.sendResponse(r)
+	// if everything is fine, setup the client and send a response and difficulty
+	h.s.addClient(c)
+	h.s.addWorker(w)
+	h.s.addShift(h.p.newShift(h.s.CurrentWorker))
+	h.s.SetAuthorized(true)
+	err = h.sendResponse(r)
+	if err != nil {
 		return err
-		// if everything is fine, setup the client and send a response and difficulty
-	} else {
-		h.s.addClient(c)
-		h.s.addWorker(c.Worker(workerName))
-		h.s.addShift(h.p.newShift(h.s.CurrentWorker))
-		h.s.SetAuthorized(true)
-		err = h.sendResponse(r)
-		if err != nil {
-			return err
-		}
-		err = h.sendSetDifficulty(h.s.CurrentDifficulty())
-		if err != nil {
-			return err
-		}
-		return nil
 	}
+	err = h.sendSetDifficulty(h.s.CurrentDifficulty())
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // handleStratumNonceSubscribe tells the pool that this client can handle the extranonce info
@@ -455,16 +463,16 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 
 	b.Transactions = append(b.Transactions, []types.Transaction{cointxn}...)
 	blockHash := b.ID()
-	bh := new(big.Int).SetBytes(blockHash[:])
+	// bh := new(big.Int).SetBytes(blockHash[:])
 
 	sessionPoolTarget, _ := difficultyToTarget(sessionPoolDifficulty)
 
-	h.s.CurrentWorker.log.Printf("session diff: %f, block version diff: %s",
-		sessionPoolDifficulty, printWithSuffix(sessionPoolTarget.Difficulty()))
+	// h.s.CurrentWorker.log.Printf("session diff: %f, block version diff: %s",
+	// 	sessionPoolDifficulty, printWithSuffix(sessionPoolTarget.Difficulty()))
 
 	// need to checkout the block hashrate reach pool target or not
-	h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
-	h.s.CurrentWorker.log.Printf("Session target:   %064x\n", sessionPoolTarget.Int())
+	// h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
+	// h.s.CurrentWorker.log.Printf("Session target:   %064x\n", sessionPoolTarget.Int())
 	if bytes.Compare(sessionPoolTarget[:], blockHash[:]) < 0 {
 		r.Result = false
 		r.Error = interfaceify([]string{"22", "Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
@@ -474,12 +482,12 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 
 	t := h.p.persist.GetTarget()
-	h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
-	h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
-	h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
-		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
+	// h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
+	// h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
+	// h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
+	// 		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
-		h.s.CurrentWorker.log.Printf("Block hash is greater than block target\n")
+		// h.s.CurrentWorker.log.Printf("Block hash is greater than block target\n")
 		h.s.CurrentWorker.log.Printf("Share Accepted\n")
 		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty(), currencyToAmount(b.MinerPayouts[0].Value))
 		h.s.CurrentWorker.SetLastShareTime(time.Now())
@@ -502,9 +510,8 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	// TODO: why not err == nil ?
 	if err != modules.ErrBlockUnsolved {
 		h.s.CurrentWorker.Parent().log.Printf("Yay!!! Solved a block!!\n")
-		h.s.CurrentWorker.log.Printf("Yay!!! Solved a block!!\n")
+		// h.s.CurrentWorker.log.Printf("Yay!!! Solved a block!!\n")
 		h.s.CurrentJobs = nil
-		h.s.CurrentWorker.IncrementBlocksFound()
 		err = h.s.CurrentWorker.addFoundBlock(&b)
 		if err != nil {
 			h.s.CurrentWorker.log.Printf("Failed to update block in database: %s\n", err)
@@ -515,7 +522,11 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 }
 
 func (h *Handler) sendSetDifficulty(d float64) error {
+	if build.Release == "testing" {
+		return nil // not adjust for testing
+	}
 	var r types.StratumRequest
+
 	r.Method = "mining.set_difficulty"
 	// assuming this ID is the response to the original subscribe which appears to be a 1
 	r.ID = 0
