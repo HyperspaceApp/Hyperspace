@@ -152,15 +152,3 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 	err := api.pool.SetInternalSettings(settings)
 	return settings, err
 }
-
-// poolStartHandler handles the API call that starts the pool.
-func (api *API) poolStartHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.pool.StartPool()
-	WriteSuccess(w)
-}
-
-// poolStopHandler handles the API call to stop the pool.
-func (api *API) poolStopHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.pool.StopPool()
-	WriteSuccess(w)
-}

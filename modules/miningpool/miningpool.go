@@ -18,13 +18,13 @@ import (
 
 	"github.com/sasha-s/go-deadlock"
 
-	"github.com/NebulousLabs/threadgroup"
 	"github.com/NebulousLabs/Sia/build"
 	"github.com/NebulousLabs/Sia/config"
 	"github.com/NebulousLabs/Sia/crypto"
 	"github.com/NebulousLabs/Sia/modules"
 	"github.com/NebulousLabs/Sia/persist"
 	"github.com/NebulousLabs/Sia/types"
+	"github.com/NebulousLabs/threadgroup"
 
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"
@@ -149,26 +149,26 @@ type Pool struct {
 	connectabilityStatus modules.PoolConnectabilityStatus
 
 	// Utilities.
-	sqldb                   *sql.DB
-	listener                net.Listener
-	log                     *persist.Logger
-	yiilog                  *persist.Logger
-	mu                      deadlock.RWMutex
-	persistDir              string
-	port                    string
-	tg                      threadgroup.ThreadGroup
-	persist                 persistence
-	dispatcher              *Dispatcher
-	stratumID               uint64
-	shiftID                 uint64
-	shiftChan               chan bool
-	shiftTimestamp          time.Time
-	blockCounter            uint64
-	clients                 map[string]*Client //client name to client pointer mapping
+	sqldb          *sql.DB
+	listener       net.Listener
+	log            *persist.Logger
+	yiilog         *persist.Logger
+	mu             deadlock.RWMutex
+	persistDir     string
+	port           string
+	tg             threadgroup.ThreadGroup
+	persist        persistence
+	dispatcher     *Dispatcher
+	stratumID      uint64
+	shiftID        uint64
+	shiftChan      chan bool
+	shiftTimestamp time.Time
+	blockCounter   uint64
+	clients        map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex        deadlock.Mutex
-	runningMutex            deadlock.RWMutex
-	running                 bool
+	clientSetupMutex deadlock.Mutex
+	runningMutex     deadlock.RWMutex
+	running          bool
 }
 
 // startupRescan will rescan the blockchain in the event that the pool
@@ -229,7 +229,7 @@ func (p *Pool) monitorShifts() {
 			h.mu.RLock()
 			s := h.s.Shift()
 			h.mu.RUnlock()
-			go func (savingShift *Shift) {
+			go func(savingShift *Shift) {
 				if savingShift != nil {
 					savingShift.SaveShift()
 				}
@@ -456,52 +456,6 @@ func (p *Pool) Close() error {
 	p.log.Println("Closing pool")
 	//defer func () {}()
 	return p.tg.Stop()
-}
-
-// TODO Start and Stop Pool are currently unused, maybe eliminate them
-// StartPool starts the pool running
-func (p *Pool) StartPool() {
-	p.running = true
-}
-
-// StopPool stops the pool running
-func (p *Pool) StopPool() {
-	p.running = false
-}
-
-// GetRunning returns the running (or not) status of the pool
-func (p *Pool) GetRunning() bool {
-	p.runningMutex.Lock()
-	defer p.runningMutex.Unlock()
-	return p.running
-}
-
-// WorkingStatus returns the working state of the pool, where working is
-// defined as having received more than workingStatusThreshold settings calls
-// over the period of workingStatusFrequency.
-func (p *Pool) WorkingStatus() modules.PoolWorkingStatus {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.workingStatus
-}
-
-// ConnectabilityStatus returns the connectability state of the pool, whether
-// the pool can connect to itself on its configured netaddress.
-func (p *Pool) ConnectabilityStatus() modules.PoolConnectabilityStatus {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.connectabilityStatus
-}
-
-// MiningMetrics returns information about the financial commitments,
-// rewards, and activities of the pool.
-func (p *Pool) MiningMetrics() modules.PoolMiningMetrics {
-	err := p.tg.Add()
-	if err != nil {
-		build.Critical("Call to MiningMetrics after close")
-	}
-	defer p.tg.Done()
-	return p.persist.GetMiningMetrics()
 }
 
 // SetInternalSettings updates the pool's internal PoolInternalSettings object.
