@@ -2,6 +2,7 @@ package pool
 
 import (
 	// "fmt"
+
 	"net"
 	"time"
 
@@ -12,11 +13,11 @@ import (
 
 // Dispatcher contains a map of ip addresses to handlers
 type Dispatcher struct {
-	handlers map[string]*Handler
-	ln       net.Listener
-	mu       deadlock.RWMutex
-	p        *Pool
-	log      *persist.Logger
+	handlers          map[string]*Handler
+	ln                net.Listener
+	mu                deadlock.RWMutex
+	p                 *Pool
+	log               *persist.Logger
 	connectionsOpened uint64
 }
 
@@ -52,7 +53,7 @@ func (d *Dispatcher) AddHandler(conn net.Conn) {
 	d.handlers[addr] = handler
 	d.mu.Unlock()
 
-	// fmt.Println("AddHandler listen() called")
+	// fmt.Printf("AddHandler listen() called: %s\n", addr)
 	handler.Listen()
 
 	<-handler.closed // when connection closed, remove handler from handlers

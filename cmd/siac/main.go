@@ -103,7 +103,7 @@ func main() {
 	minerCmd.AddCommand(minerStartCmd, minerStopCmd)
 
 	root.AddCommand(poolCmd)
-	poolCmd.AddCommand(poolConfigCmd, poolStartCmd, poolStopCmd, poolClientsCmd, poolClientCmd, poolBlocksCmd, poolBlockCmd)
+	poolCmd.AddCommand(poolConfigCmd)
 
 	root.AddCommand(stratumminerCmd)
 	stratumminerCmd.AddCommand(stratumminerStartCmd, stratumminerStopCmd)

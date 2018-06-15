@@ -16,9 +16,6 @@ var (
 )
 
 type (
-	// PoolMiningMetrics stores the various stats of the pool.
-	PoolMiningMetrics struct {
-	}
 
 	// PoolInternalSettings contains a list of settings that can be changed.
 	PoolInternalSettings struct {
@@ -80,9 +77,6 @@ type (
 	// proportionally based on their share of the solution (minus a percentage to the
 	// pool operator )
 	Pool interface {
-		// PoolMiningMetrics returns the mining statistics of the pool.
-		MiningMetrics() PoolMiningMetrics
-
 		// InternalSettings returns the pool's internal settings, including
 		// potentially private or sensitive information.
 		InternalSettings() PoolInternalSettings
@@ -90,40 +84,7 @@ type (
 		// SetInternalSettings sets the parameters of the pool.
 		SetInternalSettings(PoolInternalSettings) error
 
-		// ClientData returns a pointer to the client list
-		// ClientData() []PoolClients
-
-		// BlocksInfo returns a list of blocks information
-		// BlocksInfo() []PoolBlocks
-
-		// BlockInfo returns a list of blocks information
-		// BlockInfo(block uint64) []PoolBlock
-
 		// Close closes the Pool.
 		Close() error
-
-		// ConnectabilityStatus returns the connectability status of the pool, that
-		// is, if it can connect to itself on the configured NetAddress.
-		ConnectabilityStatus() PoolConnectabilityStatus
-
-		// WorkingStatus returns the working state of the pool, determined by if
-		// settings calls are increasing.
-		WorkingStatus() PoolWorkingStatus
-
-		// StartPool turns on the mining pool, which will endlessly work for new
-		// blocks.
-		StartPool()
-
-		// StopPool turns off the mining pool
-		StopPool()
-
-		// GetRunning returns the running status (or not) of the pool
-		GetRunning() bool
-
-		// returns the number of open tcp connections the pool currently is servicing
-		NumConnections() int
-
-		// returns the number of open tcp connections the pool has opened since startup
-		NumConnectionsOpened() uint64
 	}
 )

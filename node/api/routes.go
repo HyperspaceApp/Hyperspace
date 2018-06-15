@@ -69,14 +69,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 
 	// Mining pool API Calls
 	if api.pool != nil {
-		router.GET("/pool", api.poolHandler)
-		// router.GET("/pool/clients", api.poolGetClientsInfo)
-		// router.GET("/pool/client", api.poolGetClientInfo)
-		// router.GET("/pool/clienttx", api.poolGetClientTransactions)
 		router.POST("/pool/config", RequirePassword(api.poolConfigHandlerPOST, requiredPassword)) // Change the settings of the host.
 		router.GET("/pool/config", RequirePassword(api.poolConfigHandler, requiredPassword))
-		router.GET("/pool/start", RequirePassword(api.poolStartHandler, requiredPassword))
-		router.GET("/pool/stop", RequirePassword(api.poolStopHandler, requiredPassword))
 		// router.GET("/pool/blocks", api.poolGetBlocksInfo)
 		// router.GET("/pool/block", api.poolGetBlockInfo)
 	}

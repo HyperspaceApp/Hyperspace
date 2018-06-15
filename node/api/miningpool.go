@@ -11,13 +11,6 @@ import (
 )
 
 type (
-	// PoolGET contains the stats that is returned after a GET request
-	// to /pool.
-	MiningPoolGET struct {
-		PoolRunning  bool `json:"poolrunning"`
-		BlocksMined  int  `json:"blocksmined"`
-		PoolHashrate int  `json:"poolhashrate"`
-	}
 	// MiningPoolConfig contains the parameters you can set to config your pool
 	MiningPoolConfig struct {
 		NetworkPort    int              `json:"networkport"`
@@ -67,16 +60,6 @@ type (
 		ClientReward     string  `json:"clientreward"`
 	}
 )
-
-// poolHandler handles the API call that queries the pool's status.
-func (api *API) poolHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	pg := MiningPoolGET{
-		PoolRunning:  api.pool.GetRunning(),
-		BlocksMined:  0,
-		PoolHashrate: 0,
-	}
-	WriteJSON(w, pg)
-}
 
 // poolConfigHandlerPOST handles POST request to the /pool API endpoint, which sets
 // the internal settings of the pool.
@@ -151,16 +134,4 @@ func (api *API) parsePoolSettings(req *http.Request) (modules.PoolInternalSettin
 	}
 	err := api.pool.SetInternalSettings(settings)
 	return settings, err
-}
-
-// poolStartHandler handles the API call that starts the pool.
-func (api *API) poolStartHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.pool.StartPool()
-	WriteSuccess(w)
-}
-
-// poolStopHandler handles the API call to stop the pool.
-func (api *API) poolStopHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	api.pool.StopPool()
-	WriteSuccess(w)
 }
