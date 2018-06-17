@@ -39,9 +39,12 @@ func (d *Dispatcher) NumConnectionsOpened() uint64 {
 // IncrementConnectionsOpened increments the number of tcp connections that the
 // pool has ever opened
 func (d *Dispatcher) IncrementConnectionsOpened() {
+// XXX: this is causing a deadlock
+/*
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.connectionsOpened += 1
+*/
 }
 
 //AddHandler connects the incoming connection to the handler which will handle it
