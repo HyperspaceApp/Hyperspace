@@ -441,7 +441,6 @@ func TestStratumMineBlocksMiningUncleanShutdown(t *testing.T) {
 }
 
 func TestStratumMiningWhileRestart(t *testing.T) {
-	return
 	if !build.POOL {
 		return
 	}

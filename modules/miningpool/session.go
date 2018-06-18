@@ -52,10 +52,13 @@ type Session struct {
 	sessionStartTimestamp time.Time
 	lastHeartbeat         time.Time
 	// utility
-	log *persist.Logger
+	log            *persist.Logger
+	disableVarDiff bool
+	clientVersion  string
+	remoteAddr     string
 }
 
-func newSession(p *Pool) (*Session, error) {
+func newSession(p *Pool, ip string) (*Session, error) {
 	id := p.newStratumID()
 	s := &Session{
 		SessionID:            id(),
@@ -64,6 +67,8 @@ func newSession(p *Pool) (*Session, error) {
 		highestDifficulty:    initialDifficulty,
 		lastVardiffRetarget:  time.Now(),
 		lastVardiffTimestamp: time.Now(),
+		disableVarDiff:       false,
+		remoteAddr:           ip,
 	}
 
 	s.vardiff = *s.newVardiff()
@@ -175,8 +180,6 @@ func (s *Session) ShareDurationAverage() (float64, float64) {
 		return unsubmitDuration, 0
 	}
 
-	// sort, caculate duration array, weight recent more
-
 	historyDuration := maxTime.Sub(minTime).Seconds() / float64(timestampCount-1)
 
 	return unsubmitDuration, historyDuration
@@ -203,7 +206,6 @@ func (s *Session) CurrentDifficulty() float64 {
 func (s *Session) SetHighestDifficulty(d float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	s.highestDifficulty = d
 }
 
@@ -215,6 +217,20 @@ func (s *Session) SetCurrentDifficulty(d float64) {
 		s.highestDifficulty = d
 	}
 	s.currentDifficulty = d
+}
+
+// SetClientVersion sets the current client version for the session
+func (s *Session) SetClientVersion(v string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.clientVersion = v
+}
+
+// SetDisableVarDiff sets the disable var diff flag for the session
+func (s *Session) SetDisableVarDiff(flag bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableVarDiff = flag
 }
 
 // HighestDifficulty returns the highest difficulty the session has seen
