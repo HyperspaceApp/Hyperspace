@@ -239,6 +239,11 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 		h.s.SetClientVersion(m.Params[0].(string))
 	}
 
+	if len(m.Params) > 0 && m.Params[0].(string) == "sgminer/4.4.2" {
+		h.s.SetHighestDifficulty(4812.8)
+		h.s.SetCurrentDifficulty(4812.8)
+		h.s.SetDisableVarDiff(true)
+	}
 	if len(m.Params) > 0 && m.Params[0].(string) == "cgminer/4.9.0" {
 		h.s.SetHighestDifficulty(1024)
 		h.s.SetCurrentDifficulty(1024)
