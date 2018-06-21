@@ -64,12 +64,16 @@ func (s *Session) checkDiffOnNewShare() bool {
 	s.lastVardiffRetarget = time.Now()
 
 	unsubmitDuration, historyDuration := s.ShareDurationAverage()
+	if s.disableVarDiff {
+		s.log.Printf("HistoryDuration: %f, var diff disabled, current diff: %f\n", historyDuration, s.currentDifficulty)
+		return false
+	}
 
 	if unsubmitDuration > retargetDuration {
 		if s.IsStable() {
-			s.SetCurrentDifficulty(s.CurrentDifficulty()*3/4)
+			s.SetCurrentDifficulty(s.CurrentDifficulty() * 3 / 4)
 		} else {
-			s.SetCurrentDifficulty(s.CurrentDifficulty()*1/2)
+			s.SetCurrentDifficulty(s.CurrentDifficulty() * 1 / 2)
 		}
 		if s.log != nil {
 			s.log.Printf("UnsubmitDuration too long: %f, Set new difficulty to: %v\n", unsubmitDuration, s.currentDifficulty)
@@ -94,9 +98,9 @@ func (s *Session) checkDiffOnNewShare() bool {
 	var deltaDiff float64
 	deltaDiff = float64(targetDuration) / float64(historyDuration)
 	if s.IsStable() {
-		deltaDiff = 1 - (1 - deltaDiff)/8
+		deltaDiff = 1 - (1-deltaDiff)/8
 	} else {
-		deltaDiff = 1 - (1 - deltaDiff)/2
+		deltaDiff = 1 - (1-deltaDiff)/2
 	}
 
 	if deltaDiff > 2.0 {

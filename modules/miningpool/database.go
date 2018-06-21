@@ -251,15 +251,16 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	defer tx.Rollback()
 	// TODO: add ip etc info
 	stmt, err := tx.Prepare(`
-		INSERT INTO workers (userid, name, worker, algo, time, pid)
-		VALUES (?, ?, ?, ?, ?, ?);
+		INSERT INTO workers (userid, name, worker, algo, time, pid, version, ip)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 	`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
-	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.name, SiaCoinAlgo, time.Now().Unix(), c.pool.InternalSettings().PoolID)
+	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.name, SiaCoinAlgo, time.Now().Unix(),
+		c.pool.InternalSettings().PoolID, w.s.clientVersion, w.s.remoteAddr)
 	if err != nil {
 		return err
 	}
