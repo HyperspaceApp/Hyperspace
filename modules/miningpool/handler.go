@@ -174,7 +174,7 @@ func (h *Handler) Listen() {
 
 	h.log.Println("New connection from " + h.conn.RemoteAddr().String())
 	h.mu.Lock()
-	h.s, _ = newSession(h.p)
+	h.s, _ = newSession(h.p, h.conn.RemoteAddr().String())
 	h.mu.Unlock()
 	h.log.Println("New session: " + sPrintID(h.s.SessionID))
 	for {
@@ -233,6 +233,21 @@ func (h *Handler) sendRequest(r types.StratumRequest) error {
 //
 // TODO: Pull the appropriate data from either in memory or persistent store as required
 func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
+	if len(m.Params) > 0 {
+		h.log.Printf("Client subscribe name:%s", m.Params[0].(string))
+		h.s.SetClientVersion(m.Params[0].(string))
+	}
+
+	if len(m.Params) > 0 && m.Params[0].(string) == "sgminer/4.4.2" {
+		h.s.SetHighestDifficulty(4812.8)
+		h.s.SetCurrentDifficulty(4812.8)
+		h.s.SetDisableVarDiff(true)
+	}
+	if len(m.Params) > 0 && m.Params[0].(string) == "cgminer/4.9.0" {
+		h.s.SetHighestDifficulty(1024)
+		h.s.SetCurrentDifficulty(1024)
+		h.s.SetDisableVarDiff(true)
+	}
 	if len(m.Params) > 0 && m.Params[0].(string) == "gominer" {
 		h.s.SetHighestDifficulty(0.1)
 		h.s.SetCurrentDifficulty(0.1)

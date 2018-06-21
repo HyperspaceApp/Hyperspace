@@ -104,7 +104,7 @@ package renter
 // That's going to need to be changed to a partial sector. This is probably
 // going to result in downloading that's 64-byte aligned instead of perfectly
 // byte-aligned. Further, the encryption and erasure coding may also have
-// alignment requirements which interefere with how the call to Sector can work.
+// alignment requirements which interfere with how the call to Sector can work.
 // So you need to make sure that in 'managedDownload' you download at least
 // enough data to fit the alignment requirements of all 3 steps (download from
 // host, encryption, erasure coding). After the logical data has been recovered,
@@ -133,7 +133,6 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
-	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/errors"
 )
@@ -382,22 +381,22 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 
 	// For each chunk, assemble a mapping from the contract id to the index of
 	// the piece within the chunk that the contract is responsible for.
-	chunkMaps := make([]map[types.FileContractID]downloadPieceInfo, maxChunk-minChunk+1)
+	chunkMaps := make([]map[string]downloadPieceInfo, maxChunk-minChunk+1)
 	for i := range chunkMaps {
-		chunkMaps[i] = make(map[types.FileContractID]downloadPieceInfo)
+		chunkMaps[i] = make(map[string]downloadPieceInfo)
 	}
 	params.file.mu.Lock()
 	for id, contract := range params.file.contracts {
-		resolvedID := r.hostContractor.ResolveID(id)
+		resolvedKey := r.hostContractor.ResolveIDToPubKey(id)
 		for _, piece := range contract.Pieces {
 			if piece.Chunk >= minChunk && piece.Chunk <= maxChunk {
 				// Sanity check - the same worker should not have two pieces for
 				// the same chunk.
-				_, exists := chunkMaps[piece.Chunk-minChunk][resolvedID]
+				_, exists := chunkMaps[piece.Chunk-minChunk][string(resolvedKey.Key)]
 				if exists {
 					r.log.Println("ERROR: Worker has multiple pieces uploaded for the same chunk.")
 				}
-				chunkMaps[piece.Chunk-minChunk][resolvedID] = downloadPieceInfo{
+				chunkMaps[piece.Chunk-minChunk][string(resolvedKey.Key)] = downloadPieceInfo{
 					index: piece.Piece,
 					root:  piece.MerkleRoot,
 				}
