@@ -290,7 +290,7 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, _ *http.Request, _
 		// Fetch utilities for contract
 		var goodForUpload bool
 		var goodForRenew bool
-		if utility, ok := api.renter.ContractUtility(c.ID); ok {
+		if utility, ok := api.renter.ContractUtility(c.HostPublicKey); ok {
 			goodForUpload = utility.GoodForUpload
 			goodForRenew = utility.GoodForRenew
 		}
@@ -575,7 +575,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 	if req.FormValue("datapieces") != "" || req.FormValue("paritypieces") != "" {
 		// Check that both values have been supplied.
 		if req.FormValue("datapieces") == "" || req.FormValue("paritypieces") == "" {
-			WriteError(w, Error{"must provide both the datapieces paramaeter and the paritypieces parameter if specifying erasure coding parameters"}, http.StatusBadRequest)
+			WriteError(w, Error{"must provide both the datapieces parameter and the paritypieces parameter if specifying erasure coding parameters"}, http.StatusBadRequest)
 			return
 		}
 
