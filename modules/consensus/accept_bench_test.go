@@ -84,16 +84,6 @@ func BenchmarkAcceptSmallBlocks(b *testing.B) {
 	}
 	defer cst.Close()
 
-	// COMPAT v0.4.0
-	//
-	// Push the height of the consensus set tester beyond the fork height.
-	for i := 0; i < 10; i++ {
-		_, err := cst.miner.AddBlock()
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-
 	// Create an alternate testing consensus set, which does not
 	// have any subscribers
 	testdir := build.TempDir(modules.ConsensusDir, "BenchmarkAcceptSmallBlocks - 2")

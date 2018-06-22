@@ -304,10 +304,6 @@ func TestAllowanceSpending(t *testing.T) {
 	if reportedSpending.TotalAllocated.Cmp(spent) != 0 {
 		t.Fatal("reported incorrect spending for this billing cycle: got", reportedSpending.TotalAllocated.HumanString(), "wanted", spent.HumanString())
 	}
-	// COMPATv132 totalallocated should equal contractspending field.
-	if reportedSpending.ContractSpendingDeprecated.Cmp(reportedSpending.TotalAllocated) != 0 {
-		t.Fatal("TotalAllocated should be equal to ContractSpending for compatibility")
-	}
 
 	var expectedFees types.Currency
 	for _, contract := range c.Contracts() {

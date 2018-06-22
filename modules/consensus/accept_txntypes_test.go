@@ -162,16 +162,6 @@ func TestIntegrationSpendSiacoinsBlock(t *testing.T) {
 // testValidStorageProofBlocks adds a block with a file contract, and then
 // submits a storage proof for that file contract.
 func (cst *consensusSetTester) testValidStorageProofBlocks() {
-	// COMPATv0.4.0 - Step the block height up past the hardfork amount. This
-	// code stops nondeterministic failures when producing storage proofs that
-	// is related to buggy old code.
-	for cst.cs.dbBlockHeight() <= 10 {
-		_, err := cst.miner.AddBlock()
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	// Create a file (as a bytes.Buffer) that will be used for the file
 	// contract.
 	filesize := uint64(4e3)
@@ -390,16 +380,6 @@ func TestIntegrationMissedStorageProofBlocks(t *testing.T) {
 // testFileContractRevision creates and revises a file contract on the
 // blockchain.
 func (cst *consensusSetTester) testFileContractRevision() {
-	// COMPATv0.4.0 - Step the block height up past the hardfork amount. This
-	// code stops nondeterministic failures when producing storage proofs that
-	// is related to buggy old code.
-	for cst.cs.dbBlockHeight() <= 10 {
-		_, err := cst.miner.AddBlock()
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	// Create a file (as a bytes.Buffer) that will be used for the file
 	// contract.
 	filesize := uint64(4e3)

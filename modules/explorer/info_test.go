@@ -162,16 +162,6 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// COMPATv0.4.0 - Step the block height up past the hardfork amount. This
-	// code stops nondeterministic failures when producing storage proofs that
-	// is related to buggy old code.
-	for et.cs.Height() <= 10 {
-		_, err := et.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	// Create a file (as a bytes.Buffer) that will be used for the file
 	// contract.
 	filesize := uint64(4e3)

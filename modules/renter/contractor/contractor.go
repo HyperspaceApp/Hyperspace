@@ -25,11 +25,6 @@ var (
 	errNilCS     = errors.New("cannot create contractor with nil consensus set")
 	errNilTpool  = errors.New("cannot create contractor with nil transaction pool")
 	errNilWallet = errors.New("cannot create contractor with nil wallet")
-
-	// COMPATv1.0.4-lts
-	// metricsContractID identifies a special contract that contains aggregate
-	// financial metrics from older contractors
-	metricsContractID = types.FileContractID{'m', 'e', 't', 'r', 'i', 'c', 's'}
 )
 
 // A Contractor negotiates, revises, renews, and provides access to file

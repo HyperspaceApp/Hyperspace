@@ -144,7 +144,7 @@ func TestCorrectFileContractRevisions(t *testing.T) {
 // Transaction type.
 func TestTransactionFitsInABlock(t *testing.T) {
 	// Try a transaction that will fit in a block, followed by one that won't.
-	data := make([]byte, BlockSizeLimit/2)
+	data := make([]byte, OakTxnSizeLimit/2)
 	txn := Transaction{ArbitraryData: [][]byte{data}}
 	err := txn.fitsInABlock(0)
 	if err != nil {
@@ -157,14 +157,10 @@ func TestTransactionFitsInABlock(t *testing.T) {
 		t.Error(err)
 	}
 
-	// Try a too-large transaction before and after the hardfork height.
-	data = make([]byte, OakHardforkTxnSizeLimit+1)
+	// Try a too-large transaction
+	data = make([]byte, OakTxnSizeLimit+1)
 	txn.ArbitraryData[0] = data
 	err = txn.fitsInABlock(0)
-	if err != nil {
-		t.Error(err)
-	}
-	err = txn.fitsInABlock(OakHardforkBlock)
 	if err != ErrTransactionTooLarge {
 		t.Error(err)
 	}

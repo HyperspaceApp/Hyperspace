@@ -60,19 +60,15 @@ func (t Transaction) correctFileContracts(currentHeight BlockHeight) error {
 		// Check that the proof outputs sum to the payout
 		var validProofOutputSum, missedProofOutputSum Currency
 		for _, output := range fc.ValidProofOutputs {
-			/* - Future hardforking code.
 			if output.Value.IsZero() {
 				return ErrZeroOutput
 			}
-			*/
 			validProofOutputSum = validProofOutputSum.Add(output.Value)
 		}
 		for _, output := range fc.MissedProofOutputs {
-			/* - Future hardforking code.
 			if output.Value.IsZero() {
 				return ErrZeroOutput
 			}
-			*/
 			missedProofOutputSum = missedProofOutputSum.Add(output.Value)
 		}
 		outputPortion := fc.Payout
@@ -102,19 +98,15 @@ func (t Transaction) correctFileContractRevisions(currentHeight BlockHeight) err
 		// value.
 		var validProofOutputSum, missedProofOutputSum Currency
 		for _, output := range fcr.NewValidProofOutputs {
-			/* - Future hardforking code.
 			if output.Value.IsZero() {
 				return ErrZeroOutput
 			}
-			*/
 			validProofOutputSum = validProofOutputSum.Add(output.Value)
 		}
 		for _, output := range fcr.NewMissedProofOutputs {
-			/* - Future hardforking code.
 			if output.Value.IsZero() {
 				return ErrZeroOutput
 			}
-			*/
 			missedProofOutputSum = missedProofOutputSum.Add(output.Value)
 		}
 		if validProofOutputSum.Cmp(missedProofOutputSum) != 0 {
@@ -124,8 +116,8 @@ func (t Transaction) correctFileContractRevisions(currentHeight BlockHeight) err
 	return nil
 }
 
-// fitsInABlock checks if the transaction is likely to fit in a block. After
-// OakHardforkHeight, transactions must be smaller than 64 KiB.
+// fitsInABlock checks if the transaction is likely to fit in a block.
+// Transactions must be smaller than 64 KiB.
 func (t Transaction) fitsInABlock(currentHeight BlockHeight) error {
 	// Check that the transaction will fit inside of a block, leaving 5kb for
 	// overhead.
@@ -133,10 +125,8 @@ func (t Transaction) fitsInABlock(currentHeight BlockHeight) error {
 	if size > BlockSizeLimit-5e3 {
 		return ErrTransactionTooLarge
 	}
-	if currentHeight >= OakHardforkBlock {
-		if size > OakHardforkTxnSizeLimit {
-			return ErrTransactionTooLarge
-		}
+	if size > OakTxnSizeLimit {
+		return ErrTransactionTooLarge
 	}
 	return nil
 }

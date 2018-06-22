@@ -139,11 +139,7 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 	// Use the difficulty adjustment algorithm to set the target of the child
 	// block and put the new processed block into the database.
 	blockMap := tx.Bucket(BlockMap)
-	if pb.Height < types.OakHardforkBlock {
-		cs.setChildTarget(blockMap, child)
-	} else {
-		child.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, pb.ChildTarget, pb.Height, pb.Block.Timestamp)
-	}
+	child.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, pb.ChildTarget, pb.Height, pb.Block.Timestamp)
 	err = blockMap.Put(childID[:], encoding.Marshal(*child))
 	if build.DEBUG && err != nil {
 		panic(err)

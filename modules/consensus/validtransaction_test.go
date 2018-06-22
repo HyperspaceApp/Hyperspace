@@ -93,14 +93,6 @@ func TestStorageProofBoundaries(t *testing.T) {
 	}
 	defer cst.Close()
 
-	// Mine enough blocks to put us beyond the testing hardfork.
-	for i := 0; i < 10; i++ {
-		_, err = cst.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	// Try storage proofs on data between 0 bytes and 128 bytes (0 segments and
 	// 1 segment). Perform the operation five times because we can't control
 	// which segment gets selected - it is randomly decided by the block.
@@ -224,14 +216,6 @@ func TestEmptyStorageProof(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cst.Close()
-
-	// Mine enough blocks to put us beyond the testing hardfork.
-	for i := 0; i < 10; i++ {
-		_, err = cst.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 
 	// Try storage proofs on data between 0 bytes and 128 bytes (0 segments and
 	// 1 segment). Perform the operation five times because we can't control
@@ -435,17 +419,6 @@ func TestValidStorageProofs(t *testing.T) {
 	}
 	defer cst.Close()
 
-	// COMPATv0.4.0
-	//
-	// Mine 10 blocks so that the post-hardfork rules are in effect.
-	for i := 0; i < 10; i++ {
-		block, _ := cst.miner.FindBlock()
-		err = cst.cs.AcceptBlock(block)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	// Create a file contract for which a storage proof can be created.
 	var fcid types.FileContractID
 	fcid[0] = 12
@@ -532,62 +505,6 @@ func TestValidStorageProofs(t *testing.T) {
 	copy(txn.StorageProofs[0].Segment[:], base)
 	err = cst.cs.dbValidStorageProofs(txn)
 	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// HARDFORK 21,000
-//
-// TestPreForkValidStorageProofs checks that storage proofs which are invalid
-// before the hardfork (but valid afterwards) are still rejected before the
-// hardfork).
-func TestPreForkValidStorageProofs(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	cst, err := createConsensusSetTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer cst.Close()
-
-	// Try a proof set where there is padding on the last segment in the file.
-	file := fastrand.Bytes(100)
-	root := crypto.MerkleRoot(file)
-	fc := types.FileContract{
-		FileSize:       100,
-		FileMerkleRoot: root,
-		Payout:         types.NewCurrency64(1),
-		WindowStart:    2,
-		WindowEnd:      1200,
-	}
-
-	// Find a proofIndex that has the value '1'.
-	var fcid types.FileContractID
-	var proofIndex uint64
-	for {
-		fcid[0]++
-		cst.cs.dbAddFileContract(fcid, fc)
-		proofIndex, err = cst.cs.dbStorageProofSegment(fcid)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if proofIndex == 1 {
-			break
-		}
-	}
-	base, proofSet := crypto.MerkleProof(file, proofIndex)
-	txn := types.Transaction{
-		StorageProofs: []types.StorageProof{{
-			ParentID: fcid,
-			HashSet:  proofSet,
-		}},
-	}
-	copy(txn.StorageProofs[0].Segment[:], base)
-	err = cst.cs.dbValidStorageProofs(txn)
-	if err != errInvalidStorageProof {
-		t.Log(cst.cs.dbBlockHeight())
 		t.Fatal(err)
 	}
 }

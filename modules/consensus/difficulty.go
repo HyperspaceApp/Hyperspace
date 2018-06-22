@@ -11,17 +11,7 @@ import (
 	"github.com/coreos/bbolt"
 )
 
-// Errors returned by this file.
-var (
-	// errOakHardforkIncompatibility is the error returned if Oak initialization
-	// cannot begin because the consensus database was not upgraded before the
-	// hardfork height.
-	errOakHardforkIncompatibility = errors.New("difficulty adjustment hardfork incompatibility detected")
-)
-
-// difficulty.go defines the Oak difficulty adjustment algorithm. Past the
-// hardfork trigger height, it the algorithm that Sia uses to adjust the
-// difficulty.
+// difficulty.go defines the Oak difficulty adjustment algorithm.
 //
 // A running tally is maintained which keeps the total difficulty and total time
 // passed across all blocks. The total difficulty can be divided by the total
@@ -73,26 +63,16 @@ func (cs *ConsensusSet) childTargetOak(parentTotalTime int64, parentTotalTarget,
 	// The desired total time is the difference between the genesis block
 	// timestamp and the current block timestamp.
 	var delta int64
-	if parentHeight < types.OakHardforkFixBlock {
-		// This is the original code. It is incorrect, because it is comparing
-		// 'expectedTime', an absolute value, to 'parentTotalTime', a value
-		// which gets compressed every block. The result is that 'expectedTime'
-		// is substantially larger than 'parentTotalTime' always, and that the
-		// shifter is always reading that blocks have been coming out far too
-		// quickly.
-		expectedTime := int64(types.BlockFrequency * parentHeight)
-		delta = expectedTime - parentTotalTime
-	} else {
-		// This is the correct code. The expected time is an absolute time based
-		// on the genesis block, and the delta is an absolute time based on the
-		// timestamp of the parent block.
-		//
-		// Rules elsewhere in consensus ensure that the timestamp of the parent
-		// block has not been manipulated by more than a few hours, which is
-		// accurate enough for this logic to be safe.
-		expectedTime := int64(types.BlockFrequency*parentHeight) + int64(types.GenesisTimestamp)
-		delta = expectedTime - int64(parentTimestamp)
-	}
+	// This is the correct code. The expected time is an absolute time based
+	// on the genesis block, and the delta is an absolute time based on the
+	// timestamp of the parent block.
+	//
+	// Rules elsewhere in consensus ensure that the timestamp of the parent
+	// block has not been manipulated by more than a few hours, which is
+	// accurate enough for this logic to be safe.
+	expectedTime := int64(types.BlockFrequency*parentHeight) + int64(types.GenesisTimestamp)
+	delta = expectedTime - int64(parentTimestamp)
+
 	// Convert the delta in to a target block time.
 	square := delta * delta
 	if delta < 0 {
@@ -156,24 +136,6 @@ func (cs *ConsensusSet) getBlockTotals(tx *bolt.Tx, id types.BlockID) (totalTime
 // totals.
 func (cs *ConsensusSet) storeBlockTotals(tx *bolt.Tx, currentHeight types.BlockHeight, currentBlockID types.BlockID, prevTotalTime int64, parentTimestamp, currentTimestamp types.Timestamp, prevTotalTarget, targetOfCurrentBlock types.Target) (newTotalTime int64, newTotalTarget types.Target, err error) {
 	// Reset the prevTotalTime to a delta of zero just before the hardfork.
-	//
-	// NOTICE: This code is broken, an incorrectly executed hardfork. The
-	// correct thing to do was to not put in these 3 lines of code. It is
-	// correct to not have them.
-	//
-	// This code is incorrect, and introduces an unfortunate drop in difficulty,
-	// because this is an uncompreesed prevTotalTime, but really it should be
-	// getting set to a compressed prevTotalTime. And, actually, a compressed
-	// prevTotalTime doesn't have much meaning, so this code block shouldn't be
-	// here at all. But... this is the code that was running for the block
-	// 135,000 hardfork, so this code needs to stay. With the standard
-	// constants, it should cause a disruptive bump that lasts only a few days.
-	//
-	// The disruption will be complete well before we can deploy a fix, so
-	// there's no point in fixing it.
-	if currentHeight == types.OakHardforkBlock-1 {
-		prevTotalTime = int64(types.BlockFrequency * currentHeight)
-	}
 
 	// For each value, first multiply by the decay, and then add in the new
 	// delta.
@@ -210,12 +172,7 @@ func (cs *ConsensusSet) initOak(tx *bolt.Tx) error {
 		return nil
 	}
 
-	// If the current height is greater than the hardfork trigger date, return
-	// an error and refuse to initialize.
 	height := blockHeight(tx)
-	if height > types.OakHardforkBlock {
-		return errOakHardforkIncompatibility
-	}
 
 	// Store base values for the genesis block.
 	totalTime, totalTarget, err := cs.storeBlockTotals(tx, 0, types.GenesisID, 0, types.GenesisTimestamp, types.GenesisTimestamp, types.RootDepth, types.RootTarget)

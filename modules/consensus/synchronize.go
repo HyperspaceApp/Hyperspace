@@ -86,8 +86,7 @@ func isTimeoutErr(err error) bool {
 	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 		return true
 	}
-	// COMPATv1.3.0
-	return (err.Error() == "Read timeout" || err.Error() == "Write timeout")
+	return false
 }
 
 // blockHistory returns up to 32 block ids, starting with recent blocks and

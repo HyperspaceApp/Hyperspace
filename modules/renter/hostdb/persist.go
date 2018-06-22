@@ -57,15 +57,6 @@ func (hdb *HostDB) load() error {
 
 	// Load each of the hosts into the host tree.
 	for _, host := range data.AllHosts {
-		// COMPATv1.1.0
-		//
-		// The host did not always track its block height correctly, meaning
-		// that previously the FirstSeen values and the blockHeight values
-		// could get out of sync.
-		if hdb.blockHeight < host.FirstSeen {
-			host.FirstSeen = hdb.blockHeight
-		}
-
 		err := hdb.hostTree.Insert(host)
 		if err != nil {
 			hdb.log.Debugln("ERROR: could not insert host while loading:", host.NetAddress)

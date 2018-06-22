@@ -265,12 +265,6 @@ func dbAddProcessedTransactionAddrs(tx *bolt.Tx, pt modules.ProcessedTransaction
 // decodeProcessedTransaction decodes a marshalled processedTransaction
 func decodeProcessedTransaction(ptBytes []byte, pt *modules.ProcessedTransaction) error {
 	err := encoding.Unmarshal(ptBytes, pt)
-	if err != nil {
-		// COMPATv1.2.1: try decoding into old transaction type
-		var oldpt v121ProcessedTransaction
-		err = encoding.Unmarshal(ptBytes, &oldpt)
-		*pt = convertProcessedTransaction(oldpt)
-	}
 	return err
 }
 
@@ -443,58 +437,4 @@ func dbGetConsensusHeight(tx *bolt.Tx) (height types.BlockHeight, err error) {
 // dbPutConsensusHeight stores the height that the wallet has scanned to.
 func dbPutConsensusHeight(tx *bolt.Tx, height types.BlockHeight) error {
 	return tx.Bucket(bucketWallet).Put(keyConsensusHeight, encoding.Marshal(height))
-}
-
-// COMPATv121: these types were stored in the db in v1.2.2 and earlier.
-type (
-	v121ProcessedInput struct {
-		FundType       types.Specifier
-		WalletAddress  bool
-		RelatedAddress types.UnlockHash
-		Value          types.Currency
-	}
-
-	v121ProcessedOutput struct {
-		FundType       types.Specifier
-		MaturityHeight types.BlockHeight
-		WalletAddress  bool
-		RelatedAddress types.UnlockHash
-		Value          types.Currency
-	}
-
-	v121ProcessedTransaction struct {
-		Transaction           types.Transaction
-		TransactionID         types.TransactionID
-		ConfirmationHeight    types.BlockHeight
-		ConfirmationTimestamp types.Timestamp
-		Inputs                []v121ProcessedInput
-		Outputs               []v121ProcessedOutput
-	}
-)
-
-func convertProcessedTransaction(oldpt v121ProcessedTransaction) (pt modules.ProcessedTransaction) {
-	pt.Transaction = oldpt.Transaction
-	pt.TransactionID = oldpt.TransactionID
-	pt.ConfirmationHeight = oldpt.ConfirmationHeight
-	pt.ConfirmationTimestamp = oldpt.ConfirmationTimestamp
-	pt.Inputs = make([]modules.ProcessedInput, len(oldpt.Inputs))
-	for i, in := range oldpt.Inputs {
-		pt.Inputs[i] = modules.ProcessedInput{
-			FundType:       in.FundType,
-			WalletAddress:  in.WalletAddress,
-			RelatedAddress: in.RelatedAddress,
-			Value:          in.Value,
-		}
-	}
-	pt.Outputs = make([]modules.ProcessedOutput, len(oldpt.Outputs))
-	for i, out := range oldpt.Outputs {
-		pt.Outputs[i] = modules.ProcessedOutput{
-			FundType:       out.FundType,
-			MaturityHeight: out.MaturityHeight,
-			WalletAddress:  out.WalletAddress,
-			RelatedAddress: out.RelatedAddress,
-			Value:          out.Value,
-		}
-	}
-	return
 }

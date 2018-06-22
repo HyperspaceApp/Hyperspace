@@ -605,26 +605,7 @@ func (mrs *MerkleRootSet) UnmarshalJSON(b []byte) error {
 func unmarshalHeader(b []byte, u *updateSetHeader) error {
 	// Try unmarshaling the header.
 	if err := encoding.Unmarshal(b, u); err != nil {
-		// COMPATv132 try unmarshaling the header the old way.
-		var oldHeader v132UpdateSetHeader
-		if err2 := encoding.Unmarshal(b, &oldHeader); err2 != nil {
-			// If unmarshaling the header the old way also doesn't work we
-			// return the original error.
-			return err
-		}
-		// If unmarshaling it the old way was successful we convert it to a new
-		// header.
-		u.Header = contractHeader{
-			Transaction:      oldHeader.Header.Transaction,
-			SecretKey:        oldHeader.Header.SecretKey,
-			StartHeight:      oldHeader.Header.StartHeight,
-			DownloadSpending: oldHeader.Header.DownloadSpending,
-			StorageSpending:  oldHeader.Header.StorageSpending,
-			UploadSpending:   oldHeader.Header.UploadSpending,
-			TotalCost:        oldHeader.Header.TotalCost,
-			ContractFee:      oldHeader.Header.ContractFee,
-			TxnFee:           oldHeader.Header.TxnFee,
-		}
+		return err
 	}
 	return nil
 }

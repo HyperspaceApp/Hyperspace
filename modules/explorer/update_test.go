@@ -28,13 +28,6 @@ func TestIntegrationExplorerFileContractMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Propel explorer tester past the hardfork height.
-	for i := 0; i < 10; i++ {
-		_, err = et.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 	facts, ok := et.currentFacts()
 	if !ok {
 		t.Fatal("couldn't get current facts")

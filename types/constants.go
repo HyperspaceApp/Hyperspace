@@ -75,8 +75,7 @@ var (
 	// but it will not decrease past MinimumCoinbase.
 	MinimumCoinbase uint64
 
-	// Oak hardfork constants. Oak is the name of the difficulty algorithm for
-	// Sia following a hardfork at block 135e3.
+	// Oak constants. Oak is the name of the difficulty algorithm for Hyperspace.
 
 	// OakDecayDenom is the denominator for how much the total timestamp is decayed
 	// each step.
@@ -84,16 +83,8 @@ var (
 	// OakDecayNum is the numerator for how much the total timestamp is decayed each
 	// step.
 	OakDecayNum int64
-	// OakHardforkBlock is the height at which the hardfork to switch to the oak
-	// difficulty adjustment algorithm is triggered.
-	OakHardforkBlock BlockHeight
-	// OakHardforkFixBlock is the height at which the hardfork to switch from the broken
-	// oak difficulty adjustment algorithm to the fixed oak difficulty adjustment
-	// algorithm is triggered.
-	OakHardforkFixBlock BlockHeight
-	// OakHardforkTxnSizeLimit is the maximum size allowed for a transaction, a change
-	// which I believe was implemented simultaneously with the oak hardfork.
-	OakHardforkTxnSizeLimit = uint64(64e3) // 64 KB
+	// OakTxnSizeLimit is the maximum size allowed for a transaction.
+	OakTxnSizeLimit = uint64(64e3) // 64 KB
 	// OakMaxBlockShift is the maximum number of seconds that the oak algorithm will shift
 	// the difficulty.
 	OakMaxBlockShift int64
@@ -144,8 +135,6 @@ func init() {
 
 		MinimumCoinbase = 30e3
 
-		OakHardforkBlock = 100
-		OakHardforkFixBlock = 105
 		OakDecayNum = 985
 		OakDecayDenom = 1000
 		OakMaxBlockShift = 3
@@ -172,10 +161,6 @@ func init() {
 
 		MinimumCoinbase = 299990 // Minimum coinbase is hit after 10 blocks to make testing minimum-coinbase code easier.
 
-		// Do not let the difficulty change rapidly - blocks will be getting
-		// mined far faster than the difficulty can adjust to.
-		OakHardforkBlock = 20
-		OakHardforkFixBlock = 23
 		OakDecayNum = 9999
 		OakDecayDenom = 10e3
 		OakMaxBlockShift = 3
@@ -244,19 +229,6 @@ func init() {
 		// increasingly potent dropoff for about 5 years, until inflation more
 		// or less permanently settles around 2%.
 		MinimumCoinbase = 30e3
-
-		// The oak difficulty adjustment hardfork is set to trigger at block
-		// 135,000, which is just under 6 months after the hardfork was first
-		// released as beta software to the network. This hopefully gives
-		// everyone plenty of time to upgrade and adopt the hardfork, while also
-		// being earlier than the most optimistic shipping dates for the miners
-		// that would otherwise be very disruptive to the network.
-		//
-		// There was a bug in the original Oak hardfork that had to be quickly
-		// followed up with another fix. The height of that fix is the
-		// OakHardforkFixBlock.
-		OakHardforkBlock = 135e3
-		OakHardforkFixBlock = 139e3
 
 		// The decay is kept at 995/1000, or a decay of about 0.5% each block.
 		// This puts the halflife of a block's relevance at about 1 day. This
