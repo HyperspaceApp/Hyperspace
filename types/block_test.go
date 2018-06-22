@@ -160,7 +160,8 @@ func TestBlockCalculateSubsidy(t *testing.T) {
 	// Calculate the subsidy on a block with 0 fees at height 0. Result should
 	// be 300,000.
 	var b Block
-	if b.CalculateSubsidy(0).Cmp(coinbase) != 0 {
+	minerSubsidy, devSubsidy := b.CalculateSubsidies(0)
+	if (minerSubsidy.Add(devSubsidy)).Cmp(coinbase) != 0 {
 		t.Error("subsidy is miscalculated for an empty block")
 	}
 
@@ -170,7 +171,8 @@ func TestBlockCalculateSubsidy(t *testing.T) {
 		MinerFees: []Currency{NewCurrency64(123)},
 	}
 	b.Transactions = append(b.Transactions, txn)
-	if b.CalculateSubsidy(0).Cmp(expected) != 0 {
+	minerSubsidy, devSubsidy = b.CalculateSubsidies(0)
+	if (minerSubsidy.Add(devSubsidy)).Cmp(expected) != 0 {
 		t.Error("subsidy is miscalculated for a block with a single transaction")
 	}
 
@@ -179,7 +181,8 @@ func TestBlockCalculateSubsidy(t *testing.T) {
 		ArbitraryData: [][]byte{{'6'}},
 	}
 	b.Transactions = append(b.Transactions, txn)
-	if b.CalculateSubsidy(0).Cmp(expected) != 0 {
+	minerSubsidy, devSubsidy = b.CalculateSubsidies(0)
+	if (minerSubsidy.Add(devSubsidy)).Cmp(expected) != 0 {
 		t.Error("subsidy is miscalculated with empty transactions.")
 	}
 
@@ -193,7 +196,8 @@ func TestBlockCalculateSubsidy(t *testing.T) {
 		},
 	}
 	b.Transactions = append(b.Transactions, txn)
-	if b.CalculateSubsidy(0).Cmp(expected) != 0 {
+	minerSubsidy, devSubsidy = b.CalculateSubsidies(0)
+	if (minerSubsidy.Add(devSubsidy)).Cmp(expected) != 0 {
 		t.Error("subsidy is miscalculated for a block with a single transaction")
 	}
 
@@ -202,7 +206,8 @@ func TestBlockCalculateSubsidy(t *testing.T) {
 		ArbitraryData: [][]byte{{'7'}},
 	}
 	b.Transactions = append([]Transaction{txn}, b.Transactions...)
-	if b.CalculateSubsidy(0).Cmp(expected) != 0 {
+	minerSubsidy, devSubsidy = b.CalculateSubsidies(0)
+	if (minerSubsidy.Add(devSubsidy)).Cmp(expected) != 0 {
 		t.Error("subsidy is miscalculated with empty transactions.")
 	}
 }

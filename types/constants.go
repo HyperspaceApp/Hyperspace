@@ -19,9 +19,9 @@ var (
 	// BlockSizeLimit is the maximum size of a binary-encoded Block
 	// that is permitted by the consensus rules.
 	BlockSizeLimit = uint64(2e6)
-	// DevFundPercentage is the percentage of the block subsidy that goes
+	// DevFundDenom is the denominator of the block subsidy that goes
 	// to support development of the network instead of the miners
-	DevFundPercentage = float64(0.1)
+	DevFundDenom = NewCurrency64(10)
 	// DevFundUnlockHash is the unlock hash for the dev fund subsidy
 	DevFundUnlockHash = UnlockHash{214, 166, 197, 164, 29, 201, 53, 236, 106, 239, 10, 158, 127, 131, 20, 138, 63, 221, 230, 16, 98, 247, 32, 77, 210, 68, 116, 12, 241, 89, 27, 223}
 	// ExtremeFutureThreshold is a temporal limit beyond which Blocks are
