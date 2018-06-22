@@ -47,7 +47,7 @@ var (
 	// GenesisTimestamp is the timestamp when genesis block was mined
 	GenesisTimestamp Timestamp
 	// InitialCoinbase is the coinbase reward of the Genesis block.
-	InitialCoinbase = uint64(300e3)
+	InitialCoinbase = uint64(60e3)
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or
@@ -133,7 +133,7 @@ func init() {
 		FutureThreshold = 2 * 60                       // 2 minutes.
 		ExtremeFutureThreshold = 4 * 60                // 4 minutes.
 
-		MinimumCoinbase = 30e3
+		MinimumCoinbase = 6000
 
 		OakDecayNum = 985
 		OakDecayDenom = 1000
@@ -159,7 +159,7 @@ func init() {
 		FutureThreshold = 3        // 3 seconds
 		ExtremeFutureThreshold = 6 // 6 seconds
 
-		MinimumCoinbase = 299990 // Minimum coinbase is hit after 10 blocks to make testing minimum-coinbase code easier.
+		MinimumCoinbase = 59990 // Minimum coinbase is hit after 10 blocks to make testing minimum-coinbase code easier.
 
 		OakDecayNum = 9999
 		OakDecayDenom = 10e3
@@ -224,11 +224,11 @@ func init() {
 		FutureThreshold = 3 * 60 * 60        // 3 hours.
 		ExtremeFutureThreshold = 5 * 60 * 60 // 5 hours.
 
-		// The minimum coinbase is set to 30,000. Because the coinbase
+		// The minimum coinbase is set to 6,000. Because the coinbase
 		// decreases by 1 every time, it means that Sia's coinbase will have an
 		// increasingly potent dropoff for about 5 years, until inflation more
 		// or less permanently settles around 2%.
-		MinimumCoinbase = 30e3
+		MinimumCoinbase = 6000
 
 		// The decay is kept at 995/1000, or a decay of about 0.5% each block.
 		// This puts the halflife of a block's relevance at about 1 day. This

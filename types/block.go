@@ -60,11 +60,23 @@ type (
 //
 //     coinbase := max(InitialCoinbase - height, MinimumCoinbase) * SiacoinPrecision
 func CalculateCoinbase(height BlockHeight) Currency {
-	base := InitialCoinbase - uint64(height)
-	if uint64(height) > InitialCoinbase || base < MinimumCoinbase {
-		base = MinimumCoinbase
+	base := NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
+	// reduce by 0.2 Space Cash every block
+	deducted := NewCurrency64(uint64(height) * 2).Mul(SiacoinPrecision).Div(NewCurrency64(10))
+	minimum := NewCurrency64(MinimumCoinbase).Mul(SiacoinPrecision)
+	// we can't have a negative value
+	if base.Cmp(deducted) <= 0 {
+		return minimum
 	}
-	return NewCurrency64(base).Mul(SiacoinPrecision)
+	base = base.Sub(deducted)
+	//if uint64(height) > InitialCoinbase || base < MinimumCoinbase {
+	//if base < minimum {
+	// if we're not negative but smaller than the min, return the min
+	if (base.Cmp(minimum) <= 0) {
+		base = minimum
+	}
+	//return NewCurrency64(base).Mul(SiacoinPrecision)
+	return base
 }
 
 // CalculateNumSiacoins calculates the number of siacoins in circulation at a
