@@ -12,6 +12,7 @@ type Job struct {
 	JobID           uint64
 	MarshalledBlock []byte
 	MerkleRoot      crypto.Hash
+	SubmitedNonce   map[string]bool
 }
 
 func newJob(p *Pool) (*Job, error) {

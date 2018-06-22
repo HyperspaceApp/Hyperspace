@@ -63,7 +63,7 @@ func (h *Handler) parseRequest() (*types.StratumRequest, error) {
 		str, err := buf.ReadString('\n')
 		// if we timeout
 		if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-			h.log.Printf("%s: Harmless timeout occurred\n", h.s.printID())
+			// h.log.Printf("%s: Harmless timeout occurred\n", h.s.printID())
 			//h.conn.SetReadDeadline(time.Time{})
 			// check last job time and if over 25 seconds, send a new job.
 			if time.Now().Sub(h.s.lastJobTimestamp) > (time.Second * 25) {
@@ -75,8 +75,8 @@ func (h *Handler) parseRequest() (*types.StratumRequest, error) {
 				return nil, errors.New("Non-responsive disconnect detected")
 			}
 
-			ratio := h.s.CurrentDifficulty() / h.s.HighestDifficulty()
-			h.log.Printf("Non-responsive disconnect ratio: %f\n", ratio)
+			// ratio := h.s.CurrentDifficulty() / h.s.HighestDifficulty()
+			// h.log.Printf("Non-responsive disconnect ratio: %f\n", ratio)
 
 			if h.s.checkDiffOnNewShare() {
 				err = h.sendSetDifficulty(h.s.CurrentDifficulty())
@@ -144,7 +144,7 @@ func (h *Handler) handleRequest(m *types.StratumRequest) error {
 	case "mining.submit":
 		return h.handleStratumSubmit(m)
 	case "mining.notify":
-		h.log.Printf("New block to mine on\n")
+		h.log.Printf("mining.notify:New block to mine on\n")
 		return h.sendStratumNotify(true)
 	default:
 		h.log.Debugln("Unknown stratum method: ", m.Method)
@@ -162,7 +162,7 @@ func (h *Handler) Listen() {
 			h.s.CurrentWorker.deleteWorkerRecord()
 			// when we shut down the pool we get an error here because the log
 			// is already closed... TODO
-			//h.p.log.Println("Closed session: ", sPrintID(h.s.SessionID))
+			h.s.log.Printf("Closed worker: %d\n", h.s.CurrentWorker.wr.workerID)
 		}
 	}()
 	err := h.p.tg.Add()
@@ -188,10 +188,12 @@ func (h *Handler) Listen() {
 		} else if m != nil {
 			err = h.handleRequest(m)
 			if err != nil {
+				h.s.log.Println(err)
 				return
 			}
 			// else if we got an error
 		} else if err != nil {
+			h.s.log.Println(err)
 			return
 		}
 	}
@@ -417,6 +419,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	extraNonce2 := m.Params[2].(string)
 	nTime := m.Params[3].(string)
 	nonce := m.Params[4].(string)
+	// h.s.log.Printf("Submit jobid:%d nonce: %s, extraNonce2: %s", jobID, nonce, extraNonce2)
 
 	needNewJob := false
 	defer func() {
@@ -446,12 +449,17 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 
 	var b types.Block
-	for _, j := range h.s.CurrentJobs {
-		if jobID == j.JobID {
-			// copy so the j.Block is not disturbed
-			encoding.Unmarshal(j.MarshalledBlock, &b)
-		}
+	j, err := h.s.getJob(jobID, nonce)
+	if err != nil {
+		r.Result = false
+		r.Error = interfaceify([]string{"23", err.Error()}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		h.s.CurrentWorker.IncrementInvalidShares()
+		return h.sendResponse(r)
 	}
+	if j != nil {
+		encoding.Unmarshal(j.MarshalledBlock, &b)
+	}
+
 	if len(b.MinerPayouts) == 0 {
 		r.Result = false
 		r.Error = interfaceify([]string{"22", "Stale - old/unknown job"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
@@ -523,7 +531,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	if err != modules.ErrBlockUnsolved {
 		h.s.CurrentWorker.Parent().log.Printf("Yay!!! Solved a block!!\n")
 		// h.s.CurrentWorker.log.Printf("Yay!!! Solved a block!!\n")
-		h.s.CurrentJobs = nil
+		h.s.clearJobs()
 		err = h.s.CurrentWorker.addFoundBlock(&b)
 		if err != nil {
 			h.s.CurrentWorker.log.Printf("Failed to update block in database: %s\n", err)
