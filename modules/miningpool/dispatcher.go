@@ -131,6 +131,17 @@ func (d *Dispatcher) NotifyClients() {
 	defer d.mu.Unlock()
 	d.log.Printf("Notifying %d clients\n", len(d.handlers))
 	for _, h := range d.handlers {
+		h.notify <- true
+	}
+}
+
+// ClearJobAndNotifyClients clear all stale jobs and tells the dispatcher to notify all clients that the block has
+// changed
+func (d *Dispatcher) ClearJobAndNotifyClients() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.log.Printf("Clear jobs and Notifying %d clients\n", len(d.handlers))
+	for _, h := range d.handlers {
 		h.s.clearJobs()
 		h.notify <- true
 	}
