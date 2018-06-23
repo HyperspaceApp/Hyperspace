@@ -3,6 +3,7 @@ package pool
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -95,7 +96,36 @@ func (s *Session) addJob(j *Job) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.CurrentJobs = append(s.CurrentJobs, j)
+	s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+	// for i, j := range s.CurrentJobs {
+	// 	s.log.Printf("i: %d, id: %d\n", i, j.JobID)
+	// }
 	s.lastJobTimestamp = time.Now()
+}
+
+func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.log.Printf("submit id:%d, before pop len:%d\n", jobID, len(s.CurrentJobs))
+	for _, j := range s.CurrentJobs {
+		// s.log.Printf("i: %d, array id: %d\n", i, j.JobID)
+		if jobID == j.JobID {
+			s.log.Printf("after pop len:%d\n", len(s.CurrentJobs))
+			if _, ok := j.SubmitedNonce[nonce]; ok {
+				return nil, errors.New("already submited nonce for this job")
+			}
+			return j, nil
+		}
+	}
+
+	return nil, nil // for stale/unkonwn job response
+}
+
+func (s *Session) clearJobs() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
+	s.CurrentJobs = nil
 }
 
 func (s *Session) addShift(shift *Shift) {

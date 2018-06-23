@@ -162,7 +162,6 @@ type Pool struct {
 	shiftID        uint64
 	shiftChan      chan bool
 	shiftTimestamp time.Time
-	blockCounter   uint64
 	clients        map[string]*Client //client name to client pointer mapping
 
 	clientSetupMutex deadlock.Mutex
@@ -398,11 +397,6 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		p.sqldb.Close()
 		return nil
 	})
-
-	err = p.setBlockCounterFromDB()
-	if err != nil {
-		return nil, errors.New("Failed to update block count: " + err.Error())
-	}
 
 	// grab our consensus set data
 	err = p.cs.ConsensusSetSubscribe(p, p.persist.RecentChange, p.tg.StopChan())

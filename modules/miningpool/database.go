@@ -135,8 +135,7 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	defer tx.Rollback()
 
 	bh := pool.persist.GetBlockHeight()
-	pool.blockCounter = uint64(bh) + 1
-	w.log.Printf("New block to mine on %d\n", pool.blockCounter)
+	w.log.Printf("New block to mine on %d\n", uint64(bh)+1)
 	// reward := b.CalculateSubsidy(bh).String()
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -166,36 +165,6 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 		return err
 	}
 
-	return nil
-}
-
-func (p *Pool) setBlockCounterFromDB() error {
-	stmt, err := p.sqldb.Prepare(`SELECT height FROM blocks WHERE coin_id = ? ORDER BY height DESC;`)
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-	rows, err := stmt.Query(SiaCoinID)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	var value uint64
-	for rows.Next() {
-		err = rows.Scan(&value)
-		if err != nil {
-			return err
-		}
-		break
-	}
-	err = rows.Err()
-	if err != nil {
-		return err
-	}
-	p.mu.Lock()
-	p.blockCounter = value
-	p.mu.Unlock()
-	p.log.Debugf("setBlockCounterFromDB, Count = %d\n", value)
 	return nil
 }
 

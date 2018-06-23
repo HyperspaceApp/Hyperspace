@@ -260,10 +260,6 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 	if cc.Synced {
 		p.log.Printf("Consensus change detected\n")
 		// we do this because the new block could have come from us
-		p.mu.Unlock()
-		// TODO: i think this is not useful and could be incorrect
-		p.setBlockCounterFromDB()
-		p.mu.Lock()
 
 		p.newSourceBlock()
 		if p.dispatcher != nil {

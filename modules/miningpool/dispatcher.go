@@ -38,12 +38,12 @@ func (d *Dispatcher) NumConnectionsOpened() uint64 {
 // IncrementConnectionsOpened increments the number of tcp connections that the
 // pool has ever opened
 func (d *Dispatcher) IncrementConnectionsOpened() {
-// XXX: this is causing a deadlock
-/*
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.connectionsOpened += 1
-*/
+	// XXX: this is causing a deadlock
+	/*
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		d.connectionsOpened += 1
+	*/
 }
 
 //AddHandler connects the incoming connection to the handler which will handle it
@@ -130,6 +130,7 @@ func (d *Dispatcher) NotifyClients() {
 	defer d.mu.Unlock()
 	d.log.Printf("Notifying %d clients\n", len(d.handlers))
 	for _, h := range d.handlers {
+		h.s.clearJobs()
 		h.notify <- true
 	}
 }

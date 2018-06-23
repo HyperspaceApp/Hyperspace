@@ -24,25 +24,23 @@ type Share struct {
 // A Shift is a period over which a worker submits shares. At the end of the
 // period, we record those shares into the database.
 type Shift struct {
-	mu                   deadlock.RWMutex
-	shiftID              uint64
-	pool                 uint64
-	worker               *Worker
-	blockID              uint64
-	shares               []Share
-	lastShareTime        time.Time
-	startShiftTime       time.Time
+	mu             deadlock.RWMutex
+	shiftID        uint64
+	pool           uint64
+	worker         *Worker
+	blockID        uint64
+	shares         []Share
+	lastShareTime  time.Time
+	startShiftTime time.Time
 }
 
 func (p *Pool) newShift(w *Worker) *Shift {
 	currentShiftID := atomic.LoadUint64(&p.shiftID)
 
-	currentBlock := p.blockCounter
 	s := &Shift{
 		shiftID:        currentShiftID,
 		pool:           p.InternalSettings().PoolID,
 		worker:         w,
-		blockID:        currentBlock,
 		startShiftTime: time.Now(),
 		shares:         make([]Share, 0),
 	}
@@ -64,13 +62,6 @@ func (s *Shift) PoolID() uint64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.pool
-}
-
-// BlockID is the id of the block worked on in the current shift
-func (s *Shift) BlockID() uint64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.blockID
 }
 
 // Shares returns the slice of shares submitted during the shift
