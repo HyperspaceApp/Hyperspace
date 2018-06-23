@@ -97,7 +97,9 @@ func (s *Session) addJob(j *Job) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.CurrentJobs = append(s.CurrentJobs, j)
-	s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+	if s.log != nil && s.CurrentJobs != nil && j != nil {
+		s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+	}
 	// for i, j := range s.CurrentJobs {
 	// 	s.log.Printf("i: %d, id: %d\n", i, j.JobID)
 	// }
@@ -125,7 +127,9 @@ func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
 func (s *Session) clearJobs() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
+	if s.log != nil && s.CurrentJobs != nil {
+		s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
+	}
 	s.CurrentJobs = nil
 }
 
