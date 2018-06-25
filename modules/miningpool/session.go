@@ -105,14 +105,16 @@ func (s *Session) addJob(j *Job) {
 	}
 
 	s.CurrentJobs = append(s.CurrentJobs, j)
-	if s.log != nil && s.CurrentJobs != nil && j != nil {
-		s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+	if s.log != nil && s.CurrentJobs != nil {
+		if j != nil {
+			s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+		}
+		l := ""
+		for i, j := range s.CurrentJobs {
+			l += fmt.Sprintf("%d,%d;", i, j.JobID)
+		}
+		s.log.Println(l)
 	}
-	l := ""
-	for i, j := range s.CurrentJobs {
-		l += fmt.Sprintf("%d,%d;", i, j.JobID)
-	}
-	s.log.Println(l)
 	s.lastJobTimestamp = time.Now()
 }
 
