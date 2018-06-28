@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceApp/Hyperspace/config"
-	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/persist"
-	siasync "github.com/HyperspaceApp/Hyperspace/sync"
-	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/Sia/config"
+	"github.com/NebulousLabs/Sia/modules"
+	"github.com/NebulousLabs/Sia/persist"
+	siasync "github.com/NebulousLabs/Sia/sync"
+	"github.com/NebulousLabs/Sia/types"
 )
 
 const (
