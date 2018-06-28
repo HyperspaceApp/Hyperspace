@@ -187,12 +187,12 @@ func (h *Handler) Listen() {
 		} else if m != nil {
 			err = h.handleRequest(m)
 			if err != nil {
-				h.s.log.Println(err)
+				h.log.Println(err)
 				return
 			}
 			// else if we got an error
 		} else if err != nil {
-			h.s.log.Println(err)
+			h.log.Println(err)
 			return
 		}
 	}

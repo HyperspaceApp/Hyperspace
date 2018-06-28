@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -17,6 +18,8 @@ const (
 	maxDifficultyDropRatio = 0.01
 	// how long we allow the session to linger if we haven't heard from the worker
 	heartbeatTimeout = 3 * time.Minute
+	// maxJob define how many time could exist in one session
+	maxJob = 5
 )
 
 var (
@@ -95,11 +98,22 @@ func (s *Session) addWorker(w *Worker) {
 func (s *Session) addJob(j *Job) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if len(s.CurrentJobs) >= maxJob {
+		s.CurrentJobs = s.CurrentJobs[len(s.CurrentJobs)-maxJob+1:]
+	}
+
 	s.CurrentJobs = append(s.CurrentJobs, j)
-	s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
-	// for i, j := range s.CurrentJobs {
-	// 	s.log.Printf("i: %d, id: %d\n", i, j.JobID)
-	// }
+	if s.log != nil && s.CurrentJobs != nil {
+		if j != nil {
+			s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+		}
+		l := ""
+		for i, j := range s.CurrentJobs {
+			l += fmt.Sprintf("%d,%d;", i, j.JobID)
+		}
+		s.log.Println(l)
+	}
 	s.lastJobTimestamp = time.Now()
 }
 
@@ -110,7 +124,7 @@ func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
 	for _, j := range s.CurrentJobs {
 		// s.log.Printf("i: %d, array id: %d\n", i, j.JobID)
 		if jobID == j.JobID {
-			s.log.Printf("after pop len:%d\n", len(s.CurrentJobs))
+			s.log.Printf("get job len:%d\n", len(s.CurrentJobs))
 			if _, ok := j.SubmitedNonce[nonce]; ok {
 				return nil, errors.New("already submited nonce for this job")
 			}
@@ -124,7 +138,9 @@ func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
 func (s *Session) clearJobs() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
+	if s.log != nil && s.CurrentJobs != nil {
+		s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
+	}
 	s.CurrentJobs = nil
 }
 
@@ -277,8 +293,15 @@ func (s *Session) HighestDifficulty() float64 {
 func (s *Session) DetectDisconnected() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.log != nil {
+		s.log.Printf("time now: %s, last beat: %s, disconnect: %t\n", time.Now(),
+			s.lastHeartbeat, time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout)))
+	}
 	// disconnect if we haven't heard from the worker for a long time
 	if time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout)) {
+		if s.log != nil {
+			s.log.Printf("Disconnect because heartbeat time")
+		}
 		return true
 	}
 	// disconnect if the worker's difficulty has dropped too far from it's historical diff

@@ -264,7 +264,7 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		p.newSourceBlock()
 		if p.dispatcher != nil {
 			p.log.Printf("Notifying clients\n")
-			p.dispatcher.NotifyClients()
+			p.dispatcher.ClearJobAndNotifyClients()
 		}
 	}
 }
