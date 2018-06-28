@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/NebulousLabs/Sia/config"
-	"github.com/NebulousLabs/Sia/modules"
-	"github.com/NebulousLabs/Sia/persist"
-	siasync "github.com/NebulousLabs/Sia/sync"
-	"github.com/NebulousLabs/Sia/types"
+	"github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
@@ -21,7 +21,7 @@ const (
 	logFile = modules.IndexDir + ".log"
 
 	// IndexDuration is the interval time of index scan
-	IndexDuration = 10 * time.Minute
+	IndexDuration = 10 * time.Second
 )
 
 // Index is the main type of this module
@@ -118,6 +118,9 @@ func (index *Index) managedScan() error {
 		case <-time.After(IndexDuration):
 		case <-index.tg.StopChan():
 			return nil
+		}
+		if !index.cs.Synced() {
+			continue
 		}
 
 		index.log.Debugln("index loop")
