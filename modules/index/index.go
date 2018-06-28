@@ -21,7 +21,7 @@ const (
 	logFile = modules.IndexDir + ".log"
 
 	// IndexDuration is the interval time of index scan
-	IndexDuration = 10 * time.Second
+	IndexDuration = 10 * time.Minute
 )
 
 // Index is the main type of this module
@@ -113,14 +113,28 @@ func (index *Index) managedScan() error {
 		return err
 	}
 
+	// wait for the consensus to be synced
+	for {
+		if !index.cs.Synced() {
+			select {
+			case <-time.After(10 * time.Second):
+			case <-index.tg.StopChan():
+				return nil
+			}
+		}
+	}
+	// do the first scan
+	err = index.Scan()
+	if err != nil {
+		index.log.Debugf("index error: %s", err)
+		panic(err)
+	}
+	// then loop and wait to scan roughly once every block
 	for {
 		select {
 		case <-time.After(IndexDuration):
 		case <-index.tg.StopChan():
 			return nil
-		}
-		if !index.cs.Synced() {
-			continue
 		}
 
 		index.log.Debugln("index loop")
@@ -134,7 +148,7 @@ func (index *Index) managedScan() error {
 
 // Scan will go through every block and try to sync every block info
 func (index *Index) Scan() error {
-	index.log.Printf("Scaning \n")
+	index.log.Printf("Scanning \n")
 	var err error
 
 	// index.currentHeight = 0
@@ -142,6 +156,12 @@ func (index *Index) Scan() error {
 	for i := index.currentHeight; i <= index.cs.Height(); i++ {
 		index.log.Printf("start to process block: %d\n", i)
 		err = index.transBlock(i)
+		// if we've shut down, exit cleanly
+		select {
+		case <-index.tg.StopChan():
+			return nil
+		default:
+		}
 		if err != nil {
 			return err
 		}
