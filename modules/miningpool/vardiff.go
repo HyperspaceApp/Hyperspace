@@ -65,7 +65,9 @@ func (s *Session) checkDiffOnNewShare() bool {
 
 	unsubmitDuration, historyDuration := s.ShareDurationAverage()
 	if s.disableVarDiff {
-		s.log.Printf("HistoryDuration: %f, var diff disabled, current diff: %f\n", historyDuration, s.currentDifficulty)
+		if s.log != nil {
+			s.log.Printf("HistoryDuration: %f, var diff disabled, current diff: %f\n", historyDuration, s.currentDifficulty)
+		}
 		return false
 	}
 

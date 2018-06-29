@@ -2,6 +2,8 @@ package pool
 
 import (
 	"bytes"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,10 +11,44 @@ import (
 )
 
 const (
-	sqlLockRetry       = 10
-	sqlRetryDelay      = 100 // milliseconds
+	sqlReconnectRetry  = 6
+	sqlRetryDelay      = 10
 	confirmedButUnpaid = "Confirmed but unpaid"
 )
+
+func (p *Pool) newDbConnection() error {
+	dbc := p.InternalSettings().PoolDBConnection
+	p.dbConnectionMu.Lock()
+	defer p.dbConnectionMu.Unlock()
+	var err error
+
+	// to prevent other goroutine reconnect
+	if p.sqldb != nil {
+		err = p.sqldb.Ping()
+		if err == nil {
+			return nil
+		}
+	}
+
+	for i := 0; i < sqlReconnectRetry; i++ {
+		fmt.Printf("try to connect mysql: %d\n", i)
+		p.sqldb, err = sql.Open("mysql", dbc)
+		if err != nil {
+			time.Sleep(sqlRetryDelay * time.Second)
+			continue
+		}
+
+		err = p.sqldb.Ping()
+		if err != nil {
+			time.Sleep(sqlRetryDelay * time.Second)
+			continue
+		}
+		fmt.Printf("success\n")
+		return nil
+	}
+
+	return errors.New(fmt.Sprintf("sql reconnect retry time exceeded: %d", sqlReconnectRetry))
+}
 
 // AddClientDB add user into accounts
 func (p *Pool) AddClientDB(c *Client) error {
@@ -190,20 +226,31 @@ func (s *Shift) SaveShift() error {
 	buffer.WriteString(";")
 
 	rows, err := pool.sqldb.Query(buffer.String())
-	defer rows.Close()
+	if rows != nil {
+		rows.Close()
+	}
 	if err != nil {
 		worker.log.Println(buffer.String())
-		worker.log.Printf("Error saving shares: %s\n", err)
+		worker.log.Printf("Error saving shares: %s\n, Try to reconnect", err)
 		fmt.Println(err)
-		return err
+		err = pool.newDbConnection()
+		if err != nil {
+			worker.log.Println(buffer.String())
+			worker.log.Printf("Error saving shares: %s\n, Try to reconnect", err)
+			fmt.Println(err)
+			return err
+		}
+		rows2, err2 := pool.sqldb.Query(buffer.String())
+		if rows2 != nil {
+			rows2.Close()
+		}
+		if err2 != nil {
+			worker.log.Println(buffer.String())
+			worker.log.Printf("Error adding record of last shift: %s\n", err2)
+			return err2
+		}
 	}
 
-	if err != nil {
-		worker.log.Println(buffer.String())
-		worker.log.Printf("Error adding record of last shift: %s\n", err)
-		return err
-	}
-	// worker.log.Debugf(buffer.String())
 	return nil
 }
 
