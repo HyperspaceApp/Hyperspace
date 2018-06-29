@@ -121,6 +121,8 @@ func (index *Index) managedScan() error {
 			case <-index.tg.StopChan():
 				return nil
 			}
+		} else {
+			break
 		}
 	}
 	// do the first scan
