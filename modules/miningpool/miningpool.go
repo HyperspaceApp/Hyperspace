@@ -153,6 +153,7 @@ type Pool struct {
 	log            *persist.Logger
 	yiilog         *persist.Logger
 	mu             deadlock.RWMutex
+	dbConnectionMu deadlock.RWMutex
 	persistDir     string
 	port           string
 	tg             threadgroup.ThreadGroup
@@ -374,16 +375,8 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		}
 		return err
 	})
-	dbc := p.InternalSettings().PoolDBConnection
 
-	p.sqldb, err = sql.Open("mysql", dbc)
-	if err != nil {
-		return nil, errors.New("Failed to open database: " + err.Error())
-	}
-	err = p.sqldb.Ping()
-	if err != nil {
-		return nil, errors.New("Failed to ping database: " + err.Error())
-	}
+	p.newDbConnection()
 
 	// clean old worker records for this stratum server just in case we didn't
 	// shutdown cleanly
