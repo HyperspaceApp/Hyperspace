@@ -71,7 +71,7 @@ fetches status information about the host.
 
     // The IP address or hostname (including port) that the host should be
     // contacted at.
-    "netaddress": "123.456.789.0:9982",
+    "netaddress": "123.456.789.0:5582",
 
     // The amount of unused storage capacity on the host in bytes. It
     // should be noted that the host can lie.
@@ -238,7 +238,7 @@ fetches status information about the host.
     // contacted at. If left blank, the host will automatically figure out
     // its ip address and use that. If given, the host will use the address
     // given.
-    "netaddress": "123.456.789.0:9982",
+    "netaddress": "123.456.789.0:5582",
 
     // The storage proof window is the number of blocks that the host has
     // to get a storage proof onto the blockchain. The window size is the

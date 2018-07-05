@@ -10,8 +10,8 @@ func TestUnitProcessNetAddr(t *testing.T) {
 		inputs          []string
 		expectedOutputs []string
 	}{
-		inputs:          []string{"9980", ":9980", "localhost:9980", "test.com:9980", "192.168.14.92:9980"},
-		expectedOutputs: []string{":9980", ":9980", "localhost:9980", "test.com:9980", "192.168.14.92:9980"},
+		inputs:          []string{"5580", ":5580", "localhost:5580", "test.com:5580", "192.168.14.92:5580"},
+		expectedOutputs: []string{":5580", ":5580", "localhost:5580", "test.com:5580", "192.168.14.92:5580"},
 	}
 	for i, input := range testVals.inputs {
 		output := processNetAddr(input)
@@ -113,12 +113,12 @@ func TestUnitProcessConfig(t *testing.T) {
 		expectedOutputs [][]string
 	}{
 		inputs: [][]string{
-			{"localhost:9980", "localhost:9981", "localhost:9982", "cghmrtwe"},
-			{"localhost:9980", "localhost:9981", "localhost:9982", "CGHMRTWE"},
+			{"localhost:5580", "localhost:5581", "localhost:5582", "cghmrtwe"},
+			{"localhost:5580", "localhost:5581", "localhost:5582", "CGHMRTWE"},
 		},
 		expectedOutputs: [][]string{
-			{"localhost:9980", "localhost:9981", "localhost:9982", "cghmrtwe"},
-			{"localhost:9980", "localhost:9981", "localhost:9982", "cghmrtwe"},
+			{"localhost:5580", "localhost:5581", "localhost:5582", "cghmrtwe"},
+			{"localhost:5580", "localhost:5581", "localhost:5582", "cghmrtwe"},
 		},
 	}
 	var config Config
@@ -157,7 +157,7 @@ func TestUnitProcessConfig(t *testing.T) {
 func TestVerifyAPISecurity(t *testing.T) {
 	// Check that the loopback address is accepted when security is enabled.
 	var securityOnLoopback Config
-	securityOnLoopback.Siad.APIaddr = "127.0.0.1:9980"
+	securityOnLoopback.Siad.APIaddr = "127.0.0.1:5580"
 	err := verifyAPISecurity(securityOnLoopback)
 	if err != nil {
 		t.Error("loopback + securityOn was rejected")
@@ -165,7 +165,7 @@ func TestVerifyAPISecurity(t *testing.T) {
 
 	// Check that the blank address is rejected when security is enabled.
 	var securityOnBlank Config
-	securityOnBlank.Siad.APIaddr = ":9980"
+	securityOnBlank.Siad.APIaddr = ":5580"
 	err = verifyAPISecurity(securityOnBlank)
 	if err == nil {
 		t.Error("blank + securityOn was accepted")
@@ -173,7 +173,7 @@ func TestVerifyAPISecurity(t *testing.T) {
 
 	// Check that a public hostname is rejected when security is enabled.
 	var securityOnPublic Config
-	securityOnPublic.Siad.APIaddr = "sia.tech:9980"
+	securityOnPublic.Siad.APIaddr = "sia.tech:5580"
 	err = verifyAPISecurity(securityOnPublic)
 	if err == nil {
 		t.Error("public + securityOn was accepted")
@@ -182,7 +182,7 @@ func TestVerifyAPISecurity(t *testing.T) {
 	// Check that a public hostname is rejected when security is disabled and
 	// there is no api password.
 	var securityOffPublic Config
-	securityOffPublic.Siad.APIaddr = "sia.tech:9980"
+	securityOffPublic.Siad.APIaddr = "sia.tech:5580"
 	securityOffPublic.Siad.AllowAPIBind = true
 	err = verifyAPISecurity(securityOffPublic)
 	if err == nil {
@@ -192,7 +192,7 @@ func TestVerifyAPISecurity(t *testing.T) {
 	// Check that a public hostname is accepted when security is disabled and
 	// there is an api password.
 	var securityOffPublicAuthenticated Config
-	securityOffPublicAuthenticated.Siad.APIaddr = "sia.tech:9980"
+	securityOffPublicAuthenticated.Siad.APIaddr = "sia.tech:5580"
 	securityOffPublicAuthenticated.Siad.AllowAPIBind = true
 	securityOffPublicAuthenticated.Siad.AuthenticateAPI = true
 	err = verifyAPISecurity(securityOffPublicAuthenticated)

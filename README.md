@@ -69,7 +69,7 @@ as a sole means of storing important data.
 
 This release comes with 2 binaries, siad and siac. siad is a background
 service, or "daemon," that runs the Sia protocol and exposes an HTTP API on
-port 9980. siac is a command-line client that can be used to interact with
+port 5580. siac is a command-line client that can be used to interact with
 siad in a user-friendly way. There is also a graphical client, [Sia-UI](https://github.com/HardDriveCoin/HardDriveCoin-UI), which
 is the preferred way of using Sia for most users. For interested developers,
 the siad API is documented [here](doc/API.md).

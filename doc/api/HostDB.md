@@ -81,7 +81,7 @@ numhosts
 
       // Remote address of the host. It can be an IPv4, IPv6, or hostname,
       // along with the port. IPv6 addresses are enclosed in square brackets.
-      "netaddress": "123.456.789.0:9982",
+      "netaddress": "123.456.789.0:5582",
 
       // Unused storage capacity the host claims it has, in bytes.
       "remainingstorage": 35000000000,
@@ -149,7 +149,7 @@ any particular order, and the order may change in subsequent calls.
 
       // Remote address of the host. It can be an IPv4, IPv6, or hostname,
       // along with the port. IPv6 addresses are enclosed in square brackets.
-      "netaddress": "123.456.789.0:9982",
+      "netaddress": "123.456.789.0:5582",
 
       // Unused storage capacity the host claims it has, in bytes.
       "remainingstorage": 35000000000,
@@ -228,7 +228,7 @@ overall.
 
     // Remote address of the host. It can be an IPv4, IPv6, or hostname,
     // along with the port. IPv6 addresses are enclosed in square brackets.
-    "netaddress": "123.456.789.0:9982",
+    "netaddress": "123.456.789.0:5582",
 
     // Unused storage capacity the host claims it has, in bytes.
     "remainingstorage": 35000000000,
@@ -366,7 +366,7 @@ Examples
       "maxdownloadbatchsize": 17825792,
       "maxduration": 25920,
       "maxrevisebatchsize": 17825792,
-      "netaddress": "123.456.789.0:9982",
+      "netaddress": "123.456.789.0:5582",
       "remainingstorage": 35000000000,
       "sectorsize": 4194304,
       "totalstorage": 35000000000,
@@ -383,7 +383,7 @@ Examples
       "maxdownloadbatchsize": 17825792,
       "maxduration": 25920,
       "maxrevisebatchsize": 17825792,
-      "netaddress": "123.456.789.1:9982",
+      "netaddress": "123.456.789.1:5582",
       "remainingstorage": 314,
       "sectorsize": 4194304,
       "totalstorage": 314159265359,
@@ -420,7 +420,7 @@ Examples
       "maxdownloadbatchsize": 17825792,
       "maxduration": 25920,
       "maxrevisebatchsize": 17825792,
-      "netaddress": "123.456.789.2:9982",
+      "netaddress": "123.456.789.2:5582",
       "remainingstorage": 314,
       "sectorsize": 4194304,
       "totalstorage": 314159265359,
@@ -437,7 +437,7 @@ Examples
       "maxdownloadbatchsize": 17825792,
       "maxduration": 25920,
       "maxrevisebatchsize": 17825792,
-      "netaddress": "123.456.789.0:9982",
+      "netaddress": "123.456.789.0:5582",
       "remainingstorage": 35000000000,
       "sectorsize": 4194304,
       "totalstorage": 35000000000,
@@ -454,7 +454,7 @@ Examples
       "maxdownloadbatchsize": 17825792,
       "maxduration": 25920,
       "maxrevisebatchsize": 17825792,
-      "netaddress": "123.456.789.1:9982",
+      "netaddress": "123.456.789.1:5582",
       "remainingstorage": 314,
       "sectorsize": 4194304,
       "totalstorage": 314159265359,
@@ -490,7 +490,7 @@ Examples
     "maxdownloadbatchsize": 17825792,
     "maxduration": 25920,
     "maxrevisebatchsize": 17825792,
-    "netaddress": "123.456.789.2:9982",
+    "netaddress": "123.456.789.2:5582",
     "remainingstorage": 314,
     "sectorsize": 4194304,
     "totalstorage": 314159265359,
