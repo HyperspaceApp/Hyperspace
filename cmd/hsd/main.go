@@ -177,7 +177,7 @@ func main() {
 	root.Flags().StringVarP(&globalConfig.Siad.HostAddr, "host-addr", "", ":5582", "which port the host listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.ProfileDir, "profile-directory", "", "profiles", "location of the profiling directory")
 	root.Flags().StringVarP(&globalConfig.Siad.APIaddr, "api-addr", "", "localhost:5580", "which host:port the API server listens on")
-	root.Flags().StringVarP(&globalConfig.Siad.SiaDir, "sia-directory", "d", "", "location of the sia directory")
+	root.Flags().StringVarP(&globalConfig.Siad.SiaDir, "hyperspace-directory", "d", "", "location of the hyperspace directory")
 	root.Flags().BoolVarP(&globalConfig.Siad.NoBootstrap, "no-bootstrap", "", false, "disable bootstrapping on this run")
 	root.Flags().StringVarP(&globalConfig.Siad.Profile, "profile", "", "", "enable profiling with flags 'cmt' for CPU, memory, trace")
 	root.Flags().StringVarP(&globalConfig.Siad.RPCaddr, "rpc-addr", "", ":5581", "which port the gateway listens on")
