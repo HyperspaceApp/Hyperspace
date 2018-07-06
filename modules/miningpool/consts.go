@@ -17,15 +17,15 @@ const (
 	MajorVersion  = 0
 	// MinorVersion is the minor version of the pool module
 	MinorVersion  = 3
-	// SiaCoinID is the coin id used by yiimp to associate various records
+	// CoinID is the coin id used by yiimp to associate various records
 	// with Siacoin
-	SiaCoinID     = 1316
-	// SiaCoinSymbol is the coin symbol used by yiimp to associate various records
+	CoinID     = 1317
+	// CoinSymbol is the coin symbol used by yiimp to associate various records
 	// with Siacoin
-	SiaCoinSymbol = "SC"
-	// SiaCoinAlgo is the algo used by yiimp to associate various records
+	CoinSymbol = "SPACE"
+	// CoinAlgo is the algo used by yiimp to associate various records
 	// with blake2b mining
-	SiaCoinAlgo   = "blake2b"
+	CoinAlgo   = "blake2b"
 )
 
 var (

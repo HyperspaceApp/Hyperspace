@@ -149,7 +149,7 @@ func readFileConfig(config Config) error {
 		poolViper.SetDefault("acceptingcontracts", false)
 		poolViper.SetDefault("operatorpercentage", 0.0)
 		poolViper.SetDefault("operatorwallet", "")
-		poolViper.SetDefault("networkport", 3333)
+		poolViper.SetDefault("networkport", 6666)
 		poolViper.SetDefault("dbaddress", "127.0.0.1")
 		poolViper.SetDefault("dbname", "miningpool")
 		poolViper.SetDefault("dbport", "3306")

@@ -150,7 +150,7 @@ func (mp *Pool) establishDefaults() error {
 		mp.persist.SetSettings(modules.PoolInternalSettings{
 			PoolName:               "",
 			PoolWallet:             types.UnlockHash{},
-			PoolNetworkPort:        3333,
+			PoolNetworkPort:        6666,
 			PoolDBConnection:       "user:pass@127.0.0.1/HDCPool",
 		})
 		mp.newSourceBlock()

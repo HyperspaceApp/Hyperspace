@@ -73,7 +73,7 @@ func (p *Pool) AddClientDB(c *Client) error {
 	}
 	defer stmt.Close()
 
-	rs, err := stmt.Exec(SiaCoinID, c.cr.name, SiaCoinSymbol)
+	rs, err := stmt.Exec(CoinID, c.cr.name, CoinSymbol)
 	if err != nil {
 		return err
 	}
@@ -191,8 +191,8 @@ func (w *Worker) addFoundBlock(b *types.Block) error {
 	currentTarget, _ := pool.cs.ChildTarget(b.ID())
 	difficulty, _ := currentTarget.Difficulty().Uint64() // TODO: maybe should use parent ChildTarget
 	// TODO: figure out right difficulty_user
-	_, err = stmt.Exec(bh, b.ID().String(), SiaCoinID, w.Parent().cr.clientID,
-		w.wr.workerID, "new", difficulty, timeStamp, SiaCoinAlgo)
+	_, err = stmt.Exec(bh, b.ID().String(), CoinID, w.Parent().cr.clientID,
+		w.wr.workerID, "new", difficulty, timeStamp, CoinAlgo)
 	if err != nil {
 		return err
 	}
@@ -220,8 +220,8 @@ func (s *Shift) SaveShift() error {
 			buffer.WriteString(",")
 		}
 		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %f, %d, %d, %f, %f)",
-			share.userid, share.workerid, SiaCoinID, share.valid, share.difficulty, share.time.Unix(),
-			SiaCoinAlgo, share.reward, share.blockDifficulty, 0, share.height, share.shareReward, share.shareDifficulty))
+			share.userid, share.workerid, CoinID, share.valid, share.difficulty, share.time.Unix(),
+			CoinAlgo, share.reward, share.blockDifficulty, 0, share.height, share.shareReward, share.shareDifficulty))
 	}
 	buffer.WriteString(";")
 
@@ -275,7 +275,7 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	}
 	defer stmt.Close()
 
-	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.name, SiaCoinAlgo, time.Now().Unix(),
+	rs, err := stmt.Exec(c.cr.clientID, c.cr.name, w.wr.name, CoinAlgo, time.Now().Unix(),
 		c.pool.InternalSettings().PoolID, w.s.clientVersion, w.s.remoteAddr)
 	if err != nil {
 		return err
