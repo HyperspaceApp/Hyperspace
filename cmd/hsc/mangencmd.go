@@ -17,7 +17,7 @@ var (
 func mangencmd(path string) {
 	header := &doc.GenManHeader{
 		Section: "1",
-		Manual:  "hdcc Manual",
+		Manual:  "hsc Manual",
 		Source:  "",
 	}
 

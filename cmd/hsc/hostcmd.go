@@ -23,9 +23,9 @@ var (
 		Long: `Announce yourself as a host on the network.
 Announcing will also configure the host to start accepting contracts.
 You can revert this by running:
-	hdcc host config acceptingcontracts false
+	hsc host config acceptingcontracts false
 You may also supply a specific address to be announced, e.g.:
-	hdcc host announce my-host-domain.com:9001
+	hsc host announce my-host-domain.com:9001
 Doing so will override the standard connectivity checks.`,
 		Run: hostannouncecmd,
 	}
@@ -59,7 +59,7 @@ Available settings:
      minstorageprice:           currency / TB / Month
      minuploadbandwidthprice:   currency / TB
 
-Currency units can be specified, e.g. 10SC; run 'hdcc help wallet' for details.
+Currency units can be specified, e.g. 10SC; run 'hsc help wallet' for details.
 
 Durations (maxduration and windowsize) must be specified in either blocks (b),
 hours (h), days (d), or weeks (w). A block is approximately 10 minutes, so one
@@ -68,7 +68,7 @@ hour is six blocks, a day is 144 blocks, and a week is 1008 blocks.
 For a description of each parameter, see doc/API.md.
 
 To configure the host to accept new contracts, set acceptingcontracts to true:
-	hdcc host config acceptingcontracts true
+	hsc host config acceptingcontracts true
 `,
 		Run: wrap(hostconfigcmd),
 	}
@@ -132,7 +132,7 @@ sector may impact host revenue.`,
 	}
 )
 
-// hostcmd is the handler for the command `hdcc host`.
+// hostcmd is the handler for the command `hsc host`.
 // Prints info about the host and its storage folders.
 func hostcmd() {
 	hg, err := httpClient.HostGet()
@@ -323,7 +323,7 @@ RPC Stats:
 	w.Flush()
 }
 
-// hostconfigcmd is the handler for the command `hdcc host config [setting] [value]`.
+// hostconfigcmd is the handler for the command `hsc host config [setting] [value]`.
 // Modifies host settings.
 func hostconfigcmd(param, value string) {
 	var err error

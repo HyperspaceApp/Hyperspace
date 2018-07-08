@@ -58,7 +58,7 @@ func versioncmd() {
 	}
 }
 
-// stopcmd is the handler for the command `hdcc stop`.
+// stopcmd is the handler for the command `hsc stop`.
 // Stops the daemon.
 func stopcmd() {
 	err := httpClient.DaemonStopGet()

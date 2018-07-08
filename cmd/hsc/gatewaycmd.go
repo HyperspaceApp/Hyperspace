@@ -46,7 +46,7 @@ var (
 	}
 )
 
-// gatewayconnectcmd is the handler for the command `hdcc gateway add [address]`.
+// gatewayconnectcmd is the handler for the command `hsc gateway add [address]`.
 // Adds a new peer to the peer list.
 func gatewayconnectcmd(addr string) {
 	err := httpClient.GatewayConnectPost(modules.NetAddress(addr))
@@ -56,7 +56,7 @@ func gatewayconnectcmd(addr string) {
 	fmt.Println("Added", addr, "to peer list.")
 }
 
-// gatewaydisconnectcmd is the handler for the command `hdcc gateway remove [address]`.
+// gatewaydisconnectcmd is the handler for the command `hsc gateway remove [address]`.
 // Removes a peer from the peer list.
 func gatewaydisconnectcmd(addr string) {
 	err := httpClient.GatewayDisconnectPost(modules.NetAddress(addr))
@@ -66,7 +66,7 @@ func gatewaydisconnectcmd(addr string) {
 	fmt.Println("Removed", addr, "from peer list.")
 }
 
-// gatewayaddresscmd is the handler for the command `hdcc gateway address`.
+// gatewayaddresscmd is the handler for the command `hsc gateway address`.
 // Prints the gateway's network address.
 func gatewayaddresscmd() {
 	info, err := httpClient.GatewayGet()
@@ -76,7 +76,7 @@ func gatewayaddresscmd() {
 	fmt.Println("Address:", info.NetAddress)
 }
 
-// gatewaycmd is the handler for the command `hdcc gateway`.
+// gatewaycmd is the handler for the command `hsc gateway`.
 // Prints the gateway's network address and number of peers.
 func gatewaycmd() {
 	info, err := httpClient.GatewayGet()
@@ -87,7 +87,7 @@ func gatewaycmd() {
 	fmt.Println("Active peers:", len(info.Peers))
 }
 
-// gatewaylistcmd is the handler for the command `hdcc gateway list`.
+// gatewaylistcmd is the handler for the command `hsc gateway list`.
 // Prints a list of all peers.
 func gatewaylistcmd() {
 	info, err := httpClient.GatewayGet()

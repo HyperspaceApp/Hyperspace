@@ -33,7 +33,7 @@ var (
 	walletBalanceCmd = &cobra.Command{
 		Use:   "balance",
 		Short: "View wallet balance",
-		Long:  "View wallet balance, including confirmed and unconfirmed siacoins and siafunds.",
+		Long:  "View wallet balance, including confirmed and unconfirmed siacoins.",
 		Run:   wrap(walletbalancecmd),
 	}
 
@@ -78,16 +78,9 @@ By default the wallet encryption / unlock password is the same as the generated 
 		Run:   wrap(walletinitseedcmd),
 	}
 
-	walletLoad033xCmd = &cobra.Command{
-		Use:   "033x [filepath]",
-		Short: "Load a v0.3.3.x wallet",
-		Long:  "Load a v0.3.3.x wallet into the current wallet",
-		Run:   wrap(walletload033xcmd),
-	}
-
 	walletLoadCmd = &cobra.Command{
 		Use:   "load",
-		Short: "Load a wallet seed, v0.3.3.x wallet, or siag keyset",
+		Short: "Load a wallet seed or siag keyset",
 		// Run field is not set, as the load command itself is not a valid command.
 		// A subcommand must be provided.
 	}
@@ -102,8 +95,8 @@ By default the wallet encryption / unlock password is the same as the generated 
 	walletLoadSiagCmd = &cobra.Command{
 		Use:     `siag [filepath,...]`,
 		Short:   "Load siag key(s) into the wallet",
-		Long:    "Load siag key(s) into the wallet - typically used for siafunds.",
-		Example: "hdcc wallet load siag key1.siakey,key2.siakey",
+		Long:    "Load siag key(s) into the wallet",
+		Example: "hsc wallet load siag key1.siakey,key2.siakey",
 		Run:     wrap(walletloadsiagcmd),
 	}
 
@@ -283,19 +276,6 @@ func walletinitseedcmd() {
 	} else {
 		fmt.Println("Wallet initialized and encrypted with seed.")
 	}
-}
-
-// walletload033xcmd loads a v0.3.3.x wallet into the current wallet.
-func walletload033xcmd(source string) {
-	password, err := passwordPrompt(askPasswordText)
-	if err != nil {
-		die("Reading password failed:", err)
-	}
-	err = httpClient.Wallet033xPost(abs(source), password)
-	if err != nil {
-		die("Loading wallet failed:", err)
-	}
-	fmt.Println("Wallet loading successful.")
 }
 
 // walletloadseedcmd adds a seed to the wallet's list of seeds

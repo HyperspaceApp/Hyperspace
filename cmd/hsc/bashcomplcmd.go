@@ -11,7 +11,7 @@ var (
 
 			"Note: Bash completions will only work with the " +
 			"prefix with which the script is created (e.g. " +
-			"`./hdcc` or `hdcc`).\n\n" +
+			"`./hsc` or `hsc`).\n\n" +
 
 			"Once created, the file has to be moved to the bash " +
 			"completion script folder - usually " +

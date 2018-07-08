@@ -29,7 +29,7 @@ var (
 	}
 )
 
-// minerstartcmd is the handler for the command `hdcc miner start`.
+// minerstartcmd is the handler for the command `hsc miner start`.
 // Starts the CPU miner.
 func minerstartcmd() {
 	err := httpClient.MinerStartGet()
@@ -39,7 +39,7 @@ func minerstartcmd() {
 	fmt.Println("CPU Miner is now running.")
 }
 
-// minercmd is the handler for the command `hdcc miner`.
+// minercmd is the handler for the command `hsc miner`.
 // Prints the status of the miner.
 func minercmd() {
 	status, err := httpClient.MinerGet()
@@ -58,7 +58,7 @@ Blocks Mined: %d (%d stale)
 `, miningStr, status.CPUHashrate/1000, status.BlocksMined, status.StaleBlocksMined)
 }
 
-// minerstopcmd is the handler for the command `hdcc miner stop`.
+// minerstopcmd is the handler for the command `hsc miner stop`.
 // Stops the CPU miner.
 func minerstopcmd() {
 	err := httpClient.MinerStopGet()

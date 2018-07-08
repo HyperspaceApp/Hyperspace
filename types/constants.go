@@ -37,6 +37,9 @@ var (
 	// smaller than ExtremeFutureThreshold, the Block may be held in memory until
 	// the Block's Timestamp exceeds the current time by less than FutureThreshold.
 	FutureThreshold Timestamp
+	// GenesisAirdropAllocation is the output creating the initial coins allocated
+	// for the airdrop at network launch
+	GenesisAirdropAllocation []SiacoinOutput
 	// GenesisBlock is the first block of the block chain
 	GenesisBlock Block
 
@@ -256,10 +259,19 @@ func init() {
 
 	}
 
+	// Create the initial tokens for the airdrop
+	GenesisAirdropAllocation = []SiacoinOutput{
+		{
+			Value: NewCurrency64(35373763032).Div(NewCurrency64(10)),
+			UnlockHash: UnlockHash{},
+		},
+	}
 	// Create the genesis block.
 	GenesisBlock = Block{
 		Timestamp:    GenesisTimestamp,
-		Transactions: []Transaction{},
+		Transactions: []Transaction{
+			{SiacoinOutputs: GenesisAirdropAllocation},
+		},
 	}
 	// Calculate the genesis ID.
 	GenesisID = GenesisBlock.ID()

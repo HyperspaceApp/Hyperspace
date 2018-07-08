@@ -124,7 +124,7 @@ Allowance can be automatically renewed periodically. If the current
 blockheight + the renew window >= the end height the contract,
 then the contract is renewed automatically.
 
-Note that setting the allowance will cause hdcd to immediately begin forming
+Note that setting the allowance will cause hsd to immediately begin forming
 contracts! You should only set the allowance once you are fully synced and you
 have a reasonable number (>30) of hosts in your hostdb.`,
 		Run: rentersetallowancecmd,
@@ -139,7 +139,7 @@ have a reasonable number (>30) of hosts in your hostdb.`,
 )
 
 // abs returns the absolute representation of a path.
-// TODO: bad things can happen if you run hdcc from a non-existent directory.
+// TODO: bad things can happen if you run hsc from a non-existent directory.
 // Implement some checks to catch this problem.
 func abs(path string) string {
 	abspath, err := filepath.Abs(path)
@@ -197,7 +197,7 @@ func rentercmd() {
 	renterfileslistcmd()
 }
 
-// renteruploadscmd is the handler for the command `hdcc renter uploads`.
+// renteruploadscmd is the handler for the command `hsc renter uploads`.
 // Lists files currently uploading.
 func renteruploadscmd() {
 	rf, err := httpClient.RenterFilesGet()
@@ -227,7 +227,7 @@ func renteruploadscmd() {
 	}
 }
 
-// renterdownloadscmd is the handler for the command `hdcc renter downloads`.
+// renterdownloadscmd is the handler for the command `hsc renter downloads`.
 // Lists files currently downloading, and optionally previously downloaded
 // files if the -H or --history flag is specified.
 func renterdownloadscmd() {
@@ -376,7 +376,7 @@ func (s byValue) Less(i, j int) bool {
 	return cmp > 0
 }
 
-// rentercontractscmd is the handler for the comand `hdcc renter contracts`.
+// rentercontractscmd is the handler for the comand `hsc renter contracts`.
 // It lists the Renter's contracts.
 func rentercontractscmd() {
 	rc, err := httpClient.RenterContractsGet()
@@ -472,7 +472,7 @@ func rentercontractscmd() {
 	}
 }
 
-// rentercontractsviewcmd is the handler for the command `hdcc renter contracts <id>`.
+// rentercontractsviewcmd is the handler for the command `hsc renter contracts <id>`.
 // It lists details of a specific contract.
 func rentercontractsviewcmd(cid string) {
 	rc, err := httpClient.RenterContractsGet()
@@ -520,7 +520,7 @@ Contract %v
 	fmt.Println("Contract not found")
 }
 
-// renterfilesdeletecmd is the handler for the command `hdcc renter delete [path]`.
+// renterfilesdeletecmd is the handler for the command `hsc renter delete [path]`.
 // Removes the specified path from the Sia network.
 func renterfilesdeletecmd(path string) {
 	err := httpClient.RenterDeletePost(path)
@@ -530,7 +530,7 @@ func renterfilesdeletecmd(path string) {
 	fmt.Println("Deleted", path)
 }
 
-// renterfilesdownloadcmd is the handler for the comand `hdcc renter download [path] [destination]`.
+// renterfilesdownloadcmd is the handler for the comand `hsc renter download [path] [destination]`.
 // Downloads a path from the Sia network to the local specified destination.
 func renterfilesdownloadcmd(path, destination string) {
 	destination = abs(destination)
@@ -586,7 +586,7 @@ func (s bySiaPath) Len() int           { return len(s) }
 func (s bySiaPath) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s bySiaPath) Less(i, j int) bool { return s[i].SiaPath < s[j].SiaPath }
 
-// renterfileslistcmd is the handler for the command `hdcc renter list`.
+// renterfileslistcmd is the handler for the command `hsc renter list`.
 // Lists files known to the renter on the network.
 func renterfileslistcmd() {
 	var rf api.RenterFiles
@@ -636,7 +636,7 @@ func renterfileslistcmd() {
 	w.Flush()
 }
 
-// renterfilesrenamecmd is the handler for the command `hdcc renter rename [path] [newpath]`.
+// renterfilesrenamecmd is the handler for the command `hsc renter rename [path] [newpath]`.
 // Renames a file on the Sia network.
 func renterfilesrenamecmd(path, newpath string) {
 	err := httpClient.RenterRenamePost(path, newpath)
@@ -646,7 +646,7 @@ func renterfilesrenamecmd(path, newpath string) {
 	fmt.Printf("Renamed %s to %s\n", path, newpath)
 }
 
-// renterfilesuploadcmd is the handler for the command `hdcc renter upload
+// renterfilesuploadcmd is the handler for the command `hsc renter upload
 // [source] [path]`. Uploads the [source] file to [path] on the Sia network.
 // If [source] is a directory, all files inside it will be uploaded and named
 // relative to [path].
@@ -695,7 +695,7 @@ func renterfilesuploadcmd(source, path string) {
 	}
 }
 
-// renterpricescmd is the handler for the command `hdcc renter prices`, which
+// renterpricescmd is the handler for the command `hsc renter prices`, which
 // displays the prices of various storage operations.
 func renterpricescmd() {
 	rpg, err := httpClient.RenterPricesGet()
