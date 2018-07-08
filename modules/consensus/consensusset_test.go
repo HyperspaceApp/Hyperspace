@@ -99,7 +99,7 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 }
 
 // createConsensusSetTester creates a consensusSetTester that's ready for use,
-// including siacoins and siafunds available in the wallet.
+// including siacoins available in the wallet.
 func createConsensusSetTester(name string) (*consensusSetTester, error) {
 	cst, err := blankConsensusSetTester(name, modules.ProdDependencies)
 	if err != nil {
