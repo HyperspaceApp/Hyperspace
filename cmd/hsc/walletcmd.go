@@ -116,8 +116,8 @@ By default the wallet encryption / unlock password is the same as the generated 
 
 	walletSendCmd = &cobra.Command{
 		Use:   "send",
-		Short: "Send either siacoins or siafunds to an address",
-		Long:  "Send either siacoins or siafunds to an address",
+		Short: "Send space cash to an address",
+		Long:  "Send space cash to an address",
 		// Run field is not set, as the send command itself is not a valid command.
 		// A subcommand must be provided.
 	}
@@ -135,8 +135,8 @@ A dynamic transaction fee is applied depending on the size of the transaction an
 
 	walletSweepCmd = &cobra.Command{
 		Use:   "sweep",
-		Short: "Sweep siacoins and siafunds from a seed.",
-		Long: `Sweep siacoins and siafunds from a seed. The outputs belonging to the seed
+		Short: "Sweep space cash from a seed.",
+		Long: `Sweep space cash from a seed. The outputs belonging to the seed
 will be sent to your wallet.`,
 		Run: wrap(walletsweepcmd),
 	}
@@ -144,7 +144,7 @@ will be sent to your wallet.`,
 	walletTransactionsCmd = &cobra.Command{
 		Use:   "transactions",
 		Short: "View transactions",
-		Long:  "View transactions related to addresses spendable by the wallet, providing a net flow of siacoins and siafunds for each transaction",
+		Long:  "View transactions related to addresses spendable by the wallet, providing a net flow of space cash for each transaction",
 		Run:   wrap(wallettransactionscmd),
 	}
 
@@ -418,16 +418,16 @@ func walletsweepcmd() {
 }
 
 // wallettransactionscmd lists all of the transactions related to the wallet,
-// providing a net flow of siacoins and siafunds for each.
+// providing a net flow of space cash for each.
 func wallettransactionscmd() {
 	wtg, err := httpClient.WalletTransactionsGet(0, math.MaxInt64)
 	if err != nil {
 		die("Could not fetch transaction history:", err)
 	}
-	fmt.Println("             [timestamp]    [height]                                                   [transaction id]    [net siacoins]   [net siafunds]")
+	fmt.Println("             [timestamp]    [height]                                                   [transaction id]    [net space cash]")
 	txns := append(wtg.ConfirmedTransactions, wtg.UnconfirmedTransactions...)
 	for _, txn := range txns {
-		// Determine the number of outgoing siacoins and siafunds.
+		// Determine the number of outgoing space cash.
 		var outgoingSiacoins types.Currency
 		for _, input := range txn.Inputs {
 			if input.FundType == types.SpecifierSiacoinInput && input.WalletAddress {
@@ -435,7 +435,7 @@ func wallettransactionscmd() {
 			}
 		}
 
-		// Determine the number of incoming siacoins and siafunds.
+		// Determine the number of incoming space cash.
 		var incomingSiacoins types.Currency
 		for _, output := range txn.Outputs {
 			if output.FundType == types.SpecifierMinerPayout {

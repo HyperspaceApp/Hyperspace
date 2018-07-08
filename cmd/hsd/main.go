@@ -103,7 +103,7 @@ Transaction Pool (t):
 	Example:
 		hsd -M gct
 Wallet (w):
-	The wallet stores and manages siacoins and siafunds.
+	The wallet stores and manages space cash.
 	The wallet requires the consensus set and transaction pool.
 	Example:
 		hsd -M gctw

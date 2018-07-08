@@ -179,8 +179,7 @@ A Transaction is composed of the following:
 - Transaction Signatures
 
 The sum of all the siacoin inputs must equal the sum of all the miner fees,
-siacoin outputs, and file contract payouts. There can be no leftovers. The sum
-of all siafund inputs must equal the sum of all siafund outputs.
+siacoin outputs, and file contract payouts. There can be no leftovers.
 
 Several objects have unlock hashes. An unlock hash is the Merkle root of the
 'unlock conditions' object. The unlock conditions contain a timelock, a number
@@ -236,8 +235,7 @@ is not padded out.
 
 The storage proof must be submitted between the 'WindowStart' and 'WindowEnd'
 fields of the contract. There is a 'Payout', which indicates how many siacoins
-are given out when the storage proof is provided. 3.9% of this payout (rounded
-down to the nearest 10,000) is put aside for the owners of siafunds. If the
+are given out when the storage proof is provided. If the
 storage proof is provided and is valid, the remaining payout is put in an
 output spendable by the 'valid proof spend hash', and if a valid storage proof
 is not provided to the blockchain by 'end', the remaining payout is put in an
@@ -270,7 +268,7 @@ Storage Proofs
 --------------
 
 A storage proof transaction is any transaction containing a storage proof.
-Storage proof transactions are not allowed to have siacoin or siafund outputs,
+Storage proof transactions are not allowed to have siacoin outputs,
 and are not allowed to have file contracts.
 
 When creating a storage proof, you only prove that you have a single 64 byte
@@ -292,9 +290,8 @@ hashes required to fill out the remaining tree. The total size of the proof
 will be 64 bytes + 32 bytes * log(num segments), and can be verified by anybody
 who knows the root hash and the file size.
 
-Storage proof transactions are not allowed to have siacoin outputs, siafund
-outputs, or contracts. All outputs created by the storage proofs cannot be
-spent for 50 blocks.
+Storage proof transactions are not allowed to have siacoin outputs or contracts.
+All outputs created by the storage proofs cannot be spent for 50 blocks.
 
 These limits are in place because a simple blockchain reorganization can change
 the trigger block, which will invalidate the storage proof and therefore the
