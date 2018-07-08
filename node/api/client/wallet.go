@@ -92,17 +92,17 @@ func (c *Client) WalletSiacoinsMultiPost(outputs []types.SiacoinOutput) (wsp api
 		return api.WalletSiacoinsPOST{}, err
 	}
 	values.Set("outputs", string(marshaledOutputs))
-	err = c.post("/wallet/siacoins", values.Encode(), &wsp)
+	err = c.post("/wallet/spacecash", values.Encode(), &wsp)
 	return
 }
 
-// WalletSiacoinsPost uses the /wallet/siacoins api endpoint to send money to a
+// WalletSiacoinsPost uses the /wallet/spacecash api endpoint to send money to a
 // single address
 func (c *Client) WalletSiacoinsPost(amount types.Currency, destination types.UnlockHash) (wsp api.WalletSiacoinsPOST, err error) {
 	values := url.Values{}
 	values.Set("amount", amount.String())
 	values.Set("destination", destination.String())
-	err = c.post("/wallet/siacoins", values.Encode(), &wsp)
+	err = c.post("/wallet/spacecash", values.Encode(), &wsp)
 	return
 }
 

@@ -12,9 +12,9 @@ in production.
 Overview
 --------
 
-The wallet stores and manages siacoins and siafunds. The wallet's API endpoints
+The wallet stores and manages space cash. The wallet's API endpoints
 expose methods for creating and loading wallets, locking and unlocking, sending
-siacoins and siafunds, and getting the wallet's balance.
+space cash, and getting the wallet's balance.
 
 You must create a wallet before you can use the wallet's API endpoints. You can
 create a wallet with the `/wallet/init` endpoint. Wallets are always encrypted
@@ -39,8 +39,7 @@ Index
 | [/wallet/lock](#walletlock-post)                                | POST      |
 | [/wallet/seed](#walletseed-post)                                | POST      |
 | [/wallet/seeds](#walletseeds-get)                               | GET       |
-| [/wallet/siacoins](#walletsiacoins-post)                        | POST      |
-| [/wallet/siafunds](#walletsiafunds-post)                        | POST      |
+| [/wallet/spacecash](#walletspacecash-post)                      | POST      |
 | [/wallet/siagkey](#walletsiagkey-post)                          | POST      |
 | [/wallet/sweep/seed](#walletsweepseed-post)                     | POST      |
 | [/wallet/transaction/___:id___](#wallettransactionid-get)       | GET       |
@@ -75,11 +74,11 @@ locked or unlocked.
   // and /sweep/seed.
   "rescanning": false,
 
-  // Number of siacoins, in hastings, available to the wallet as of the most
+  // Number of space cash, in hastings, available to the wallet as of the most
   // recent block in the blockchain.
   "confirmedsiacoinbalance": "123456", // hastings, big int
 
-  // Number of siacoins, in hastings, that are leaving the wallet according
+  // Number of space cash, in hastings, that are leaving the wallet according
   // to the set of unconfirmed transactions. Often this number appears
   // inflated, because outputs are frequently larger than the number of coins
   // being sent, and there is a refund. These coins are counted as outgoing,
@@ -319,9 +318,9 @@ dictionary
 }
 ```
 
-#### /wallet/siacoins [POST]
+#### /wallet/spacecash [POST]
 
-Function: Send siacoins to an address or set of addresses. The outputs are
+Function: Send space cash to an address or set of addresses. The outputs are
 arbitrarily selected from addresses in the wallet. If 'outputs' is supplied,
 'amount' and 'destination' must be empty. The number of outputs should not
 exceed 400; this may result in a transaction too large to fit in the
@@ -362,7 +361,7 @@ outputs
 ###### Example POST Request
 Use _amount_ and _destination_ parameters.
 ```
-/wallet/siacoins?amount=1000000000000000000000000&destination=1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab
+/wallet/spacecash?amount=1000000000000000000000000&destination=1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab
 ```
 
 ###### Expected Response Code
@@ -387,7 +386,7 @@ Use _outputs_ parameter in the form of a JSON array. _amount_ and _destination_ 
 
 ###### Example POST Request
 ```
-/wallet/siacoins?outputs=[{"unlockhash":"1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab","value":"1000000000000000000000000"},{"unlockhash":"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab1234567890","value":"8000000000000000000000000"},{"unlockhash":"cdef0123456789abcdef0123456789abcdef0123456789ab1234567890abcdef0123456789ab","value":"5000000000000000000000000"}]
+/wallet/spacecash?outputs=[{"unlockhash":"1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab","value":"1000000000000000000000000"},{"unlockhash":"abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab1234567890","value":"8000000000000000000000000"},{"unlockhash":"cdef0123456789abcdef0123456789abcdef0123456789ab1234567890abcdef0123456789ab","value":"5000000000000000000000000"}]
 ```
 
 ###### (sample JSON request body for reference)

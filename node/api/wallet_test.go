@@ -362,7 +362,7 @@ func TestWalletGETSiacoins(t *testing.T) {
 	sendSiacoinsValues := url.Values{}
 	sendSiacoinsValues.Set("amount", "1234")
 	sendSiacoinsValues.Set("destination", wag.Address.String())
-	err = st.stdPostAPI("/wallet/siacoins", sendSiacoinsValues)
+	err = st.stdPostAPI("/wallet/spacecash", sendSiacoinsValues)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -663,7 +663,7 @@ func TestWalletTransactionGETid(t *testing.T) {
 	sendSiacoinsValues := url.Values{}
 	sendSiacoinsValues.Set("amount", sentValue.String())
 	sendSiacoinsValues.Set("destination", wag.Address.String())
-	err = st.stdPostAPI("/wallet/siacoins", sendSiacoinsValues)
+	err = st.stdPostAPI("/wallet/spacecash", sendSiacoinsValues)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1236,7 +1236,7 @@ func TestWalletChangePassword(t *testing.T) {
 	}
 }
 
-// TestWalletSiacoins tests the /wallet/siacoins endpoint, including sending
+// TestWalletSiacoins tests the /wallet/spacecash endpoint, including sending
 // to multiple addresses.
 func TestWalletSiacoins(t *testing.T) {
 	if testing.Short() || !build.VLONG {
@@ -1303,7 +1303,7 @@ func TestWalletSiacoins(t *testing.T) {
 		Value:      sendAmount,
 	}})
 	sendSiacoinsValues.Set("outputs", string(outputsJSON))
-	if err = st.stdPostAPI("/wallet/siacoins", sendSiacoinsValues); err != nil {
+	if err = st.stdPostAPI("/wallet/spacecash", sendSiacoinsValues); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1323,7 +1323,7 @@ func TestWalletSiacoins(t *testing.T) {
 	outputsJSON, _ = json.Marshal(outputs)
 	sendSiacoinsValues = url.Values{}
 	sendSiacoinsValues.Set("outputs", string(outputsJSON))
-	if err = st.stdPostAPI("/wallet/siacoins", sendSiacoinsValues); err != nil {
+	if err = st.stdPostAPI("/wallet/spacecash", sendSiacoinsValues); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1344,7 +1344,7 @@ func TestWalletSiacoins(t *testing.T) {
 	outputsJSON, _ = json.Marshal(outputs)
 	sendSiacoinsValues = url.Values{}
 	sendSiacoinsValues.Set("outputs", string(outputsJSON))
-	if err = st.stdPostAPI("/wallet/siacoins", sendSiacoinsValues); err != nil {
+	if err = st.stdPostAPI("/wallet/spacecash", sendSiacoinsValues); err != nil {
 		t.Fatal(err)
 	}
 

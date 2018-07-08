@@ -53,7 +53,7 @@ type (
 	}
 
 	// WalletSiacoinsPOST contains the transaction sent in the POST call to
-	// /wallet/siacoins.
+	// /wallet/spacecash.
 	WalletSiacoinsPOST struct {
 		TransactionIDs []types.TransactionID `json:"transactionids"`
 	}
@@ -402,7 +402,7 @@ func (api *API) walletSeedsHandler(w http.ResponseWriter, req *http.Request, _ h
 	})
 }
 
-// walletSiacoinsHandler handles API calls to /wallet/siacoins.
+// walletSiacoinsHandler handles API calls to /wallet/spacecash.
 func (api *API) walletSiacoinsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	var txns []types.Transaction
 	if req.FormValue("outputs") != "" {
@@ -420,25 +420,25 @@ func (api *API) walletSiacoinsHandler(w http.ResponseWriter, req *http.Request, 
 		}
 		txns, err = api.wallet.SendSiacoinsMulti(outputs)
 		if err != nil {
-			WriteError(w, Error{"error when calling /wallet/siacoins: " + err.Error()}, http.StatusInternalServerError)
+			WriteError(w, Error{"error when calling /wallet/spacecash: " + err.Error()}, http.StatusInternalServerError)
 			return
 		}
 	} else {
 		// single amount + destination
 		amount, ok := scanAmount(req.FormValue("amount"))
 		if !ok {
-			WriteError(w, Error{"could not read amount from POST call to /wallet/siacoins"}, http.StatusBadRequest)
+			WriteError(w, Error{"could not read amount from POST call to /wallet/spacecash"}, http.StatusBadRequest)
 			return
 		}
 		dest, err := scanAddress(req.FormValue("destination"))
 		if err != nil {
-			WriteError(w, Error{"could not read address from POST call to /wallet/siacoins"}, http.StatusBadRequest)
+			WriteError(w, Error{"could not read address from POST call to /wallet/spacecash"}, http.StatusBadRequest)
 			return
 		}
 
 		txns, err = api.wallet.SendSiacoins(amount, dest)
 		if err != nil {
-			WriteError(w, Error{"error when calling /wallet/siacoins: " + err.Error()}, http.StatusInternalServerError)
+			WriteError(w, Error{"error when calling /wallet/spacecash: " + err.Error()}, http.StatusInternalServerError)
 			return
 		}
 
