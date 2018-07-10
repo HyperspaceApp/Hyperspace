@@ -31,7 +31,7 @@ var (
 )
 
 // transactionBuilder allows transactions to be manually constructed, including
-// the ability to fund transactions with siacoins and siafunds from the wallet.
+// the ability to fund transactions with space cash from the wallet.
 type transactionBuilder struct {
 	// 'signed' indicates that at least one transaction signature has been
 	// added to the wallet, meaning that future calls to 'Sign' will fail.
@@ -41,7 +41,6 @@ type transactionBuilder struct {
 
 	newParents            []int
 	siacoinInputs         []int
-	siafundInputs         []int
 	transactionSignatures []int
 
 	wallet *Wallet
@@ -49,7 +48,7 @@ type transactionBuilder struct {
 
 // addSignatures will sign a transaction using a spendable key, with support
 // for multisig spendable keys. Because of the restricted input, the function
-// is compatible with both siacoin inputs and siafund inputs.
+// is compatible with space cash inputs.
 func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.UnlockConditions, parentID crypto.Hash, spendKey spendableKey) (newSigIndices []int) {
 	// Try to find the matching secret key for each public key - some public
 	// keys may not have a match. Some secret keys may be used multiple times,
@@ -508,7 +507,6 @@ func (tb *transactionBuilder) Drop() {
 
 	tb.newParents = nil
 	tb.siacoinInputs = nil
-	tb.siafundInputs = nil
 	tb.transactionSignatures = nil
 }
 
@@ -591,10 +589,10 @@ func (tb *transactionBuilder) View() (types.Transaction, []types.Transaction) {
 	return tb.transaction, tb.parents
 }
 
-// ViewAdded returns all of the siacoin inputs, siafund inputs, and parent
+// ViewAdded returns all of the space cash inputs and parent
 // transactions that have been automatically added by the builder.
-func (tb *transactionBuilder) ViewAdded() (newParents, siacoinInputs, siafundInputs, transactionSignatures []int) {
-	return tb.newParents, tb.siacoinInputs, tb.siafundInputs, tb.transactionSignatures
+func (tb *transactionBuilder) ViewAdded() (newParents, siacoinInputs, transactionSignatures []int) {
+	return tb.newParents, tb.siacoinInputs, tb.transactionSignatures
 }
 
 // registerTransaction takes a transaction and its parents and returns a

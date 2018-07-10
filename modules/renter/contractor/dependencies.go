@@ -40,7 +40,7 @@ type (
 		Sign(bool) ([]types.Transaction, error)
 		UnconfirmedParents() ([]types.Transaction, error)
 		View() (types.Transaction, []types.Transaction)
-		ViewAdded() (parents, coins, funds, signatures []int)
+		ViewAdded() (parents, coins, signatures []int)
 	}
 	transactionPool interface {
 		AcceptTransactionSet([]types.Transaction) error

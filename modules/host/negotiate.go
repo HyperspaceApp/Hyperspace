@@ -271,7 +271,7 @@ func (h *Host) managedFinalizeContract(builder modules.TransactionBuilder, rente
 
 	// Get the host's transaction signatures from the builder.
 	var hostTxnSignatures []types.TransactionSignature
-	_, _, _, txnSigIndices := builder.ViewAdded()
+	_, _, txnSigIndices := builder.ViewAdded()
 	for _, sigIndex := range txnSigIndices {
 		hostTxnSignatures = append(hostTxnSignatures, fullTxn.TransactionSignatures[sigIndex])
 	}

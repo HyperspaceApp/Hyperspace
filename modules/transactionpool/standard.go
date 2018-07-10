@@ -72,7 +72,7 @@ func isStandardTransaction(t types.Transaction) (uint64, error) {
 	}
 
 	// Check that all public keys are of a recognized type. Need to check all
-	// of the UnlockConditions, which currently can appear in 3 separate fields
+	// of the UnlockConditions, which currently can appear in 2 separate fields
 	// of the transaction. Unrecognized types are ignored because a softfork
 	// may make certain unrecognized signatures invalid, and this node cannot
 	// tell which signatures are the invalid ones.
@@ -108,7 +108,7 @@ func isStandardTransaction(t types.Transaction) (uint64, error) {
 	return uint64(tlen), nil
 }
 
-// isStandardTransactionSet checks that all transacitons of a set follow the
+// isStandardTransactionSet checks that all transactions of a set follow the
 // IsStandard guidelines, and that the set as a whole follows the guidelines as
 // well.
 //
