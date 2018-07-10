@@ -79,7 +79,7 @@ func TestViewAdded(t *testing.T) {
 		t.Fatal(err)
 	}
 	unfinishedTxn2, unfinishedParents2 := b2.View()
-	newParentIndices, newInputIndices, _, _ := b2.ViewAdded()
+	newParentIndices, newInputIndices, _ := b2.ViewAdded()
 
 	// Add the new elements from b2 to b and sign the transaction, fetching the
 	// signature for b.
@@ -106,7 +106,7 @@ func TestViewAdded(t *testing.T) {
 	unfinishedTxn3, _ := b.View()
 	// Only the new signatures are needed because the previous call to 'View'
 	// included everything else.
-	_, _, _, newTxnSignaturesIndices := b.ViewAdded()
+	_, _, newTxnSignaturesIndices := b.ViewAdded()
 
 	// Add the new signatures to b2, and then sign b2's inputs. The resulting
 	// set from b2 should be valid.
@@ -122,7 +122,7 @@ func TestViewAdded(t *testing.T) {
 		t.Fatal(err)
 	}
 	finishedTxn, _ := b2.View()
-	_, _, _, newTxnSignaturesIndices3 := b2.ViewAdded()
+	_, _, newTxnSignaturesIndices3 := b2.ViewAdded()
 
 	// Add the new signatures from b2 to the b1 transaction, which should
 	// complete the transaction and create a transaction set in 'b' that is

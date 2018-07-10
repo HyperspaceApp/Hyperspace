@@ -198,7 +198,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 
 	// calculate signatures added by the transaction builder
 	var addedSignatures []types.TransactionSignature
-	_, _, _, addedSignatureIndices := txnBuilder.ViewAdded()
+	_, _, addedSignatureIndices := txnBuilder.ViewAdded()
 	for _, i := range addedSignatureIndices {
 		addedSignatures = append(addedSignatures, signedTxnSet[len(signedTxnSet)-1].TransactionSignatures[i])
 	}

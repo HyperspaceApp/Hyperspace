@@ -196,10 +196,10 @@ type (
 		// parents.
 		View() (txn types.Transaction, parents []types.Transaction)
 
-		// ViewAdded returns all of the siacoin inputs, siafund inputs, and
+		// ViewAdded returns all of the space cash inputs and
 		// parent transactions that have been automatically added by the
 		// builder. Items are returned by index.
-		ViewAdded() (newParents, siacoinInputs, siafundInputs, transactionSignatures []int)
+		ViewAdded() (newParents, siacoinInputs, transactionSignatures []int)
 
 		// Drop indicates that a transaction is no longer useful and will not be
 		// broadcast, and that all of the outputs can be reclaimed. 'Drop'

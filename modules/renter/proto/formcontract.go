@@ -49,7 +49,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 
 	// Calculate the payouts for the renter, host, and whole contract.
-	renterPayout := funding.Sub(host.ContractPrice).Sub(txnFee) // renter payout is pre-tax
+	renterPayout := funding.Sub(host.ContractPrice).Sub(txnFee)
 	maxStorageSize := renterPayout.Div(host.StoragePrice)
 	hostCollateral := maxStorageSize.Mul(host.Collateral)
 	if hostCollateral.Cmp(host.MaxCollateral) > 0 {
@@ -59,10 +59,6 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	hostPayout := hostCollateral.Add(host.ContractPrice)
 	totalPayout := renterPayout.Add(hostPayout)
 
-	// Check for negative currency.
-	if totalPayout.Cmp(hostPayout) < 0 {
-		return modules.RenterContract{}, errors.New("not enough money to pay both siafund fee and also host payout")
-	}
 	// Create file contract.
 	fc := types.FileContract{
 		FileSize:       0,
@@ -73,8 +69,8 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 		UnlockHash:     uc.UnlockHash(),
 		RevisionNumber: 0,
 		ValidProofOutputs: []types.SiacoinOutput{
-			// Outputs need to account for tax.
-			{Value: totalPayout.Sub(hostPayout), UnlockHash: refundAddress}, // This is the renter payout, but with tax applied.
+			// This is the renter payout.
+			{Value: totalPayout.Sub(hostPayout), UnlockHash: refundAddress},
 			// Collateral is returned to host.
 			{Value: hostPayout, UnlockHash: host.UnlockHash},
 		},
@@ -191,7 +187,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 
 	// Calculate signatures added by the transaction builder.
 	var addedSignatures []types.TransactionSignature
-	_, _, _, addedSignatureIndices := txnBuilder.ViewAdded()
+	_, _, addedSignatureIndices := txnBuilder.ViewAdded()
 	for _, i := range addedSignatureIndices {
 		addedSignatures = append(addedSignatures, signedTxnSet[len(signedTxnSet)-1].TransactionSignatures[i])
 	}
