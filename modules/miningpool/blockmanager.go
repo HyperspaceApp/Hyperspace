@@ -31,7 +31,7 @@ func (p *Pool) blockForWork() types.Block {
 	p.log.Printf("miner fees cost: %s", b.CalculateMinerFees().String())
 	p.log.Printf("# transactions: %d", len(b.Transactions))
 	p.log.Printf("miner payout value is: %s", minerPayoutVal.String())
-	p.log.Printf("dev payout value is: %s", devPayoutVal.String())
+	p.log.Printf("dev payout value is  : %s", devPayoutVal.String())
 	b.MinerPayouts = []types.SiacoinOutput{{
 		Value:      minerPayoutVal,
 		UnlockHash: p.persist.Settings.PoolWallet,
