@@ -62,7 +62,7 @@ func (h *Host) managedAddRenewCollateral(so storageObligation, settings modules.
 	}
 
 	// Return which inputs have been added by the collateral call.
-	newParentIndices, newInputIndices, _, _ := builder.ViewAdded()
+	newParentIndices, newInputIndices, _ := builder.ViewAdded()
 	updatedTxn, updatedParents := builder.View()
 	for _, parentIndex := range newParentIndices {
 		newParents = append(newParents, updatedParents[parentIndex])
