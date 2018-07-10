@@ -84,19 +84,10 @@ func (sc *StratumClient) RestartOnError(err error) {
 // SubscribeAndAuthorize first attempts to authorize and, if successful,
 // subscribes
 func (sc *StratumClient) SubscribeAndAuthorize() {
-	log.Println("About to launch authorization goroutine")
-	// Authorize the miner
-	result, err := sc.tcpclient.Call("mining.authorize", []string{sc.User, ""})
-	if err != nil {
-		log.Println("Unable to authorize:", err)
-		return
-	}
-	log.Println("Authorization of", sc.User, ":", result)
-
 	// Subscribe for mining
 	// Closing the connection on an error will cause the client to generate an error,
 	// resulting in the errorhandler to be triggered
-	result, err = sc.tcpclient.Call("mining.subscribe", []string{"gominer"})
+	result, err := sc.tcpclient.Call("mining.subscribe", []string{"test-gominer"})
 	if err != nil {
 		log.Println("subscribe not ok")
 		log.Println("ERROR Error in response from stratum:", err)
@@ -124,10 +115,20 @@ func (sc *StratumClient) SubscribeAndAuthorize() {
 		return
 	}
 	sc.extranonce2Size = uint(extranonce2Size)
+
+	log.Println("About to launch authorization goroutine")
+	// Authorize the miner
+	result, err = sc.tcpclient.Call("mining.authorize", []string{sc.User, ""})
+	if err != nil {
+		log.Println("Unable to authorize:", err)
+		return
+	}
+	log.Println("Authorization of", sc.User, ":", result)
 }
 
 // Start connects to the stratumserver and processes the notifications
 func (sc *StratumClient) Start() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Println("Starting StratumClient")
 	sc.mutex.Lock()
 	if sc.shouldstop {
@@ -166,6 +167,7 @@ func (sc *StratumClient) Start() {
 	sc.subscribeToStratumJobNotifications()
 
 	sc.mutex.Unlock()
+	errorCount := 0
 
 	// Connect to the stratum server
 	for {
@@ -178,9 +180,14 @@ func (sc *StratumClient) Start() {
 		err := sc.tcpclient.Dial(sc.connectionstring)
 		if err != nil {
 			//log.Println("TCP dialing failed")
-			log.Println("ERROR Error in making tcp connection:", err)
+			log.Printf("ERROR Error in making tcp connection %d:%s", errorCount, err)
+			errorCount++
+			if errorCount >= 5 {
+				return
+			}
 			continue
 		} else {
+			errorCount = 0
 			break
 		}
 	}

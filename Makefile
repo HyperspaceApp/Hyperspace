@@ -106,7 +106,7 @@ test-cpu:
 test-mem:
 	go test -v -tags='testing debug netgo' -timeout=500s -memprofile mem.prof $(pkgs) -run=$(run)
 test-pool:
-	go test -short -parallel=1 -tags='testing debug pool' -timeout=60s ./modules/miningpool -run=$(run)
+	go test -short -parallel=1 -tags='testing debug pool' -timeout=120s ./modules/miningpool -run=$(run)
 bench: clean fmt
 	go test -tags='debug testing netgo' -timeout=500s -run=XXX -bench=$(run) $(pkgs)
 cover: clean
