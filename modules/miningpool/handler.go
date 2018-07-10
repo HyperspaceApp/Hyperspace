@@ -15,7 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -267,7 +266,7 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 
 	//	diff := "b4b6693b72a50c7116db18d6497cac52"
 	t, _ := h.p.persist.Target.Difficulty().Uint64()
-	h.log.Debugf("Difficulty: %x\n", t)
+	h.log.Debugf("Block Difficulty: %x\n", t)
 	tb := make([]byte, 8)
 	binary.LittleEndian.PutUint64(tb, t)
 	diff := hex.EncodeToString(tb)
@@ -516,6 +515,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	if err != nil && err != modules.ErrBlockUnsolved {
 		h.log.Printf("Failed to SubmitBlock(): %v\n", err)
 		h.log.Printf(sPrintBlock(b))
+		panic(fmt.Sprintf("Failed to SubmitBlock(): %v\n", err))
 		r.Result = false //json.RawMessage(`false`)
 		r.Error = interfaceify([]string{"20", "Stale share"})
 		h.s.CurrentWorker.IncrementInvalidShares()
@@ -541,9 +541,6 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 }
 
 func (h *Handler) sendSetDifficulty(d float64) error {
-	if build.Release == "testing" {
-		return nil // not adjust for testing
-	}
 	var r types.StratumRequest
 
 	r.Method = "mining.set_difficulty"
