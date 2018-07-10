@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	// "math/big"
 	"net"
 	"strconv"
@@ -481,7 +482,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 
 	b.Transactions = append(b.Transactions, []types.Transaction{cointxn}...)
 	blockHash := b.ID()
-	// bh := new(big.Int).SetBytes(blockHash[:])
+	bh := new(big.Int).SetBytes(blockHash[:])
 
 	sessionPoolTarget, _ := difficultyToTarget(sessionPoolDifficulty)
 
@@ -489,12 +490,12 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	// 	sessionPoolDifficulty, printWithSuffix(sessionPoolTarget.Difficulty()))
 
 	// need to checkout the block hashrate reach pool target or not
-	// h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
-	// h.s.CurrentWorker.log.Printf("Session target:   %064x\n", sessionPoolTarget.Int())
 	if bytes.Compare(sessionPoolTarget[:], blockHash[:]) < 0 {
 		r.Result = false
 		r.Error = interfaceify([]string{"22", "Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
 		h.s.CurrentWorker.log.Printf("Submit nonce not reach pool diff target\n")
+		h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
+		h.s.CurrentWorker.log.Printf("Session target:   %064x\n", sessionPoolTarget.Int())
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
 	}
