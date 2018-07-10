@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -56,7 +57,7 @@ func (c *TcpClient) Dial(host string) (err error) {
 	default:
 	}
 
-	fmt.Println("TcpClient Dialing")
+	log.Println("TcpClient Dialing")
 	c.mu.Lock()
 	c.connected = false
 	c.socket, err = net.Dial("tcp", host)
@@ -67,40 +68,40 @@ func (c *TcpClient) Dial(host string) (err error) {
 	default:
 	}
 	if err != nil {
-		//fmt.Println(err)
+		//log.Println(err)
 		c.dispatchError(err)
 		return err
 	}
 	c.tg.OnStop(func() error {
-		fmt.Println("TCPClient: Closing c.socket")
+		log.Println("TCPClient: Closing c.socket")
 		c.cancelAllRequests()
 		c.socket.Close()
 		return nil
 	})
 	c.connected = true
-	//fmt.Println("TcpClient Done Dialing")
+	//log.Println("TcpClient Done Dialing")
 	go c.Listen()
 	return
 }
 
 // Close releases the tcp connection
 func (c *TcpClient) Close() {
-	fmt.Println("TcpClient Close() called")
+	log.Println("TcpClient Close() called")
 	if err := c.tg.Stop(); err != nil {
 		panic(err.Error())
 	}
-	fmt.Println("Closing TcpClient socket")
+	log.Println("Closing TcpClient socket")
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.connected = false
-	//fmt.Println("Done closing TcpClient")
+	//log.Println("Done closing TcpClient")
 }
 
 // Connected returns whether or not the tcp client has an open tcp socket
 func (c *TcpClient) Connected() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	fmt.Printf("Checking if connected: %t\n", c.connected)
+	log.Printf("Checking if connected: %t\n", c.connected)
 	return c.connected
 }
 
@@ -124,8 +125,8 @@ func (c *TcpClient) dispatchNotification(n types.StratumNotification) {
 
 func (c *TcpClient) dispatch(r types.StratumResponse) {
 	if r.ID == 0 {
-		fmt.Println("Dispatching notification")
-		fmt.Println(r.StratumNotification)
+		log.Println("Dispatching notification")
+		log.Println(r.StratumNotification)
 		c.dispatchNotification(r.StratumNotification)
 		return
 	}
@@ -133,8 +134,8 @@ func (c *TcpClient) dispatch(r types.StratumResponse) {
 	defer c.callsMutex.Unlock()
 	cb, found := c.pendingCalls[r.ID]
 	var result interface{}
-	//fmt.Printf("dispatch response: %s\n", r.Result)
-	//fmt.Printf("dispatch error: %s\n", r.Error)
+	//log.Printf("dispatch response: %s\n", r.Result)
+	//log.Printf("dispatch error: %s\n", r.Error)
 	if r.Error != nil {
 		message := ""
 		if len(r.Error) >= 2 {
@@ -155,11 +156,11 @@ func (c *TcpClient) dispatch(r types.StratumResponse) {
 }
 
 func (c *TcpClient) dispatchError(err error) {
-	fmt.Println("dispatching error")
+	log.Println("dispatching error")
 	select {
 	// don't dispatch any errors if we've been shutdown!
 	case <-c.tg.StopChan():
-		fmt.Println("stop called, not dispatching error")
+		log.Println("stop called, not dispatching error")
 		return
 	default:
 	}
@@ -183,12 +184,12 @@ func (c *TcpClient) Listen() {
 		// bail out if we've called stop
 		select {
 		case <-c.tg.StopChan():
-			fmt.Println("TCPCLIENT StopChan called, done Listen()ing")
+			log.Println("TCPCLIENT StopChan called, done Listen()ing")
 			return
 		default:
 		}
 		if err != nil {
-			fmt.Printf("TCPCLIENT ERR: %s\n", err)
+			log.Printf("TCPCLIENT ERR: %s\n", err)
 			c.dispatchError(err)
 			return
 		}
