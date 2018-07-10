@@ -23,7 +23,7 @@ var (
 	// to support development of the network instead of the miners
 	DevFundDenom = NewCurrency64(10)
 	// DevFundUnlockHash is the unlock hash for the dev fund subsidy
-	DevFundUnlockHash = UnlockHash{214, 166, 197, 164, 29, 201, 53, 236, 106, 239, 10, 158, 127, 131, 20, 138, 63, 221, 230, 16, 98, 247, 32, 77, 210, 68, 116, 12, 241, 89, 27, 223}
+	DevFundUnlockHash = UnlockHash{11, 181, 8, 164, 183, 210, 131, 249, 231, 29, 124, 111, 185, 42, 124, 113, 171, 73, 211, 74, 121, 74, 3, 10, 125, 79, 103, 82, 25, 96, 80, 114}
 	// ExtremeFutureThreshold is a temporal limit beyond which Blocks are
 	// discarded by the consensus rules. When incoming Blocks are processed, their
 	// Timestamp is allowed to exceed the processor's current time by a small amount.
@@ -261,7 +261,7 @@ func init() {
 	GenesisAirdropAllocation = []SiacoinOutput{
 		{
 			Value: NewCurrency64(35373763032).Div(NewCurrency64(10)),
-			UnlockHash: UnlockHash{},
+			UnlockHash: UnlockHash{1, 78, 110, 30, 57, 157, 243, 202, 182, 22, 28, 128, 196, 109, 211, 107, 251, 45, 254, 248, 118, 23, 222, 1, 218, 240, 66, 187, 57, 88, 237, 214},
 		},
 	}
 	// Create the genesis block.
