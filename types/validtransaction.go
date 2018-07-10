@@ -160,8 +160,8 @@ func (t Transaction) followsStorageProofRules() error {
 		return nil
 	}
 
-	// If there are storage proofs, there can be no siacoin outputs, siafund
-	// outputs, new file contracts, or file contract terminations. These
+	// If there are storage proofs, there can be no siacoin outputs,
+	// new file contracts, or file contract terminations. These
 	// restrictions are in place because a storage proof can be invalidated by
 	// a simple reorg, which will also invalidate the rest of the transaction.
 	// These restrictions minimize blockchain turbulence. These other types
@@ -188,7 +188,7 @@ func (t Transaction) followsStorageProofRules() error {
 // contract terminations are not valid after the proof window opens.
 func (t Transaction) noRepeats() error {
 	// Check that there are no repeat instances of siacoin outputs, storage
-	// proofs, contract terminations, or siafund outputs.
+	// proofs, or contract terminations.
 	siacoinInputs := make(map[SiacoinOutputID]struct{})
 	for _, sci := range t.SiacoinInputs {
 		_, exists := siacoinInputs[sci.ParentID]

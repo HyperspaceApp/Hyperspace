@@ -118,8 +118,6 @@ The JSON formatted block or a standard error response.
                     "value": "5780000000000000000000000000"
                 }
             ],
-            "siafundinputs": [],
-            "siafundoutputs": [],
             "storageproofs": [],
             "transactionsignatures": [
                 {
@@ -130,8 +128,6 @@ The JSON formatted block or a standard error response.
                         "minerfees": [],
                         "siacoininputs": [],
                         "siacoinoutputs": [],
-                        "siafundinputs": [],
-                        "siafundoutputs": [],
                         "storageproofs": [],
                         "transactionsignatures": [],
                         "wholetransaction": true

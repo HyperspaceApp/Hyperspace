@@ -100,7 +100,7 @@ func findSets(ts []types.Transaction) [][]types.Transaction {
 			txMap[tid] = i
 			setMap[i] = []types.Transaction{t}
 			// Don't need to add anything for the file contract outputs, storage
-			// proof outputs, siafund claim outputs; these outputs are not
+			// proof outputs; these outputs are not
 			// allowed to be spent until 50 confirmations.
 		} else {
 			// There are parent sets, pick one as the base and then merge the

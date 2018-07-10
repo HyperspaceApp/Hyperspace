@@ -103,7 +103,7 @@ This minimizes the surface area of data for a malicious party to manipulate,
 which means less verification code, which means less chances of having a bug in
 the verification code.
 
-The renter pays for the siafund fee on the host's collateral and contract fee.
+The renter pays for the contract fee.
 If a renter opens a file contract and then never uses it, the host does not
 lose money. This does put the renter at risk, as they may open up a file
 contract and then watch the host leave, but the renter is spreading the risk

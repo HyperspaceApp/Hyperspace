@@ -214,7 +214,7 @@ func (t Transaction) FileContractID(i uint64) FileContractID {
 
 // SiacoinOutputSum returns the sum of all the siacoin outputs in the
 // transaction, which must match the sum of all the siacoin inputs. Siacoin
-// outputs created by storage proofs and siafund outputs are not considered, as
+// outputs created by storage proofs are not considered, as
 // they were considered when the contract responsible for funding them was
 // created.
 func (t Transaction) SiacoinOutputSum() (sum Currency) {

@@ -78,7 +78,7 @@ returns the current settings along with metrics on the renter's spending.
   // Metrics about how much the Renter has spent on storage, uploads, and
   // downloads.
   "financialmetrics": {
-    // Amount of money spent on contract fees, transaction fees and siafund fees.
+    // Amount of money spent on contract fees and transaction fees.
     "contractfees": "1234", // hastings
 
     // How much money, in hastings, the Renter has spent on file contracts,

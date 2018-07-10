@@ -58,12 +58,12 @@ type (
 
 	// ExplorerHashGET is the object returned as a response to a GET request to
 	// /explorer/hash. The HashType will indicate whether the hash corresponds
-	// to a block id, a transaction id, a siacoin output id, a file contract
-	// id, or a siafund output id. In the case of a block id, 'Block' will be
-	// filled out and all the rest of the fields will be blank. In the case of
-	// a transaction id, 'Transaction' will be filled out and all the rest of
-	// the fields will be blank. For everything else, 'Transactions' and
-	// 'Blocks' will/may be filled out and everything else will be blank.
+	// to a block id, a transaction id, a siacoin output id, or a file contract
+	// id. In the case of a block id, 'Block' will be filled out and all the
+	// rest of the fields will be blank. In the case of a transaction id,
+	// 'Transaction' will be filled out and all the rest of the fields will be
+	// blank. For everything else, 'Transactions' and 'Blocks' will/may be
+	// filled out and everything else will be blank.
 	ExplorerHashGET struct {
 		HashType     string                `json:"hashtype"`
 		Block        ExplorerBlock         `json:"block"`

@@ -55,10 +55,8 @@ var (
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or
 	// invalidated in the event of a small reorg. One example is the block reward,
-	// as a small reorg may invalidate the block reward. Another example is a siafund
-	// payout, as a tiny reorg may change the value of the payout, and thus invalidate
-	// any transactions spending the payout. File contract payouts also are subject to
-	// a maturity delay.
+	// as a small reorg may invalidate the block reward. File contract payouts also
+	// are subject to a maturity delay.
 	MaturityDelay BlockHeight
 	// MaxTargetAdjustmentDown restrict how much the block difficulty is allowed to
 	// change in a single step, which is important to limit the effect of difficulty

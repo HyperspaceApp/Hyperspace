@@ -314,12 +314,11 @@ type (
 		// SweepSeed scans the blockchain for outputs generated from seed and
 		// creates a transaction that transfers them to the wallet. Note that
 		// this incurs a transaction fee. It returns the total value of the
-		// outputs, minus the fee. If only siafunds were found, the fee is
-		// deducted from the wallet.
+		// outputs, minus the fee.
 		SweepSeed(seed Seed) (coins, funds types.Currency, err error)
 	}
 
-	// Wallet stores and manages siacoins and siafunds. The wallet file is
+	// Wallet stores and manages space cash. The wallet file is
 	// encrypted using a user-specified password. Common addresses are all
 	// derived from a single address seed.
 	Wallet interface {
@@ -383,7 +382,7 @@ type (
 		// RegisterTransaction(types.Transaction{}, nil)
 		StartTransaction() (TransactionBuilder, error)
 
-		// SendSiacoins is a tool for sending siacoins from the wallet to an
+		// SendSiacoins is a tool for sending space cash from the wallet to an
 		// address. Sending money usually results in multiple transactions. The
 		// transactions are automatically given to the transaction pool, and
 		// are also returned to the caller.

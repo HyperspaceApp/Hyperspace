@@ -118,8 +118,6 @@ returns the set of constants in use.
   "genesistimestamp":       1257894000, // Unix time
   "maturitydelay":          144,        // blocks
   "mediantimestampwindow":  11,         // blocks
-  "siafundcount":           "10000",
-  "siafundportion":         "39/1000",
   "targetwindow":           1000,       // blocks
 
   "initialcoinbase": 300000, // Siacoins (see note in Daemon.md)
@@ -248,8 +246,6 @@ The JSON formatted block or a standard error response.
                     "value": "5780000000000000000000000000"
                 }
             ],
-            "siafundinputs": [],
-            "siafundoutputs": [],
             "storageproofs": [],
             "transactionsignatures": [
                 {
@@ -260,8 +256,6 @@ The JSON formatted block or a standard error response.
                         "minerfees": [],
                         "siacoininputs": [],
                         "siacoinoutputs": [],
-                        "siafundinputs": [],
-                        "siafundoutputs": [],
                         "storageproofs": [],
                         "transactionsignatures": [],
                         "wholetransaction": true
