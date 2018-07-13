@@ -489,12 +489,12 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	// h.s.CurrentWorker.log.Printf("session diff: %f, block version diff: %s",
 	// 	sessionPoolDifficulty, printWithSuffix(sessionPoolTarget.Difficulty()))
 
-	// need to checkout the block hashrate reach pool target or not
+	// need to verify that the submission reaches the pool target
 	if bytes.Compare(sessionPoolTarget[:], blockHash[:]) < 0 {
 		r.Result = false
-		r.Error = interfaceify([]string{"22", "Submit nonce not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
-		h.s.CurrentWorker.log.Printf("Submit nonce not reach pool diff target\n")
-		h.s.CurrentWorker.log.Printf("Submit target: %064x\n", bh)
+		r.Error = interfaceify([]string{"22", "Submitted nonce did not reach pool diff target"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		h.s.CurrentWorker.log.Printf("Submitted nonce did not reach pool diff target\n")
+		h.s.CurrentWorker.log.Printf("Submitted id: %064x\n", bh)
 		h.s.CurrentWorker.log.Printf("Session target:   %064x\n", sessionPoolTarget.Int())
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)

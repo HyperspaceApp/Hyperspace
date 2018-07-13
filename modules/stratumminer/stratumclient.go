@@ -396,6 +396,7 @@ func (sc *StratumClient) GetHeaderForWork() (target, header []byte, deprecationC
 	arbtx = append(arbtx, sc.currentJob.Coinbase2...)
 	arbtxHash := crypto.HashBytes(arbtx)
 
+
 	//Construct the merkleroot from the arbitrary transaction and the merklebranches
 	merkleRoot := arbtxHash
 	for _, h := range sc.currentJob.MerkleBranch {
