@@ -49,14 +49,6 @@ type siagKeyPair struct {
 	UnlockConditions types.UnlockConditions
 }
 
-// savedKey033x is the persist structure that was used to save and load private
-// keys in versions v0.3.3.x for siad.
-type savedKey033x struct {
-	SecretKey        crypto.SecretKey
-	UnlockConditions types.UnlockConditions
-	Visible          bool
-}
-
 // decryptSpendableKeyFile decrypts a spendableKeyFile, returning a
 // spendableKey.
 func decryptSpendableKeyFile(masterKey crypto.TwofishKey, uk spendableKeyFile) (sk spendableKey, err error) {
@@ -218,76 +210,5 @@ func (w *Wallet) LoadSiagKeys(masterKey crypto.TwofishKey, keyfiles []string) er
 		return err
 	}
 	w.tpool.TransactionPoolSubscribe(w)
-	return nil
-}
-
-// Load033xWallet loads a v0.3.3.x wallet as an unseeded key, such that the
-// funds become spendable to the current wallet.
-func (w *Wallet) Load033xWallet(masterKey crypto.TwofishKey, filepath033x string) error {
-	if err := w.tg.Add(); err != nil {
-		return err
-	}
-	defer w.tg.Done()
-
-	// load the keys and reset the consensus change ID and height in preparation for rescan
-	err := func() error {
-		w.mu.Lock()
-		defer w.mu.Unlock()
-
-		var savedKeys []savedKey033x
-		err := encoding.ReadFile(filepath033x, &savedKeys)
-		if err != nil {
-			return err
-		}
-		var seedsLoaded int
-		for _, savedKey := range savedKeys {
-			spendKey := spendableKey{
-				UnlockConditions: savedKey.UnlockConditions,
-				SecretKeys:       []crypto.SecretKey{savedKey.SecretKey},
-			}
-			err = w.loadSpendableKey(masterKey, spendKey)
-			if err != nil && err != errDuplicateSpendableKey {
-				return err
-			}
-			if err == nil {
-				seedsLoaded++
-			}
-			w.integrateSpendableKey(masterKey, spendKey)
-		}
-		if seedsLoaded == 0 {
-			return errAllDuplicates
-		}
-
-		if err = w.dbTx.DeleteBucket(bucketProcessedTransactions); err != nil {
-			return err
-		}
-		if _, err = w.dbTx.CreateBucket(bucketProcessedTransactions); err != nil {
-			return err
-		}
-		w.unconfirmedProcessedTransactions = nil
-		err = dbPutConsensusChangeID(w.dbTx, modules.ConsensusChangeBeginning)
-		if err != nil {
-			return err
-		}
-		return dbPutConsensusHeight(w.dbTx, 0)
-	}()
-	if err != nil {
-		return err
-	}
-
-	// rescan the blockchain
-	w.cs.Unsubscribe(w)
-	w.tpool.Unsubscribe(w)
-
-	done := make(chan struct{})
-	go w.rescanMessage(done)
-	defer close(done)
-
-	err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
-	if err != nil {
-		return err
-	}
-	w.tpool.TransactionPoolSubscribe(w)
-
 	return nil
 }

@@ -283,10 +283,6 @@ type (
 		// as a primary seed.
 		// LoadBackup(masterKey, backupMasterKey crypto.TwofishKey, string) error
 
-		// Load033xWallet will load a version 0.3.3.x wallet from disk and add all of
-		// the keys in the wallet as unseeded keys.
-		Load033xWallet(crypto.TwofishKey, string) error
-
 		// LoadSeed will recreate a wallet file using the recovery phrase.
 		// LoadSeed only needs to be called if the original seed file or
 		// encryption password was lost. The master key is used to encrypt the
