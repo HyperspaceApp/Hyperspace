@@ -15,7 +15,7 @@ import (
 
 const (
 	// SpecifierLen is the length in bytes of a Specifier.
-	SpecifierLen = 16
+	SpecifierLen = 17
 
 	// UnlockHashChecksumSize is the size of the checksum used to verify
 	// human-readable addresses. It is not a crypytographically secure
@@ -35,8 +35,8 @@ var (
 	SpecifierFileContractRevision = Specifier{'f', 'i', 'l', 'e', ' ', 'c', 'o', 'n', 't', 'r', 'a', 'c', 't', ' ', 'r', 'e'}
 	SpecifierMinerFee             = Specifier{'m', 'i', 'n', 'e', 'r', ' ', 'f', 'e', 'e'}
 	SpecifierMinerPayout          = Specifier{'m', 'i', 'n', 'e', 'r', ' ', 'p', 'a', 'y', 'o', 'u', 't'}
-	SpecifierSiacoinInput         = Specifier{'s', 'i', 'a', 'c', 'o', 'i', 'n', ' ', 'i', 'n', 'p', 'u', 't'}
-	SpecifierSiacoinOutput        = Specifier{'s', 'i', 'a', 'c', 'o', 'i', 'n', ' ', 'o', 'u', 't', 'p', 'u', 't'}
+	SpecifierSiacoinInput         = Specifier{'s', 'p', 'a', 'c', 'e', ' ', 'c', 'a', 's', 'h', ' ', 'i', 'n', 'p', 'u', 't'}
+	SpecifierSiacoinOutput        = Specifier{'s', 'p', 'a', 'c', 'e', ' ', 'c', 'a', 's', 'h', ' ', 'o', 'u', 't', 'p', 'u', 't'}
 	SpecifierStorageProof         = Specifier{'s', 't', 'o', 'r', 'a', 'g', 'e', ' ', 'p', 'r', 'o', 'o', 'f'}
 	SpecifierStorageProofOutput   = Specifier{'s', 't', 'o', 'r', 'a', 'g', 'e', ' ', 'p', 'r', 'o', 'o', 'f'}
 )

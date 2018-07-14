@@ -49,7 +49,12 @@ var (
 
 	// GenesisTimestamp is the timestamp when genesis block was mined
 	GenesisTimestamp Timestamp
-	// InitialCoinbase is the coinbase reward of the Genesis block.
+	// FirstMinerCoinbase is the coinbase reward of the Genesis block.
+	FirstCoinbase = uint64(15e8)
+	// SecondMinerCoinbase is the coinbase reward of the 2nd block.
+	SecondCoinbase = uint64(15e8)
+	// InitialCoinbase is the coinbase reward of the first block following the
+	// initial 2 blocks.
 	InitialCoinbase = uint64(60e3)
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
@@ -125,7 +130,7 @@ func init() {
 		// happen.
 		BlockFrequency = 120                     // 12 seconds: slow enough for developers to see ~each block, fast enough that blocks don't waste time.
 		MaturityDelay = 100                      // 60 seconds before a delayed output matures.
-		GenesisTimestamp = Timestamp(1528293910) // Change as necessary.
+		GenesisTimestamp = Timestamp(1530009392) // Change as necessary.
 		RootTarget = Target{0, 0, 2}             // Standard developer CPUs will be able to mine blocks with the race library activated.
 
 		TargetWindow = 20                              // Difficulty is adjusted based on prior 20 blocks.
