@@ -166,29 +166,6 @@ func (api *API) walletHandler(w http.ResponseWriter, req *http.Request, _ httpro
 	})
 }
 
-// wallet033xHandler handles API calls to /wallet/033x.
-func (api *API) wallet033xHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	source := req.FormValue("source")
-	// Check that source is an absolute paths.
-	if !filepath.IsAbs(source) {
-		WriteError(w, Error{"error when calling /wallet/033x: source must be an absolute path"}, http.StatusBadRequest)
-		return
-	}
-	potentialKeys := encryptionKeys(req.FormValue("encryptionpassword"))
-	for _, key := range potentialKeys {
-		err := api.wallet.Load033xWallet(key, source)
-		if err == nil {
-			WriteSuccess(w)
-			return
-		}
-		if err != nil && err != modules.ErrBadEncryptionKey {
-			WriteError(w, Error{"error when calling /wallet/033x: " + err.Error()}, http.StatusBadRequest)
-			return
-		}
-	}
-	WriteError(w, Error{modules.ErrBadEncryptionKey.Error()}, http.StatusBadRequest)
-}
-
 // walletAddressHandler handles API calls to /wallet/address.
 func (api *API) walletAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	unlockConditions, err := api.wallet.NextAddress()

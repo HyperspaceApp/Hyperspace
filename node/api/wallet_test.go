@@ -869,61 +869,6 @@ func TestWalletRelativePathErrorBackup(t *testing.T) {
 	}
 }
 
-// Tests that the /wallet/033x call checks for relative paths.
-func TestWalletRelativePathError033x(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	st, err := createServerTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.server.panicClose()
-
-	// Announce the host.
-	if err := st.announceHost(); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create tmp directory for uploads/downloads.
-	walletTestDir := build.TempDir("wallet_relative_path_033x")
-	err = os.MkdirAll(walletTestDir, 0700)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Wallet loading from 033x should error if its source is a relative path
-	load033xAbsoluteError := "error when calling /wallet/033x: source must be an absolute path"
-
-	// This should fail.
-	load033xValues := url.Values{}
-	load033xValues.Set("source", "test.dat")
-	err = st.stdPostAPI("/wallet/033x", load033xValues)
-	if err == nil || err.Error() != load033xAbsoluteError {
-		t.Fatal(err)
-	}
-
-	// As should this.
-	load033xValues = url.Values{}
-	load033xValues.Set("source", "../test.dat")
-	err = st.stdPostAPI("/wallet/033x", load033xValues)
-	if err == nil || err.Error() != load033xAbsoluteError {
-		t.Fatal(err)
-	}
-
-	// This should succeed (though the wallet method will still return an error)
-	load033xValues = url.Values{}
-	if err = createRandFile(filepath.Join(walletTestDir, "test.dat"), 0); err != nil {
-		t.Fatal(err)
-	}
-	load033xValues.Set("source", filepath.Join(walletTestDir, "test.dat"))
-	err = st.stdPostAPI("/wallet/033x", load033xValues)
-	if err == nil || err.Error() == load033xAbsoluteError {
-		t.Fatal(err)
-	}
-}
-
 // Tests that the /wallet/siagkey call checks for relative paths.
 func TestWalletRelativePathErrorSiag(t *testing.T) {
 	if testing.Short() {
