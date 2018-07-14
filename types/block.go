@@ -122,10 +122,7 @@ func (b Block) ID() BlockID {
 	return b.Header().ID()
 }
 
-// MerkleRoot calculates the Merkle root of a Block. The leaves of the Merkle
-// tree are composed of the miner outputs (one leaf per payout), and the
-// transactions (one leaf per transaction).
-func (b Block) MerkleRoot() crypto.Hash {
+func (b Block) MerkleTree() *crypto.MerkleTree {
 	tree := crypto.NewTree()
 	var buf bytes.Buffer
 	e := encoder(&buf)
@@ -154,7 +151,14 @@ func (b Block) MerkleRoot() crypto.Hash {
 			panic("Block MerkleRoot implementation is broken")
 		}
 	}
-	return tree.Root()
+	return tree
+}
+
+// MerkleRoot calculates the Merkle root of a Block. The leaves of the Merkle
+// tree are composed of the miner outputs (one leaf per payout), and the
+// transactions (one leaf per transaction).
+func (b Block) MerkleRoot() crypto.Hash {
+	return b.MerkleTree().Root()
 }
 
 // MinerPayoutID returns the ID of the miner payout at the given index, which

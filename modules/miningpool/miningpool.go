@@ -538,6 +538,11 @@ func (p *Pool) coinB1Txn() string {
 	buf := new(bytes.Buffer)
 	coinbaseTxn.MarshalSiaNoSignatures(buf)
 	b := buf.Bytes()
+	// extranonce1 and extranonce2 are 4 bytes each, and they will be part of the
+	// arbitrary transaction via the arbitrary data field. when the arbitrary data
+	// field is marshalled, the length of the arbitrary data must be specified. thus we
+	// leave 8 bytes for the necessary 2 extranonce fields. The position here is determined
+	// by the format specified in the MarshalSiaNoSignatures function.
 	binary.LittleEndian.PutUint64(b[72:87], binary.LittleEndian.Uint64(b[72:87])+8)
 	return hex.EncodeToString(b)
 }
