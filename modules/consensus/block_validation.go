@@ -44,6 +44,29 @@ func NewBlockValidator() stdBlockValidator {
 // checkMinerPayouts compares a block's miner payouts to the block's subsidy and
 // returns true if they are equal.
 func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
+	// Setup block rewards for the first two blocks
+	if (uint64(height) == 0) {
+		if len(b.MinerPayouts) != 1 {
+			return false
+		}
+		payout := b.MinerPayouts[0]
+		if !payout.Value.Equals(types.NewCurrency64(types.FirstCoinbase).Mul(types.SiacoinPrecision)) {
+			return false
+		}
+		return true
+
+	}
+	if (uint64(height) == 1) {
+		if len(b.MinerPayouts) != 1 {
+			return false
+		}
+		payout := b.MinerPayouts[0]
+		if !payout.Value.Equals(types.NewCurrency64(types.SecondCoinbase).Mul(types.SiacoinPrecision)) {
+			return false
+		}
+		return true
+	}
+
 	// Make sure we have enough payouts to cover both miner subsidy
 	// and the dev fund
 	if len(b.MinerPayouts) < 2 {
