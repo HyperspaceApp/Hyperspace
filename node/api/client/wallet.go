@@ -148,13 +148,3 @@ func (c *Client) WalletUnlockPost(password string) (err error) {
 	err = c.post("/wallet/unlock", values.Encode(), nil)
 	return
 }
-
-// Wallet033xPost uses the /wallet/033x endpoint to load a v0.3.3.x wallet into
-// the current wallet.
-func (c *Client) Wallet033xPost(path, password string) (err error) {
-	values := url.Values{}
-	values.Set("source", path)
-	values.Set("encryptionpassword", password)
-	err = c.post("/wallet/033x", values.Encode(), nil)
-	return
-}
