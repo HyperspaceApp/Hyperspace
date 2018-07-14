@@ -60,9 +60,16 @@ type (
 //
 //     coinbase := max(InitialCoinbase - height, MinimumCoinbase) * SiacoinPrecision
 func CalculateCoinbase(height BlockHeight) Currency {
+	blockHeight := uint64(height)
+	if (blockHeight == 0) {
+		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision)
+	} else if (blockHeight == 1) {
+		return NewCurrency64(SecondCoinbase).Mul(SiacoinPrecision)
+	}
+	// after the first 2 blocks, start at 60k
 	base := NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
 	// reduce by 0.2 Space Cash every block
-	deducted := NewCurrency64(uint64(height) * 2).Mul(SiacoinPrecision).Div(NewCurrency64(10))
+	deducted := NewCurrency64((blockHeight - 2) * 2).Mul(SiacoinPrecision).Div(NewCurrency64(10))
 	minimum := NewCurrency64(MinimumCoinbase).Mul(SiacoinPrecision)
 	// we can't have a negative value
 	if base.Cmp(deducted) <= 0 {
@@ -112,6 +119,12 @@ func (b Block) CalculateMinerFees() Currency {
 // CalculateSubsidies takes a block and a height and determines the block
 // subsidies for miners and the dev fund.
 func (b Block) CalculateSubsidies(height BlockHeight) (Currency, Currency) {
+	if (uint64(height) == 0) {
+		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
+	}
+	if (uint64(height) == 1) {
+		return NewCurrency64(SecondCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
+	}
 	coinbase := CalculateCoinbase(height)
 	devSubsidy := coinbase.Div(DevFundDenom)
 	minerSubsidy := coinbase.Sub(devSubsidy)
