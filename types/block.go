@@ -62,14 +62,16 @@ type (
 func CalculateCoinbase(height BlockHeight) Currency {
 	blockHeight := uint64(height)
 	if (blockHeight == 0) {
-		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision)
+		return NewCurrency64(0)
 	} else if (blockHeight == 1) {
+		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision)
+	} else if (blockHeight == 2) {
 		return NewCurrency64(SecondCoinbase).Mul(SiacoinPrecision)
 	}
 	// after the first 2 blocks, start at 60k
 	base := NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
 	// reduce by 0.2 Space Cash every block
-	deducted := NewCurrency64((blockHeight - 2) * 2).Mul(SiacoinPrecision).Div(NewCurrency64(10))
+	deducted := NewCurrency64((blockHeight - 3) * 2).Mul(SiacoinPrecision).Div(NewCurrency64(10))
 	minimum := NewCurrency64(MinimumCoinbase).Mul(SiacoinPrecision)
 	// we can't have a negative value
 	if base.Cmp(deducted) <= 0 {
@@ -89,15 +91,26 @@ func CalculateCoinbase(height BlockHeight) Currency {
 // CalculateNumSiacoins calculates the number of siacoins in circulation at a
 // given height.
 func CalculateNumSiacoins(height BlockHeight) Currency {
-	deflationBlocks := BlockHeight(InitialCoinbase - MinimumCoinbase)
-	avgDeflationSiacoins := CalculateCoinbase(0).Add(CalculateCoinbase(height)).Div(NewCurrency64(2))
-	if height <= deflationBlocks {
-		deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64(height + 1)))
-		return deflationSiacoins
+	if height == 0 {
+		return NewCurrency64(0)
+	} else if height == 1 {
+		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision)
+	} else if height == 2 {
+		return NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision)
+	}
+	founderSiacoins := NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision)
+	// each block decrements by 0.2 SPACE, so we multiply by 5 to calculate the number of
+	// deflation blocks
+	deflationBlocks := BlockHeight(InitialCoinbase - MinimumCoinbase) * 5
+	avgDeflationSiacoins := CalculateCoinbase(3).Add(CalculateCoinbase(height)).Div(NewCurrency64(2))
+	// the first 3 blocks are special, then we deflate for deflationBlocks
+	if (height - 3) <= deflationBlocks {
+		deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64((height - 3) + 1)))
+		return founderSiacoins.Add(deflationSiacoins)
 	}
 	deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64(deflationBlocks + 1)))
-	trailingSiacoins := NewCurrency64(uint64(height - deflationBlocks)).Mul(CalculateCoinbase(height))
-	return deflationSiacoins.Add(trailingSiacoins)
+	trailingSiacoins := NewCurrency64(uint64(height - 3 - deflationBlocks)).Mul(CalculateCoinbase(height))
+	return founderSiacoins.Add(deflationSiacoins).Add(trailingSiacoins)
 }
 
 // ID returns the ID of a Block, which is calculated by hashing the header.
@@ -119,10 +132,10 @@ func (b Block) CalculateMinerFees() Currency {
 // CalculateSubsidies takes a block and a height and determines the block
 // subsidies for miners and the dev fund.
 func (b Block) CalculateSubsidies(height BlockHeight) (Currency, Currency) {
-	if (uint64(height) == 0) {
+	if (uint64(height) == 1) {
 		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
 	}
-	if (uint64(height) == 1) {
+	if (uint64(height) == 2) {
 		return NewCurrency64(SecondCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
 	}
 	coinbase := CalculateCoinbase(height)

@@ -31,7 +31,7 @@ func (m *Miner) blockForWork() types.Block {
 	if err != nil {
 		m.log.Println(err)
 	}
-	devPayoutVal, minerPayoutVal := b.CalculateSubsidies(m.persist.Height + 1)
+	minerPayoutVal, devPayoutVal := b.CalculateSubsidies(m.persist.Height + 1)
 	b.MinerPayouts = []types.SiacoinOutput{{
 		Value:      minerPayoutVal,
 		UnlockHash: m.persist.Address,

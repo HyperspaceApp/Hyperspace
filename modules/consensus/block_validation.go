@@ -45,7 +45,7 @@ func NewBlockValidator() stdBlockValidator {
 // returns true if they are equal.
 func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 	// Setup block rewards for the first two blocks
-	if (uint64(height) == 0) {
+	if (uint64(height) == 1) {
 		if len(b.MinerPayouts) != 1 {
 			return false
 		}
@@ -56,7 +56,7 @@ func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 		return true
 
 	}
-	if (uint64(height) == 1) {
+	if (uint64(height) == 2) {
 		if len(b.MinerPayouts) != 1 {
 			return false
 		}
@@ -85,6 +85,7 @@ func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 
 	// Make sure the dev subsidy is correct
 	minerBlockSubsidy, devBlockSubsidy := b.CalculateSubsidies(height)
+	//fmt.Printf("checking to ensure dev payout equals the dev block subsidy. payout: %s, subsidy: %s\n", devSubsidyPayout, devBlockSubsidy)
 	if !devSubsidyPayout.Value.Equals(devBlockSubsidy) {
 		return false
 	}
@@ -92,6 +93,7 @@ func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 		return false
 	}
 
+	//fmt.Printf("checking to ensure miner payout equals the miner block subsidy. payout: %s, subsidy: %s\n", minerPayoutSum, minerBlockSubsidy)
 	// Finally, make sure the miner subsidy is correct
 	return minerBlockSubsidy.Equals(minerPayoutSum)
 }
