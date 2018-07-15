@@ -66,7 +66,7 @@ func TestStratumMinerStartAndStop(t *testing.T) {
 	}
 	st.stratumminer.StopStratumMining()
 	// give the miner a bit to stop running
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	if st.stratumminer.Mining() {
 		t.Fatal("stratum miner was stopped but is reporting its status as mining")
 	}

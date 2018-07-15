@@ -232,7 +232,7 @@ func (sm *StratumMiner) createWork() {
 		sm.mu.Unlock()
 		if err != nil {
 			sm.log.Println("ERROR fetching work -", err)
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 
