@@ -377,9 +377,9 @@ func TestStratumStartStopMiningGoodAddress(t *testing.T) {
 }
 
 func TestStratumMineBlocks(t *testing.T) {
-	// if !build.POOL {
-	// 	return
-	// }
+	if !build.POOL {
+		return
+	}
 	pt, err := newPoolTester("TestStratumMineBlocks", 0)
 	defer pt.Close()
 	if err != nil {
@@ -442,9 +442,9 @@ func TestStratumMineBlocksMiningUncleanShutdown(t *testing.T) {
 }
 
 func TestStratumMiningWhileRestart(t *testing.T) {
-	// if !build.POOL {
-	// 	return
-	// }
+	if !build.POOL {
+		return
+	}
 	pt, err := newPoolTester(t.Name(), 0)
 	time.Sleep(time.Millisecond * 2)
 	settings := pt.mpool.InternalSettings()

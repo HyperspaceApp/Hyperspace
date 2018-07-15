@@ -92,11 +92,11 @@ func CalculateCoinbase(height BlockHeight) Currency {
 // given height.
 func CalculateNumSiacoins(height BlockHeight) Currency {
 	if height == 0 {
-		return NewCurrency64(0)
+		return AirdropValue
 	} else if height == 1 {
-		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision)
+		return AirdropValue.Add(NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision))
 	} else if height == 2 {
-		return NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision)
+		return AirdropValue.Add(NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision))
 	}
 	founderSiacoins := NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision)
 	// each block decrements by 0.2 SPACE, so we multiply by 5 to calculate the number of
@@ -106,11 +106,11 @@ func CalculateNumSiacoins(height BlockHeight) Currency {
 	// the first 3 blocks are special, then we deflate for deflationBlocks
 	if (height - 3) <= deflationBlocks {
 		deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64((height - 3) + 1)))
-		return founderSiacoins.Add(deflationSiacoins)
+		return AirdropValue.Add(founderSiacoins).Add(deflationSiacoins)
 	}
 	deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64(deflationBlocks + 1)))
 	trailingSiacoins := NewCurrency64(uint64(height - 3 - deflationBlocks)).Mul(CalculateCoinbase(height))
-	return founderSiacoins.Add(deflationSiacoins).Add(trailingSiacoins)
+	return AirdropValue.Add(founderSiacoins).Add(deflationSiacoins).Add(trailingSiacoins)
 }
 
 // ID returns the ID of a Block, which is calculated by hashing the header.
@@ -132,6 +132,9 @@ func (b Block) CalculateMinerFees() Currency {
 // CalculateSubsidies takes a block and a height and determines the block
 // subsidies for miners and the dev fund.
 func (b Block) CalculateSubsidies(height BlockHeight) (Currency, Currency) {
+	if (uint64(height) == 0) {
+		return NewCurrency64(0), NewCurrency64(0)
+	}
 	if (uint64(height) == 1) {
 		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
 	}

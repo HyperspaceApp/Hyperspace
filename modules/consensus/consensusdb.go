@@ -9,6 +9,7 @@ package consensus
 import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
@@ -98,6 +99,13 @@ func (cs *ConsensusSet) createConsensusDB(tx *bolt.Tx) error {
 	err := blockHeight.Put(BlockHeight, encoding.Marshal(underflow-1))
 	if err != nil {
 		return err
+	}
+
+	// Update the siacoin output diffs map for the genesis block on disk. This
+	// needs to happen between the database being opened/initilized and the
+	// consensus set hash being calculated
+	for _, scod := range cs.blockRoot.SiacoinOutputDiffs {
+		commitSiacoinOutputDiff(tx, scod, modules.DiffApply)
 	}
 
 	// Add the miner payout from the genesis block to the delayed siacoin

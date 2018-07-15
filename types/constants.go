@@ -56,6 +56,9 @@ var (
 	// InitialCoinbase is the coinbase reward of the first block following the
 	// initial 2 blocks.
 	InitialCoinbase = uint64(60e3)
+	// AirdropValue is the total amount of coins generated in the genesis block
+	// for the airdrop.
+	AirdropValue = NewCurrency64(35373763032).Div(NewCurrency64(10))
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or
@@ -265,7 +268,7 @@ func init() {
 	// Create the initial tokens for the airdrop
 	GenesisAirdropAllocation = []SiacoinOutput{
 		{
-			Value: NewCurrency64(35373763032).Div(NewCurrency64(10)),
+			Value: AirdropValue,
 			UnlockHash: UnlockHash{1, 78, 110, 30, 57, 157, 243, 202, 182, 22, 28, 128, 196, 109, 211, 107, 251, 45, 254, 248, 118, 23, 222, 1, 218, 240, 66, 187, 57, 88, 237, 214},
 		},
 	}
