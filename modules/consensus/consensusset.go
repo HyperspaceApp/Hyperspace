@@ -133,6 +133,17 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		persistDir: persistDir,
 	}
 
+	// Create the diffs for the genesis siacoin outputs.
+	for i, siacoinOutput := range types.GenesisBlock.Transactions[0].SiacoinOutputs {
+		scid := types.GenesisBlock.Transactions[0].SiacoinOutputID(uint64(i))
+		scod := modules.SiacoinOutputDiff{
+			Direction:     modules.DiffApply,
+			ID:            scid,
+			SiacoinOutput: siacoinOutput,
+		}
+		cs.blockRoot.SiacoinOutputDiffs = append(cs.blockRoot.SiacoinOutputDiffs, scod)
+	}
+
 	// Initialize the consensus persistence structures.
 	err := cs.initPersist()
 	if err != nil {

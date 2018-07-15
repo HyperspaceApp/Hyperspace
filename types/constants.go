@@ -58,7 +58,7 @@ var (
 	InitialCoinbase = uint64(60e3)
 	// AirdropValue is the total amount of coins generated in the genesis block
 	// for the airdrop.
-	AirdropValue = NewCurrency64(35373763032).Div(NewCurrency64(10))
+	AirdropValue = NewCurrency64(35373763032).Mul(SiacoinPrecision).Div(NewCurrency64(10))
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or

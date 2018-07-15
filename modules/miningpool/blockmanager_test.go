@@ -20,7 +20,7 @@ func TestBlockForWork(t *testing.T) {
 	}
 
 	b := pt.mpool.blockForWork()
-	if b.MinerPayouts[0].Value.String() != "299999000000000000000000000000" {
+	if b.MinerPayouts[0].Value.String() != "1500000000000000000000000000000000" {
 		t.Fatal(errors.New(fmt.Sprintf("wrong block payout value: %s", b.MinerPayouts[0].Value.String())))
 	}
 
