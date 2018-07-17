@@ -19,7 +19,7 @@ if [ ! -f $keyfile ]; then
     exit 1
 fi
 keysum=$(shasum -a 256 $keyfile | cut -c -64)
-if [ $keysum != "735320b4698010500d230c487e970e12776e88f33ad777ab380a493691dadb1b" ]; then
+if [ $keysum != "f7207353794749ee36169a9bda8a5b8c83ca1206c2215556cea69ede5aecc564" ]; then
     echo "Wrong key file: checksum does not match developer key file."
     exit 1
 fi
@@ -30,11 +30,11 @@ ldflags="-s -w -X 'github.com/HyperspaceApp/Hyperspace/build.GitRevision=`git re
 for os in darwin linux windows; do
 	echo Packaging ${os}...
 	# create workspace
-	folder=release/Sia-$version-$os-amd64
+	folder=release/Hyperspace-$version-$os-amd64
 	rm -rf $folder
 	mkdir -p $folder
 	# compile and sign binaries
-	for pkg in siac siad; do
+	for pkg in hsc hsd; do
 		bin=$pkg
 		if [ "$os" == "windows" ]; then
 			bin=${pkg}.exe
@@ -52,6 +52,6 @@ for os in darwin linux windows; do
 	# zip
 	(
 		cd release
-		zip -rq Sia-$version-$os-amd64.zip Sia-$version-$os-amd64
+		zip -rq Hyperspace-$version-$os-amd64.zip Hyperspace-$version-$os-amd64
 	)
 done
