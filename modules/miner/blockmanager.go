@@ -31,14 +31,22 @@ func (m *Miner) blockForWork() types.Block {
 	if err != nil {
 		m.log.Println(err)
 	}
-	minerPayoutVal, devPayoutVal := b.CalculateSubsidies(m.persist.Height + 1)
-	b.MinerPayouts = []types.SiacoinOutput{{
-		Value:      minerPayoutVal,
-		UnlockHash: m.persist.Address,
-	}, {
-		Value:      devPayoutVal,
-		UnlockHash: types.DevFundUnlockHash,
-	}}
+	height := m.persist.Height + 1
+	minerPayoutVal, devPayoutVal := b.CalculateSubsidies(height)
+	if height <= 2 {
+		b.MinerPayouts = []types.SiacoinOutput{{
+			Value:      minerPayoutVal,
+			UnlockHash: m.persist.Address,
+		}}
+	} else {
+		b.MinerPayouts = []types.SiacoinOutput{{
+			Value:      minerPayoutVal,
+			UnlockHash: m.persist.Address,
+		}, {
+			Value:      devPayoutVal,
+			UnlockHash: types.DevFundUnlockHash,
+		}}
+	}
 
 	// Add an arb-data txn to the block to create a unique merkle root.
 	randBytes := fastrand.Bytes(types.SpecifierLen)

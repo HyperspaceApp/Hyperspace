@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	//"fmt"
 	"bytes"
 	"errors"
 
@@ -46,22 +47,28 @@ func NewBlockValidator() stdBlockValidator {
 func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 	// Setup block rewards for the first two blocks
 	if (uint64(height) == 1) {
+		//fmt.Printf("checking first block\n")
 		if len(b.MinerPayouts) != 1 {
+			//fmt.Printf("wrong miner payout count\n")
 			return false
 		}
 		payout := b.MinerPayouts[0]
 		if !payout.Value.Equals(types.NewCurrency64(types.FirstCoinbase).Mul(types.SiacoinPrecision)) {
+			//fmt.Printf("wrong payout value\n")
 			return false
 		}
 		return true
 
 	}
 	if (uint64(height) == 2) {
+		//fmt.Printf("checking second block\n")
 		if len(b.MinerPayouts) != 1 {
+			//fmt.Printf("wrong miner payout count\n")
 			return false
 		}
 		payout := b.MinerPayouts[0]
 		if !payout.Value.Equals(types.NewCurrency64(types.SecondCoinbase).Mul(types.SiacoinPrecision)) {
+			//fmt.Printf("wrong payout value\n")
 			return false
 		}
 		return true
@@ -69,11 +76,13 @@ func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 
 	// Make sure we have enough payouts to cover both miner subsidy
 	// and the dev fund
+	//fmt.Printf("checking to ensure we have at least 2 miner payouts\n")
 	if len(b.MinerPayouts) < 2 {
 		return false
 	}
 	// Add up the payouts and check that all values are legal.
 	var minerPayoutSum types.Currency
+	//fmt.Printf("checking to ensure there are no zero payout sums\n")
 	for _, minerPayout := range b.MinerPayouts[:len(b.MinerPayouts)-1] {
 		if minerPayout.Value.IsZero() {
 			return false
