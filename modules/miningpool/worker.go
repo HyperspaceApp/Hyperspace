@@ -11,10 +11,10 @@ import (
 
 // A WorkerRecord is used to track worker information in memory
 type WorkerRecord struct {
-	name              string
-	workerID          int64
-	shareDifficulty   float64
-	parent      *Client
+	name            string
+	workerID        int64
+	shareDifficulty float64
+	parent          *Client
 }
 
 // A Worker is an instance of one miner.  A Client often represents a user and the
@@ -129,7 +129,7 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 		difficulty:      sessionDifficulty,
 		shareDifficulty: float64(siaSessionDifficulty),
 		reward:          reward,
-		blockDifficulty: float64(blockDifficulty),
+		blockDifficulty: blockDifficulty,
 		shareReward:     shareReward,
 		time:            time.Now(),
 	}

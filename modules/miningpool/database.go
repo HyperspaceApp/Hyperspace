@@ -219,7 +219,7 @@ func (s *Shift) SaveShift() error {
 		if i != 0 {
 			buffer.WriteString(",")
 		}
-		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %f, %d, %d, %f, %f)",
+		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %d, %d, %d, %f, %f)",
 			share.userid, share.workerid, SiaCoinID, share.valid, share.difficulty, share.time.Unix(),
 			SiaCoinAlgo, share.reward, share.blockDifficulty, 0, share.height, share.shareReward, share.shareDifficulty))
 	}
