@@ -1267,9 +1267,9 @@ locked or unlocked.
   "unlocked":   true,
   "rescanning": false,
 
-  "confirmedsiacoinbalance":     "123456", // hastings, big int
-  "unconfirmedoutgoingsiacoins": "0",      // hastings, big int
-  "unconfirmedincomingsiacoins": "789",    // hastings, big int
+  "confirmedspacecashbalance":     "123456", // hastings, big int
+  "unconfirmedoutgoingspacecash": "0",      // hastings, big int
+  "unconfirmedincomingspacecash": "789",    // hastings, big int
 
   "siacoinclaimbalance": "9001", // hastings, big int
 

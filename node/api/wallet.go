@@ -25,9 +25,9 @@ type (
 		Rescanning bool              `json:"rescanning"`
 		Unlocked   bool              `json:"unlocked"`
 
-		ConfirmedSiacoinBalance     types.Currency `json:"confirmedsiacoinbalance"`
-		UnconfirmedOutgoingSiacoins types.Currency `json:"unconfirmedoutgoingsiacoins"`
-		UnconfirmedIncomingSiacoins types.Currency `json:"unconfirmedincomingsiacoins"`
+		ConfirmedSiacoinBalance     types.Currency `json:"confirmedspacecashbalance"`
+		UnconfirmedOutgoingSiacoins types.Currency `json:"unconfirmedoutgoingspacecash"`
+		UnconfirmedIncomingSiacoins types.Currency `json:"unconfirmedincomingspacecash"`
 
 		SiacoinClaimBalance types.Currency `json:"siacoinclaimbalance"`
 

@@ -75,7 +75,7 @@ locked or unlocked.
 
   // Number of space cash, in hastings, available to the wallet as of the most
   // recent block in the blockchain.
-  "confirmedsiacoinbalance": "123456", // hastings, big int
+  "confirmedspacecashbalance": "123456", // hastings, big int
 
   // Number of space cash, in hastings, that are leaving the wallet according
   // to the set of unconfirmed transactions. Often this number appears
