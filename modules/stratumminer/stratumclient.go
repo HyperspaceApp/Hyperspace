@@ -2,7 +2,6 @@ package stratumminer
 
 import (
 	"errors"
-	//"fmt"
 	"log"
 	"math/big"
 	"reflect"

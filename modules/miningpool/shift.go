@@ -15,7 +15,7 @@ type Share struct {
 	valid           bool
 	difficulty      float64
 	reward          float64
-	blockDifficulty float64
+	blockDifficulty uint64
 	shareReward     float64
 	shareDifficulty float64
 	time            time.Time

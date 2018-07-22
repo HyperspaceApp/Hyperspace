@@ -287,9 +287,12 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 	var err error
 	h.p.clientSetupMutex.Lock()
 	defer h.p.clientSetupMutex.Unlock()
-	c := h.p.FindClientDB(client)
+	c, err := h.p.FindClientDB(client)
+	if err != ErrNoUsernameInDatabase {
+		return c, err
+	}
 	if c == nil {
-		//fmt.Printf("Unable to find client: %s\n", client)
+		//fmt.Printf("Unable to find client in db: %s\n", client)
 		c, err = newClient(h.p, client)
 		if err != nil {
 			//fmt.Println("Failed to create a new Client")
@@ -361,10 +364,16 @@ func (h *Handler) handleStratumAuthorize(m *types.StratumRequest) error {
 
 	c, err := h.setupClient(clientName, workerName)
 	if err != nil {
+		r.Result = false
+		r.Error = interfaceify([]string{err.Error()})
+		h.sendResponse(r)
 		return err
 	}
 	w, err := h.setupWorker(c, workerName)
 	if err != nil {
+		r.Result = false
+		r.Error = interfaceify([]string{err.Error()})
+		h.sendResponse(r)
 		return err
 	}
 

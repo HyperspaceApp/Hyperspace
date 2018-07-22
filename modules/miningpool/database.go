@@ -3,10 +3,21 @@ package pool
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/types"
+)
+
+var (
+	// ErrDuplicateUserInDifferentCoin is an error when a address used in
+	// different coin
+	ErrDuplicateUserInDifferentCoin = errors.New("duplicate user in different coin, you need use a different address")
+	// ErrNoUsernameInDatabase is an error when can't find a username in db
+	ErrNoUsernameInDatabase = errors.New("user is not found in db")
+	// ErrCreateClient is an error when can't create a new client
+	ErrCreateClient = errors.New("Error when creating a new client")
 )
 
 const (
@@ -88,37 +99,42 @@ func (p *Pool) AddClientDB(c *Client) error {
 }
 
 // FindClientDB find user in accounts
-func (p *Pool) FindClientDB(name string) *Client {
+func (p *Pool) FindClientDB(name string) (*Client, error) {
 	var clientID int64
 	var Name, Wallet string
+	var coinid int
 
 	p.yiilog.Debugf("Searching for %s in existing accounts\n", name)
-	err := p.sqldb.QueryRow("SELECT id, username, username FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet)
+	err := p.sqldb.QueryRow("SELECT id, username, username, coinid FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet, &coinid)
 	if err != nil {
 		p.yiilog.Debugf("Search failed: %s\n", err)
-		return nil
+		return nil, ErrNoUsernameInDatabase
 	}
 	p.yiilog.Debugf("Account %s found: %d \n", Name, clientID)
+	if coinid != CoinID {
+		p.yiilog.Debugf(ErrDuplicateUserInDifferentCoin.Error())
+		return nil, ErrDuplicateUserInDifferentCoin
+	}
 	// if we're here, we found the client in the database
 	// try looking for the client in memory
 	c := p.Client(Name)
 	// if it's in memory, just return a pointer to the copy in memory
 	if c != nil {
-		return c
+		return c, nil
 	}
 	// client was in database but not in memory -
 	// find workers and connect them to the in memory copy
 	c, err = newClient(p, name)
 	if err != nil {
 		p.log.Printf("Error when creating a new client %s: %s\n", name, err)
-		return nil
+		return nil, ErrCreateClient
 	}
 	var wallet types.UnlockHash
 	wallet.LoadString(Wallet)
 	c.SetWallet(wallet)
 	c.cr.clientID = clientID
 
-	return c
+	return c, nil
 }
 
 func (w *Worker) deleteWorkerRecord() error {
@@ -218,7 +234,7 @@ func (s *Shift) SaveShift() error {
 		if i != 0 {
 			buffer.WriteString(",")
 		}
-		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %f, %d, %d, %f, %f)",
+		buffer.WriteString(fmt.Sprintf("(%d, %d, %d, %t, %f, %d, '%s', %f, %d, %d, %d, %f, %f)",
 			share.userid, share.workerid, CoinID, share.valid, share.difficulty, share.time.Unix(),
 			CoinAlgo, share.reward, share.blockDifficulty, 0, share.height, share.shareReward, share.shareDifficulty))
 	}

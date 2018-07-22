@@ -128,7 +128,7 @@ func (w *Worker) IncrementShares(sessionDifficulty float64, reward float64) {
 		difficulty:      sessionDifficulty,
 		shareDifficulty: float64(siaSessionDifficulty),
 		reward:          reward,
-		blockDifficulty: float64(blockDifficulty),
+		blockDifficulty: blockDifficulty,
 		shareReward:     shareReward,
 		time:            time.Now(),
 	}
