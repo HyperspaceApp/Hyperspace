@@ -60,15 +60,15 @@ func (t Transaction) correctFileContracts(currentHeight BlockHeight) error {
 		// Check that the proof outputs sum to the payout
 		var validProofOutputSum, missedProofOutputSum Currency
 		for _, output := range fc.ValidProofOutputs {
-			if output.Value.IsZero() {
-				return ErrZeroOutput
-			}
+			// if output.Value.IsZero() {
+			// 	return ErrZeroOutput
+			// }
 			validProofOutputSum = validProofOutputSum.Add(output.Value)
 		}
 		for _, output := range fc.MissedProofOutputs {
-			if output.Value.IsZero() {
-				return ErrZeroOutput
-			}
+			// if output.Value.IsZero() {
+			// 	return ErrZeroOutput
+			// }
 			missedProofOutputSum = missedProofOutputSum.Add(output.Value)
 		}
 		outputPortion := fc.Payout
@@ -98,15 +98,17 @@ func (t Transaction) correctFileContractRevisions(currentHeight BlockHeight) err
 		// value.
 		var validProofOutputSum, missedProofOutputSum Currency
 		for _, output := range fcr.NewValidProofOutputs {
-			if output.Value.IsZero() {
-				return ErrZeroOutput
-			}
+			// if output.Value.IsZero() {
+			// 	log.Println("fcr.NewValidProofOutputs")
+			// 	return ErrZeroOutput
+			// }
 			validProofOutputSum = validProofOutputSum.Add(output.Value)
 		}
 		for _, output := range fcr.NewMissedProofOutputs {
-			if output.Value.IsZero() {
-				return ErrZeroOutput
-			}
+			// if output.Value.IsZero() {
+			// 	log.Printf("fcr.NewMissedProofOutputs:%d\n", i)
+			// 	return ErrZeroOutput
+			// }
 			missedProofOutputSum = missedProofOutputSum.Add(output.Value)
 		}
 		if validProofOutputSum.Cmp(missedProofOutputSum) != 0 {
