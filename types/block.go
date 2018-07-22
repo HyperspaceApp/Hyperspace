@@ -122,6 +122,7 @@ func (b Block) ID() BlockID {
 	return b.Header().ID()
 }
 
+// MerkleTree return the MerkleTree of the block
 func (b Block) MerkleTree() *crypto.MerkleTree {
 	tree := crypto.NewTree()
 	var buf bytes.Buffer

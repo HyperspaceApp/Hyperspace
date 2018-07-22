@@ -41,26 +41,26 @@ Available settings:
 	}
 
 	/*
-	poolClientCmd = &cobra.Command{
-		Use:   "client <clientname>",
-		Short: "Get client details",
-		Long:  "Get client details by name",
-		Run:   wrap(poolclientcmd),
-	}
+		poolClientCmd = &cobra.Command{
+			Use:   "client <clientname>",
+			Short: "Get client details",
+			Long:  "Get client details by name",
+			Run:   wrap(poolclientcmd),
+		}
 
-	poolBlocksCmd = &cobra.Command{
-		Use:   "blocks",
-		Short: "Get blocks info",
-		Long:  "Get list of found blocks",
-		Run:   wrap(poolblockscmd),
-	}
+		poolBlocksCmd = &cobra.Command{
+			Use:   "blocks",
+			Short: "Get blocks info",
+			Long:  "Get list of found blocks",
+			Run:   wrap(poolblockscmd),
+		}
 
-	poolBlockCmd = &cobra.Command{
-		Use:   "block <blocknum>",
-		Short: "Get block details",
-		Long:  "Get block specific details by block number",
-		Run:   wrap(poolblockcmd),
-	}
+		poolBlockCmd = &cobra.Command{
+			Use:   "block <blocknum>",
+			Short: "Get block details",
+			Long:  "Get block specific details by block number",
+			Run:   wrap(poolblockcmd),
+		}
 	*/
 )
 
