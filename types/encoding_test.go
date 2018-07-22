@@ -404,7 +404,7 @@ func TestCoveredFieldsEncoding(t *testing.T) {
 // of the SiaPublicKey type do not change its encoding.
 func TestSiaPublicKeyEncoding(t *testing.T) {
 	var spk SiaPublicKey
-	if h := hashStr(spk); h != "552376f46b33a997ed91cd389bc09e90126a35356e01d6ebc538ea331f5a6f02" {
+	if h := hashStr(spk); h != "19ea4a516c66775ea1f648d71f6b8fa227e8b0c1a0c9203f82c33b89c4e759b5" {
 		t.Error("encoding mismatch:", h)
 	}
 
@@ -412,7 +412,7 @@ func TestSiaPublicKeyEncoding(t *testing.T) {
 		Algorithm: Specifier{1, 2, 3},
 		Key:       []byte{4, 5, 6},
 	}
-	if h := hashStr(spk); h != "4dd5034c902fdac1f7e1d90d5cddb03ca9b08372c97ae42a6db0da3df499a326" {
+	if h := hashStr(spk); h != "9c781bbeebc23a1885d00e778c358f0a4bc81a82b48191449129752a380adc03" {
 		t.Error("encoding mismatch:", h)
 	}
 }
@@ -526,7 +526,7 @@ func TestUnlockConditionsEncoding(t *testing.T) {
 		PublicKeys:         []SiaPublicKey{{}},
 		SignaturesRequired: 3,
 	}
-	if h := hashStr(uc); h != "1cc2f9ff2c70f11cfed620559b2d12bd89d69e1d555cfa55bbb7c6b3b8ffd971" {
+	if h := hashStr(uc); h != "164d3741bd274d5333ab1fe8ab641b9d25cb0e0bed8e1d7bc466b5fffc956d96" {
 		t.Error("encoding mismatch:", h)
 	}
 }
