@@ -9,23 +9,23 @@ import (
 
 const (
 	// Names of the various persistent files in the pool.
-	dbFilename    = modules.PoolDir + ".db"
-	logFile       = modules.PoolDir + ".log"
-	yiilogFile    = "yii.log"
-	settingsFile  = modules.PoolDir + ".json"
+	dbFilename   = modules.PoolDir + ".db"
+	logFile      = modules.PoolDir + ".log"
+	yiilogFile   = "yii.log"
+	settingsFile = modules.PoolDir + ".json"
 	// MajorVersion is the significant version of the pool module
-	MajorVersion  = 0
+	MajorVersion = 0
 	// MinorVersion is the minor version of the pool module
-	MinorVersion  = 3
+	MinorVersion = 3
 	// CoinID is the coin id used by yiimp to associate various records
 	// with Siacoin
-	CoinID     = 1317
+	CoinID = 1317
 	// CoinSymbol is the coin symbol used by yiimp to associate various records
 	// with Siacoin
 	CoinSymbol = "SPACE"
 	// CoinAlgo is the algo used by yiimp to associate various records
 	// with blake2b mining
-	CoinAlgo   = "blake2b"
+	CoinAlgo = "blake2b"
 )
 
 var (

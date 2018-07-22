@@ -61,11 +61,11 @@ type (
 //     coinbase := max(InitialCoinbase - height, MinimumCoinbase) * SiacoinPrecision
 func CalculateCoinbase(height BlockHeight) Currency {
 	blockHeight := uint64(height)
-	if (blockHeight == 0) {
+	if blockHeight == 0 {
 		return NewCurrency64(0)
-	} else if (blockHeight == 1) {
+	} else if blockHeight == 1 {
 		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision)
-	} else if (blockHeight == 2) {
+	} else if blockHeight == 2 {
 		return NewCurrency64(SecondCoinbase).Mul(SiacoinPrecision)
 	}
 	// after the first 2 blocks, start at 60k
@@ -81,7 +81,7 @@ func CalculateCoinbase(height BlockHeight) Currency {
 	//if uint64(height) > InitialCoinbase || base < MinimumCoinbase {
 	//if base < minimum {
 	// if we're not negative but smaller than the min, return the min
-	if (base.Cmp(minimum) <= 0) {
+	if base.Cmp(minimum) <= 0 {
 		base = minimum
 	}
 	//return NewCurrency64(base).Mul(SiacoinPrecision)
@@ -101,7 +101,7 @@ func CalculateNumSiacoins(height BlockHeight) Currency {
 	founderSiacoins := NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision)
 	// each block decrements by 0.2 SPACE, so we multiply by 5 to calculate the number of
 	// deflation blocks
-	deflationBlocks := BlockHeight(InitialCoinbase - MinimumCoinbase) * 5
+	deflationBlocks := BlockHeight(InitialCoinbase-MinimumCoinbase) * 5
 	avgDeflationSiacoins := CalculateCoinbase(3).Add(CalculateCoinbase(height)).Div(NewCurrency64(2))
 	// the first 3 blocks are special, then we deflate for deflationBlocks
 	if (height - 3) <= deflationBlocks {
@@ -132,13 +132,13 @@ func (b Block) CalculateMinerFees() Currency {
 // CalculateSubsidies takes a block and a height and determines the block
 // subsidies for miners and the dev fund.
 func (b Block) CalculateSubsidies(height BlockHeight) (Currency, Currency) {
-	if (uint64(height) == 0) {
+	if uint64(height) == 0 {
 		return NewCurrency64(0), NewCurrency64(0)
 	}
-	if (uint64(height) == 1) {
+	if uint64(height) == 1 {
 		return NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
 	}
-	if (uint64(height) == 2) {
+	if uint64(height) == 2 {
 		return NewCurrency64(SecondCoinbase).Mul(SiacoinPrecision), NewCurrency64(0)
 	}
 	coinbase := CalculateCoinbase(height)
@@ -165,6 +165,7 @@ func (b Block) ID() BlockID {
 	return b.Header().ID()
 }
 
+// MerkleTree would return merkle tree of the block
 func (b Block) MerkleTree() *crypto.MerkleTree {
 	tree := crypto.NewTree()
 	var buf bytes.Buffer

@@ -29,10 +29,10 @@ type (
 
 	// PoolClient contains summary info for a mining client
 	PoolClient struct {
-		ClientName  string        `json:"clientname"`
-		Balance     string        `json:"balance"`
-		BlocksMined uint64        `json:"blocksminer"`
-		Workers     []PoolWorker  `json:"workers"`
+		ClientName  string       `json:"clientname"`
+		Balance     string       `json:"balance"`
+		BlocksMined uint64       `json:"blocksminer"`
+		Workers     []PoolWorker `json:"workers"`
 	}
 
 	// PoolClientTransaction represents a mining client transaction

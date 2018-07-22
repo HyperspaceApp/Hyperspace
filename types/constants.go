@@ -49,9 +49,9 @@ var (
 
 	// GenesisTimestamp is the timestamp when genesis block was mined
 	GenesisTimestamp Timestamp
-	// FirstMinerCoinbase is the coinbase reward of the Genesis block.
+	// FirstCoinbase is the coinbase reward of the Genesis block.
 	FirstCoinbase = uint64(15e8)
-	// SecondMinerCoinbase is the coinbase reward of the 2nd block.
+	// SecondCoinbase is the coinbase reward of the 2nd block.
 	SecondCoinbase = uint64(15e8)
 	// InitialCoinbase is the coinbase reward of the first block following the
 	// initial 2 blocks.
@@ -268,13 +268,13 @@ func init() {
 	// Create the initial tokens for the airdrop
 	GenesisAirdropAllocation = []SiacoinOutput{
 		{
-			Value: AirdropValue,
+			Value:      AirdropValue,
 			UnlockHash: UnlockHash{150, 207, 110, 1, 194, 164, 204, 225, 187, 15, 120, 146, 252, 172, 94, 0, 0, 196, 135, 188, 142, 90, 195, 136, 222, 112, 8, 160, 222, 92, 241, 22},
 		},
 	}
 	// Create the genesis block.
 	GenesisBlock = Block{
-		Timestamp:    GenesisTimestamp,
+		Timestamp: GenesisTimestamp,
 		Transactions: []Transaction{
 			{SiacoinOutputs: GenesisAirdropAllocation},
 		},

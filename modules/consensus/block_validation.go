@@ -46,7 +46,7 @@ func NewBlockValidator() stdBlockValidator {
 // returns true if they are equal.
 func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 	// Setup block rewards for the first two blocks
-	if (uint64(height) == 1) {
+	if uint64(height) == 1 {
 		//fmt.Printf("checking first block\n")
 		if len(b.MinerPayouts) != 1 {
 			//fmt.Printf("wrong miner payout count\n")
@@ -60,7 +60,7 @@ func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 		return true
 
 	}
-	if (uint64(height) == 2) {
+	if uint64(height) == 2 {
 		//fmt.Printf("checking second block\n")
 		if len(b.MinerPayouts) != 1 {
 			//fmt.Printf("wrong miner payout count\n")

@@ -186,7 +186,6 @@ func TestCheckMinerPayouts(t *testing.T) {
 		t.Error("payouts evaluated incorrectly when we are missing the miner payout but have a proper dev fund payout.")
 	}
 
-
 	// Create a block with a valid miner payout and a valid dev fund payout.
 	b = types.Block{
 		MinerPayouts: []types.SiacoinOutput{

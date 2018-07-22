@@ -293,10 +293,10 @@ func (s *Session) HighestDifficulty() float64 {
 func (s *Session) DetectDisconnected() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.log != nil {
-		s.log.Printf("time now: %s, last beat: %s, disconnect: %t\n", time.Now(),
-			s.lastHeartbeat, time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout)))
-	}
+	// if s.log != nil {
+	// 	s.log.Printf("time now: %s, last beat: %s, disconnect: %t\n", time.Now(),
+	// 		s.lastHeartbeat, time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout)))
+	// }
 	// disconnect if we haven't heard from the worker for a long time
 	if time.Now().After(s.lastHeartbeat.Add(heartbeatTimeout)) {
 		if s.log != nil {
