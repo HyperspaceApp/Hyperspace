@@ -10,6 +10,16 @@ import (
 	"github.com/NebulousLabs/Sia/types"
 )
 
+var (
+	// ErrDuplicateUserInDifferentCoin is an error when a address used in
+	// different coin
+	ErrDuplicateUserInDifferentCoin = errors.New("duplicate user in different coin, you need use a different address")
+	// ErrNoUsernameInDatabase is an error when can't find a username in db
+	ErrNoUsernameInDatabase = errors.New("user is not found in db")
+	// ErrCreateClient is an error when can't create a new client
+	ErrCreateClient = errors.New("Error when creating a new client")
+)
+
 const (
 	sqlReconnectRetry  = 6
 	sqlRetryDelay      = 10
@@ -47,7 +57,7 @@ func (p *Pool) newDbConnection() error {
 		return nil
 	}
 
-	return errors.New(fmt.Sprintf("sql reconnect retry time exceeded: %d", sqlReconnectRetry))
+	return fmt.Errorf("sql reconnect retry time exceeded: %d", sqlReconnectRetry)
 }
 
 // AddClientDB add user into accounts
@@ -89,37 +99,42 @@ func (p *Pool) AddClientDB(c *Client) error {
 }
 
 // FindClientDB find user in accounts
-func (p *Pool) FindClientDB(name string) *Client {
+func (p *Pool) FindClientDB(name string) (*Client, error) {
 	var clientID int64
 	var Name, Wallet string
+	var coinid int
 
 	p.yiilog.Debugf("Searching for %s in existing accounts\n", name)
-	err := p.sqldb.QueryRow("SELECT id, username, username FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet)
+	err := p.sqldb.QueryRow("SELECT id, username, username, coinid FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet, &coinid)
 	if err != nil {
 		p.yiilog.Debugf("Search failed: %s\n", err)
-		return nil
+		return nil, ErrNoUsernameInDatabase
 	}
 	p.yiilog.Debugf("Account %s found: %d \n", Name, clientID)
+	if coinid != SiaCoinID {
+		p.yiilog.Debugf(ErrDuplicateUserInDifferentCoin.Error())
+		return nil, ErrDuplicateUserInDifferentCoin
+	}
 	// if we're here, we found the client in the database
 	// try looking for the client in memory
 	c := p.Client(Name)
 	// if it's in memory, just return a pointer to the copy in memory
 	if c != nil {
-		return c
+		return c, nil
 	}
 	// client was in database but not in memory -
 	// find workers and connect them to the in memory copy
 	c, err = newClient(p, name)
 	if err != nil {
 		p.log.Printf("Error when creating a new client %s: %s\n", name, err)
-		return nil
+		return nil, ErrCreateClient
 	}
 	var wallet types.UnlockHash
 	wallet.LoadString(Wallet)
 	c.SetWallet(wallet)
 	c.cr.clientID = clientID
 
-	return c
+	return c, nil
 }
 
 func (w *Worker) deleteWorkerRecord() error {
