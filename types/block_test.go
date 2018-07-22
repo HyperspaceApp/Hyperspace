@@ -25,7 +25,7 @@ func TestCalculateCoinbase(t *testing.T) {
 	}
 
 	c = CalculateCoinbase(4)
-        base := NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
+	base := NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
 	deducted := NewCurrency64(2).Mul(SiacoinPrecision).Div(NewCurrency64(10))
 	if c.Cmp(base.Sub(deducted)) != 0 {
 		t.Error("Unexpected CalculateCoinbase result")

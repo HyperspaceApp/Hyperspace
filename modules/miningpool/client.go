@@ -23,10 +23,10 @@ type ClientRecord struct {
 // accounting and statistics.
 //
 type Client struct {
-	cr      ClientRecord
-	mu      deadlock.RWMutex
-	pool    *Pool
-	log     *persist.Logger
+	cr   ClientRecord
+	mu   deadlock.RWMutex
+	pool *Pool
+	log  *persist.Logger
 }
 
 // newClient creates a new Client record
@@ -35,9 +35,9 @@ func newClient(p *Pool, name string) (*Client, error) {
 	// id := p.newStratumID()
 	c := &Client{
 		cr: ClientRecord{
-			name:   name,
+			name: name,
 		},
-		pool:    p,
+		pool: p,
 	}
 	c.cr.wallet.LoadString(name)
 	// check if this worker instance is an original or copy

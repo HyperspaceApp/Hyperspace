@@ -3,7 +3,6 @@ package pool
 import (
 	"bytes"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -47,7 +46,7 @@ func (p *Pool) newDbConnection() error {
 		return nil
 	}
 
-	return errors.New(fmt.Sprintf("sql reconnect retry time exceeded: %d", sqlReconnectRetry))
+	return fmt.Errorf("sql reconnect retry time exceeded: %d", sqlReconnectRetry)
 }
 
 // AddClientDB add user into accounts

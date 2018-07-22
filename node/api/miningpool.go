@@ -14,8 +14,8 @@ type (
 	// MiningPoolGET contains the stats that are returned after a GET request
 	// to /pool.
 	MiningPoolGET struct {
-		BlocksMined  int  `json:"blocksmined"`
-		PoolHashrate int  `json:"poolhashrate"`
+		BlocksMined  int `json:"blocksmined"`
+		PoolHashrate int `json:"poolhashrate"`
 	}
 	// MiningPoolConfig contains the parameters you can set to config your pool
 	MiningPoolConfig struct {

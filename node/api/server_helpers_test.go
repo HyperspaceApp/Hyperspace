@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -195,15 +196,7 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 	if err != nil {
 		return nil, err
 	}
-	mp, err := pool.New(cs, tp, g, w, filepath.Join(testdir, modules.PoolDir), config.MiningPoolConfig{})
-	if err != nil {
-		return nil, err
-	}
-	idx, err := index.New(cs, tp, g, w, filepath.Join(testdir, modules.IndexDir), config.IndexConfig{})
-	if err != nil {
-		return nil, err
-	}
-	srv, err := NewServer("localhost:0", "Sia-Agent", "", cs, nil, g, h, m, r, tp, w, mp, nil, idx)
+	srv, err := NewServer("localhost:0", "Sia-Agent", "", cs, nil, g, h, m, r, tp, w, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -405,6 +398,7 @@ func createServerTester(name string) (*serverTester, error) {
 
 	// Create the testing directory.
 	testdir := build.TempDir("api", name)
+	log.Println(testdir)
 
 	key := crypto.GenerateTwofishKey()
 	st, err := assembleServerTester(key, testdir)
