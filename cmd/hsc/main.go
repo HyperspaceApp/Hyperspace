@@ -118,6 +118,7 @@ func main() {
 	walletInitCmd.Flags().BoolVarP(&initForce, "force", "", false, "destroy the existing wallet and re-encrypt")
 	walletInitSeedCmd.Flags().BoolVarP(&initForce, "force", "", false, "destroy the existing wallet")
 	walletLoadCmd.AddCommand(walletLoadSeedCmd, walletLoadSiagCmd)
+	walletSendCmd.AddCommand(walletSendSiacoinsCmd)
 	walletUnlockCmd.Flags().BoolVarP(&initPassword, "password", "p", false, "Display interactive password prompt even if SIA_WALLET_PASSWORD is set")
 
 	root.AddCommand(renterCmd)

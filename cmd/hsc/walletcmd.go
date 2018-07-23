@@ -33,7 +33,7 @@ var (
 	walletBalanceCmd = &cobra.Command{
 		Use:   "balance",
 		Short: "View wallet balance",
-		Long:  "View wallet balance, including confirmed and unconfirmed siacoins.",
+		Long:  "View wallet balance, including confirmed and unconfirmed space cash.",
 		Run:   wrap(walletbalancecmd),
 	}
 
@@ -50,16 +50,16 @@ var (
 		Long: `Generate a new address, send coins to another wallet, or view info about the wallet.
 
 Units:
-The smallest unit of siacoins is the hasting. One siacoin is 10^24 hastings. Other supported units are:
-  pS (pico,  10^-12 SC)
-  nS (nano,  10^-9 SC)
-  uS (micro, 10^-6 SC)
-  mS (milli, 10^-3 SC)
-  SC
-  KS (kilo, 10^3 SC)
-  MS (mega, 10^6 SC)
-  GS (giga, 10^9 SC)
-  TS (tera, 10^12 SC)`,
+The smallest unit of siacoins is the hasting. One space cash is 10^24 hastings. Other supported units are:
+  pS (pico,  10^-12 SPACE)
+  nS (nano,  10^-9 SPACE)
+  uS (micro, 10^-6 SPACE)
+  mS (milli, 10^-3 SPACE)
+  SPACE
+  KS (kilo, 10^3 SPACE)
+  MS (mega, 10^6 SPACE)
+  GS (giga, 10^9 SPACE)
+  TS (tera, 10^12 SPACE)`,
 		Run: wrap(walletbalancecmd),
 	}
 
@@ -123,9 +123,9 @@ By default the wallet encryption / unlock password is the same as the generated 
 	}
 
 	walletSendSiacoinsCmd = &cobra.Command{
-		Use:   "siacoins [amount] [dest]",
-		Short: "Send siacoins to an address",
-		Long: `Send siacoins to an address. 'dest' must be a 76-byte hexadecimal address.
+		Use:   "spacecash [amount] [dest]",
+		Short: "Send space cash to an address",
+		Long: `Send space cash to an address. 'dest' must be a 76-byte hexadecimal address.
 'amount' can be specified in units, e.g. 1.23KS. Run 'wallet --help' for a list of units.
 If no unit is supplied, hastings will be assumed.
 
@@ -461,7 +461,7 @@ func wallettransactionscmd() {
 		} else {
 			fmt.Printf(" unconfirmed")
 		}
-		fmt.Printf("%67v%15.2f SC", txn.TransactionID, incomingSiacoinsFloat-outgoingSiacoinsFloat)
+		fmt.Printf("%67v%15.2f SPACE", txn.TransactionID, incomingSiacoinsFloat-outgoingSiacoinsFloat)
 	}
 }
 
