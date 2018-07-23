@@ -547,7 +547,7 @@ func renterfilesdownloadcmd(path, destination string) {
 	fmt.Printf("\nDownloaded '%s' to %s.\n", path, abs(destination))
 }
 
-func downloadprogress(done chan struct{}, siapath string) {
+func downloadprogress(done chan struct{}, hyperspacepath string) {
 	time.Sleep(time.Second) // give download time to initialize
 	for {
 		select {
@@ -562,7 +562,7 @@ func downloadprogress(done chan struct{}, siapath string) {
 			}
 			var d api.DownloadInfo
 			for _, d = range queue.Downloads {
-				if d.SiaPath == siapath {
+				if d.SiaPath == hyperspacepath {
 					break
 				}
 			}

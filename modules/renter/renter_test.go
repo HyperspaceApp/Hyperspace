@@ -200,10 +200,10 @@ func TestRenterSiapathValidate(t *testing.T) {
 		in    string
 		valid bool
 	}{
-		{"valid/siapath", true},
+		{"valid/hyperspacepath", true},
 		{"../../../directory/traversal", false},
 		{"testpath", true},
-		{"valid/siapath/../with/directory/traversal", false},
+		{"valid/hyperspacepath/../with/directory/traversal", false},
 		{"validpath/test", true},
 		{"..validpath/..test", true},
 		{"./invalid/path", false},

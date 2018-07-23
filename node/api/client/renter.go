@@ -58,7 +58,7 @@ func (c *Client) RenterDownloadHTTPResponseGet(siaPath string, offset, length ui
 	return
 }
 
-// RenterFileGet uses the /renter/file/:siapath endpoint to query a file.
+// RenterFileGet uses the /renter/file/:hyperspacepath endpoint to query a file.
 func (c *Client) RenterFileGet(siaPath string) (rf api.RenterFile, err error) {
 	siaPath = strings.TrimPrefix(siaPath, "/")
 	err = c.get("/renter/file/"+siaPath, &rf)
@@ -110,11 +110,11 @@ func (c *Client) RenterPostRateLimit(readBPS, writeBPS int64) (err error) {
 	return
 }
 
-// RenterRenamePost uses the /renter/rename/:siapath endpoint to rename a file.
+// RenterRenamePost uses the /renter/rename/:hyperspacepath endpoint to rename a file.
 func (c *Client) RenterRenamePost(siaPathOld, siaPathNew string) (err error) {
 	siaPathOld = strings.TrimPrefix(siaPathOld, "/")
 	siaPathNew = strings.TrimPrefix(siaPathNew, "/")
-	err = c.post("/renter/rename/"+siaPathOld, "newsiapath=/"+siaPathNew, nil)
+	err = c.post("/renter/rename/"+siaPathOld, "newhyperspacepath=/"+siaPathNew, nil)
 	return
 }
 

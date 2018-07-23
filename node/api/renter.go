@@ -157,7 +157,7 @@ type (
 		Filesize        uint64 `json:"filesize"`        // DEPRECATED. Same as 'Length'.
 		Length          uint64 `json:"length"`          // The length requested for the download.
 		Offset          uint64 `json:"offset"`          // The offset within the siafile requested for the download.
-		SiaPath         string `json:"siapath"`         // The siapath of the file used for the download.
+		SiaPath         string `json:"hyperspacepath"`         // The hyperspacepath of the file used for the download.
 
 		Completed            bool      `json:"completed"`            // Whether or not the download has completed.
 		EndTime              time.Time `json:"endtime"`              // The time when the download fully completed.
@@ -421,7 +421,7 @@ func (api *API) renterLoadASCIIHandler(w http.ResponseWriter, req *http.Request,
 // renterRenameHandler handles the API call to rename a file entry in the
 // renter.
 func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	err := api.renter.RenameFile(strings.TrimPrefix(ps.ByName("siapath"), "/"), req.FormValue("newsiapath"))
+	err := api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), req.FormValue("newhyperspacepath"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -432,7 +432,7 @@ func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps
 
 // renterFileHandler handles the API call to return specific file.
 func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	file, err := api.renter.File(strings.TrimPrefix(ps.ByName("siapath"), "/"))
+	file, err := api.renter.File(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -460,7 +460,7 @@ func (api *API) renterPricesHandler(w http.ResponseWriter, req *http.Request, _ 
 // renterDeleteHandler handles the API call to delete a file entry from the
 // renter.
 func (api *API) renterDeleteHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	err := api.renter.DeleteFile(strings.TrimPrefix(ps.ByName("siapath"), "/"))
+	err := api.renter.DeleteFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -545,14 +545,14 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 		return modules.RenterDownloadParameters{}, build.ExtendErr("async parameter could not be parsed", err)
 	}
 
-	siapath := strings.TrimPrefix(ps.ByName("siapath"), "/") // Sia file name.
+	hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/") // Sia file name.
 
 	dp := modules.RenterDownloadParameters{
 		Destination: destination,
 		Async:       async,
 		Length:      length,
 		Offset:      offset,
-		SiaPath:     siapath,
+		SiaPath:     hyperspacepath,
 	}
 	if httpresp {
 		dp.Httpwriter = w
@@ -571,7 +571,7 @@ func (api *API) renterShareHandler(w http.ResponseWriter, req *http.Request, ps 
 		return
 	}
 
-	err := api.renter.ShareFiles(strings.Split(req.FormValue("siapaths"), ","), destination)
+	err := api.renter.ShareFiles(strings.Split(req.FormValue("hyperspacepaths"), ","), destination)
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -583,7 +583,7 @@ func (api *API) renterShareHandler(w http.ResponseWriter, req *http.Request, ps 
 // renterShareAsciiHandler handles the API call to return a '.sia' file
 // in ascii form.
 func (api *API) renterShareASCIIHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	ascii, err := api.renter.ShareFilesASCII(strings.Split(req.FormValue("siapaths"), ","))
+	ascii, err := api.renter.ShareFilesASCII(strings.Split(req.FormValue("hyperspacepaths"), ","))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -595,7 +595,7 @@ func (api *API) renterShareASCIIHandler(w http.ResponseWriter, req *http.Request
 
 // renterStreamHandler handles downloads from the /renter/stream endpoint
 func (api *API) renterStreamHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	siaPath := strings.TrimPrefix(ps.ByName("siapath"), "/")
+	siaPath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
 	fileName, streamer, err := api.renter.Streamer(siaPath)
 	if err != nil {
 		WriteError(w, Error{fmt.Sprintf("failed to create download streamer: %v", err)},
@@ -658,7 +658,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 	// Call the renter to upload the file.
 	err := api.renter.Upload(modules.FileUploadParams{
 		Source:      source,
-		SiaPath:     strings.TrimPrefix(ps.ByName("siapath"), "/"),
+		SiaPath:     strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
 		ErasureCode: ec,
 	})
 	if err != nil {

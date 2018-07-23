@@ -85,7 +85,7 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/renter/contracts", api.renterContractsHandler)
 		router.GET("/renter/downloads", api.renterDownloadsHandler)
 		router.GET("/renter/files", api.renterFilesHandler)
-		router.GET("/renter/file/*siapath", api.renterFileHandler)
+		router.GET("/renter/file/*hyperspacepath", api.renterFileHandler)
 		router.GET("/renter/prices", api.renterPricesHandler)
 
 		// TODO: re-enable these routes once the new .sia format has been
@@ -95,12 +95,12 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		// router.GET("/renter/share", RequirePassword(api.renterShareHandler, requiredPassword))
 		// router.GET("/renter/shareascii", RequirePassword(api.renterShareAsciiHandler, requiredPassword))
 
-		router.POST("/renter/delete/*siapath", RequirePassword(api.renterDeleteHandler, requiredPassword))
-		router.GET("/renter/download/*siapath", RequirePassword(api.renterDownloadHandler, requiredPassword))
-		router.GET("/renter/downloadasync/*siapath", RequirePassword(api.renterDownloadAsyncHandler, requiredPassword))
-		router.POST("/renter/rename/*siapath", RequirePassword(api.renterRenameHandler, requiredPassword))
-		router.GET("/renter/stream/*siapath", api.renterStreamHandler)
-		router.POST("/renter/upload/*siapath", RequirePassword(api.renterUploadHandler, requiredPassword))
+		router.POST("/renter/delete/*hyperspacepath", RequirePassword(api.renterDeleteHandler, requiredPassword))
+		router.GET("/renter/download/*hyperspacepath", RequirePassword(api.renterDownloadHandler, requiredPassword))
+		router.GET("/renter/downloadasync/*hyperspacepath", RequirePassword(api.renterDownloadAsyncHandler, requiredPassword))
+		router.POST("/renter/rename/*hyperspacepath", RequirePassword(api.renterRenameHandler, requiredPassword))
+		router.GET("/renter/stream/*hyperspacepath", api.renterStreamHandler)
+		router.POST("/renter/upload/*hyperspacepath", RequirePassword(api.renterUploadHandler, requiredPassword))
 
 		// HostDB endpoints.
 		router.GET("/hostdb", api.hostdbHandler)

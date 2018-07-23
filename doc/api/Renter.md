@@ -26,14 +26,14 @@ Index
 | [/renter/contracts](#rentercontracts-get)                                       | GET       |
 | [/renter/downloads](#renterdownloads-get)                                       | GET       |
 | [/renter/files](#renterfiles-get)                                               | GET       |
-| [/renter/file/*___siapath___](#renterfile___siapath___-get)                     | GET       |
+| [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)                     | GET       |
 | [/renter/prices](#renter-prices-get)                                            | GET       |
-| [/renter/delete/___*siapath___](#renterdelete___siapath___-post)                | POST      |
-| [/renter/download/___*siapath___](#renterdownload__siapath___-get)              | GET       |
-| [/renter/downloadasync/___*siapath___](#renterdownloadasync__siapath___-get)    | GET       |
-| [/renter/rename/___*siapath___](#renterrename___siapath___-post)                | POST      |
-| [/renter/stream/___*siapath___](#renterstreamsiapath-get)                       | GET       |
-| [/renter/upload/___*siapath___](#renterupload___siapath___-post)                | POST      |
+| [/renter/delete/___*hyperspacepath___](#renterdelete___hyperspacepath___-post)                | POST      |
+| [/renter/download/___*hyperspacepath___](#renterdownload__hyperspacepath___-get)              | GET       |
+| [/renter/downloadasync/___*hyperspacepath___](#renterdownloadasync__hyperspacepath___-get)    | GET       |
+| [/renter/rename/___*hyperspacepath___](#renterrename___hyperspacepath___-post)                | POST      |
+| [/renter/stream/___*hyperspacepath___](#renterstreamhyperspacepath-get)                       | GET       |
+| [/renter/upload/___*hyperspacepath___](#renterupload___hyperspacepath___-post)                | POST      |
 
 #### /renter [GET]
 
@@ -46,7 +46,7 @@ returns the current settings along with metrics on the renter's spending.
   "settings": {
     // Allowance dictates how much the renter is allowed to spend in a given
     // period. Note that funds are spent on both storage and bandwidth.
-    "allowance": {  
+    "allowance": {
       // Amount of money allocated for contracts. Funds are spent on both
       // storage and bandwidth.
       "funds": "1234", // hastings
@@ -61,18 +61,18 @@ returns the current settings along with metrics on the renter's spending.
       // contract is scheduled to end, the contract is renewed automatically.
       // Is always nonzero.
       "renewwindow": 3024 // blocks
-    }, 
-    // MaxUploadSpeed by defaul is unlimited but can be set by the user to 
+    },
+    // MaxUploadSpeed by defaul is unlimited but can be set by the user to
     // manage bandwidth
     "maxuploadspeed":     1234, // bytes per second
 
-    // MaxDownloadSpeed by defaul is unlimited but can be set by the user to 
+    // MaxDownloadSpeed by defaul is unlimited but can be set by the user to
     // manage bandwidth
     "maxdownloadspeed":   1234, // bytes per second
 
     // The StreamCacheSize is the number of data chunks that will be cached during
     // streaming
-    "streamcachesize":  4  
+    "streamcachesize":  4
   },
 
   // Metrics about how much the Renter has spent on storage, uploads, and
@@ -136,8 +136,8 @@ maxdownloadspeed
 // Max upload speed permitted, speed provide in bytes per second
 maxuploadspeed
 
-// Stream cache size specifies how many data chunks will be cached while 
-// streaming.  
+// Stream cache size specifies how many data chunks will be cached while
+// streaming.
 streamcachesize
 ```
 
@@ -245,7 +245,7 @@ lists all files in the download queue.
       "offset": 0,
 
       // Siapath given to the file when it was uploaded.
-      "siapath": "foo/bar.txt",
+      "hyperspacepath": "foo/bar.txt",
 
       // Whether or not the download has completed. Will be false initially, and
       // set to true immediately as the download has been fully written out to
@@ -274,7 +274,7 @@ lists all files in the download queue.
       // will eventually include data transferred during contract + payment
       // negotiation, as well as data from failed piece downloads.
       "totaldatatransfered": 10321,
-    }   
+    }
   ]
 }
 ```
@@ -286,10 +286,10 @@ lists the status of all files.
 ###### JSON Response
 ```javascript
 {
-  "files": [ 
+  "files": [
     {
       // Path to the file in the renter on the network.
-      "siapath": "foo/bar.txt",
+      "hyperspacepath": "foo/bar.txt",
 
       // Path to the local file on disk.
       "localpath": "/home/foo/bar.txt",
@@ -326,12 +326,12 @@ lists the status of all files.
 
       // Block height at which the file ceases availability.
       "expiration": 60000
-    }   
+    }
   ]
 }
 ```
 
-#### /renter/file/*___siapath___ [GET]
+#### /renter/file/*___hyperspacepath___ [GET]
 
 lists the status of specified file.
 
@@ -340,7 +340,7 @@ lists the status of specified file.
 {
   "file": {
     // Path to the file in the renter on the network.
-    "siapath": "foo/bar.txt",
+    "hyperspacepath": "foo/bar.txt",
 
     // Path to the local file on disk.
     "localpath": "/home/foo/bar.txt",
@@ -377,7 +377,7 @@ lists the status of specified file.
 
     // Block height at which the file ceases availability.
     "expiration": 60000
-  }   
+  }
 }
 ```
 
@@ -407,7 +407,7 @@ lists the estimated prices of performing various storage and data operations.
 }
 ```
 
-#### /renter/delete/___*siapath___ [POST]
+#### /renter/delete/___*hyperspacepath___ [POST]
 
 deletes a renter file entry. Does not delete any downloads or original files,
 only the entry in the renter.
@@ -415,14 +415,14 @@ only the entry in the renter.
 ###### Path Parameters
 ```
 // Location of the file in the renter on the network.
-*siapath
+*hyperspacepath
 ```
 
 ###### Response
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
 
-#### /renter/download/___*siapath___ [GET]
+#### /renter/download/___*hyperspacepath___ [GET]
 
 downloads a file to the local filesystem. The call will block until the file
 has been downloaded.
@@ -430,7 +430,7 @@ has been downloaded.
 ###### Path Parameters
 ```
 // Location of the file in the renter on the network.
-*siapath     
+*hyperspacepath
 ```
 
 ###### Query String Parameters
@@ -438,7 +438,7 @@ has been downloaded.
 // If async is true, the http request will be non blocking. Can't be used with
 async
 // Location on disk that the file will be downloaded to.
-destination 
+destination
 // If httresp is true, the data will be written to the http response.
 httpresp
 // Length of the requested data. Has to be <= filesize-offset.
@@ -451,13 +451,13 @@ offset
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
 
-#### /renter/downloadasync/___*siapath___ [GET]
+#### /renter/downloadasync/___*hyperspacepath___ [GET]
 
 downloads a file to the local filesystem. The call will return immediately.
 
 ###### Path Parameters
 ```
-*siapath
+*hyperspacepath
 ```
 
 ###### Query String Parameters
@@ -469,29 +469,29 @@ destination
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
 
-#### /renter/rename/___*siapath___ [POST]
+#### /renter/rename/___*hyperspacepath___ [POST]
 
 renames a file. Does not rename any downloads or source files, only renames the
-entry in the renter. An error is returned if `siapath` does not exist or
-`newsiapath` already exists.
+entry in the renter. An error is returned if `hyperspacepath` does not exist or
+`newhyperspacepath` already exists.
 
 ###### Path Parameters
 ```
 // Current location of the file in the renter on the network.
-*siapath     
+*hyperspacepath
 ```
 
 ###### Query String Parameters
 ```
 // New location of the file in the renter on the network.
-newsiapath
+newhyperspacepath
 ```
 
 ###### Response
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
 
-#### /renter/stream/*___siapath___ [GET]
+#### /renter/stream/*___hyperspacepath___ [GET]
 
 downloads a file using http streaming. This call blocks until the data is
 received.
@@ -504,14 +504,14 @@ downloads are supported in the future.
 
 ###### Path Parameters [(with comments)](/doc/api/Renter.md#path-parameters-1)
 ```
-*siapath
+*hyperspacepath
 ```
 
 ###### Response
 standard success with the requested data in the body or error response. See
 [#standard-responses](#standard-responses).
 
-#### /renter/upload/___*siapath___ [POST]
+#### /renter/upload/___*hyperspacepath___ [POST]
 
 starts a file upload to the Sia network from the local filesystem.
 
@@ -521,7 +521,7 @@ starts a file upload to the Sia network from the local filesystem.
 // Location where the file will reside in the renter on the network. The path
 // must be non-empty, may not include any path traversal strings ("./", "../"),
 // and may not begin with a forward-slash character.
-*siapath
+*hyperspacepath
 ```
 
 ###### Query String Parameters
@@ -543,4 +543,4 @@ standard success or error response. See
 response indicates that the upload started successfully. To confirm the upload
 completed successfully, the caller must call [/renter/files](#renterfiles-get)
 until that API returns success with an `uploadprogress` >= 100.0 for the file
-at the given `siapath`.
+at the given `hyperspacepath`.

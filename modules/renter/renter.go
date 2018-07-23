@@ -427,29 +427,29 @@ func (r *Renter) ProcessConsensusChange(cc modules.ConsensusChange) {
 // validateSiapath checks that a Siapath is a legal filename.
 // ../ is disallowed to prevent directory traversal, and paths must not begin
 // with / or be empty.
-func validateSiapath(siapath string) error {
-	if siapath == "" {
+func validateSiapath(hyperspacepath string) error {
+	if hyperspacepath == "" {
 		return ErrEmptyFilename
 	}
-	if siapath == ".." {
-		return errors.New("siapath cannot be '..'")
+	if hyperspacepath == ".." {
+		return errors.New("hyperspacepath cannot be '..'")
 	}
-	if siapath == "." {
-		return errors.New("siapath cannot be '.'")
+	if hyperspacepath == "." {
+		return errors.New("hyperspacepath cannot be '.'")
 	}
 	// check prefix
-	if strings.HasPrefix(siapath, "/") {
-		return errors.New("siapath cannot begin with /")
+	if strings.HasPrefix(hyperspacepath, "/") {
+		return errors.New("hyperspacepath cannot begin with /")
 	}
-	if strings.HasPrefix(siapath, "../") {
-		return errors.New("siapath cannot begin with ../")
+	if strings.HasPrefix(hyperspacepath, "../") {
+		return errors.New("hyperspacepath cannot begin with ../")
 	}
-	if strings.HasPrefix(siapath, "./") {
-		return errors.New("siapath connot begin with ./")
+	if strings.HasPrefix(hyperspacepath, "./") {
+		return errors.New("hyperspacepath connot begin with ./")
 	}
-	for _, pathElem := range strings.Split(siapath, "/") {
+	for _, pathElem := range strings.Split(hyperspacepath, "/") {
 		if pathElem == "." || pathElem == ".." {
-			return errors.New("siapath cannot contain . or .. elements")
+			return errors.New("hyperspacepath cannot contain . or .. elements")
 		}
 	}
 	return nil

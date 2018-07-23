@@ -844,7 +844,7 @@ func TestRenterHandlerRename(t *testing.T) {
 
 	// Try renaming a nonexistent file.
 	renameValues := url.Values{}
-	renameValues.Set("newsiapath", "newdne")
+	renameValues.Set("newhyperspacepath", "newdne")
 	err = st.stdPostAPI("/renter/rename/dne", renameValues)
 	if err == nil || err.Error() != renter.ErrUnknownPath.Error() {
 		t.Errorf("expected error to be %v; got %v", renter.ErrUnknownPath, err)
@@ -890,14 +890,14 @@ func TestRenterHandlerRename(t *testing.T) {
 	}
 
 	// Try renaming to an empty string.
-	renameValues.Set("newsiapath", "")
+	renameValues.Set("newhyperspacepath", "")
 	err = st.stdPostAPI("/renter/rename/test1", renameValues)
 	if err == nil || err.Error() != renter.ErrEmptyFilename.Error() {
 		t.Fatalf("expected error to be %v; got %v", renter.ErrEmptyFilename, err)
 	}
 
 	// Rename the file.
-	renameValues.Set("newsiapath", "newtest1")
+	renameValues.Set("newhyperspacepath", "newtest1")
 	if err = st.stdPostAPI("/renter/rename/test1", renameValues); err != nil {
 		t.Fatal(err)
 	}
@@ -926,7 +926,7 @@ func TestRenterHandlerRename(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Try renaming to a name that's already taken.
-	renameValues.Set("newsiapath", "newtest1")
+	renameValues.Set("newhyperspacepath", "newtest1")
 	err = st.stdPostAPI("/renter/rename/test2", renameValues)
 	if err == nil || err.Error() != renter.ErrPathOverload.Error() {
 		t.Errorf("expected error to be %v; got %v", renter.ErrPathOverload, err)
