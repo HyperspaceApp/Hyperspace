@@ -510,10 +510,10 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 
 	t := h.p.persist.GetTarget()
-	// h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
-	// h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
-	// h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
-	// 		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
+	h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
+	h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
+	h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
+		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		// h.s.CurrentWorker.log.Printf("Block hash is greater than block target\n")
 		h.s.CurrentWorker.log.Printf("Share Accepted\n")
