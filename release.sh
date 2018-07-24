@@ -19,7 +19,7 @@ if [ ! -f $keyfile ]; then
     exit 1
 fi
 keysum=$(shasum -a 256 $keyfile | cut -c -64)
-if [ $keysum != "f7207353794749ee36169a9bda8a5b8c83ca1206c2215556cea69ede5aecc564" ]; then
+if [ $keysum != "ba364a945d57c48621aa9cb6a9c62be86b98939e3e3dd057708efa72590ff52b" ]; then
     echo "Wrong key file: checksum does not match developer key file."
     exit 1
 fi
