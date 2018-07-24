@@ -50,9 +50,9 @@ var (
 	// GenesisTimestamp is the timestamp when genesis block was mined
 	GenesisTimestamp Timestamp
 	// FirstCoinbase is the coinbase reward of the Genesis block.
-	FirstCoinbase = uint64(15e8)
+	FirstCoinbase = uint64(24e8)
 	// SecondCoinbase is the coinbase reward of the 2nd block.
-	SecondCoinbase = uint64(15e8)
+	SecondCoinbase = uint64(6e8)
 	// InitialCoinbase is the coinbase reward of the first block following the
 	// initial 2 blocks.
 	InitialCoinbase = uint64(60e3)
