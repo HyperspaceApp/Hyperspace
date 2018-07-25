@@ -173,7 +173,7 @@ func main() {
 	})
 
 	// Set default values, which have the lowest priority.
-	root.Flags().StringVarP(&globalConfig.Siad.RequiredUserAgent, "agent", "", "Sia-Agent", "required substring for the user agent")
+	root.Flags().StringVarP(&globalConfig.Siad.RequiredUserAgent, "agent", "", "Hyperspace-Agent", "required substring for the user agent")
 	root.Flags().StringVarP(&globalConfig.Siad.HostAddr, "host-addr", "", ":5582", "which port the host listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.ProfileDir, "profile-directory", "", "profiles", "location of the profiling directory")
 	root.Flags().StringVarP(&globalConfig.Siad.APIaddr, "api-addr", "", "localhost:5580", "which host:port the API server listens on")
