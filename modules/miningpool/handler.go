@@ -532,10 +532,12 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 		h.log.Printf("Failed to SubmitBlock(): %v\n", err)
 		h.log.Printf(sPrintBlock(b))
 		panic(fmt.Sprintf("Failed to SubmitBlock(): %v\n", err))
-		r.Result = false //json.RawMessage(`false`)
-		r.Error = interfaceify([]string{"20", "Stale share"})
-		h.s.CurrentWorker.IncrementInvalidShares()
-		return h.sendResponse(r)
+		/*
+			r.Result = false //json.RawMessage(`false`)
+			r.Error = interfaceify([]string{"20", "Stale share"})
+			h.s.CurrentWorker.IncrementInvalidShares()
+			return h.sendResponse(r)
+		*/
 	}
 
 	h.s.CurrentWorker.log.Printf("Share Accepted\n")
