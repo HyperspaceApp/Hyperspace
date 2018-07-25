@@ -160,7 +160,7 @@ func init() {
 		// happen.
 		BlockFrequency = 120                     // 12 seconds: slow enough for developers to see ~each block, fast enough that blocks don't waste time.
 		MaturityDelay = 100                      // 60 seconds before a delayed output matures.
-		GenesisTimestamp = Timestamp(1530009392) // Change as necessary.
+		GenesisTimestamp = Timestamp(1532510500) // Change as necessary.
 		RootTarget = Target{0, 0, 2}             // Standard developer CPUs will be able to mine blocks with the race library activated.
 
 		TargetWindow = 20                              // Difficulty is adjusted based on prior 20 blocks.
@@ -223,10 +223,9 @@ func init() {
 		// spending and stops a small set of long-range mining attacks.
 		MaturityDelay = 144
 
-		// The genesis timestamp is set to June 6th, because that is when the
-		// 100-block developer premine started. The trailing zeroes are a
-		// bonus, and make the timestamp easier to memorize.
-		GenesisTimestamp = Timestamp(1433600000) // June 6th, 2015 @ 2:13pm UTC.
+		// The genesis timestamp is set to July 25th, which is when the
+		// network went live.
+		GenesisTimestamp = Timestamp(1532510520) // July 25, 2018 9:22:00 GMT
 
 		// The RootTarget was set such that the developers could reasonable
 		// premine 100 blocks in a day. It was known to the developers at launch
