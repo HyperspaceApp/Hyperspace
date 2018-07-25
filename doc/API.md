@@ -13,7 +13,7 @@ guaranteed to be supported beyond the current release, and should not be used
 in production.
 
 Notes:
-- Requests must set their User-Agent string to contain the substring "Sia-Agent".
+- Requests must set their User-Agent string to contain the substring "Hyperspace-Agent".
 - By default, siad listens on "localhost:5580". This can be changed using the
   `--api-addr` flag when running siad.
 - **Do not bind or expose the API to a non-loopback address unless you are
@@ -21,12 +21,12 @@ Notes:
 
 Example GET curl call:
 ```
-curl -A "Sia-Agent" "localhost:5580/wallet/transactions?startheight=1&endheight=250"
+curl -A "Hyperspace-Agent" "localhost:5580/wallet/transactions?startheight=1&endheight=250"
 ```
 
 Example POST curl call:
 ```
-curl -A "Sia-Agent" --data "amount=123&destination=abcd" "localhost:5580/wallet/spacecash"
+curl -A "Hyperspace-Agent" --data "amount=123&destination=abcd" "localhost:5580/wallet/spacecash"
 ```
 
 Standard responses

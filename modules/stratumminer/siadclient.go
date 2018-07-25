@@ -51,7 +51,7 @@ func (sc *SiadClient) GetHeaderForWork() (target []byte, header []byte, deprecat
 		return
 	}
 
-	req.Header.Add("User-Agent", "Sia-Agent")
+	req.Header.Add("User-Agent", "Hyperspace-Agent")
 	resp, err := client.Do(req)
 	if err != nil {
 		return
@@ -94,7 +94,7 @@ func (sc *SiadClient) SubmitHeader(header []byte, job interface{}) (err error) {
 		return
 	}
 
-	req.Header.Add("User-Agent", "Sia-Agent")
+	req.Header.Add("User-Agent", "Hyperspace-Agent")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

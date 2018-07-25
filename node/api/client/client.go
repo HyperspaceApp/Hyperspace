@@ -22,7 +22,7 @@ type Client struct {
 	Password string
 
 	// UserAgent must match the User-Agent required by the siad server. If not
-	// set, it defaults to "Sia-Agent".
+	// set, it defaults to "Hyperspace-Agent".
 	UserAgent string
 }
 
@@ -43,7 +43,7 @@ func (c *Client) NewRequest(method, resource string, body io.Reader) (*http.Requ
 	}
 	agent := c.UserAgent
 	if agent == "" {
-		agent = "Sia-Agent"
+		agent = "Hyperspace-Agent"
 	}
 	req.Header.Set("User-Agent", agent)
 	if c.Password != "" {
