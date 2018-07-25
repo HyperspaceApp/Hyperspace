@@ -39,6 +39,7 @@ var (
 	FutureThreshold Timestamp
 	// GenesisAirdropAllocation is the output creating the initial coins allocated
 	// for the airdrop at network launch
+	GenesisAllocation []SiacoinOutput
 	GenesisAirdropAllocation []SiacoinOutput
 	GenesisDeveloperAllocation []SiacoinOutput
 	GenesisContributorAllocation []SiacoinOutput
@@ -422,14 +423,15 @@ func init() {
 		},
 
 	}
+	GenesisAllocation = append(GenesisAllocation, GenesisAirdropAllocation...)
+	GenesisAllocation = append(GenesisAllocation, GenesisDeveloperAllocation...)
+	GenesisAllocation = append(GenesisAllocation, GenesisContributorAllocation...)
+	GenesisAllocation = append(GenesisAllocation, GenesisPoolAllocation...)
 	// Create the genesis block.
 	GenesisBlock = Block{
 		Timestamp: GenesisTimestamp,
 		Transactions: []Transaction{
-			{SiacoinOutputs: GenesisAirdropAllocation},
-			{SiacoinOutputs: GenesisDeveloperAllocation},
-			{SiacoinOutputs: GenesisContributorAllocation},
-			{SiacoinOutputs: GenesisPoolAllocation},
+			{SiacoinOutputs: GenesisAllocation},
 		},
 	}
 	// Calculate the genesis ID.
