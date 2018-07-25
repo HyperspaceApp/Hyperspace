@@ -20,7 +20,7 @@ const (
 // gateway persist file.
 var persistMetadata = persist.Metadata{
 	Header:  "Sia Node List",
-	Version: "0.0.1",
+	Version: "0.1.0",
 }
 
 // persistData returns the data in the Gateway that will be saved to disk.
