@@ -51,7 +51,7 @@ func TestCalculateCoinbase(t *testing.T) {
 // doing a naive computation, instead of by doing the optimized computation.
 func TestCalculateNumSiacoins(t *testing.T) {
 	c := CalculateNumSiacoins(0)
-	if c.Cmp(CalculateCoinbase(0).Add(AirdropValue)) != 0 {
+	if c.Cmp(CalculateCoinbase(0).Add(AirdropValue).Add(DeveloperAirdropValue).Add(ContributorAirdropValue).Add(PoolAirdropValue)) != 0 {
 		t.Errorf("unexpected circulation result for value at height 0, expected %s, got %s", c, CalculateCoinbase(0).Add(AirdropValue))
 	}
 

@@ -91,12 +91,13 @@ func CalculateCoinbase(height BlockHeight) Currency {
 // CalculateNumSiacoins calculates the number of siacoins in circulation at a
 // given height.
 func CalculateNumSiacoins(height BlockHeight) Currency {
+	initial := AirdropValue.Add(DeveloperAirdropValue).Add(ContributorAirdropValue).Add(PoolAirdropValue)
 	if height == 0 {
-		return AirdropValue
+		return initial
 	} else if height == 1 {
-		return AirdropValue.Add(NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision))
+		return initial.Add(NewCurrency64(FirstCoinbase).Mul(SiacoinPrecision))
 	} else if height == 2 {
-		return AirdropValue.Add(NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision))
+		return initial.Add(NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision))
 	}
 	founderSiacoins := NewCurrency64(FirstCoinbase + SecondCoinbase).Mul(SiacoinPrecision)
 	// each block decrements by 0.2 SPACE, so we multiply by 5 to calculate the number of
@@ -106,11 +107,11 @@ func CalculateNumSiacoins(height BlockHeight) Currency {
 	// the first 3 blocks are special, then we deflate for deflationBlocks
 	if (height - 3) <= deflationBlocks {
 		deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64((height - 3) + 1)))
-		return AirdropValue.Add(founderSiacoins).Add(deflationSiacoins)
+		return initial.Add(founderSiacoins).Add(deflationSiacoins)
 	}
 	deflationSiacoins := avgDeflationSiacoins.Mul(NewCurrency64(uint64(deflationBlocks + 1)))
 	trailingSiacoins := NewCurrency64(uint64(height - 3 - deflationBlocks)).Mul(CalculateCoinbase(height))
-	return AirdropValue.Add(founderSiacoins).Add(deflationSiacoins).Add(trailingSiacoins)
+	return initial.Add(founderSiacoins).Add(deflationSiacoins).Add(trailingSiacoins)
 }
 
 // ID returns the ID of a Block, which is calculated by hashing the header.

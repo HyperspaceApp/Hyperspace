@@ -40,6 +40,9 @@ var (
 	// GenesisAirdropAllocation is the output creating the initial coins allocated
 	// for the airdrop at network launch
 	GenesisAirdropAllocation []SiacoinOutput
+	GenesisDeveloperAllocation []SiacoinOutput
+	GenesisContributorAllocation []SiacoinOutput
+	GenesisPoolAllocation []SiacoinOutput
 	// GenesisBlock is the first block of the block chain
 	GenesisBlock Block
 
@@ -59,6 +62,30 @@ var (
 	// AirdropValue is the total amount of coins generated in the genesis block
 	// for the airdrop.
 	AirdropValue = NewCurrency64(35373763032).Mul(SiacoinPrecision).Div(NewCurrency64(10))
+	// SingleDeveloperAirdropValue is the amount of coins generated in the genesis
+	// block for each developer's airdrop
+	SingleDeveloperAirdropValue = NewCurrency64(10).Mul(SiacoinPrecision)
+	// NumDevelopers is the number of developers who split the DeveloperAirdrop
+	NumDevelopers = uint64(6)
+	// DeveloperAirdropValue is the total amount of coins generated in the genesis
+	// block for the developers airdrops
+	DeveloperAirdropValue = SingleDeveloperAirdropValue.Mul(NewCurrency64(NumDevelopers))
+	// SingleContributorAirdropValue is the amount of coins generated in the genesis
+	// block for each contributor's airdrop
+	SingleContributorAirdropValue = NewCurrency64(1).Mul(SiacoinPrecision)
+	// NumContributors is the number of contributors who split the ContributorAirdrop
+	NumContributors = uint64(2)
+	// ContributorAirdropValue is the total amount of coins generated in the genesis
+	// block for the contributor airdrop
+	ContributorAirdropValue = SingleContributorAirdropValue.Mul(NewCurrency64(NumContributors))
+	// SinglePoolAirdropValue is the amount of coins generated in the genesis
+	// block for each pool's airdrop
+	SinglePoolAirdropValue = NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
+	// NumDevelopers is the number of developers who split the DeveloperAirdrop
+	NumPools = uint64(6)
+	// PoolAirdropValue is the total amount of coins generated in the genesis
+	// block for the pool airdrop
+	PoolAirdropValue = SinglePoolAirdropValue.Mul(NewCurrency64(NumPools))
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or
@@ -272,11 +299,90 @@ func init() {
 			UnlockHash: UnlockHash{150, 207, 110, 1, 194, 164, 204, 225, 187, 15, 120, 146, 252, 172, 94, 0, 0, 196, 135, 188, 142, 90, 195, 136, 222, 112, 8, 160, 222, 92, 241, 22},
 		},
 	}
+
+	GenesisDeveloperAllocation = []SiacoinOutput {
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{189, 162, 236, 165, 81, 140, 186, 212, 48, 188, 83, 121, 5, 132, 178, 40, 182, 183, 121, 42, 232, 252, 32, 211, 239, 245, 49, 174, 178, 182, 45, 64},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{147, 113, 100, 98, 203, 109, 75, 159, 145, 249, 149, 185, 68, 254, 25, 106, 19, 10, 210, 148, 165, 83, 4, 114, 63, 240, 167, 66, 185, 7, 161, 122},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{237, 53, 147, 42, 115, 194, 55, 27, 39, 197, 178, 204, 174, 50, 169, 174, 117, 188, 39, 34, 77, 176, 175, 169, 53, 97, 233, 234, 232, 194, 212, 40},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{128, 87, 40, 7, 165, 220, 242, 0, 88, 204, 84, 174, 113, 109, 17, 199, 27, 36, 120, 116, 207, 252, 131, 129, 6, 55, 69, 68, 32, 172, 246, 152},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{107, 179, 160, 141, 208, 78, 91, 20, 168, 241, 183, 38, 166, 48, 175, 254, 234, 78, 248, 87, 161, 154, 121, 176, 224, 129, 67, 138, 92, 77, 11, 113},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{174, 169, 126, 149, 129, 194, 124, 81, 190, 76, 241, 100, 247, 74, 234, 79, 205, 125, 44, 30, 170, 152, 158, 17, 103, 130, 241, 67, 50, 147, 16, 92},
+		},
+	}
+
+	GenesisContributorAllocation = []SiacoinOutput {
+		{
+			Value: SingleContributorAirdropValue,
+			UnlockHash: UnlockHash{218, 158, 104, 142, 55, 232, 182, 179, 46, 41, 5, 94, 231, 83, 162, 228, 36, 249, 123, 177, 99, 246, 21, 122, 86, 137, 23, 231, 102, 36, 186, 105},
+		},
+
+		{
+			Value: SingleContributorAirdropValue,
+			UnlockHash: UnlockHash{125, 212, 14, 206, 111, 167, 163, 202, 124, 67, 124, 200, 145, 192, 149, 225, 161, 200, 238, 57, 224, 25, 210, 94, 216, 201, 96, 39, 236, 74, 15, 147},
+		},
+	}
+
+	GenesisPoolAllocation = []SiacoinOutput {
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{9, 217, 38, 63, 133, 118, 128, 191, 232, 42, 188, 133, 144, 51, 82, 155, 49, 87, 214, 125, 102, 229, 240, 237, 159, 218, 5, 37, 110, 150, 234, 237},
+		},
+
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{173, 49, 115, 131, 130, 63, 132, 96, 148, 178, 201, 241, 144, 68, 203, 225, 97, 69, 95, 192, 34, 4, 146, 82, 32, 208, 139, 10, 223, 234, 239, 52},
+		},
+
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{170, 204, 225, 98, 230, 29, 94, 196, 22, 232, 239, 214, 129, 134, 115, 35, 189, 203, 64, 195, 144, 113, 84, 130, 203, 211, 237, 113, 20, 237, 109, 251},
+		},
+
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{36, 172, 106, 133, 70, 60, 73, 79, 77, 117, 237, 26, 103, 207, 192, 207, 153, 51, 16, 63, 212, 144, 223, 254, 83, 249, 125, 245, 177, 209, 191, 199},
+		},
+
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{95, 204, 254, 87, 39, 195, 235, 56, 210, 6, 143, 179, 251, 227, 224, 14, 114, 90, 223, 159, 209, 255, 157, 121, 104, 213, 229, 81, 215, 221, 166, 147},
+		},
+
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{13, 237, 150, 118, 197, 194, 35, 81, 161, 198, 233, 154, 25, 245, 112, 205, 79, 30, 0, 176, 20, 6, 66, 35, 17, 170, 24, 183, 76, 183, 201, 180},
+		},
+	}
 	// Create the genesis block.
 	GenesisBlock = Block{
 		Timestamp: GenesisTimestamp,
 		Transactions: []Transaction{
 			{SiacoinOutputs: GenesisAirdropAllocation},
+			{SiacoinOutputs: GenesisDeveloperAllocation},
+			{SiacoinOutputs: GenesisContributorAllocation},
+			{SiacoinOutputs: GenesisPoolAllocation},
 		},
 	}
 	// Calculate the genesis ID.
