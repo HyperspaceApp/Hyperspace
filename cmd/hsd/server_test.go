@@ -106,8 +106,8 @@ func TestNewServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = c.ConsensusGet()
-	if err == nil || !strings.Contains(err.Error(), "siad is not ready") {
-		t.Fatal("expected consensus call on unloaded server to fail with siad not ready")
+	if err == nil || !strings.Contains(err.Error(), "hsd is not ready") {
+		t.Fatal("expected consensus call on unloaded server to fail with hsd not ready")
 	}
 	// create a goroutine that continuously makes API requests to test that
 	// loading modules doesn't cause a race

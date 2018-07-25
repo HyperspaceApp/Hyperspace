@@ -65,7 +65,7 @@ Available settings:
 	*/
 )
 
-// poolcmd is the handler for the command `siac pool`.
+// poolcmd is the handler for the command `hsc pool`.
 // Prints the status of the pool.
 func poolcmd() {
 	config, err := httpClient.MiningPoolConfigGet()
@@ -85,7 +85,7 @@ Pool Wallet:            %s
 		config.DBConnection, config.PoolWallet)
 }
 
-// poolconfigcmd is the handler for the command `siac pool config [parameter] [value]`
+// poolconfigcmd is the handler for the command `hsc pool config [parameter] [value]`
 func poolconfigcmd(param, value string) {
 	var err error
 	switch param {

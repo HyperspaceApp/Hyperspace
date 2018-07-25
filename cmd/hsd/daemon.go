@@ -225,7 +225,7 @@ func startDaemon(config Config) (err error) {
 		}
 	}
 
-	// Print the siad Version and GitRevision
+	// Print the hsd Version and GitRevision
 	fmt.Println("Hyperspace Daemon v" + build.Version)
 	if build.GitRevision == "" {
 		fmt.Println("WARN: compiled without build commit or version. To compile correctly, please use the makefile")
@@ -312,7 +312,7 @@ func startDaemonCmd(cmd *cobra.Command, _ []string) {
 		go profile.StartContinuousProfile(globalConfig.Siad.ProfileDir, profileCPU, profileMem, profileTrace)
 	}
 
-	// Start siad. startDaemon will only return when it is shutting down.
+	// Start hsd. startDaemon will only return when it is shutting down.
 	err := startDaemon(globalConfig)
 	if err != nil {
 		die(err)

@@ -29,7 +29,7 @@ var (
 	}
 )
 
-// minerstartcmd is the handler for the command `siac stratum-miner start`.
+// minerstartcmd is the handler for the command `hsc stratum-miner start`.
 // Starts the stratum miner.
 func stratumminerstartcmd(cmd *cobra.Command, args []string) {
 	var err error
@@ -46,7 +46,7 @@ func stratumminerstartcmd(cmd *cobra.Command, args []string) {
 	fmt.Println("Stratum miner is now running.")
 }
 
-// stratumminerstopcmd is the handler for the command `siac stratum-miner stop`.
+// stratumminerstopcmd is the handler for the command `hsc stratum-miner stop`.
 // Stops the stratum miner.
 func stratumminerstopcmd() {
 	err := httpClient.StratumMinerStopPost()
@@ -56,7 +56,7 @@ func stratumminerstopcmd() {
 	fmt.Println("Stopped mining.")
 }
 
-// stratumminercmd is the handler for the command `siac stratum-miner`.
+// stratumminercmd is the handler for the command `hsc stratum-miner`.
 // Prints the status of the stratum miner.
 func stratumminercmd() {
 	status, err := httpClient.StratumMinerGet()

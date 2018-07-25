@@ -147,9 +147,9 @@ func main() {
 	root.AddCommand(mangenCmd)
 
 	// initialize client
-	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", "localhost:5580", "which host/port to communicate with (i.e. the host/port siad is listening on)")
+	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", "localhost:5580", "which host/port to communicate with (i.e. the host/port hsd is listening on)")
 	root.PersistentFlags().StringVarP(&httpClient.Password, "apipassword", "", "", "the password for the API's http authentication")
-	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by siac to connect to the daemon's API")
+	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by hsc to connect to the daemon's API")
 
 	// Check if the api password environment variable is set.
 	apiPassword := os.Getenv("SIA_API_PASSWORD")

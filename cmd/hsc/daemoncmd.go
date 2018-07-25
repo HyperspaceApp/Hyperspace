@@ -37,7 +37,7 @@ var (
 	}
 )
 
-// version prints the version of siac and siad.
+// version prints the version of hsc and hsd.
 func versioncmd() {
 	fmt.Println("Hyperspace Client")
 	fmt.Println("\tVersion " + build.Version)
