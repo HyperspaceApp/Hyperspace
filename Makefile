@@ -91,7 +91,8 @@ release-race:
 # clean removes all directories that get automatically created during
 # development.
 clean:
-	rm -rf cover doc/whitepaper.aux doc/whitepaper.log doc/whitepaper.pdf release
+	#rm -rf cover doc/whitepaper.aux doc/whitepaper.log doc/whitepaper.pdf release
+	rm -rf cover release
 
 test:
 	go test -short -tags='debug testing netgo' -timeout=5s $(pkgs) -run=$(run)
@@ -120,9 +121,10 @@ cover: clean
 
 # whitepaper builds the whitepaper from whitepaper.tex. pdflatex has to be
 # called twice because references will not update correctly the first time.
-whitepaper:
-	@pdflatex -output-directory=doc whitepaper.tex > /dev/null
-	pdflatex -output-directory=doc whitepaper.tex
+#whitepaper:
+#	@pdflatex -output-directory=doc whitepaper.tex > /dev/null
+#	pdflatex -output-directory=doc whitepaper.tex
 
-.PHONY: all dependencies fmt install release release-std xc clean test test-v test-long cover cover-integration cover-unit whitepaper
+#.PHONY: all dependencies fmt install release release-std xc clean test test-v test-long cover cover-integration cover-unit whitepaper
+.PHONY: all dependencies fmt install release release-std xc clean test test-v test-long cover cover-integration cover-unit
 
