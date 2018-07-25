@@ -84,11 +84,6 @@ type ConsensusBlock struct {
 	Transactions map[string]ConsensusTransaction `json:"transactions"`
 }
 
-// Scods is a list of Siacoin output diffs
-type Scods struct {
-	scods []modules.SiacoinOutputDiff `json:"scods"`
-}
-
 // ConsensusBlocksGet contains all fields of a types.Block and additional
 // fields for ID and Height.
 type ConsensusBlocksGet struct {
