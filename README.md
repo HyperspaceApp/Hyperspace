@@ -13,7 +13,7 @@ best service at the lowest price. And since there is no barrier to entry for
 hosts, anyone with spare storage capacity can join the network and start
 making money.
 
-![UI](http://i.imgur.com/iHoGqoL.png)
+![UI](https://imgur.com/a/V9yvjJg)
 
 Traditional cloud storage has a number of shortcomings. Users are limited to a
 few big-name offerings: Google, Microsoft, Amazon. These companies have little
@@ -50,15 +50,7 @@ keys.
 At the core of Hyperspace is a blockchain that closely resembles Bitcoin.
 Transactions are conducted in Hyperspacecoin, a cryptocurrency. The blockchain is
 what allows Hyperspace to enforce its smart contracts without relying on centralized
-authority. To acquire siacoins, use an exchange such as [Bittrex](https://bittrex.com), [Yunbi](https://yunbi.com), or
-[Bisq](https://www.bisq.io).
-
-To get started with Hyperspace, check out the guides below:
-
-- [How to Store Data on Hyperspace](https://blog.sia.tech/getting-started-with-private-decentralized-cloud-storage-c9565dc8c854)
-- [How to Become a Hyperspace Host](https://blog.sia.tech/how-to-run-a-host-on-sia-2159ebc4725)
-- [Using the Hyperspace API](https://blog.sia.tech/api-quickstart-guide-f1d160c05235)
-
+authority.
 
 Usage
 -----
