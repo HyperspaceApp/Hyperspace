@@ -346,7 +346,7 @@ func init() {
 	GenesisPoolAllocation = []SiacoinOutput {
 		{
 			Value: SinglePoolAirdropValue,
-			UnlockHash: UnlockHash{9, 217, 38, 63, 133, 118, 128, 191, 232, 42, 188, 133, 144, 51, 82, 155, 49, 87, 214, 125, 102, 229, 240, 237, 159, 218, 5, 37, 110, 150, 234, 237},
+			UnlockHash: UnlockHash{205, 253, 28, 199, 100, 195, 88, 56, 142, 135, 0, 151, 162, 225, 185, 111, 136, 112, 137, 89, 35, 108, 174, 91, 21, 160, 141, 217, 63, 139, 148, 94},
 		},
 
 		{
@@ -373,6 +373,12 @@ func init() {
 			Value: SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{13, 237, 150, 118, 197, 194, 35, 81, 161, 198, 233, 154, 25, 245, 112, 205, 79, 30, 0, 176, 20, 6, 66, 35, 17, 170, 24, 183, 76, 183, 201, 180},
 		},
+
+		{
+			Value: SinglePoolAirdropValue,
+			UnlockHash: UnlockHash{255, 53, 211, 173, 62, 94, 73, 87, 119, 12, 48, 2, 28, 39, 68, 145, 146, 143, 157, 169, 28, 61, 61, 106, 112, 15, 235, 164, 187, 58, 220, 113},
+		},
+
 	}
 	// Create the genesis block.
 	GenesisBlock = Block{
