@@ -39,19 +39,19 @@ var (
 	FutureThreshold Timestamp
 	// GenesisAllocation is the output creating all the initial coins allocated
 	// in the genesis block
-	GenesisAllocation            []SiacoinOutput
+	GenesisAllocation []SiacoinOutput
 	// GenesisAirdropAllocation is the output creating the initial coins allocated
 	// for the airdrop at network launch
-	GenesisAirdropAllocation     []SiacoinOutput
+	GenesisAirdropAllocation []SiacoinOutput
 	// GenesisDeveloperAllocation is the output creating the initial coins allocated
 	// for the developer airdrop at network launch
-	GenesisDeveloperAllocation   []SiacoinOutput
+	GenesisDeveloperAllocation []SiacoinOutput
 	// GenesisContributorAllocation is the output creating the initial coins allocated
 	// for the developer airdrop at network launch
 	GenesisContributorAllocation []SiacoinOutput
 	// GenesisPoolAllocation is the output creating the initial coins allocated
 	// for the developer airdrop at network launch
-	GenesisPoolAllocation        []SiacoinOutput
+	GenesisPoolAllocation []SiacoinOutput
 	// GenesisBlock is the first block of the block chain
 	GenesisBlock Block
 
@@ -90,7 +90,7 @@ var (
 	// SinglePoolAirdropValue is the amount of coins generated in the genesis
 	// block for each pool's airdrop
 	SinglePoolAirdropValue = NewCurrency64(2 * InitialCoinbase).Mul(SiacoinPrecision)
-	// NumDevelopers is the number of developers who split the DeveloperAirdrop
+	// NumPools is the number of developers who split the DeveloperAirdrop
 	NumPools = uint64(7)
 	// PoolAirdropValue is the total amount of coins generated in the genesis
 	// block for the pool airdrop
