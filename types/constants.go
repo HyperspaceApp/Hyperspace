@@ -37,13 +37,21 @@ var (
 	// smaller than ExtremeFutureThreshold, the Block may be held in memory until
 	// the Block's Timestamp exceeds the current time by less than FutureThreshold.
 	FutureThreshold Timestamp
+	// GenesisAllocation is the output creating all the initial coins allocated
+	// in the genesis block
+	GenesisAllocation            []SiacoinOutput
 	// GenesisAirdropAllocation is the output creating the initial coins allocated
 	// for the airdrop at network launch
-	GenesisAllocation []SiacoinOutput
-	GenesisAirdropAllocation []SiacoinOutput
-	GenesisDeveloperAllocation []SiacoinOutput
+	GenesisAirdropAllocation     []SiacoinOutput
+	// GenesisDeveloperAllocation is the output creating the initial coins allocated
+	// for the developer airdrop at network launch
+	GenesisDeveloperAllocation   []SiacoinOutput
+	// GenesisContributorAllocation is the output creating the initial coins allocated
+	// for the developer airdrop at network launch
 	GenesisContributorAllocation []SiacoinOutput
-	GenesisPoolAllocation []SiacoinOutput
+	// GenesisPoolAllocation is the output creating the initial coins allocated
+	// for the developer airdrop at network launch
+	GenesisPoolAllocation        []SiacoinOutput
 	// GenesisBlock is the first block of the block chain
 	GenesisBlock Block
 
@@ -81,7 +89,7 @@ var (
 	ContributorAirdropValue = SingleContributorAirdropValue.Mul(NewCurrency64(NumContributors))
 	// SinglePoolAirdropValue is the amount of coins generated in the genesis
 	// block for each pool's airdrop
-	SinglePoolAirdropValue = NewCurrency64(2*InitialCoinbase).Mul(SiacoinPrecision)
+	SinglePoolAirdropValue = NewCurrency64(2 * InitialCoinbase).Mul(SiacoinPrecision)
 	// NumDevelopers is the number of developers who split the DeveloperAirdrop
 	NumPools = uint64(7)
 	// PoolAirdropValue is the total amount of coins generated in the genesis
@@ -300,128 +308,125 @@ func init() {
 		},
 	}
 
-	GenesisDeveloperAllocation = []SiacoinOutput {
+	GenesisDeveloperAllocation = []SiacoinOutput{
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{189, 162, 236, 165, 81, 140, 186, 212, 48, 188, 83, 121, 5, 132, 178, 40, 182, 183, 121, 42, 232, 252, 32, 211, 239, 245, 49, 174, 178, 182, 45, 64},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{147, 113, 100, 98, 203, 109, 75, 159, 145, 249, 149, 185, 68, 254, 25, 106, 19, 10, 210, 148, 165, 83, 4, 114, 63, 240, 167, 66, 185, 7, 161, 122},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{237, 53, 147, 42, 115, 194, 55, 27, 39, 197, 178, 204, 174, 50, 169, 174, 117, 188, 39, 34, 77, 176, 175, 169, 53, 97, 233, 234, 232, 194, 212, 40},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{128, 87, 40, 7, 165, 220, 242, 0, 88, 204, 84, 174, 113, 109, 17, 199, 27, 36, 120, 116, 207, 252, 131, 129, 6, 55, 69, 68, 32, 172, 246, 152},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{107, 179, 160, 141, 208, 78, 91, 20, 168, 241, 183, 38, 166, 48, 175, 254, 234, 78, 248, 87, 161, 154, 121, 176, 224, 129, 67, 138, 92, 77, 11, 113},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{174, 169, 126, 149, 129, 194, 124, 81, 190, 76, 241, 100, 247, 74, 234, 79, 205, 125, 44, 30, 170, 152, 158, 17, 103, 130, 241, 67, 50, 147, 16, 92},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{10, 164, 223, 171, 5, 19, 75, 231, 52, 57, 148, 215, 128, 12, 87, 68, 37, 165, 125, 41, 90, 248, 91, 181, 15, 4, 181, 64, 205, 41, 203, 208},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{196, 124, 178, 27, 31, 175, 132, 82, 177, 13, 211, 131, 242, 162, 193, 152, 231, 146, 81, 5, 52, 46, 69, 7, 61, 124, 218, 218, 9, 46, 27, 196},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{56, 246, 104, 35, 95, 33, 79, 205, 80, 20, 175, 191, 140, 98, 6, 167, 245, 226, 190, 158, 208, 108, 52, 222, 224, 10, 168, 50, 29, 67, 76, 156},
 		},
 
 		{
-			Value: SingleDeveloperAirdropValue,
+			Value:      SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{124, 73, 85, 177, 28, 192, 69, 85, 222, 166, 190, 24, 107, 109, 143, 105, 46, 218, 123, 159, 215, 122, 11, 35, 47, 183, 94, 236, 190, 21, 33, 79},
 		},
-
 	}
 
-	GenesisContributorAllocation = []SiacoinOutput {
+	GenesisContributorAllocation = []SiacoinOutput{
 		{
-			Value: SingleContributorAirdropValue,
+			Value:      SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{218, 158, 104, 142, 55, 232, 182, 179, 46, 41, 5, 94, 231, 83, 162, 228, 36, 249, 123, 177, 99, 246, 21, 122, 86, 137, 23, 231, 102, 36, 186, 105},
 		},
 
 		{
-			Value: SingleContributorAirdropValue,
+			Value:      SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{125, 212, 14, 206, 111, 167, 163, 202, 124, 67, 124, 200, 145, 192, 149, 225, 161, 200, 238, 57, 224, 25, 210, 94, 216, 201, 96, 39, 236, 74, 15, 147},
 		},
 
 		{
-			Value: SingleContributorAirdropValue,
+			Value:      SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{60, 91, 48, 246, 158, 21, 87, 155, 51, 110, 225, 41, 235, 215, 13, 108, 165, 158, 35, 223, 253, 221, 14, 39, 148, 226, 181, 6, 166, 2, 239, 34},
 		},
 
 		{
-			Value: SingleContributorAirdropValue,
+			Value:      SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{165, 182, 125, 195, 81, 68, 196, 134, 77, 61, 98, 223, 84, 220, 167, 31, 135, 201, 139, 173, 187, 229, 243, 79, 233, 103, 108, 102, 114, 232, 59, 73},
 		},
 
 		{
-			Value: SingleContributorAirdropValue,
+			Value:      SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{196, 99, 157, 119, 181, 114, 208, 148, 146, 198, 13, 250, 104, 67, 40, 161, 22, 158, 132, 70, 224, 5, 83, 54, 3, 51, 80, 53, 165, 218, 54, 14},
 		},
 
 		{
-			Value: SingleContributorAirdropValue,
+			Value:      SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{119, 226, 125, 129, 89, 187, 96, 150, 149, 93, 165, 168, 117, 112, 28, 60, 15, 73, 115, 64, 29, 20, 22, 222, 230, 176, 172, 51, 109, 191, 68, 49},
 		},
-
 	}
 
-	GenesisPoolAllocation = []SiacoinOutput {
+	GenesisPoolAllocation = []SiacoinOutput{
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{205, 253, 28, 199, 100, 195, 88, 56, 142, 135, 0, 151, 162, 225, 185, 111, 136, 112, 137, 89, 35, 108, 174, 91, 21, 160, 141, 217, 63, 139, 148, 94},
 		},
 
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{173, 49, 115, 131, 130, 63, 132, 96, 148, 178, 201, 241, 144, 68, 203, 225, 97, 69, 95, 192, 34, 4, 146, 82, 32, 208, 139, 10, 223, 234, 239, 52},
 		},
 
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{170, 204, 225, 98, 230, 29, 94, 196, 22, 232, 239, 214, 129, 134, 115, 35, 189, 203, 64, 195, 144, 113, 84, 130, 203, 211, 237, 113, 20, 237, 109, 251},
 		},
 
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{36, 172, 106, 133, 70, 60, 73, 79, 77, 117, 237, 26, 103, 207, 192, 207, 153, 51, 16, 63, 212, 144, 223, 254, 83, 249, 125, 245, 177, 209, 191, 199},
 		},
 
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{95, 204, 254, 87, 39, 195, 235, 56, 210, 6, 143, 179, 251, 227, 224, 14, 114, 90, 223, 159, 209, 255, 157, 121, 104, 213, 229, 81, 215, 221, 166, 147},
 		},
 
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{13, 237, 150, 118, 197, 194, 35, 81, 161, 198, 233, 154, 25, 245, 112, 205, 79, 30, 0, 176, 20, 6, 66, 35, 17, 170, 24, 183, 76, 183, 201, 180},
 		},
 
 		{
-			Value: SinglePoolAirdropValue,
+			Value:      SinglePoolAirdropValue,
 			UnlockHash: UnlockHash{255, 53, 211, 173, 62, 94, 73, 87, 119, 12, 48, 2, 28, 39, 68, 145, 146, 143, 157, 169, 28, 61, 61, 106, 112, 15, 235, 164, 187, 58, 220, 113},
 		},
-
 	}
 	GenesisAllocation = append(GenesisAllocation, GenesisAirdropAllocation...)
 	GenesisAllocation = append(GenesisAllocation, GenesisDeveloperAllocation...)
