@@ -64,25 +64,25 @@ var (
 	AirdropValue = NewCurrency64(35373763032).Mul(SiacoinPrecision).Div(NewCurrency64(10))
 	// SingleDeveloperAirdropValue is the amount of coins generated in the genesis
 	// block for each developer's airdrop
-	SingleDeveloperAirdropValue = NewCurrency64(10).Mul(SiacoinPrecision)
+	SingleDeveloperAirdropValue = NewCurrency64(54e6).Mul(SiacoinPrecision)
 	// NumDevelopers is the number of developers who split the DeveloperAirdrop
-	NumDevelopers = uint64(6)
+	NumDevelopers = uint64(10)
 	// DeveloperAirdropValue is the total amount of coins generated in the genesis
 	// block for the developers airdrops
 	DeveloperAirdropValue = SingleDeveloperAirdropValue.Mul(NewCurrency64(NumDevelopers))
 	// SingleContributorAirdropValue is the amount of coins generated in the genesis
 	// block for each contributor's airdrop
-	SingleContributorAirdropValue = NewCurrency64(1).Mul(SiacoinPrecision)
+	SingleContributorAirdropValue = NewCurrency64(10e6).Mul(SiacoinPrecision)
 	// NumContributors is the number of contributors who split the ContributorAirdrop
-	NumContributors = uint64(2)
+	NumContributors = uint64(6)
 	// ContributorAirdropValue is the total amount of coins generated in the genesis
 	// block for the contributor airdrop
 	ContributorAirdropValue = SingleContributorAirdropValue.Mul(NewCurrency64(NumContributors))
 	// SinglePoolAirdropValue is the amount of coins generated in the genesis
 	// block for each pool's airdrop
-	SinglePoolAirdropValue = NewCurrency64(InitialCoinbase).Mul(SiacoinPrecision)
+	SinglePoolAirdropValue = NewCurrency64(2*InitialCoinbase).Mul(SiacoinPrecision)
 	// NumDevelopers is the number of developers who split the DeveloperAirdrop
-	NumPools = uint64(6)
+	NumPools = uint64(7)
 	// PoolAirdropValue is the total amount of coins generated in the genesis
 	// block for the pool airdrop
 	PoolAirdropValue = SinglePoolAirdropValue.Mul(NewCurrency64(NumPools))
@@ -329,6 +329,27 @@ func init() {
 			Value: SingleDeveloperAirdropValue,
 			UnlockHash: UnlockHash{174, 169, 126, 149, 129, 194, 124, 81, 190, 76, 241, 100, 247, 74, 234, 79, 205, 125, 44, 30, 170, 152, 158, 17, 103, 130, 241, 67, 50, 147, 16, 92},
 		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{10, 164, 223, 171, 5, 19, 75, 231, 52, 57, 148, 215, 128, 12, 87, 68, 37, 165, 125, 41, 90, 248, 91, 181, 15, 4, 181, 64, 205, 41, 203, 208},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{196, 124, 178, 27, 31, 175, 132, 82, 177, 13, 211, 131, 242, 162, 193, 152, 231, 146, 81, 5, 52, 46, 69, 7, 61, 124, 218, 218, 9, 46, 27, 196},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{56, 246, 104, 35, 95, 33, 79, 205, 80, 20, 175, 191, 140, 98, 6, 167, 245, 226, 190, 158, 208, 108, 52, 222, 224, 10, 168, 50, 29, 67, 76, 156},
+		},
+
+		{
+			Value: SingleDeveloperAirdropValue,
+			UnlockHash: UnlockHash{124, 73, 85, 177, 28, 192, 69, 85, 222, 166, 190, 24, 107, 109, 143, 105, 46, 218, 123, 159, 215, 122, 11, 35, 47, 183, 94, 236, 190, 21, 33, 79},
+		},
+
 	}
 
 	GenesisContributorAllocation = []SiacoinOutput {
@@ -341,6 +362,27 @@ func init() {
 			Value: SingleContributorAirdropValue,
 			UnlockHash: UnlockHash{125, 212, 14, 206, 111, 167, 163, 202, 124, 67, 124, 200, 145, 192, 149, 225, 161, 200, 238, 57, 224, 25, 210, 94, 216, 201, 96, 39, 236, 74, 15, 147},
 		},
+
+		{
+			Value: SingleContributorAirdropValue,
+			UnlockHash: UnlockHash{60, 91, 48, 246, 158, 21, 87, 155, 51, 110, 225, 41, 235, 215, 13, 108, 165, 158, 35, 223, 253, 221, 14, 39, 148, 226, 181, 6, 166, 2, 239, 34},
+		},
+
+		{
+			Value: SingleContributorAirdropValue,
+			UnlockHash: UnlockHash{165, 182, 125, 195, 81, 68, 196, 134, 77, 61, 98, 223, 84, 220, 167, 31, 135, 201, 139, 173, 187, 229, 243, 79, 233, 103, 108, 102, 114, 232, 59, 73},
+		},
+
+		{
+			Value: SingleContributorAirdropValue,
+			UnlockHash: UnlockHash{196, 99, 157, 119, 181, 114, 208, 148, 146, 198, 13, 250, 104, 67, 40, 161, 22, 158, 132, 70, 224, 5, 83, 54, 3, 51, 80, 53, 165, 218, 54, 14},
+		},
+
+		{
+			Value: SingleContributorAirdropValue,
+			UnlockHash: UnlockHash{119, 226, 125, 129, 89, 187, 96, 150, 149, 93, 165, 168, 117, 112, 28, 60, 15, 73, 115, 64, 29, 20, 22, 222, 230, 176, 172, 51, 109, 191, 68, 49},
+		},
+
 	}
 
 	GenesisPoolAllocation = []SiacoinOutput {
