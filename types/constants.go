@@ -23,7 +23,7 @@ var (
 	// to support development of the network instead of the miners
 	DevFundDenom = NewCurrency64(10)
 	// DevFundUnlockHash is the unlock hash for the dev fund subsidy
-	DevFundUnlockHash = UnlockHash{90, 29, 211, 237, 234, 128, 104, 9, 37, 143, 47, 156, 234, 82, 7, 11, 226, 194, 63, 48, 199, 58, 125, 73, 13, 201, 179, 19, 253, 250, 70, 97}
+	DevFundUnlockHash = UnlockHash{122, 187, 109, 95, 232, 79, 59, 94, 168, 154, 242, 9, 73, 45, 6, 21, 151, 78, 195, 98, 197, 65, 115, 155, 229, 181, 208, 12, 31, 116, 69, 196}
 	// ExtremeFutureThreshold is a temporal limit beyond which Blocks are
 	// discarded by the consensus rules. When incoming Blocks are processed, their
 	// Timestamp is allowed to exceed the processor's current time by a small amount.
