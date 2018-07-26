@@ -234,7 +234,7 @@ func init() {
 
 		// The genesis timestamp is set to July 25th, which is when the
 		// network went live.
-		GenesisTimestamp = Timestamp(1532510520) // July 25, 2018 9:22:00 GMT
+		GenesisTimestamp = Timestamp(1532510521) // July 25, 2018 9:22:00 GMT
 
 		// The RootTarget was set such that the developers could reasonable
 		// premine 100 blocks in a day. It was known to the developers at launch
