@@ -28,7 +28,7 @@ const (
 	// incoming connections. This version is usually raised if changes to the
 	// codebase were made that weren't backwards compatible. This might include
 	// changes to the protocol or hardforks.
-	minimumAcceptablePeerVersion = "0.1.0"
+	minimumAcceptablePeerVersion = "0.1.1"
 )
 
 var (

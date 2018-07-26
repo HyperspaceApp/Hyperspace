@@ -14,7 +14,7 @@ const (
 	MaxEncodedVersionLength = 100
 
 	// Version is the current version of siad.
-	Version = "0.1.0"
+	Version = "0.1.1"
 )
 
 // IsVersion returns whether str is a valid version number.
