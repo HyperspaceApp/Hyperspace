@@ -65,7 +65,7 @@ func (cs *ConsensusSet) childTargetOak(parentTotalTime int64, parentTotalTarget,
 	// [0 0 0 0 0 0 0 0 105 202 12 225 144 224 144 183 167 243 233 188 79 177 239 138 67 214 220 16 80 74 216 60]
 	// We target about 1%
 	if parentHeight == types.BlockHeight(7) && build.Release == "standard" {
-		return types.Target{0, 0, 0, 0, 0, 0, 0, 0, 1}
+		return types.Target{0, 0, 0, 0, 0, 0, 0, 40}
 	}
 	// Determine the delta of the current total time vs. the desired total time.
 	// The desired total time is the difference between the genesis block
