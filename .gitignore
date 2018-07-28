@@ -1,6 +1,7 @@
 # vim
 *.swp
 *.swo
+.DS_Store
 
 # build artifacts
 cover
