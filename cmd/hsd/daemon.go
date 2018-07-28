@@ -209,9 +209,9 @@ func readFileConfig(config Config) error {
 // hsd.
 func startDaemon(config Config) (err error) {
 	if config.Siad.AuthenticateAPI {
-		password := os.Getenv("SIA_API_PASSWORD")
+		password := os.Getenv("HYPERSPACE_API_PASSWORD")
 		if password != "" {
-			fmt.Println("Using SIA_API_PASSWORD environment variable")
+			fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
 			config.APIPassword = password
 		} else {
 			// Prompt user for API password.

@@ -152,10 +152,10 @@ func main() {
 	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by hsc to connect to the daemon's API")
 
 	// Check if the api password environment variable is set.
-	apiPassword := os.Getenv("SIA_API_PASSWORD")
+	apiPassword := os.Getenv("HYPERSPACE_API_PASSWORD")
 	if apiPassword != "" {
 		httpClient.Password = apiPassword
-		fmt.Println("Using SIA_API_PASSWORD environment variable")
+		fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
 	}
 
 	// run
