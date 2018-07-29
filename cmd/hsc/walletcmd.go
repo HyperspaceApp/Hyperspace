@@ -461,7 +461,7 @@ func wallettransactionscmd() {
 		} else {
 			fmt.Printf(" unconfirmed")
 		}
-		fmt.Printf("%67v%15.2f SPACE", txn.TransactionID, incomingSiacoinsFloat-outgoingSiacoinsFloat)
+		fmt.Printf("%67v%15.2f SPACE\n", txn.TransactionID, incomingSiacoinsFloat-outgoingSiacoinsFloat)
 	}
 }
 
