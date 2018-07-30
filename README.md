@@ -1,4 +1,4 @@
-# [![Hyperspace Logo](http://hspace.app/images/logo_horizontal@128.png)](http://hspace.app) v0.1.0 (Sourdough)
+# [![Hyperspace Logo](http://i.imgur.com/9rxi9UV.png)](http://hspace.app) v0.1.0 (Sourdough)
 ----------------------------
 
 [![Build Status](https://travis-ci.org/HyperspaceApp/Hyperspace.svg?branch=master)](https://travis-ci.org/HyperspaceApp/Hyperspace)
