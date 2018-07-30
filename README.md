@@ -1,4 +1,4 @@
-Hyperspace v0.1.0 (Sourdough)
+# [![Hyperspace Logo](https://hspace.app/images/logo_horizontal@128.png)](http://hspace.app) v0.1.0 (Sourdough)
 ----------------------------
 
 [![Build Status](https://travis-ci.org/HyperspaceApp/Hyperspace.svg?branch=master)](https://travis-ci.org/HyperspaceApp/Hyperspace)
@@ -14,7 +14,7 @@ best service at the lowest price. And since there is no barrier to entry for
 hosts, anyone with spare storage capacity can join the network and start
 making money.
 
-![UI](https://imgur.com/a/V9yvjJg)
+![UI](http://i.imgur.com/SQeaXQ3.png)
 
 Traditional cloud storage has a number of shortcomings. Users are limited to a
 few big-name offerings: Google, Microsoft, Amazon. These companies have little
