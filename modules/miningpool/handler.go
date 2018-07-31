@@ -466,7 +466,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	j, err := h.s.getJob(jobID, nonce)
 	if err != nil {
 		r.Result = false
-		r.Error = interfaceify([]string{"23", err.Error()}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		r.Error = interfaceify([]string{"23", err.Error()})
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
 	}
@@ -476,13 +476,20 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 
 	if len(b.MinerPayouts) == 0 {
 		r.Result = false
-		r.Error = interfaceify([]string{"22", "Stale - old/unknown job"}) //json.RawMessage(`["21","Stale - old/unknown job"]`)
+		r.Error = interfaceify([]string{"22", "Stale - old/unknown job"})
 		h.s.CurrentWorker.log.Printf("Stale Share rejected - old/unknown job\n")
 		h.s.CurrentWorker.IncrementInvalidShares()
 		return h.sendResponse(r)
 	}
 
 	bhNonce, err := hex.DecodeString(nonce)
+	if len(b.Nonce) != len(bhNonce) {
+		r.Result = false
+		r.Error = interfaceify([]string{"24", "wrong nonce length"})
+		h.s.CurrentWorker.log.Printf("Nonce length rejected\n")
+		h.s.CurrentWorker.IncrementInvalidShares()
+		return h.sendResponse(r)
+	}
 	for i := range b.Nonce { // there has to be a better way to do this in golang
 		b.Nonce[i] = bhNonce[i]
 	}
