@@ -13,6 +13,10 @@ import (
 	"github.com/coreos/bbolt"
 )
 
+const (
+	explorerPersist = modules.ExplorerDir + ".json"
+)
+
 var explorerMetadata = persist.Metadata{
 	Header:  "Sia Explorer",
 	Version: "0.5.2",
@@ -38,15 +42,15 @@ func (e *Explorer) initPersist() error {
 		buckets := [][]byte{
 			bucketBlockFacts,
 			bucketBlockIDs,
-			bucketBlocksDifficulty,
 			bucketBlockTargets,
 			bucketFileContractHistories,
 			bucketFileContractIDs,
-			bucketInternal,
 			bucketSiacoinOutputIDs,
 			bucketSiacoinOutputs,
 			bucketTransactionIDs,
 			bucketUnlockHashes,
+			bucketHashType,
+			bucketInternal,
 		}
 		for _, b := range buckets {
 			_, err := tx.CreateBucketIfNotExists(b)
@@ -72,23 +76,11 @@ func (e *Explorer) initPersist() error {
 				return err
 			}
 		}
-
-		//err = b.Put(internalBlockHeight, encoding.Marshal(types.BlockHeight(98112)))
-		//if err != nil {
-		//	fmt.Printf("internal err %v", err)
-		//	return err
-		//}
-
-		//err = b.Put(internalRecentChange, encoding.Marshal(modules.ConsensusChangeID{}))
-		//if err != nil {
-		//	return err
-		//}
-
 		return nil
 	})
+
 	if err != nil {
 		return err
 	}
-
 	return nil
 }

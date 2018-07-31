@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // Error is a type that is encoded as JSON and returned in an API response in
@@ -88,19 +90,21 @@ func HttpPOSTAuthenticated(url string, data string, password string) (resp *http
 // API encapsulates a collection of modules and implements a http.Handler
 // to access their methods.
 type API struct {
-	cs           modules.ConsensusSet
-	explorer     modules.Explorer
-	gateway      modules.Gateway
-	host         modules.Host
-	miner        modules.Miner
-	renter       modules.Renter
-	tpool        modules.TransactionPool
-	wallet       modules.Wallet
-	pool         modules.Pool
-	stratumminer modules.StratumMiner
-	index        modules.Index
-
-	router http.Handler
+	cs              modules.ConsensusSet
+	explorer        modules.Explorer
+	gateway         modules.Gateway
+	host            modules.Host
+	miner           modules.Miner
+	renter          modules.Renter
+	tpool           modules.TransactionPool
+	wallet          modules.Wallet
+	pool            modules.Pool
+	stratumminer    modules.StratumMiner
+	index           modules.Index
+	unconfirmedSets map[modules.TransactionSetID][]types.TransactionID
+	mu              sync.RWMutex
+	hub             *WebsocketHub
+	router          http.Handler
 }
 
 // api.ServeHTTP implements the http.Handler interface.

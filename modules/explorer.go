@@ -1,13 +1,19 @@
 package modules
 
 import (
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (
 	// ExplorerDir is the name of the directory that is typically used for the
 	// explorer.
-	ExplorerDir = "explorer"
+	ExplorerDir             = "explorer"
+	BlockHashType           = "Blk"
+	TransactionHashType     = "Tx"
+	SiacoinOutputIdHashType = "Scoid"
+	FileContractIdHashType  = "Fcid"
+	UnlockHashType          = "Uh"
 )
 
 type (
@@ -76,6 +82,14 @@ type (
 		// SiacoinOutputID returns all of the transaction ids associated with
 		// the provided siacoin output id.
 		SiacoinOutputID(types.SiacoinOutputID) []types.TransactionID
+
+		// PendingTransactions gets the list of transactions currently in the mempool
+		// These are pruned as transactions are confirmed or reverted, so this should
+		// only be used as a snapshot
+		PendingTransactions() []types.Transaction
+
+		//HashType returns the type of a hash as a string representation.
+		HashType(crypto.Hash) (string, error)
 
 		// FileContractHistory returns the history associated with a file
 		// contract, which includes the file contract itself and all of the

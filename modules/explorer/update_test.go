@@ -28,6 +28,13 @@ func TestIntegrationExplorerFileContractMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Propel explorer tester past the hardfork height.
+	for i := 0; i < 10; i++ {
+		_, err = et.miner.AddBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	facts, ok := et.currentFacts()
 	if !ok {
 		t.Fatal("couldn't get current facts")
@@ -44,10 +51,7 @@ func TestIntegrationExplorerFileContractMetrics(t *testing.T) {
 
 	// Put a file contract into the chain, and check that the explorer
 	// correctly does all of the counting.
-	builder, err := et.wallet.StartTransaction()
-	if err != nil {
-		t.Fatal(err)
-	}
+	builder := et.wallet.StartTransaction()
 	builder.FundSiacoins(types.NewCurrency64(5e9))
 	fcOutputs := []types.SiacoinOutput{{Value: types.NewCurrency64(4805e6)}}
 	fc := types.FileContract{
@@ -98,10 +102,7 @@ func TestIntegrationExplorerFileContractMetrics(t *testing.T) {
 
 	// Put a second file into the explorer to check that multiple files are
 	// handled well.
-	builder, err = et.wallet.StartTransaction()
-	if err != nil {
-		t.Fatal(err)
-	}
+	builder = et.wallet.StartTransaction()
 	builder.FundSiacoins(types.NewCurrency64(1e9))
 	fcOutputs = []types.SiacoinOutput{{Value: types.NewCurrency64(961e6)}}
 	fc = types.FileContract{
@@ -185,24 +186,24 @@ func TestIntegrationExplorerFileContractMetrics(t *testing.T) {
 
 	// TODO: broken by new block facts model
 
-	// err = et.reorgToBlank()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// facts, ok = et.currentFacts()
-	// if !ok {
-	// 	t.Fatal("couldn't get current facts")
-	// }
-	// if !facts.ActiveContractCost.IsZero() {
-	// 	t.Error("post reorg active contract cost should be zero, got", facts.ActiveContractCost)
-	// }
-	// if facts.ActiveContractCount != 0 {
-	// 	t.Error("post reorg active contract count should be zero, got", facts.ActiveContractCount)
-	// }
-	// if !facts.TotalContractCost.IsZero() {
-	// 	t.Error("post reorg total contract cost should be zero, got", facts.TotalContractCost)
-	// }
-	// if facts.FileContractCount != 0 {
-	// 	t.Error("post reorg file contract count should be zero, got", facts.FileContractCount)
-	// }
+	err = et.reorgToBlank()
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts, ok = et.currentFacts()
+	if !ok {
+		t.Fatal("couldn't get current facts")
+	}
+	if !facts.ActiveContractCost.IsZero() {
+		t.Error("post reorg active contract cost should be zero, got", facts.ActiveContractCost)
+	}
+	if facts.ActiveContractCount != 0 {
+		t.Error("post reorg active contract count should be zero, got", facts.ActiveContractCount)
+	}
+	if !facts.TotalContractCost.IsZero() {
+		t.Error("post reorg total contract cost should be zero, got", facts.TotalContractCost)
+	}
+	if facts.FileContractCount != 0 {
+		t.Error("post reorg file contract count should be zero, got", facts.FileContractCount)
+	}
 }

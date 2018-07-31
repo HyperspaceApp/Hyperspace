@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/NebulousLabs/fastrand"
 )
@@ -45,6 +46,15 @@ func TestBlock(t *testing.T) {
 
 	gb := types.GenesisBlock
 	gbFetch, height, exists := et.explorer.Block(gb.ID())
+
+	for i := 0; i < int(types.MaturityDelay); i++ {
+		b, _ := et.cs.BlockAtHeight(types.BlockHeight(i))
+		hashType, err := et.explorer.HashType(crypto.Hash(b.ID()))
+		if hashType != modules.BlockHashType || err != nil {
+			t.Errorf("Did not get the correct hashtype for block: %d.  Got: %s.  Expected: %s", i, hashType, modules.BlockHashType)
+		}
+	}
+
 	if !exists || height != 0 || gbFetch.ID() != gb.ID() {
 		t.Error("call to 'Block' inside explorer failed")
 	}
@@ -87,10 +97,7 @@ func TestFileContractPayoutsMissingProof(t *testing.T) {
 	}
 
 	// Create and fund valid file contracts.
-	builder, err := et.wallet.StartTransaction()
-	if err != nil {
-		t.Fatal(err)
-	}
+	builder := et.wallet.StartTransaction()
 	payout := types.NewCurrency64(1e9)
 	err = builder.FundSiacoins(payout)
 	if err != nil {
@@ -104,8 +111,8 @@ func TestFileContractPayoutsMissingProof(t *testing.T) {
 		WindowStart:        windowStart,
 		WindowEnd:          windowEnd,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
 		UnlockHash:         types.UnlockConditions{}.UnlockHash(),
 	}
 
@@ -162,6 +169,16 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// COMPATv0.4.0 - Step the block height up past the hardfork amount. This
+	// code stops nondeterministic failures when producing storage proofs that
+	// is related to buggy old code.
+	for et.cs.Height() <= 10 {
+		_, err := et.miner.AddBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	// Create a file (as a bytes.Buffer) that will be used for the file
 	// contract.
 	filesize := uint64(4e3)
@@ -176,16 +193,12 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		WindowStart:        et.cs.Height() + 1,
 		WindowEnd:          et.cs.Height() + 2,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
 	}
 
 	// Submit a transaction with the file contract.
-	builder, err := et.wallet.StartTransaction()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = builder.FundSiacoins(payout)
+	builder := et.wallet.StartTransaction()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,10 +232,7 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		HashSet:  hashSet,
 	}
 	copy(sp.Segment[:], segment)
-	builder, err = et.wallet.StartTransaction()
-	if err != nil {
-		t.Fatal(err)
-	}
+	builder = et.wallet.StartTransaction()
 	builder.AddStorageProof(sp)
 	tSet, err = builder.Sign(true)
 	if err != nil {

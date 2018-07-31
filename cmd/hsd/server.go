@@ -506,16 +506,6 @@ func (srv *Server) loadModules() error {
 		}
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "consensus", Closer: cs})
 	}
-	var e modules.Explorer
-	if strings.Contains(srv.config.Siad.Modules, "e") {
-		i++
-		fmt.Printf("(%d/%d) Loading explorer...\n", i, len(srv.config.Siad.Modules))
-		e, err = explorer.New(cs, filepath.Join(srv.config.Siad.SiaDir, modules.ExplorerDir))
-		if err != nil {
-			return err
-		}
-		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "explorer", Closer: e})
-	}
 	var tpool modules.TransactionPool
 	if strings.Contains(srv.config.Siad.Modules, "t") {
 		i++
@@ -525,6 +515,16 @@ func (srv *Server) loadModules() error {
 			return err
 		}
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "transaction pool", Closer: tpool})
+	}
+	var e modules.Explorer
+	if strings.Contains(srv.config.Siad.Modules, "e") {
+		i++
+		fmt.Printf("(%d/%d) Loading explorer...\n", i, len(srv.config.Siad.Modules))
+		e, err = explorer.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.ExplorerDir))
+		if err != nil {
+			return err
+		}
+		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "explorer", Closer: e})
 	}
 	var w modules.Wallet
 	if strings.Contains(srv.config.Siad.Modules, "w") {
