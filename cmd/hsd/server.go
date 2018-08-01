@@ -599,7 +599,7 @@ func (srv *Server) loadModules() error {
 	}
 
 	// Create the Sia API
-	a := api.New(
+	a, err := api.New(
 		srv.config.Siad.RequiredUserAgent,
 		srv.config.APIPassword,
 		cs,
@@ -614,6 +614,10 @@ func (srv *Server) loadModules() error {
 		sm,
 		idx,
 	)
+
+	if err != nil {
+		return err
+	}
 
 	// connect the API to the server
 	srv.mu.Lock()

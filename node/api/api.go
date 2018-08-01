@@ -115,7 +115,7 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // New creates a new Sia API from the provided modules.  The API will require
 // authentication using HTTP basic auth for certain endpoints of the supplied
 // password is not the empty string.  Usernames are ignored for authentication.
-func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool, sm modules.StratumMiner, index modules.Index) *API {
+func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host, m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool, sm modules.StratumMiner, index modules.Index) (*API, error) {
 	api := &API{
 		cs:           cs,
 		explorer:     e,
@@ -131,9 +131,9 @@ func New(requiredUserAgent string, requiredPassword string, cs modules.Consensus
 	}
 
 	// Register API handlers
-	api.buildHTTPRoutes(requiredUserAgent, requiredPassword)
+	err := api.buildHTTPRoutes(requiredUserAgent, requiredPassword)
 
-	return api
+	return api, err
 }
 
 // UnrecognizedCallHandler handles calls to unknown pages (404).
