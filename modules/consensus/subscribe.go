@@ -7,8 +7,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 
-	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/coreos/bbolt"
+	siasync "gitlab.com/NebulousLabs/Sia/sync"
 )
 
 // computeConsensusChange computes the consensus change from the change entry

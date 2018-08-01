@@ -5,7 +5,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/NebulousLabs/errors"
+	"gitlab.com/NebulousLabs/errors"
 
 	"github.com/coreos/bbolt"
 )

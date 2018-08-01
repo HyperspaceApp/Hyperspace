@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"github.com/NebulousLabs/fastrand"
+	"gitlab.com/NebulousLabs/fastrand"
 )
 
 // SafeReadAt is a wrapper for ReadAt that recovers from a potential panic and

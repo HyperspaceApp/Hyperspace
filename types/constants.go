@@ -7,7 +7,9 @@ package types
 // sane, plus we have no coverage for them.
 
 import (
+	"math"
 	"math/big"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 )
@@ -24,6 +26,11 @@ var (
 	DevFundDenom = NewCurrency64(10)
 	// DevFundUnlockHash is the unlock hash for the dev fund subsidy
 	DevFundUnlockHash = UnlockHash{122, 187, 109, 95, 232, 79, 59, 94, 168, 154, 242, 9, 73, 45, 6, 21, 151, 78, 195, 98, 197, 65, 115, 155, 229, 181, 208, 12, 31, 116, 69, 196}
+
+	// EndOfTime is value to be used when a date in the future is needed for
+	// validation
+	EndOfTime = time.Unix(0, math.MaxInt64)
+
 	// ExtremeFutureThreshold is a temporal limit beyond which Blocks are
 	// discarded by the consensus rules. When incoming Blocks are processed, their
 	// Timestamp is allowed to exceed the processor's current time by a small amount.
@@ -156,6 +163,15 @@ var (
 	// time has passed vs. how many blocks have been created. It's only used in the old,
 	// broken difficulty adjustment algorithm.
 	TargetWindow BlockHeight
+)
+
+var (
+	// TaxHardforkHeight is the height at which the tax hardfork occurred.
+	TaxHardforkHeight = build.Select(build.Var{
+		Dev:      BlockHeight(10),
+		Standard: BlockHeight(21e3),
+		Testing:  BlockHeight(10),
+	}).(BlockHeight)
 )
 
 // init checks which build constant is in place and initializes the variables

@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/coreos/bbolt"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/NebulousLabs/fastrand"
-	"github.com/coreos/bbolt"
+	"gitlab.com/NebulousLabs/fastrand"
 )
 
 var (
