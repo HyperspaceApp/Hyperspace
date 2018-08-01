@@ -377,7 +377,7 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 			contract := RenterContract{
 				DownloadSpending:          c.DownloadSpending,
 				EndHeight:                 c.EndHeight,
-				Fees:                      c.TxnFee.Add(c.SiafundFee).Add(c.ContractFee),
+				Fees:                      c.TxnFee.Add(c.ContractFee),
 				GoodForUpload:             goodForUpload,
 				GoodForRenew:              goodForRenew,
 				HostPublicKey:             c.HostPublicKey,

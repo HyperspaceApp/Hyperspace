@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"gitlab.com/NebulousLabs/Sia/build"
-	"gitlab.com/NebulousLabs/Sia/modules"
-	"gitlab.com/NebulousLabs/Sia/modules/renter/proto"
-	"gitlab.com/NebulousLabs/Sia/types"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"gitlab.com/NebulousLabs/errors"
 )
@@ -107,8 +107,8 @@ func (c *Contractor) managedEstimateRenewFundingRequirements(contract modules.Re
 	// users are not charged siafund fees on money that doesn't go into the file
 	// contract (and the transaction fee goes to the miners, not the file
 	// contract).
+
 	beforeSiafundFeesEstimate := maintenanceCost.Add(newUploadsCost).Add(newDownloadsCost).Add(contractPrice)
-	afterSiafundFeesEstimate := types.Tax(blockHeight, beforeSiafundFeesEstimate).Add(beforeSiafundFeesEstimate)
 
 	// Get an estimate for how much money we will be charged before going into
 	// the transaction pool.
@@ -117,7 +117,7 @@ func (c *Contractor) managedEstimateRenewFundingRequirements(contract modules.Re
 
 	// Add them all up and then return the estimate plus 33% for error margin
 	// and just general volatility of usage pattern.
-	estimatedCost := afterSiafundFeesEstimate.Add(txnFees)
+	estimatedCost := beforeSiafundFeesEstimate.Add(txnFees)
 	estimatedCost = estimatedCost.Add(estimatedCost.Div64(3))
 
 	// Check for a sane minimum. The contractor should not be forming contracts

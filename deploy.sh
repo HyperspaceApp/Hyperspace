@@ -3,7 +3,7 @@
 mkdir artifacts
 for arch in amd64 arm; do
 	for os in darwin linux windows; do
-	        for pkg in siac siad; do
+	        for pkg in hsc hsd; do
 			if [ "$arch" == "arm" ]; then
 				if [ "$os" == "windows" ] || [ "$os" == "darwin" ]; then
 					continue

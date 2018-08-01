@@ -167,7 +167,7 @@ Be sure to follow the conventions detailed in
 satisfy these best practices.
 
 Once you've finished making changes, stage and commit your changes then update 
-your fork on GitLab:
+your fork on GitHub:
 
 ```bash
 # Make sure the code is up to date with the original repo:
@@ -186,7 +186,7 @@ $ git status
 # Commit your changes. If you just run `commit`,  a text editor will pop up for 
 # you to enter a description of your changes.
 $ git commit -m "Add new tests for CommitSync method"
-# Push the changes to your fork on GitLab, which you should have set up as a 
+# Push the changes to your fork on GitHub, which you should have set up as a
 # remote already.
 $ git push <fork remote> <branch>
 ```
@@ -209,7 +209,7 @@ Here's a sample code review comment:
 If you want to tweak code for which you've already submitted a pull request,
 push the updated code to your fork with `git push -f <fork remote> <branch>` and
 summarize the changes you've made in a comment on the pull request page on 
-GitLab.
+GitHub.
 
 Once we have accepted your changes and merged them into the original repo, you 
 have some cleanup to do:

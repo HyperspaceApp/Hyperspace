@@ -1,21 +1,8 @@
 package contractor
 
 import (
-	"errors"
-	"fmt"
-	"math/big"
-
-	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
 	"github.com/HyperspaceApp/Hyperspace/types"
-)
-
-var (
-	// ErrInsufficientAllowance indicates that the renter's allowance is less
-	// than the amount necessary to store at least one sector
-	ErrInsufficientAllowance = errors.New("allowance is not large enough to cover fees of contract creation")
-	errTooExpensive          = errors.New("host price was too high")
 )
 
 // contractEndHeight returns the height at which the Contractor's contracts

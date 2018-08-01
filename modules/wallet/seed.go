@@ -10,6 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"gitlab.com/NebulousLabs/errors"
 	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/coreos/bbolt"
 )
 
 var (

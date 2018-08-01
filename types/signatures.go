@@ -182,7 +182,7 @@ func (t Transaction) SigHash(i int) (hash crypto.Hash) {
 	cf := t.TransactionSignatures[i].CoveredFields
 	h := crypto.NewHash()
 	if cf.WholeTransaction {
-		t.MarshalSiaNoSignatures(h)
+		t.marshalSiaNoSignatures(h)
 		h.Write(t.TransactionSignatures[i].ParentID[:])
 		encoding.WriteUint64(h, t.TransactionSignatures[i].PublicKeyIndex)
 		encoding.WriteUint64(h, uint64(t.TransactionSignatures[i].Timelock))

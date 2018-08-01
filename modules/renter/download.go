@@ -133,6 +133,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"gitlab.com/NebulousLabs/errors"
 )

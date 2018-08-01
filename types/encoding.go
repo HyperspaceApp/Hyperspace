@@ -684,6 +684,12 @@ func (t Transaction) marshalSiaNoSignatures(w io.Writer) {
 	}
 }
 
+// Hyperspace wrapper for miningpool.
+// NOTE: Remove it when will be not needed
+func (t Transaction) MarshalSiaNoSignatures(w io.Writer) {
+	t.marshalSiaNoSignatures(w)
+}
+
 // MarshalSiaSize returns the encoded size of t.
 func (t Transaction) MarshalSiaSize() (size int) {
 	size += 8
