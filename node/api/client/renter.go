@@ -71,6 +71,13 @@ func (c *Client) RenterFilesGet() (rf api.RenterFiles, err error) {
 	return
 }
 
+// RenterFilesFilteredGet requests the /renter/files resource with a regex filter string.
+func (c *Client) RenterFilesFilteredGet(filter string) (rf api.RenterFiles, err error) {
+	query := fmt.Sprintf("?filter=%s", url.PathEscape(filter))
+	err = c.get("/renter/files"+query, &rf)
+	return
+}
+
 // RenterGet requests the /renter resource.
 func (c *Client) RenterGet() (rg api.RenterGET, err error) {
 	err = c.get("/renter", &rg)

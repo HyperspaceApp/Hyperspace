@@ -13,6 +13,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"regexp"
 )
 
 var (
@@ -282,19 +283,23 @@ func (r *Renter) DeleteFile(nickname string) error {
 	return nil
 }
 
-// FileList returns all of the files that the renter has.
-func (r *Renter) FileList() []modules.FileInfo {
-	// Get all the files and their contracts
+// FileList returns all of the files that the renter has or a filtered list
+// if a compiled Regexp is supplied. Filtering is applied to the hyperspace path.
+func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
+	// Get requested files and their contracts
 	var files []*file
 	contractIDs := make(map[types.FileContractID]struct{})
+	skipFilter := len(filter) == 0
 	lockID := r.mu.RLock()
 	for _, f := range r.files {
-		files = append(files, f)
-		f.mu.RLock()
-		for cid := range f.contracts {
-			contractIDs[cid] = struct{}{}
+		if skipFilter || filter[0].MatchString(f.name) {
+			files = append(files, f)
+			f.mu.RLock()
+			for cid := range f.contracts {
+				contractIDs[cid] = struct{}{}
+			}
+			f.mu.RUnlock()
 		}
-		f.mu.RUnlock()
 	}
 	r.mu.RUnlock(lockID)
 

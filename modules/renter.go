@@ -9,6 +9,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/NebulousLabs/errors"
+	"regexp"
 )
 
 // ErrHostFault is an error that is usually extended to indicate that an error
@@ -351,7 +352,7 @@ type Renter interface {
 	File(siaPath string) (FileInfo, error)
 
 	// FileList returns information on all of the files stored by the renter.
-	FileList() []FileInfo
+	FileList(filter ...*regexp.Regexp) []FileInfo
 
 	// Host provides the DB entry and score breakdown for the requested host.
 	Host(pk types.SiaPublicKey) (HostDBEntry, bool)
