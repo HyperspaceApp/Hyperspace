@@ -8,7 +8,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/NebulousLabs/errors"
+	"gitlab.com/NebulousLabs/errors"
 )
 
 // ErrHostFault is an error that is usually extended to indicate that an error
@@ -24,6 +24,13 @@ const (
 	// RenterDir is the name of the directory that is used to store the
 	// renter's persistent data.
 	RenterDir = "renter"
+
+	// EstimatedFileContractTransactionSetSize is the estimated blockchain size
+	// of a transaction set between a renter and a host that contains a file
+	// contract. This transaction set will contain a setup transaction from each
+	// the host and the renter, and will also contain a file contract and file
+	// contract revision that have each been signed by all parties.
+	EstimatedFileContractTransactionSetSize = 2048
 )
 
 // An ErasureCoder is an error-correcting encoder and decoder.
@@ -82,6 +89,7 @@ type DownloadInfo struct {
 	Error                string    `json:"error"`                // Will be the empty string unless there was an error.
 	Received             uint64    `json:"received"`             // Amount of data confirmed and decoded.
 	StartTime            time.Time `json:"starttime"`            // The time when the download was started.
+	StartTimeUnix        int64     `json:"starttimeunix"`        // The time when the download was started in unix format.
 	TotalDataTransferred uint64    `json:"totaldatatransferred"` // Total amount of data transferred, including negotiation, etc.
 }
 
@@ -316,10 +324,10 @@ type Renter interface {
 	// Close closes the Renter.
 	Close() error
 
-	// Contracts returns the active contracts formed by the renter.
+	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []RenterContract
 
-	// OldContracts returns the old contracts formed by the renter.
+	// OldContracts returns the oldContracts of the renter's hostContractor.
 	OldContracts() []RenterContract
 
 	// ContractUtility provides the contract utility for a given host key.
@@ -343,6 +351,10 @@ type Renter interface {
 	// Download performs a download according to the parameters passed without
 	// blocking, including downloads of `offset` and `length` type.
 	DownloadAsync(params RenterDownloadParameters) error
+
+	// ClearDownloadHistory clears the download history of the renter
+	// inclusive for before and after times.
+	ClearDownloadHistory(after, before time.Time) error
 
 	// DownloadHistory lists all the files that have been scheduled for download.
 	DownloadHistory() []DownloadInfo

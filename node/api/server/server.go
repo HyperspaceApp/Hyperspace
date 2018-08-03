@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/NebulousLabs/errors"
+	"gitlab.com/NebulousLabs/errors"
 )
 
 // A Server is a collection of siad modules that can be communicated with over

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+
 	"github.com/spf13/cobra"
 )
 
