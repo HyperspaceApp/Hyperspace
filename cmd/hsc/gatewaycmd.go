@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
+
 	"github.com/spf13/cobra"
 )
 

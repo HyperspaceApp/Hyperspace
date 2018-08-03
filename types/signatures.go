@@ -161,7 +161,7 @@ func Ed25519PublicKey(pk crypto.PublicKey) SiaPublicKey {
 // protected by having random public keys next to them.
 func (uc UnlockConditions) UnlockHash() UnlockHash {
 	var buf bytes.Buffer
-	e := encoder(&buf)
+	e := encoding.NewEncoder(&buf)
 	tree := crypto.NewTree()
 	e.WriteUint64(uint64(uc.Timelock))
 	tree.Push(buf.Bytes())
@@ -182,7 +182,7 @@ func (t Transaction) SigHash(i int) (hash crypto.Hash) {
 	cf := t.TransactionSignatures[i].CoveredFields
 	h := crypto.NewHash()
 	if cf.WholeTransaction {
-		t.MarshalSiaNoSignatures(h)
+		t.marshalSiaNoSignatures(h)
 		h.Write(t.TransactionSignatures[i].ParentID[:])
 		encoding.WriteUint64(h, t.TransactionSignatures[i].PublicKeyIndex)
 		encoding.WriteUint64(h, uint64(t.TransactionSignatures[i].Timelock))
@@ -206,7 +206,7 @@ func (t Transaction) SigHash(i int) (hash crypto.Hash) {
 			t.MinerFees[minerFee].MarshalSia(h)
 		}
 		for _, arbData := range cf.ArbitraryData {
-			encoding.WritePrefix(h, t.ArbitraryData[arbData])
+			encoding.WritePrefixedBytes(h, t.ArbitraryData[arbData])
 		}
 	}
 

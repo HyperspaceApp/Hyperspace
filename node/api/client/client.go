@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/HyperspaceApp/Hyperspace/node/api"
-	"github.com/NebulousLabs/errors"
+	"gitlab.com/NebulousLabs/errors"
 )
 
 // A Client makes requests to the siad HTTP API.

@@ -10,7 +10,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 
-	"github.com/NebulousLabs/fastrand"
+	"gitlab.com/NebulousLabs/fastrand"
 )
 
 // BenchmarkWrite512MiB checks how long it takes to write 512MiB sequentially.
