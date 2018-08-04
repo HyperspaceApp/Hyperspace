@@ -34,6 +34,7 @@ dependencies:
 	go get -u github.com/go-sql-driver/mysql
 	go get -u github.com/lib/pq
 	go get github.com/sasha-s/go-deadlock/...
+	go get -u github.com/gorilla/websocket
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
