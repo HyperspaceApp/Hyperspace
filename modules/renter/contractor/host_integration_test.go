@@ -19,8 +19,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	modWallet "github.com/HyperspaceApp/Hyperspace/modules/wallet"
-	"gitlab.com/NebulousLabs/Sia/types"
 	"gitlab.com/NebulousLabs/fastrand"
 )
 
