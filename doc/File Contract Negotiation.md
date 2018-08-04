@@ -1,8 +1,8 @@
 File Contract Negotiation
 =========================
 
-Securing data on Sia requires creating and revising file contracts in an
-untrusted environment. Managing data on Sia happens through several protocols:
+Securing data on Hyperspace requires creating and revising file contracts in an
+untrusted environment. Managing data on Hyperspace happens through several protocols:
 
 + Settings Request - the host sends the renter its settings.
 

@@ -13,8 +13,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/NebulousLabs/entropy-mnemonics"
 	"github.com/julienschmidt/httprouter"
+	"gitlab.com/NebulousLabs/entropy-mnemonics"
 )
 
 type (

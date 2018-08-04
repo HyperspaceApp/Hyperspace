@@ -2,30 +2,103 @@ package explorer
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
 
+func (e *Explorer) ReceiveUpdatedUnconfirmedTransactions(diff *modules.TransactionPoolDiff) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	droppedTransactions := make(map[types.TransactionID]struct{})
+	for i := range diff.RevertedTransactions {
+		txids := e.unconfirmedSets[diff.RevertedTransactions[i]]
+		for i := range txids {
+			droppedTransactions[txids[i]] = struct{}{}
+		}
+		delete(e.unconfirmedSets, diff.RevertedTransactions[i])
+	}
+
+	if len(droppedTransactions) != 0 {
+		newUPT := make([]modules.ProcessedTransaction, 0, len(e.unconfirmedProcessedTransactions))
+		for _, txn := range e.unconfirmedProcessedTransactions {
+			_, exists := droppedTransactions[txn.TransactionID]
+			if !exists {
+				// Transaction was not dropped, add it to the new unconfirmed
+				// transactions.
+				newUPT = append(newUPT, txn)
+			}
+		}
+		// Set the unconfirmed preocessed transactions to the pruned set.
+		e.unconfirmedProcessedTransactions = newUPT
+	}
+
+	// Scroll through all of the diffs and add any new transactions.
+	for _, unconfirmedTxnSet := range diff.AppliedTransactions {
+		e.unconfirmedSets[unconfirmedTxnSet.ID] = unconfirmedTxnSet.IDs
+
+		spentSiacoinOutputs := make(map[types.SiacoinOutputID]types.SiacoinOutput)
+		for _, scod := range unconfirmedTxnSet.Change.SiacoinOutputDiffs {
+			if scod.Direction == modules.DiffRevert {
+				spentSiacoinOutputs[scod.ID] = scod.SiacoinOutput
+			}
+		}
+
+		// Add each transaction to our set of unconfirmed transactions.
+		for i, txn := range unconfirmedTxnSet.Transactions {
+			pt := modules.ProcessedTransaction{
+				Transaction:           txn,
+				TransactionID:         unconfirmedTxnSet.IDs[i],
+				ConfirmationHeight:    types.BlockHeight(math.MaxUint64),
+				ConfirmationTimestamp: types.Timestamp(math.MaxUint64),
+			}
+			for _, sci := range txn.SiacoinInputs {
+				pt.Inputs = append(pt.Inputs, modules.ProcessedInput{
+					ParentID:       types.OutputID(sci.ParentID),
+					FundType:       types.SpecifierSiacoinInput,
+					RelatedAddress: sci.UnlockConditions.UnlockHash(),
+					Value:          spentSiacoinOutputs[sci.ParentID].Value,
+				})
+			}
+			for i, sco := range txn.SiacoinOutputs {
+				pt.Outputs = append(pt.Outputs, modules.ProcessedOutput{
+					ID:             types.OutputID(txn.SiacoinOutputID(uint64(i))),
+					FundType:       types.SpecifierSiacoinOutput,
+					MaturityHeight: types.BlockHeight(math.MaxUint64),
+					RelatedAddress: sco.UnlockHash,
+					Value:          sco.Value,
+				})
+			}
+			for _, fee := range txn.MinerFees {
+				pt.Outputs = append(pt.Outputs, modules.ProcessedOutput{
+					FundType: types.SpecifierMinerFee,
+					Value:    fee,
+				})
+			}
+			e.unconfirmedProcessedTransactions = append(e.unconfirmedProcessedTransactions, pt)
+		}
+	}
+}
+
 // ProcessConsensusChange follows the most recent changes to the consensus set,
 // including parsing new blocks and updating the utxo sets.
 func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
-	if len(cc.AppliedBlocks) == 0 {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if len(cc.AppliedBlocks) == 0 && build.DEBUG {
 		build.Critical("Explorer.ProcessConsensusChange called with a ConsensusChange that has no AppliedBlocks")
+	} else if len(cc.AppliedBlocks) == 0 {
+		e.log.Printf("Explorer.ProcessConsensusChange called with a ConsensusChange that has no AppliedBlocks")
+		return
 	}
 
 	err := e.db.Update(func(tx *bolt.Tx) (err error) {
-		// use exception-style error handling to enable more concise update code
-		defer func() {
-			if r := recover(); r != nil {
-				err = fmt.Errorf("%v", r)
-			}
-		}()
-
 		// get starting block height
 		var blockheight types.BlockHeight
 		err = dbGetInternal(internalBlockHeight, &blockheight)(tx)
@@ -34,14 +107,15 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 		}
 
 		// Update cumulative stats for reverted blocks.
+		e.log.Printf(" block: %d", blockheight)
 		for _, block := range cc.RevertedBlocks {
 			bid := block.ID()
+			if bid == types.GenesisID {
+				continue
+			}
 			tbid := types.TransactionID(bid)
-
 			blockheight--
 			dbRemoveBlockID(tx, bid)
-			dbRemoveTransactionID(tx, tbid) // Miner payouts are a transaction
-
 			target, exists := e.cs.ChildTarget(block.ParentID)
 			if !exists {
 				target = types.RootTarget
@@ -119,13 +193,13 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 			// special handling for genesis block
 			if bid == types.GenesisID {
+				blockheight = 0
 				dbAddGenesisBlock(tx)
 				continue
 			}
 
 			blockheight++
 			dbAddBlockID(tx, bid, blockheight)
-			dbAddTransactionID(tx, tbid, blockheight) // Miner payouts are a transaction
 
 			target, exists := e.cs.ChildTarget(block.ParentID)
 			if !exists {
@@ -194,8 +268,8 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 			}
 
 			// calculate and add new block facts, if possible
-			if tx.Bucket(bucketBlockFacts).Get(encoding.Marshal(block.ParentID)) != nil {
-				facts := dbCalculateBlockFacts(tx, e.cs, block)
+			facts, err := e.dbCalculateBlockFacts(tx, e.cs, block)
+			if err == nil {
 				dbAddBlockFacts(tx, facts)
 			}
 		}
@@ -213,8 +287,11 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 		// for large reorgs.
 		// TODO: improve this
 		currentBlock, exists := e.cs.BlockAtHeight(blockheight)
-		if !exists {
+		if !exists && build.DEBUG {
 			build.Critical("consensus is missing block", blockheight)
+		} else if !exists {
+			e.log.Printf("consensus is missing block: %d", blockheight)
+			return
 		}
 		currentID := currentBlock.ID()
 		var facts blockFacts
@@ -225,16 +302,21 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 					facts.ActiveContractCount++
 					facts.ActiveContractCost = facts.ActiveContractCost.Add(diff.FileContract.Payout)
 					facts.ActiveContractSize = facts.ActiveContractSize.Add(types.NewCurrency64(diff.FileContract.FileSize))
-				} else {
-					facts.ActiveContractCount--
-					facts.ActiveContractCost = facts.ActiveContractCost.Sub(diff.FileContract.Payout)
-					facts.ActiveContractSize = facts.ActiveContractSize.Sub(types.NewCurrency64(diff.FileContract.FileSize))
 				}
 			}
-			err = tx.Bucket(bucketBlockFacts).Put(encoding.Marshal(currentID), encoding.Marshal(facts))
-			if err != nil {
-				return err
+			for _, diff := range cc.FileContractDiffs {
+				if diff.Direction == modules.DiffRevert {
+					facts.ActiveContractCount--
+					if diff.FileContract.Payout.Cmp(facts.ActiveContractCost) < 1 {
+						facts.ActiveContractCost = facts.ActiveContractCost.Sub(diff.FileContract.Payout)
+					}
+					c := types.NewCurrency64(diff.FileContract.FileSize)
+					if facts.ActiveContractSize.Cmp(c) >= 0 {
+						facts.ActiveContractSize = facts.ActiveContractSize.Sub(c)
+					}
+				}
 			}
+			dbAddBlockFacts(tx, facts)
 		}
 
 		// set final blockheight
@@ -249,162 +331,30 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 			return err
 		}
 
-		return nil
+		return err
 	})
-	if err != nil {
+
+	if err != nil && build.DEBUG {
 		build.Critical("explorer update failed:", err)
+	} else if err != nil {
+		e.log.Printf("explorer update failed: %s", err)
 	}
 }
 
-// helper functions
-func assertNil(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-func mustPut(bucket *bolt.Bucket, key, val interface{}) {
-	assertNil(bucket.Put(encoding.Marshal(key), encoding.Marshal(val)))
-}
-func mustPutSet(bucket *bolt.Bucket, key interface{}) {
-	assertNil(bucket.Put(encoding.Marshal(key), nil))
-}
-func mustDelete(bucket *bolt.Bucket, key interface{}) {
-	assertNil(bucket.Delete(encoding.Marshal(key)))
-}
-func bucketIsEmpty(bucket *bolt.Bucket) bool {
-	k, _ := bucket.Cursor().First()
-	return k == nil
-}
-
-// These functions panic on error. The panic will be caught by
-// ProcessConsensusChange.
-
-// Add/Remove block ID
-func dbAddBlockID(tx *bolt.Tx, id types.BlockID, height types.BlockHeight) {
-	mustPut(tx.Bucket(bucketBlockIDs), id, height)
-}
-func dbRemoveBlockID(tx *bolt.Tx, id types.BlockID) {
-	mustDelete(tx.Bucket(bucketBlockIDs), id)
-}
-
-// Add/Remove block facts
-func dbAddBlockFacts(tx *bolt.Tx, facts blockFacts) {
-	mustPut(tx.Bucket(bucketBlockFacts), facts.BlockID, facts)
-}
-func dbRemoveBlockFacts(tx *bolt.Tx, id types.BlockID) {
-	mustDelete(tx.Bucket(bucketBlockFacts), id)
-}
-
-// Add/Remove block target
-func dbAddBlockTarget(tx *bolt.Tx, id types.BlockID, target types.Target) {
-	mustPut(tx.Bucket(bucketBlockTargets), id, target)
-}
-func dbRemoveBlockTarget(tx *bolt.Tx, id types.BlockID, target types.Target) {
-	mustDelete(tx.Bucket(bucketBlockTargets), id)
-}
-
-// Add/Remove file contract
-func dbAddFileContract(tx *bolt.Tx, id types.FileContractID, fc types.FileContract) {
-	history := fileContractHistory{Contract: fc}
-	mustPut(tx.Bucket(bucketFileContractHistories), id, history)
-}
-func dbRemoveFileContract(tx *bolt.Tx, id types.FileContractID) {
-	mustDelete(tx.Bucket(bucketFileContractHistories), id)
-}
-
-// Add/Remove txid from file contract ID bucket
-func dbAddFileContractID(tx *bolt.Tx, id types.FileContractID, txid types.TransactionID) {
-	b, err := tx.Bucket(bucketFileContractIDs).CreateBucketIfNotExists(encoding.Marshal(id))
-	assertNil(err)
-	mustPutSet(b, txid)
-}
-func dbRemoveFileContractID(tx *bolt.Tx, id types.FileContractID, txid types.TransactionID) {
-	bucket := tx.Bucket(bucketFileContractIDs).Bucket(encoding.Marshal(id))
-	mustDelete(bucket, txid)
-	if bucketIsEmpty(bucket) {
-		tx.Bucket(bucketFileContractIDs).DeleteBucket(encoding.Marshal(id))
-	}
-}
-
-func dbAddFileContractRevision(tx *bolt.Tx, fcid types.FileContractID, fcr types.FileContractRevision) {
-	var history fileContractHistory
-	assertNil(dbGetAndDecode(bucketFileContractHistories, fcid, &history)(tx))
-	history.Revisions = append(history.Revisions, fcr)
-	mustPut(tx.Bucket(bucketFileContractHistories), fcid, history)
-}
-func dbRemoveFileContractRevision(tx *bolt.Tx, fcid types.FileContractID) {
-	var history fileContractHistory
-	assertNil(dbGetAndDecode(bucketFileContractHistories, fcid, &history)(tx))
-	// TODO: could be more rigorous
-	history.Revisions = history.Revisions[:len(history.Revisions)-1]
-	mustPut(tx.Bucket(bucketFileContractHistories), fcid, history)
-}
-
-// Add/Remove siacoin output
-func dbAddSiacoinOutput(tx *bolt.Tx, id types.SiacoinOutputID, output types.SiacoinOutput) {
-	mustPut(tx.Bucket(bucketSiacoinOutputs), id, output)
-}
-func dbRemoveSiacoinOutput(tx *bolt.Tx, id types.SiacoinOutputID) {
-	mustDelete(tx.Bucket(bucketSiacoinOutputs), id)
-}
-
-// Add/Remove txid from siacoin output ID bucket
-func dbAddSiacoinOutputID(tx *bolt.Tx, id types.SiacoinOutputID, txid types.TransactionID) {
-	b, err := tx.Bucket(bucketSiacoinOutputIDs).CreateBucketIfNotExists(encoding.Marshal(id))
-	assertNil(err)
-	mustPutSet(b, txid)
-}
-func dbRemoveSiacoinOutputID(tx *bolt.Tx, id types.SiacoinOutputID, txid types.TransactionID) {
-	bucket := tx.Bucket(bucketSiacoinOutputIDs).Bucket(encoding.Marshal(id))
-	mustDelete(bucket, txid)
-	if bucketIsEmpty(bucket) {
-		tx.Bucket(bucketSiacoinOutputIDs).DeleteBucket(encoding.Marshal(id))
-	}
-}
-
-// Add/Remove storage proof
-func dbAddStorageProof(tx *bolt.Tx, fcid types.FileContractID, sp types.StorageProof) {
-	var history fileContractHistory
-	assertNil(dbGetAndDecode(bucketFileContractHistories, fcid, &history)(tx))
-	history.StorageProof = sp
-	mustPut(tx.Bucket(bucketFileContractHistories), fcid, history)
-}
-func dbRemoveStorageProof(tx *bolt.Tx, fcid types.FileContractID) {
-	dbAddStorageProof(tx, fcid, types.StorageProof{})
-}
-
-// Add/Remove transaction ID
-func dbAddTransactionID(tx *bolt.Tx, id types.TransactionID, height types.BlockHeight) {
-	mustPut(tx.Bucket(bucketTransactionIDs), id, height)
-}
-func dbRemoveTransactionID(tx *bolt.Tx, id types.TransactionID) {
-	mustDelete(tx.Bucket(bucketTransactionIDs), id)
-}
-
-// Add/Remove txid from unlock hash bucket
-func dbAddUnlockHash(tx *bolt.Tx, uh types.UnlockHash, txid types.TransactionID) {
-	b, err := tx.Bucket(bucketUnlockHashes).CreateBucketIfNotExists(encoding.Marshal(uh))
-	assertNil(err)
-	mustPutSet(b, txid)
-}
-func dbRemoveUnlockHash(tx *bolt.Tx, uh types.UnlockHash, txid types.TransactionID) {
-	bucket := tx.Bucket(bucketUnlockHashes).Bucket(encoding.Marshal(uh))
-	mustDelete(bucket, txid)
-	if bucketIsEmpty(bucket) {
-		tx.Bucket(bucketUnlockHashes).DeleteBucket(encoding.Marshal(uh))
-	}
-}
-
-func dbCalculateBlockFacts(tx *bolt.Tx, cs modules.ConsensusSet, block types.Block) blockFacts {
+func (e *Explorer) dbCalculateBlockFacts(tx *bolt.Tx, cs modules.ConsensusSet, block types.Block) (blockFacts, error) {
 	// get the parent block facts
 	var bf blockFacts
 	err := dbGetAndDecode(bucketBlockFacts, block.ParentID, &bf)(tx)
-	assertNil(err)
+	if err != nil {
+		return bf, err
+	}
 
 	// get target
 	target, exists := cs.ChildTarget(block.ParentID)
-	if !exists {
-		panic(fmt.Sprint("ConsensusSet is missing target of known block", block.ParentID))
+	if !exists && build.DEBUG {
+		panic(fmt.Sprintf("ConsensusSet is missing target of known block: %s", block.ParentID))
+	} else if !exists {
+		e.log.Printf("ConsensusSet is missing target of known block: %s", block.ParentID)
 	}
 
 	// update fields
@@ -419,8 +369,10 @@ func dbCalculateBlockFacts(tx *bolt.Tx, cs modules.ConsensusSet, block types.Blo
 	var maturityTimestamp types.Timestamp
 	if bf.Height > types.MaturityDelay {
 		oldBlock, exists := cs.BlockAtHeight(bf.Height - types.MaturityDelay)
-		if !exists {
+		if !exists && build.DEBUG {
 			panic(fmt.Sprint("ConsensusSet is missing block at height", bf.Height-types.MaturityDelay))
+		} else if !exists {
+			e.log.Printf("ConsensusSet is missing block at height: %d", bf.Height-types.MaturityDelay)
 		}
 		maturityTimestamp = oldBlock.Timestamp
 	}
@@ -433,12 +385,16 @@ func dbCalculateBlockFacts(tx *bolt.Tx, cs modules.ConsensusSet, block types.Blo
 		var oldestTimestamp types.Timestamp
 		for i := types.BlockHeight(1); i < hashrateEstimationBlocks; i++ {
 			b, exists := cs.BlockAtHeight(bf.Height - i)
-			if !exists {
-				panic(fmt.Sprint("ConsensusSet is missing block at height", bf.Height-hashrateEstimationBlocks))
+			if !exists && build.DEBUG {
+				panic(fmt.Sprintf("ConsensusSet is missing block at height: %d", bf.Height-hashrateEstimationBlocks))
+			} else if !exists {
+				e.log.Printf("ConsensusSet is missing block at height: %d", bf.Height-hashrateEstimationBlocks)
 			}
 			target, exists := cs.ChildTarget(b.ParentID)
-			if !exists {
-				panic(fmt.Sprint("ConsensusSet is missing target of known block", b.ParentID))
+			if !exists && build.DEBUG {
+				panic(fmt.Sprintf("ConsensusSet is missing target of known block: %s", b.ParentID))
+			} else if !exists {
+				e.log.Printf("ConsensusSet is missing target of known block: %s", b.ParentID)
 			}
 			totalDifficulty = totalDifficulty.AddDifficulties(target)
 			oldestTimestamp = b.Timestamp
@@ -470,7 +426,7 @@ func dbCalculateBlockFacts(tx *bolt.Tx, cs modules.ConsensusSet, block types.Blo
 		}
 	}
 
-	return bf
+	return bf, nil
 }
 
 // Special handling for the genesis block. No other functions are called on it.

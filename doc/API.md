@@ -1,7 +1,7 @@
-Siad API
+Hyperspace API
 ========
 
-Sia uses semantic versioning and is backwards compatible to version v1.0.0.
+Hyperspace uses semantic versioning and is backwards compatible to version v1.0.0.
 
 API calls return either JSON or no content. Success is indicated by 2xx HTTP
 status codes, while errors are indicated by 4xx and 5xx HTTP status codes. If
@@ -14,8 +14,8 @@ in production.
 
 Notes:
 - Requests must set their User-Agent string to contain the substring "Hyperspace-Agent".
-- By default, siad listens on "localhost:5580". This can be changed using the
-  `--api-addr` flag when running siad.
+- By default, hsd listens on "localhost:5580". This can be changed using the
+  `--api-addr` flag when running hsd.
 - **Do not bind or expose the API to a non-loopback address unless you are
   aware of the possible dangers.**
 
@@ -54,7 +54,7 @@ The standard error response indicating the request failed for any reason, is a
 Authentication
 --------------
 
-API authentication can be enabled with the `--authenticate-api` siad flag.
+API authentication can be enabled with the `--authenticate-api` hsd flag.
 Authentication is HTTP Basic Authentication as described in
 [RFC 2617](https://tools.ietf.org/html/rfc2617), however, the username is the
 empty string. The flag does not enforce authentication on all API endpoints.
@@ -71,7 +71,7 @@ Units
 
 Unless otherwise specified, all parameters should be specified in their
 smallest possible unit. For example, size should always be specified in bytes
-and Siacoins should be specified in hastings. JSON values returned by the API
+and SPACE should be specified in hastings. JSON values returned by the API
 will also use the smallest possible unit, unless otherwise specified.
 
 If a numbers is returned as a string in JSON, it should be treated as an
@@ -113,15 +113,15 @@ returns the set of constants in use.
 {
   "blockfrequency":         600,        // seconds per block
   "blocksizelimit":         2000000,    // bytes
-  "extremefuturethreshold": 10800,      // seconds
+  "extremefuturethreshold": 18000,      // seconds
   "futurethreshold":        10800,      // seconds
-  "genesistimestamp":       1257894000, // Unix time
+  "genesistimestamp":       1532510521, // Unix time
   "maturitydelay":          144,        // blocks
   "mediantimestampwindow":  11,         // blocks
   "targetwindow":           1000,       // blocks
 
-  "initialcoinbase": 300000, // Siacoins (see note in Daemon.md)
-  "minimumcoinbase": 30000,  // Siacoins (see note in Daemon.md)
+  "initialcoinbase": 60000, // Siacoins (see note in Daemon.md)
+  "minimumcoinbase": 6000,  // Siacoins (see note in Daemon.md)
 
   "roottarget": [0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   "rootdepth":  [255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255],
@@ -143,7 +143,7 @@ standard success or error response. See
 
 #### /daemon/version [GET]
 
-returns the version of the Sia daemon currently running.
+returns the version of the Hyperspace daemon currently running.
 
 ###### JSON Response [(with comments)](/doc/api/Daemon.md#json-response-1)
 ```javascript
@@ -863,6 +863,7 @@ Renter
 | [/renter](#renter-post)                                                   | POST      |
 | [/renter/contracts](#rentercontracts-get)                                 | GET       |
 | [/renter/downloads](#renterdownloads-get)                                 | GET       |
+| [/renter/downloads/clear](#renterdownloadsclear-post)                     | POST      |
 | [/renter/prices](#renterprices-get)                                       | GET       |
 | [/renter/files](#renterfiles-get)                                         | GET       |
 | [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)               | GET       |
@@ -928,12 +929,24 @@ standard success or error response. See
 
 #### /renter/contracts [GET]
 
-returns active contracts. Expired contracts are not included.
+returns the renter's contracts.  Active contracts are contracts that the Renter
+is currently using to store, upload, and download data, and are returned by
+default. Inactive contracts are contracts that are in the current period but are
+marked as not good for renew, these contracts have the potential to become
+active again but currently are not storing data.  Expired contracts are
+contracts not in the current period, where not more data is being stored and
+excess funds have been released to the renter.
+
+###### Contract Parameters [(with comments)](/doc/api/Renter.md#contract-parameters)
+```
+inactive   // true or false - Optional
+expired    // true or false - Optional
+```
 
 ###### JSON Response [(with comments)](/doc/api/Renter.md#json-response-1)
 ```javascript
 {
-  "contracts": [
+  "activecontracts": [
     {
       "downloadspending": "1234", // hastings
       "endheight": 50000, // block height
@@ -955,7 +968,9 @@ returns active contracts. Expired contracts are not included.
       "goodforupload": true,
       "goodforrenew": false,
     }
-  ]
+  ],
+  "inactivecontracts": [],
+  "expiredcontracts": [],
 }
 ```
 
@@ -984,6 +999,25 @@ lists all files in the download queue.
   ]
 }
 ```
+
+#### /renter/downloads/clear [POST]
+
+Clears the download history of the renter for a range of unix time stamps.  Both
+parameters are optional, if no parameters are provided, the entire download
+history will be cleared.  To clear a single download, provide the timestamp for
+the download as both parameters.  Providing only the before parameter will clear
+all downloads older than the timestamp.  Conversely, providing only the after
+parameter will clear all downloads newer than the timestamp.
+
+###### Timestamp Parameters [(with comments)](/doc/api/Renter.md#timestamp-parameters)
+```
+before   // Optional
+after    // Optional
+```
+
+###### Response
+standard success or error response. See
+[#standard-responses](#standard-responses).
 
 #### /renter/files [GET]
 
@@ -1123,7 +1157,7 @@ standard success or error response. See
 
 downloads a file using http streaming. This call blocks until the data is
 received.
-The streaming endpoint also uses caching internally to prevent siad from
+The streaming endpoint also uses caching internally to prevent hsd from
 redownloading the same chunk multiple times when only parts of a file are
 requested at once. This might lead to a substantial increase in ram usage and
 therefore it is not recommended to stream multiple files in parallel at the
@@ -1617,4 +1651,3 @@ newpassword
 ###### Response
 standard success or error response. See
 [#standard-responses](#standard-responses).
-

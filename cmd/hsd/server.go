@@ -506,16 +506,6 @@ func (srv *Server) loadModules() error {
 		}
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "consensus", Closer: cs})
 	}
-	var e modules.Explorer
-	if strings.Contains(srv.config.Siad.Modules, "e") {
-		i++
-		fmt.Printf("(%d/%d) Loading explorer...\n", i, len(srv.config.Siad.Modules))
-		e, err = explorer.New(cs, filepath.Join(srv.config.Siad.SiaDir, modules.ExplorerDir))
-		if err != nil {
-			return err
-		}
-		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "explorer", Closer: e})
-	}
 	var tpool modules.TransactionPool
 	if strings.Contains(srv.config.Siad.Modules, "t") {
 		i++
@@ -525,6 +515,16 @@ func (srv *Server) loadModules() error {
 			return err
 		}
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "transaction pool", Closer: tpool})
+	}
+	var e modules.Explorer
+	if strings.Contains(srv.config.Siad.Modules, "e") {
+		i++
+		fmt.Printf("(%d/%d) Loading explorer...\n", i, len(srv.config.Siad.Modules))
+		e, err = explorer.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.ExplorerDir))
+		if err != nil {
+			return err
+		}
+		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "explorer", Closer: e})
 	}
 	var w modules.Wallet
 	if strings.Contains(srv.config.Siad.Modules, "w") {
@@ -550,7 +550,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "h") {
 		i++
 		fmt.Printf("(%d/%d) Loading host...\n", i, len(srv.config.Siad.Modules))
-		h, err = host.New(cs, tpool, w, srv.config.Siad.HostAddr, filepath.Join(srv.config.Siad.SiaDir, modules.HostDir))
+		h, err = host.New(cs, g, tpool, w, srv.config.Siad.HostAddr, filepath.Join(srv.config.Siad.SiaDir, modules.HostDir))
 		if err != nil {
 			return err
 		}
@@ -599,7 +599,7 @@ func (srv *Server) loadModules() error {
 	}
 
 	// Create the Sia API
-	a := api.New(
+	a, err := api.New(
 		srv.config.Siad.RequiredUserAgent,
 		srv.config.APIPassword,
 		cs,
@@ -614,6 +614,10 @@ func (srv *Server) loadModules() error {
 		sm,
 		idx,
 	)
+
+	if err != nil {
+		return err
+	}
 
 	// connect the API to the server
 	srv.mu.Lock()

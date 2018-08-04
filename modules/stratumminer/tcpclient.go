@@ -15,7 +15,7 @@ import (
 	//"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/NebulousLabs/threadgroup"
+	"gitlab.com/NebulousLabs/threadgroup"
 )
 
 //ErrorCallback is the type of function that be registered to be notified of errors requiring a client

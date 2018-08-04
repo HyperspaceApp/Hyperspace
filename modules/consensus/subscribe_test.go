@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
+
 	bolt "github.com/coreos/bbolt"
 )
 

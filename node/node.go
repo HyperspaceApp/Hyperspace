@@ -27,7 +27,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/persist"
-	"github.com/NebulousLabs/errors"
+	"gitlab.com/NebulousLabs/errors"
 )
 
 // NodeParams contains a bunch of parameters for creating a new test node. As
@@ -96,7 +96,7 @@ type NodeParams struct {
 	SkipHostDiscovery bool
 
 	// The high level directory where all the persistence gets stored for the
-	// moudles.
+	// modules.
 	Dir string
 }
 
@@ -115,7 +115,7 @@ type Node struct {
 	Wallet          modules.Wallet
 
 	// The high level directory where all the persistence gets stored for the
-	// moudles.
+	// modules.
 	Dir string
 }
 
@@ -258,7 +258,7 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateHost {
 			return nil, nil
 		}
-		return host.New(cs, tp, w, "localhost:0", filepath.Join(dir, modules.HostDir))
+		return host.New(cs, g, tp, w, "localhost:0", filepath.Join(dir, modules.HostDir))
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create host"))

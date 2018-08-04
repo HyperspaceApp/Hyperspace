@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/NebulousLabs/entropy-mnemonics"
+	"gitlab.com/NebulousLabs/entropy-mnemonics"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"

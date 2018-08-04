@@ -8,7 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	siasync "github.com/HyperspaceApp/Hyperspace/sync" // TODO: Replace with github.com/NebulousLabs/trymutex
+	siasync "github.com/HyperspaceApp/Hyperspace/sync" // TODO: Replace with gitlab.com/NebulousLabs/trymutex
+
 	"github.com/pkg/errors"
 )
 
