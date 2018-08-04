@@ -58,6 +58,7 @@
 * Barrett17
 * nitronick600
 * TLightSky
+* catogchung
 
 
 [guide]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Guide%20to%20Contributing%20to%20Hyperspace.md
