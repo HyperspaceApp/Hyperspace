@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/persist"
-	"github.com/NebulousLabs/threadgroup"
+	"gitlab.com/NebulousLabs/threadgroup"
 )
 
 //miningWork is sent to the mining routines and defines what ranges should be searched for a matching nonce
