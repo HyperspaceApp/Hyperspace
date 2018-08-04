@@ -1,7 +1,7 @@
 Consensus Rules
 ===============
 
-This document is meant to provide a good high level overview of the Sia
+This document is meant to provide a good high level overview of the Hyperspace
 cryptosystem, but does not fully explain all of the small details. The most
 accurate explanation of the consensus rules is the consensus package (and all
 dependencies).
@@ -13,7 +13,7 @@ principles.
 Cryptographic Algorithms
 ------------------------
 
-Sia uses cryptographic hashing and cryptographic signing, each of which has
+Hyperspace uses cryptographic hashing and cryptographic signing, each of which has
 many potentially secure algorithms that can be used. We acknowledge our
 inexperience, and that we have chosen these algorithms not because of our own
 confidence in their properties, but because other people seem confident in
@@ -63,26 +63,26 @@ threshold signatures.
   to prove that the entropy buffers are invalid public keys.
 
   There are plans to also add ECDSA secp256k1 and Schnorr secp256k1. New
-  signing algorithms can be added to Sia through a soft fork, because
+  signing algorithms can be added to Hyperspace through a soft fork, because
   unrecognized algorithm types are always considered to have valid signatures.
 
 Currency
 --------
 
-The Sia cryptosystem has two types of currency. The first is the Siacoin.
-Siacoins are generated every block and distributed to the miners. These miners
-can then use the siacoins to fund file contracts, or can send the siacoins to
-other parties. The siacoin is represented by an infinite precision unsigned
+The Hyperspace cryptosystem has two types of currency. The first is Space Cash.
+SPACE is generated every block and distributed to the miners. These miners
+can then use the SPACE to fund file contracts, or can send the SPACE to
+other parties. The SPACE is represented by an infinite precision unsigned
 integer.
 
-There are future plans to enable sidechain compatibility with Sia. This would
+There are future plans to enable sidechain compatibility with Hyperspace. This would
 allow other currencies such as Bitcoin to be spent in all the same places that
-the Siacoin can be spent.
+the SPACE can be spent.
 
 Marshalling
 -----------
 
-Many of the Sia types need to be hashed at some point, which requires having a
+Many of the Hyperspace types need to be hashed at some point, which requires having a
 consistent algorithm for marshalling types into a set of bytes that can be
 hashed. The following rules are used for hashing:
 
@@ -121,7 +121,7 @@ The ID of a block is derived using:
 	Hash(Parent Block ID + 64 bit Nonce + Timestamp + Block Merkle Root)
 
 The block Merkle root is obtained by creating a Merkle tree whose leaves are
-the hashes of the miner outputs (one leaf per miner output), and the hashes of 
+the hashes of the miner outputs (one leaf per miner output), and the hashes of
 the transactions (one leaf per transaction).
 
 Block Target
@@ -169,8 +169,8 @@ Transactions
 
 A Transaction is composed of the following:
 
-- Siacoin Inputs
-- Siacoin Outputs
+- SPACE Inputs
+- SPACE Outputs
 - File Contracts
 - File Contract Revisions
 - Storage Proofs
@@ -178,8 +178,8 @@ A Transaction is composed of the following:
 - Arbitrary Data
 - Transaction Signatures
 
-The sum of all the siacoin inputs must equal the sum of all the miner fees,
-siacoin outputs, and file contract payouts. There can be no leftovers.
+The sum of all SPACE inputs must equal the sum of all the miner fees,
+SPACE outputs, and file contract payouts. There can be no leftovers.
 
 Several objects have unlock hashes. An unlock hash is the Merkle root of the
 'unlock conditions' object. The unlock conditions contain a timelock, a number
@@ -207,18 +207,18 @@ There must be exactly enough signatures. For example, if there are 3 public
 keys and only two required signatures, then only two signatures can be included
 into the transaction.
 
-Siacoin Inputs
+Hyperspace Inputs
 --------------
 
 Each input spends an output. The output being spent must exist in the consensus
-set. The 'value' field of the output indicates how many siacoins must be used
-in the outputs of the transaction. Valid outputs are miner fees, siacoin
+set. The 'value' field of the output indicates how much SPACE must be used
+in the outputs of the transaction. Valid outputs are miner fees, SPACE
 outputs, and contract payouts.
 
-Siacoin Outputs
+Hyperspace Outputs
 ---------------
 
-Siacoin outputs contain a value and an unlock hash (also called a coin
+Hyperspace outputs contain a value and an unlock hash (also called a coin
 address). The unlock hash is the Merkle root of the spend conditions that must
 be met to spend the output.
 
@@ -234,8 +234,8 @@ hashing each segment to form the leaves of the Merkle tree. The final segment
 is not padded out.
 
 The storage proof must be submitted between the 'WindowStart' and 'WindowEnd'
-fields of the contract. There is a 'Payout', which indicates how many siacoins
-are given out when the storage proof is provided. If the
+fields of the contract. There is a 'Payout', which indicates how many SPACE
+is given out when the storage proof is provided. If the
 storage proof is provided and is valid, the remaining payout is put in an
 output spendable by the 'valid proof spend hash', and if a valid storage proof
 is not provided to the blockchain by 'end', the remaining payout is put in an
@@ -256,19 +256,19 @@ File Contract Revisions
 A file contract revision modifies a contract. File contracts have a revision
 number, and any revision submitted to the blockchain must have a higher
 revision number in order to be valid. Any field can be changed except for the
-payout - siacoins cannot be added to or removed from the file contract during a
+payout - SPACE cannot be added to or removed from the file contract during a
 revision, though the destination upon a successful or unsuccessful storage
 proof can be changed.
 
 The greatest application for file contract revisions is file-diff channels - a
 file contract can be edited many times off-blockchain as a user uploads new or
-different content to the host. This improves the overall scalability of Sia.
+different content to the host. This improves the overall scalability of Hyperspace.
 
 Storage Proofs
 --------------
 
 A storage proof transaction is any transaction containing a storage proof.
-Storage proof transactions are not allowed to have siacoin outputs,
+Storage proof transactions are not allowed to have SPACE outputs,
 and are not allowed to have file contracts.
 
 When creating a storage proof, you only prove that you have a single 64 byte
@@ -290,7 +290,7 @@ hashes required to fill out the remaining tree. The total size of the proof
 will be 64 bytes + 32 bytes * log(num segments), and can be verified by anybody
 who knows the root hash and the file size.
 
-Storage proof transactions are not allowed to have siacoin outputs or contracts.
+Storage proof transactions are not allowed to have SPACE outputs or contracts.
 All outputs created by the storage proofs cannot be spent for 50 blocks.
 
 These limits are in place because a simple blockchain reorganization can change
@@ -301,7 +301,7 @@ significantly easier to execute.
 Miner Fees
 ----------
 
-A miner fee is a volume of siacoins that get added to the block subsidy.
+A miner fee is a volume of SPACE that get added to the block subsidy.
 
 Arbitrary Data
 --------------
@@ -309,7 +309,7 @@ Arbitrary Data
 Arbitrary data is a set of data that is ignored by consensus. In the future, it
 may be used for soft forks, paired with 'anyone can spend' transactions. In the
 meantime, it is an easy way for third party applications to make use of the
-siacoin blockchain.
+Hyperspace blockchain.
 
 Transaction Signatures
 ----------------------
@@ -336,7 +336,7 @@ signature. If the whole transaction flag is set, all other elements in the
 covered fields object must be empty except for the signatures field.
 
 The covered fields object contains a slice of indexes for each element of the
-transaction (siacoin inputs, miner fees, etc.). The slice must be sorted, and
+transaction (SPACE inputs, miner fees, etc.). The slice must be sorted, and
 there can be no repeated elements.
 
 Entirely nonmalleable transactions can be achieved by setting the 'whole
