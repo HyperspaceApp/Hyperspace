@@ -1,11 +1,14 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -13,7 +16,7 @@ import (
 // buildHttpRoutes sets up and returns an * httprouter.Router.
 // it connected the Router to the given api using the required
 // parameters: requiredUserAgent and requiredPassword
-func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword string) {
+func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword string) error {
 	router := httprouter.New()
 
 	router.NotFound = http.HandlerFunc(UnrecognizedCallHandler)
@@ -30,9 +33,34 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 
 	// Explorer API Calls
 	if api.explorer != nil {
+		//Subscribing to both consensus updates and transaction updates to power the push notifications via websocket
+		err := api.cs.ConsensusSetSubscribe(api, modules.ConsensusChangeRecent, nil)
+		api.unconfirmedSets = make(map[modules.TransactionSetID][]types.TransactionID)
+		api.hub = &WebsocketHub{
+			broadcastTx:      make(chan []byte),
+			broadcastBlock:   make(chan []byte),
+			registerBlock:    make(chan *Subscriber),
+			unregisterBlock:  make(chan *Subscriber),
+			registerTx:       make(chan *Subscriber),
+			unregisterTx:     make(chan *Subscriber),
+			blockSubscribers: make(map[*Subscriber]bool),
+			txSubscribers:    make(map[*Subscriber]bool),
+		}
+
+		if err != nil {
+			return errors.New("api consensus subscription failed: " + err.Error())
+		}
+
+		//We start the hub in another thread because it sends responses outside the standard REST API lifecycle
+		go api.hub.StartWebsocketHub()
+		api.tpool.TransactionPoolSubscribe(api)
 		router.GET("/explorer", api.explorerHandler)
+		router.GET("/explorer/pending", api.pendingBlockHandler)
 		router.GET("/explorer/blocks/:height", api.explorerBlocksHandler)
+		router.GET("/explorer/blocks", api.explorerBlocksHandler)
 		router.GET("/explorer/hashes/:hash", api.explorerHashHandler)
+		router.GET("/explorer/ws", api.explorerBlockSubscribe)
+		router.GET("/explorer/tx/ws", api.explorerTxSubscribe)
 	}
 
 	// Gateway API Calls
@@ -152,7 +180,7 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 
 	// Apply UserAgent middleware and return the Router
 	api.router = cleanCloseHandler(RequireUserAgent(router, requiredUserAgent))
-	return
+	return nil
 }
 
 // cleanCloseHandler wraps the entire API, ensuring that underlying conns are

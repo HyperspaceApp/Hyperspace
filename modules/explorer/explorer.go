@@ -4,20 +4,26 @@ package explorer
 
 import (
 	"errors"
+	"path/filepath"
+	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	siasync "github.com/NebulousLabs/Sia/sync"
 )
 
 const (
 	// hashrateEstimationBlocks is the number of blocks that are used to
 	// estimate the current hashrate.
 	hashrateEstimationBlocks = 200 // 33 hours
+	// logFile is the name of the log file.
+	logFile = modules.ExplorerDir + ".log"
 )
 
 var (
-	errNilCS = errors.New("explorer cannot use a nil consensus set")
+	errNilCS    = errors.New("explorer cannot use a nil consensus set")
+	errNilTpool = errors.New("explorer cannot use a nil transaction pool")
 )
 
 type (
@@ -44,28 +50,46 @@ type (
 	// An Explorer contains a more comprehensive view of the blockchain,
 	// including various statistics and metrics.
 	Explorer struct {
-		cs         modules.ConsensusSet
-		db         *persist.BoltDatabase
-		persistDir string
+		cs                               modules.ConsensusSet
+		db                               *persist.BoltDatabase
+		tpool                            modules.TransactionPool
+		persistDir                       string
+		unconfirmedSets                  map[modules.TransactionSetID][]types.TransactionID
+		unconfirmedProcessedTransactions []modules.ProcessedTransaction
+		mu                               sync.RWMutex
+		tg                               siasync.ThreadGroup
+		persistMu                        sync.RWMutex
+		log                              *persist.Logger
 	}
 )
 
 // New creates the internal data structures, and subscribes to
 // consensus for changes to the blockchain
-func New(cs modules.ConsensusSet, persistDir string) (*Explorer, error) {
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string) (*Explorer, error) {
 	// Check that input modules are non-nil
 	if cs == nil {
 		return nil, errNilCS
 	}
+	if tpool == nil {
+		return nil, errNilTpool
+	}
 
 	// Initialize the explorer.
 	e := &Explorer{
-		cs:         cs,
-		persistDir: persistDir,
+		cs:              cs,
+		tpool:           tpool,
+		persistDir:      persistDir,
+		unconfirmedSets: make(map[modules.TransactionSetID][]types.TransactionID),
 	}
 
 	// Initialize the persistent structures, including the database.
 	err := e.initPersist()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the logger.
+	e.log, err = persist.NewFileLogger(filepath.Join(e.persistDir, logFile))
 	if err != nil {
 		return nil, err
 	}
@@ -78,16 +102,28 @@ func New(cs modules.ConsensusSet, persistDir string) (*Explorer, error) {
 	}
 
 	err = cs.ConsensusSetSubscribe(e, recentChange, nil)
-	if err != nil {
-		// TODO: restart from 0
+	if err == modules.ErrInvalidConsensusChangeID {
+		// Perform a rescan of the consensus set if the change id is not found.
+		// The id will only be not found if there has been desynchronization
+		// between the explorer and the consensus package.
+		if err != nil {
+			return nil, errors.New("explorer startup failed - rescanning failed: " + err.Error())
+		}
+	} else if err != nil {
 		return nil, errors.New("explorer subscription failed: " + err.Error())
 	}
+	tpool.TransactionPoolSubscribe(e)
 
-	return e, nil
+	// make sure we commit on shutdown
+	e.tg.OnStop(func() {
+		e.cs.Unsubscribe(e)
+		e.tpool.Unsubscribe(e)
+	})
+
+	return e, err
 }
 
 // Close closes the explorer.
 func (e *Explorer) Close() error {
-	e.cs.Unsubscribe(e)
 	return e.db.Close()
 }
