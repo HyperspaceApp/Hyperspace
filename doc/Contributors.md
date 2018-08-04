@@ -5,8 +5,8 @@
 * Ask questions in the relevant [Discord][discord] channels
 
 ### List of contributors
-* DavidVorick (Owner)
-* lukechampine (Lead Developer)
+* DavidVorick (Nebulous Developer)
+* lukechampine (Nebulous Developer)
 * ChrisSchinnerl (Nebulous Developer)
 * Msevey (Nebulous Developer)
 * VoidingWarranties
@@ -55,6 +55,9 @@
 * jfcg
 * pachisi456
 * Google Inc.
+* Barrett17
+* nitronick600
+* TLightSky
 
 
 [guide]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Guide%20to%20Contributing%20to%20Hyperspace.md
