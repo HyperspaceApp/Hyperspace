@@ -90,7 +90,7 @@ outputs := getOutputs()
 // Disallow unknown agents.
 //
 // COMPATv0.4.0: allow a blank agent to preserve compatibility with
-// 'siac' v0.4.0, which did not set an agent.
+// 'hsc' v0.4.0, which did not set an agent.
 if agent != "HyperspaceAgent" && agent != "" {
 	return errors.New("unrecognized agent!")
 }

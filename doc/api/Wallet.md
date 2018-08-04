@@ -21,7 +21,7 @@ create a wallet with the `/wallet/init` endpoint. Wallets are always encrypted
 on disk. Calls to some wallet API endpoints will fail until the wallet is
 unlocked. The wallet can be unlocked with the `/wallet/unlock` endpoint. Once
 the wallet is unlocked calls to the API endpoints will succeed until the wallet
-is locked again with `/wallet/lock`, or Siad is restarted. The host and renter
+is locked again with `/wallet/lock`, or hsd is restarted. The host and renter
 require the miner to be unlocked.
 
 Index
@@ -297,8 +297,8 @@ transaction pool.
 
 ###### Query String Parameters
 ```
-// Number of hastings being sent. A hasting is the smallest unit in Sia. There
-// are 10^24 hastings in a siacoin.
+// Number of hastings being sent. A hasting is the smallest unit in Hyperspace. There
+// are 10^24 hastings in a single unit of SPACE.
 amount      // hastings
 
 // Address that is receiving the coins.

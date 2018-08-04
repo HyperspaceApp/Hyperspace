@@ -63,4 +63,4 @@
 [guide]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Guide%20to%20Contributing%20to%20Hyperspace.md
 [developers]: https://github.com/HyperspaceApp/Hyperspace/blob/master/doc/Developers.md
 [doc]: https://github.com/HyperspaceApp/Hyperspace/tree/master/doc
-[discord]: https://discord.gg/sia
+[discord]: https://discord.gg/J3tdnDE

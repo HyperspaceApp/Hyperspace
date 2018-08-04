@@ -1,7 +1,7 @@
-Siac Usage
+Hsc Usage
 ==========
 
-`hsc` is the command line interface to Sia, for use by power users and
+`hsc` is the command line interface to Hyperspace, for use by power users and
 those on headless servers. It comes as a part of the command line
 package, and can be run as `./hsc` from the same folder, or just by
 calling `hsc` if you move the binary into your path.
@@ -73,8 +73,8 @@ Example:
 user@hostname:~$ hsc wallet balance
 Wallet status:
 Encrypted, Unlocked
-Confirmed Balance:   61516458.00 SC
-Unconfirmed Balance: 64516461.00 SC
+Confirmed Balance:   61516458.00 SPACE
+Unconfirmed Balance: 64516461.00 SPACE
 Exact:               61516457999999999999999999999999 H
 ```
 
@@ -101,19 +101,19 @@ seed into itself. This can be used for wallet recovery and merging.
 
 is used to configure hosting.
 
-In version `1.2.2`, sia hosting is configured as follows:
+In version `1.2.2`, Hyperspace hosting is configured as follows:
 
 | Setting                  | Value                                           |
 | -------------------------|-------------------------------------------------|
 | acceptingcontracts       | Yes or No                                       |
 | maxduration              | in weeks, at least 12                           |
-| collateral               | in SC / TB / Month, 10-1000                     |
-| collateralbudget         | in SC                                           |
-| maxcollateral            | in SC, max per contract                         |
-| mincontractprice         | minimum price in SC per contract                |
-| mindownloadbandwidthprice| in SC / TB                                      |
-| minstorageprice          | in SC / TB                                      |
-| minuploadbandwidthprice  | in SC / TB                                      |
+| collateral               | in SPACE / TB / Month, 10-1000                     |
+| collateralbudget         | in SPACE                                           |
+| maxcollateral            | in SPACE, max per contract                         |
+| mincontractprice         | minimum price in SPACE per contract                |
+| mindownloadbandwidthprice| in SPACE / TB                                      |
+| minstorageprice          | in SPACE / TB                                      |
+| minuploadbandwidthprice  | in SPACE / TB                                      |
 
 You can call this many times to configure you host before
 announcing. Alternatively, you can manually adjust these parameters
@@ -142,18 +142,18 @@ Contracts:    32
 network.
 
 #### Renter tasks
-* `hsc renter upload [filename] [nickname]` uploads a file to the sia
+* `hsc renter upload [filename] [nickname]` uploads a file to the Hyperspace
 network. `filename` is the path to the file you want to upload, and
 nickname is what you will use to refer to that file in the
 network. For example, it is common to have the nickname be the same as
 the filename.
 
 * `hsc renter list` displays a list of the your uploaded files
-currently on the sia network by nickname, and their filesizes.
+currently on the Hyperspace network by nickname, and their filesizes.
 
 * `hsc renter download [nickname] [destination]` downloads a file
-from the sia network onto your computer. `nickname` is the name used
-to refer to your file in the sia network, and `destination` is the
+from the Hyperspace network onto your computer. `nickname` is the name used
+to refer to your file in the Hyperspace network, and `destination` is the
 path to where the file will be. If a file already exists there, it
 will be overwritten.
 

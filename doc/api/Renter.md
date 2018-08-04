@@ -62,12 +62,12 @@ returns the current settings along with metrics on the renter's spending.
       // contract is scheduled to end, the contract is renewed automatically.
       // Is always nonzero.
       "renewwindow": 3024 // blocks
-    }, 
-    // MaxUploadSpeed by default is unlimited but can be set by the user to 
+    },
+    // MaxUploadSpeed by default is unlimited but can be set by the user to
     // manage bandwidth
     "maxuploadspeed":     1234, // bytes per second
 
-    // MaxDownloadSpeed by default is unlimited but can be set by the user to 
+    // MaxDownloadSpeed by default is unlimited but can be set by the user to
     // manage bandwidth
     "maxdownloadspeed":   1234, // bytes per second
 
@@ -126,7 +126,7 @@ period // block height
 
 // Renew window specifies how many blocks before the expiration of the current
 // contracts the renter will wait before renewing the contracts. A smaller
-// renew window means that Sia must be run more frequently, but also means
+// renew window means that Hyperspace must be run more frequently, but also means
 // fewer total transaction fees. Storage spending is not affected by the renew
 // window size.
 renewwindow // block height
@@ -259,7 +259,7 @@ lists all files in the download queue.
       within the file. offset+length will never exceed the full file size.
       "offset": 0,
 
-      // Siapath given to the file when it was uploaded.
+      // Hyperspacepath given to the file when it was uploaded.
       "hyperspacepath": "foo/bar.txt",
 
       // Whether or not the download has completed. Will be false initially, and
@@ -528,7 +528,7 @@ standard success or error response. See
 
 downloads a file using http streaming. This call blocks until the data is
 received.
-The streaming endpoint also uses caching internally to prevent siad from
+The streaming endpoint also uses caching internally to prevent hsd from
 redownloading the same chunk multiple times when only parts of a file are
 requested at once. This might lead to a substantial increase in ram usage and
 therefore it is not recommended to stream multiple files in parallel at the
@@ -546,7 +546,7 @@ standard success with the requested data in the body or error response. See
 
 #### /renter/upload/___*hyperspacepath___ [POST]
 
-starts a file upload to the Sia network from the local filesystem.
+starts a file upload to the Hyperspace network from the local filesystem.
 
 ###### Path Parameters
 
