@@ -496,11 +496,11 @@ func TestRenterFileListWithFilter(t *testing.T) {
 	{
 		filter, _ := regexp.Compile("one")
 		files := rt.renter.FileList(filter)
-		if !(len(files) == 1) {
+		if len(files) != 1 {
 			t.Error("FileList is returning incorrect filtered length:", len(files))
 		}
 
-		if !(files[0].SiaPath == "one") {
+		if files[0].SiaPath != "one" {
 			t.Error("FileList is returning incorrect filtered items:", files[0].SiaPath)
 		}
 	}
