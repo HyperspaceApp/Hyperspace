@@ -113,9 +113,9 @@ returns the set of constants in use.
 {
   "blockfrequency":         600,        // seconds per block
   "blocksizelimit":         2000000,    // bytes
-  "extremefuturethreshold": 10800,      // seconds
+  "extremefuturethreshold": 18000,      // seconds
   "futurethreshold":        10800,      // seconds
-  "genesistimestamp":       1257894000, // Unix time
+  "genesistimestamp":       1532510521, // Unix time
   "maturitydelay":          144,        // blocks
   "mediantimestampwindow":  11,         // blocks
   "targetwindow":           1000,       // blocks
