@@ -91,6 +91,9 @@ type NodeParams struct {
 	// Custom settings for modules
 	Allowance modules.Allowance
 
+	//Whether the node is in SPV
+	Spv bool
+
 	// The following fields are used to skip parts of the node set up
 	SkipSetAllowance  bool
 	SkipHostDiscovery bool
@@ -203,7 +206,7 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateConsensusSet {
 			return nil, nil
 		}
-		return consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir))
+		return consensus.NewConsensus(g, false, filepath.Join(dir, modules.ConsensusDir), params.Spv)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create consensus set"))
