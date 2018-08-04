@@ -10,7 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	siasync "github.com/NebulousLabs/Sia/sync"
+	siasync "gitlab.com/NebulousLabs/Sia/sync"
 )
 
 const (
