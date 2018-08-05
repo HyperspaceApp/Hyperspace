@@ -141,6 +141,9 @@ func (d *Dispatcher) ClearJobAndNotifyClients() {
 	defer d.mu.Unlock()
 	d.log.Printf("Clear jobs and Notifying %d clients\n", len(d.handlers))
 	for _, h := range d.handlers {
+		if h != nil && h.s != nil {
+			d.log.Printf("Clear jobs and Notifying client: %s, workername %s\n", h.s.remoteAddr, h.s.CurrentWorker.wr.name)
+		}
 		h.s.clearJobs()
 		h.notify <- true
 	}

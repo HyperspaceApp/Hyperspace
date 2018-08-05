@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -136,6 +137,13 @@ func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
 }
 
 func (s *Session) clearJobs() {
+	if s == nil {
+		if s.log != nil && s.CurrentJobs != nil {
+			log.Printf("Failed to clear job, session is nil\n")
+		}
+		return
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.log != nil && s.CurrentJobs != nil {
