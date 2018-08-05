@@ -144,6 +144,7 @@ func readFileConfig(config Config) error {
 			return err
 		}
 		poolViper := viper.Sub("miningpool")
+		poolViper.SetDefault("luck", false)
 		poolViper.SetDefault("name", "")
 		poolViper.SetDefault("id", "")
 		poolViper.SetDefault("acceptingcontracts", false)
@@ -174,6 +175,7 @@ func readFileConfig(config Config) error {
 			PoolID:           uint64(poolViper.GetInt("id")),
 			PoolDBConnection: dbConnection,
 			PoolWallet:       poolViper.GetString("poolwallet"),
+			Luck:             poolViper.GetBool("luck"),
 		}
 		globalConfig.MiningPoolConfig = poolConfig
 	}
