@@ -1,9 +1,11 @@
 package siatest
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/node"
 )
 
 // TestCreateTestGroup tests the behavior of NewGroup.
@@ -18,7 +20,7 @@ func TestNewGroup(t *testing.T) {
 		Miners:  2,
 	}
 	// Create the group
-	tg, err := NewGroupFromTemplate(groupParams)
+	tg, err := NewGroupFromTemplate(siatestTestDir(t.Name()), groupParams)
 	if err != nil {
 		t.Fatal("Failed to create group: ", err)
 	}
@@ -70,7 +72,7 @@ func TestNewGroupNoMiner(t *testing.T) {
 		Miners:  0,
 	}
 	// Create the group
-	_, err := NewGroupFromTemplate(groupParams)
+	_, err := NewGroupFromTemplate(siatestTestDir(t.Name()), groupParams)
 	if err == nil {
 		t.Fatal("Creating a group without miners should fail: ", err)
 	}
@@ -88,7 +90,7 @@ func TestNewGroupNoRenterHost(t *testing.T) {
 		Miners:  5,
 	}
 	// Create the group
-	tg, err := NewGroupFromTemplate(groupParams)
+	tg, err := NewGroupFromTemplate(siatestTestDir(t.Name()), groupParams)
 	if err != nil {
 		t.Fatal("Failed to create group: ", err)
 	}
@@ -97,4 +99,46 @@ func TestNewGroupNoRenterHost(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
+}
+
+// TestAddNewNode tests that the added node is returned when AddNodes is called
+func TestAddNewNode(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	// Create a group
+	groupParams := GroupParams{
+		Renters: 2,
+		Miners:  1,
+	}
+	tg, err := NewGroupFromTemplate(siatestTestDir(t.Name()), groupParams)
+	if err != nil {
+		t.Fatal("Failed to create group: ", err)
+	}
+	defer func() {
+		if err := tg.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// Record current nodes
+	oldRenters := tg.Renters()
+
+	// Test adding a node
+	testDir := TestDir(t.Name())
+	renterTemplate := node.Renter(filepath.Join(testDir, "/renter"))
+	nodes, err := tg.AddNodes(renterTemplate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(nodes) != 1 {
+		t.Fatalf("More nodes returned than expected; expected 1 got %v", len(nodes))
+	}
+	renter := nodes[0]
+	for _, oldRenter := range oldRenters {
+		if oldRenter.primarySeed == renter.primarySeed {
+			t.Fatal("Returned renter is not the new renter")
+		}
+	}
 }

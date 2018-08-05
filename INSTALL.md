@@ -14,20 +14,20 @@ make dependencies
 
 Setup data directory
 ---
-mkdir ~/sia  
-cd ~/sia  
+mkdir ~/hyperspace  
+cd ~/hyperspace  
 
 Run standard node
 ---
-siad
+hsd
 
 OR run pool node:
 ---
 
 Configure db info, port number, etc
 ---
-cp sampleconfig/sia.yml ~/sia  
-vim ~/sia/sia.yml
+cp sampleconfig/sia.yml ~/hyperspace  
+vim ~/hyperspace/sia.yml
 
 Install mysql if necessary
 ---

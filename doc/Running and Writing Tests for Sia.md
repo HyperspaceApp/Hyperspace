@@ -29,7 +29,7 @@ and their variants.
 <a name="update"></a>
 ### Updating code before testing
 If you just want to run existing tests on the codebase as is, you just need to
-pull the latest version of the original repo to your master branch.  (If that 
+pull the latest version of the original repo to your master branch.  (If that
 sentence didn't make sense, go read
 [doc/Guide to Contributing to Hyperspace.md][guide].)
 
@@ -38,7 +38,7 @@ sentence didn't make sense, go read
 $ cd $GOPATH/src/github.com/<your Github username>/Hyperspace
 # Also make sure you're working with the right branch.
 $ git checkout master
-# Pull latest changes from origin, the original Hyperspace repo. 
+# Pull latest changes from origin, the original Hyperspace repo.
 $ git pull origin master
 # Update your fork of the repo, which should be set up as a remote.
 $ git push <remote>  master
@@ -80,13 +80,13 @@ The `make test` command runs all tests (functions starting with `Test` in
 `_test.go` files) for each package, setting off a panic for any test that runs
 longer than 5s.  For verbose output, run `make test-v` (which panics after 15s
 instead of 5s).  Finally, `make test-long` has verbose output, only panics when
-a test takes 5 minutes, and also cleans up your code using `gofmt` and `golint`. 
+a test takes 5 minutes, and also cleans up your code using `gofmt` and `golint`.
 **You should run** `make test-long` **before each pull request.**
 
 Run `make cover` to run all tests for each package and generate color-coded
 .html visualizations of test coverage by function for each source file.  Open
-`cover/<module>.html` in a browser to inspect a module's test coverage. For 
-example, here's part of the html file generated for the persist package: 
+`cover/<module>.html` in a browser to inspect a module's test coverage. For
+example, here's part of the html file generated for the persist package:
 
 ![Screenshot](assets/covertool.png)
 
@@ -95,7 +95,7 @@ benchmarks (functions starting with `Benchmark` in `_test.go` files).
 
 <a name="particular"></a>
 ### Testing a particular package or function
-To run tests for just a certain package, run `make test pkgs=./<package>`. To run 
+To run tests for just a certain package, run `make test pkgs=./<package>`. To run
 a certain test function, run `make test pkgs=./<package> run=<function>`. The same
 goes for `make test-long`, `make cover` and `make bench`.
 
@@ -129,7 +129,7 @@ go test -v -race -tags='testing debug' -timeout=300s ./persist -run=Test
 PASS
 ok  	github.com/HyperspaceApp/Hyperspace/persist	1.485s
 $
-``` 
+```
 
 <a name="write"></a>
 ## Writing new tests for Hyperspace
@@ -143,7 +143,7 @@ coverage.  We're working on fixing that, but we could use your help.
 * A test function name should start with `Test` and clearly convey what is
     being tested.
 * You should declare function-specific variables and constants locally (inside
-    the test function) instead of globally (outside the test function).  [That 
+    the test function) instead of globally (outside the test function).  [That
 	holds in general][global], not just for tests.
 * As always, code should adhere to the standards and conventions laid out in
     [doc/Developers.md][developers].
@@ -170,7 +170,7 @@ func TestFoo(t *testing.T) {
 	}
 
 	// Try a bad input; should return an error.
-	// NOTE: Always prefer to compare to a specific error, rather than 
+	// NOTE: Always prefer to compare to a specific error, rather than
 	// err == nil
 	err = Foo.Bar(0)
 	if err != errDivideByZero {
@@ -183,7 +183,7 @@ func TestFoo(t *testing.T) {
 <a name="table"></a>
 ### Table-driven tests in Go
 If you're looking to test a bunch of inputs, write a [table-driven test][table]
-with a slice of anonymous structs. For example, see `TestParseFileSize` in 
+with a slice of anonymous structs. For example, see `TestParseFileSize` in
 [siac/parse_test.go][parse_test]:
 
 ```go
@@ -215,7 +215,7 @@ func TestParseFilesize(t *testing.T) {
 		{"1.234KB", "1234", nil},
 		{"1.2345KB", "1234", nil},
 	}
-	// Loop through the table of test cases to make sure ParseFileSize returns 
+	// Loop through the table of test cases to make sure ParseFileSize returns
 	// the expected output and error for each.
 	for _, test := range tests {
 		res, err := parseFilesize(test.in)
@@ -239,7 +239,7 @@ Some other useful resources, some of which have been linked to already:
 * [How to Write Benchmarks in Go][cheney-benchmarks]
 * [How to into git and GitHub][luke]: an essential introduction to git
 
-And feel free to ask questions on the [#core-dev channel][discord] on the Hyperspace Discord. 
+And feel free to ask questions on the [#core-dev channel][discord] on the Hyperspace Discord.
 Odds are, someone else is wondering the same thing.
 
 [pkg/testing]: https://golang.org/pkg/testing/
@@ -251,6 +251,6 @@ Odds are, someone else is wondering the same thing.
 [boltdb_test.go]: https://github.com/HyperspaceApp/Hyperspace/blob/master/persist/boltdb_test.go
 [cheney-benchmarks]: http://dave.cheney.net/2013/06/30/how-to-write-benchmarks-in-go
 [pkg/testing]: https://golang.org/pkg/testing/
-[discord]: https://discord.gg/sia
+[discord]: https://discord.gg/J3tdnDE
 [parse_test]: https://github.com/HyperspaceApp/Hyperspace/blob/master/siac/parse_test.go
 [global]: http://c2.com/cgi/wiki?GlobalVariablesAreBad

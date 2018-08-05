@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+
 	"github.com/xtaci/smux"
 )
 

@@ -8,9 +8,10 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/NebulousLabs/errors"
-	"github.com/NebulousLabs/ratelimit"
-	"github.com/NebulousLabs/writeaheadlog"
+
+	"gitlab.com/NebulousLabs/ratelimit"
+	"gitlab.com/NebulousLabs/errors"
+	"gitlab.com/NebulousLabs/writeaheadlog"
 )
 
 // A ContractSet provides safe concurrent access to a set of contracts. Its

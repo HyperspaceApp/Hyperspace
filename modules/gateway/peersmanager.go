@@ -3,7 +3,7 @@ package gateway
 import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/NebulousLabs/fastrand"
+	"gitlab.com/NebulousLabs/fastrand"
 )
 
 // managedPeerManagerConnect is a blocking function which tries to connect to

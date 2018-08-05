@@ -25,6 +25,7 @@ Index
 | [/renter](#renter-post)                                                         | POST      |
 | [/renter/contracts](#rentercontracts-get)                                       | GET       |
 | [/renter/downloads](#renterdownloads-get)                                       | GET       |
+| [/renter/downloads/clear](#renterdownloadsclear-post)                           | POST      |
 | [/renter/files](#renterfiles-get)                                               | GET       |
 | [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)                     | GET       |
 | [/renter/prices](#renter-prices-get)                                            | GET       |
@@ -62,11 +63,11 @@ returns the current settings along with metrics on the renter's spending.
       // Is always nonzero.
       "renewwindow": 3024 // blocks
     },
-    // MaxUploadSpeed by defaul is unlimited but can be set by the user to
+    // MaxUploadSpeed by default is unlimited but can be set by the user to
     // manage bandwidth
     "maxuploadspeed":     1234, // bytes per second
 
-    // MaxDownloadSpeed by defaul is unlimited but can be set by the user to
+    // MaxDownloadSpeed by default is unlimited but can be set by the user to
     // manage bandwidth
     "maxdownloadspeed":   1234, // bytes per second
 
@@ -125,7 +126,7 @@ period // block height
 
 // Renew window specifies how many blocks before the expiration of the current
 // contracts the renter will wait before renewing the contracts. A smaller
-// renew window means that Sia must be run more frequently, but also means
+// renew window means that Hyperspace must be run more frequently, but also means
 // fewer total transaction fees. Storage spending is not affected by the renew
 // window size.
 renewwindow // block height
@@ -147,12 +148,24 @@ standard success or error response. See
 
 #### /renter/contracts [GET]
 
-returns active contracts. Expired contracts are not included.
+returns the renter's contracts.  Active contracts are contracts that the Renter
+is currently using to store, upload, and download data, and are returned by
+default. Inactive contracts are contracts that are in the current period but are
+marked as not good for renew, these contracts have the potential to become
+active again but currently are not storing data.  Expired contracts are
+contracts not in the current period, where not more data is being stored and
+excess funds have been released to the renter.
+
+###### Contract Parameters
+```
+inactive   // true or false - Optional
+expired    // true or false - Optional
+```
 
 ###### JSON Response
 ```javascript
 {
-  "contracts": [
+  "activecontracts": [
     {
       // Amount of contract funds that have been spent on downloads.
       "downloadspending": "1234", // hastings
@@ -212,7 +225,9 @@ returns active contracts. Expired contracts are not included.
       // Signals if contract is good for a renewal
       "goodforrenew": false,
     }
-  ]
+  ],
+  "inactivecontracts": [],
+  "expiredcontracts": [],
 }
 ```
 
@@ -244,7 +259,7 @@ lists all files in the download queue.
       within the file. offset+length will never exceed the full file size.
       "offset": 0,
 
-      // Siapath given to the file when it was uploaded.
+      // Hyperspacepath given to the file when it was uploaded.
       "hyperspacepath": "foo/bar.txt",
 
       // Whether or not the download has completed. Will be false initially, and
@@ -278,6 +293,24 @@ lists all files in the download queue.
   ]
 }
 ```
+#### /renter/downloads/clear [POST]
+
+Clears the download history of the renter for a range of unix time stamps.  Both
+parameters are optional, if no parameters are provided, the entire download
+history will be cleared.  To clear a single download, provide the timestamp for
+the download as both parameters.  Providing only the before parameter will clear
+all downloads older than the timestamp.  Conversely, providing only the after
+parameter will clear all downloads newer than the timestamp.
+
+###### Timestamp Parameters [(with comments)]
+```
+before  // Optional - unix timestamp found in the download history
+after   // Optional - unix timestamp found in the download history
+```
+
+###### Response
+standard success or error response. See
+[API.md#standard-responses](/doc/API.md#standard-responses).
 
 #### /renter/files [GET]
 
@@ -495,7 +528,7 @@ standard success or error response. See
 
 downloads a file using http streaming. This call blocks until the data is
 received.
-The streaming endpoint also uses caching internally to prevent siad from
+The streaming endpoint also uses caching internally to prevent hsd from
 redownloading the same chunk multiple times when only parts of a file are
 requested at once. This might lead to a substantial increase in ram usage and
 therefore it is not recommended to stream multiple files in parallel at the
@@ -513,7 +546,7 @@ standard success with the requested data in the body or error response. See
 
 #### /renter/upload/___*hyperspacepath___ [POST]
 
-starts a file upload to the Sia network from the local filesystem.
+starts a file upload to the Hyperspace network from the local filesystem.
 
 ###### Path Parameters
 

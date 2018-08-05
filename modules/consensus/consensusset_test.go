@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/NebulousLabs/fastrand"
+	"gitlab.com/NebulousLabs/fastrand"
 )
 
 // A consensusSetTester is the helper object for consensus set testing,

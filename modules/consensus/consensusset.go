@@ -15,8 +15,8 @@ import (
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/NebulousLabs/demotemutex"
 	"github.com/coreos/bbolt"
+	"gitlab.com/NebulousLabs/demotemutex"
 )
 
 var (
