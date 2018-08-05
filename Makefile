@@ -17,6 +17,7 @@ dependencies:
 	go get -u gitlab.com/NebulousLabs/fastrand
 	go get -u gitlab.com/NebulousLabs/merkletree
 	go get -u gitlab.com/NebulousLabs/bolt
+	go get -u gitlab.com/NebulousLabs/Sia/sync
 	go get -u golang.org/x/crypto/blake2b
 	go get -u golang.org/x/crypto/ed25519
 	# Module + Daemon Dependencies
