@@ -130,7 +130,7 @@ func currencyUnits(c types.Currency) string {
 	return fmt.Sprintf("%.4g %s", res, unit)
 }
 
-// parseCurrency converts a siacoin amount to base units.
+// parseCurrency converts a SPACE amount to base units.
 func parseCurrency(amount string) (string, error) {
 	units := []string{"pS", "nS", "uS", "mS", "SC", "KS", "MS", "GS", "TS"}
 	for i, unit := range units {

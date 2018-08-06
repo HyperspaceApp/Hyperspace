@@ -225,7 +225,7 @@ func storageRemainingAdjustments(entry modules.HostDBEntry) float64 {
 	return base
 }
 
-// versionAdjustments will adjust the weight of the entry according to the siad
+// versionAdjustments will adjust the weight of the entry according to the hsd
 // version reported by the host.
 func versionAdjustments(entry modules.HostDBEntry) float64 {
 	base := float64(1)

@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	// OutputRefreshRate is the rate at which siac will update something like a
+	// OutputRefreshRate is the rate at which hsc will update something like a
 	// progress meter when displaying a continuous action like a download.
 	OutputRefreshRate = 250 * time.Millisecond
 

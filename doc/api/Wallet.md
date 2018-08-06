@@ -85,14 +85,14 @@ locked or unlocked.
   // calculated using 'unconfirmedincomingsiacoins' - 'unconfirmedoutgoingsiacoins'
   "unconfirmedoutgoingsiacoins": "0", // hastings, big int
 
-  // Number of siacoins, in hastings, are entering the wallet according to
+  // Amount of SPACE, in hastings, are entering the wallet according to
   // the set of unconfirmed transactions. This number is often inflated by
-  // outgoing siacoins, because outputs are frequently larger than the amount
+  // outgoing SPACE, because outputs are frequently larger than the amount
   // being sent. The refund will be included in the unconfirmed incoming
-  // siacoins balance.
+  // SPACE balance.
   "unconfirmedincomingsiacoins": "789", // hastings, big int
 
-  // Number of siacoins, in hastings per byte, below which a transaction output
+  // Amount of SPACE, in hastings per byte, below which a transaction output
   // cannot be used because the wallet considers it a dust output
   "dustthreshold": "1234", // hastings / byte, big int
 }
@@ -106,7 +106,7 @@ be returned if the wallet is locked.
 ###### JSON Response
 ```javascript
 {
-  // Wallet address that can receive siacoins. Addresses are 76 character long hex strings.
+  // Wallet address that can receive SPACE. Addresses are 76 character long hex strings.
   "address": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab"
 }
 ```
@@ -436,7 +436,7 @@ seed
 ###### JSON Response
 ```javascript
 {
-  // Number of siacoins, in hastings, transferred to the wallet as a result of
+  // Amount of SPACE, in hastings, transferred to the wallet as a result of
   // the sweep.
   "coins": "123456", // hastings, big int
 }
@@ -517,14 +517,14 @@ gets the transaction associated with a specific transaction id.
         "id": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 
         // Type of fund is represented by the output. Possible values are
-        // 'siacoin output' and 'miner payout'. Siacoin outputs relate to siacoins.
-        // Miner payouts point to siacoins that have been spent on a miner payout.
+        // 'siacoin output' and 'miner payout'. Siacoin outputs relate to SPACE.
+        // Miner payouts point to SPACE that has been spent on a miner payout.
         // Because the destination of the miner payout is determined by the
         // block and not the transaction, the data 'maturityheight', 'walletaddress',
         // and'relatedaddress' are left blank.
         "fundtype": "siacoin output",
 
-        // Block height the output becomes available to be spent. Siacoin
+        // Block height the output becomes available to be spent. SPACE
         // outputs mature immediately - their maturity
         // height will always be the confirmation height of the transaction.
         // Claim outputs cannot be spent until they have had 144 confirmations,
