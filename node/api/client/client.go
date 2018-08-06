@@ -13,15 +13,15 @@ import (
 	"gitlab.com/NebulousLabs/errors"
 )
 
-// A Client makes requests to the siad HTTP API.
+// A Client makes requests to the hsd HTTP API.
 type Client struct {
-	// Address is the API address of the siad server.
+	// Address is the API address of the hsd server.
 	Address string
 
-	// Password must match the password of the siad server.
+	// Password must match the password of the hsd server.
 	Password string
 
-	// UserAgent must match the User-Agent required by the siad server. If not
+	// UserAgent must match the User-Agent required by the hsd server. If not
 	// set, it defaults to "Hyperspace-Agent".
 	UserAgent string
 }
@@ -33,7 +33,7 @@ func New(address string) *Client {
 	}
 }
 
-// NewRequest constructs a request to the siad HTTP API, setting the correct
+// NewRequest constructs a request to the hsd HTTP API, setting the correct
 // User-Agent and Basic Auth. The resource path must begin with /.
 func (c *Client) NewRequest(method, resource string, body io.Reader) (*http.Request, error) {
 	url := "http://" + c.Address + resource

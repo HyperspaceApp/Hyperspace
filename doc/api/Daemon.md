@@ -32,7 +32,7 @@ returns the set of constants in use.
 ```javascript
 {
   // Timestamp of the genesis block.
-  "genesistimestamp": 1433600000, // Unix time
+  "genesistimestamp": 1532510521, // Unix time
 
   // Maximum size, in bytes, of a block. Blocks larger than this will be
   // rejected by peers.
@@ -43,7 +43,7 @@ returns the set of constants in use.
 
   // Farthest a block's timestamp can be in the future before the block is
   // rejected outright.
-  "extremefuturethreshold": 10800, // seconds
+  "extremefuturethreshold": 18000, // seconds
 
   // Height of the window used to adjust the difficulty.
   "targetwindow": 1000, // blocks
@@ -62,13 +62,13 @@ returns the set of constants in use.
   // Number of coins given to the miner of the first block. Note that elsewhere
   // in the API currency is typically returned in hastings and as a bignum.
   // This is not the case here.
-  "initialcoinbase": 300000, // Siacoins
+  "initialcoinbase": 60000, // SPACE
 
   // Minimum number of coins paid out to the miner of a block (the coinbase
   // decreases with each block). Note that elsewhere in the API currency is
   // typically returned in hastings and as a bignum. This is not the case
   // here.
-  "minimumcoinbase": 30000, // Siacoins
+  "minimumcoinbase": 6000, // SPACE
 
   // Initial target.
   "roottarget": [0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -82,8 +82,8 @@ returns the set of constants in use.
   // Smallest allowed ratio between the old difficulty and the new difficulty.
   "maxtargetadjustmentdown": "2/5",
 
-  // Number of Hastings in one siacoin.
-  "siacoinprecision": "1000000000000000000000000" // hastings per siacoin
+  // Number of Hastings in one SPACE.
+  "siacoinprecision": "1000000000000000000000000" // hastings per SPACE
 }
 ```
 

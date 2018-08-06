@@ -50,7 +50,7 @@ var (
 		Long: `Generate a new address, send coins to another wallet, or view info about the wallet.
 
 Units:
-The smallest unit of siacoins is the hasting. One space cash is 10^24 hastings. Other supported units are:
+The smallest unit of SPACE is the hasting. One space cash is 10^24 hastings. Other supported units are:
   pS (pico,  10^-12 SPACE)
   nS (nano,  10^-9 SPACE)
   uS (micro, 10^-6 SPACE)
@@ -339,7 +339,7 @@ func walletseedscmd() {
 	}
 }
 
-// walletsendsiacoinscmd sends siacoins to a destination address.
+// walletsendsiacoinscmd sends SPACE to a destination address.
 func walletsendsiacoinscmd(amount, dest string) {
 	hastings, err := parseCurrency(amount)
 	if err != nil {

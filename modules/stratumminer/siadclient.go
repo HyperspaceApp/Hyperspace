@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-// SiadClient is a simple client to a siad
+// SiadClient is a simple client to a hsd
 type SiadClient struct {
 	siadurl string
 }

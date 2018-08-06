@@ -15,7 +15,7 @@ import (
 	"gitlab.com/NebulousLabs/errors"
 )
 
-// A Server is a collection of siad modules that can be communicated with over
+// A Server is a collection of hsd modules that can be communicated with over
 // an http api.
 type Server struct {
 	api               *api.API
