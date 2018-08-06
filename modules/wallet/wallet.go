@@ -170,12 +170,6 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		return nil, err
 	}
 
-	// begin the initial transaction
-	w.dbTx, err = w.db.Begin(true)
-	if err != nil {
-		w.log.Critical("ERROR: failed to start database update:", err)
-	}
-
 	return w, nil
 }
 
