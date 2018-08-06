@@ -155,6 +155,7 @@ type Pool struct {
 	mu             deadlock.RWMutex
 	dbConnectionMu deadlock.RWMutex
 	lucklock       deadlock.RWMutex
+	computingLuck  bool
 	persistDir     string
 	port           string
 	tg             threadgroup.ThreadGroup
