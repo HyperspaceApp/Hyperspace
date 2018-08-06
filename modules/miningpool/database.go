@@ -21,9 +21,10 @@ var (
 )
 
 const (
-	sqlReconnectRetry  = 6
-	sqlRetryDelay      = 10
-	confirmedButUnpaid = "Confirmed but unpaid"
+	sqlReconnectRetry   = 6
+	sqlRetryDelay       = 10
+	confirmedButUnpaid  = "Confirmed but unpaid"
+	poolDiffToBlockDiff = 4295032833.0
 )
 
 func (p *Pool) newDbConnection() error {
@@ -371,9 +372,6 @@ func (p *Pool) logLuckState() {
 
 		p.yiilog.Printf("logLuckState poolDifficulty: %f\n", poolDifficulty.Float64)
 
-		target, _ := difficultyToTarget(poolDifficulty.Float64)
-		poolBlockDifficulty, _ := target.Difficulty().Uint64() // convert from pool diff to block diff
-
 		var lastMineBlock sql.NullInt64 // search our pool block just before current height
 		err = p.sqldb.QueryRow("SELECT max(height) as height FROM blocks WHERE coin_id = ? AND height < ?",
 			CoinID, i).Scan(&lastMineBlock)
@@ -383,17 +381,18 @@ func (p *Pool) logLuckState() {
 		}
 		p.yiilog.Printf("logLuckState lastMineBlock: %d\n", lastMineBlock.Int64)
 
-		var sumHistoryDiff sql.NullInt64
+		var sumHistoryDiff sql.NullFloat64
 		err = p.sqldb.QueryRow("SELECT sum(diff) FROM luck WHERE coinid = ? AND height > ?",
 			CoinID, lastMineBlock.Int64).Scan(&sumHistoryDiff)
 		if err != nil && err != sql.ErrNoRows {
 			p.yiilog.Printf("logLuckState sumHistoryDiff failed: %s\n", err)
 			return
 		}
-		totalSumDiff := uint64(sumHistoryDiff.Int64) + poolBlockDifficulty
+		totalSumDiff := sumHistoryDiff.Float64 + poolDifficulty.Float64
 
 		blockTarget, _ := p.cs.ChildTarget(preBlock.ID())
 		blockTargetDifficulty, _ := blockTarget.Difficulty().Uint64()
+		blockPoolDifficulty := float64(blockTargetDifficulty) / float64(poolDiffToBlockDiff)
 
 		tx, err := p.sqldb.Begin()
 		if err != nil {
@@ -412,8 +411,8 @@ func (p *Pool) logLuckState() {
 		}
 		defer stmt.Close()
 
-		rs, err := stmt.Exec(i, CoinID, poolBlockDifficulty, totalSumDiff,
-			blockTargetDifficulty, float64(totalSumDiff)/float64(blockTargetDifficulty))
+		rs, err := stmt.Exec(i, CoinID, poolDifficulty, totalSumDiff,
+			blockPoolDifficulty, totalSumDiff/blockPoolDifficulty)
 		if err != nil {
 			p.yiilog.Printf("logLuckState failed: %s\n", err)
 			return
