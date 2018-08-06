@@ -321,6 +321,8 @@ func (p *Pool) logLuckState() {
 	if !p.InternalSettings().Luck {
 		return
 	}
+	p.lucklock.Lock()
+	defer p.lucklock.Unlock()
 
 	// lock
 	var lastLogHeight sql.NullInt64

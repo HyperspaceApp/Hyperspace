@@ -154,6 +154,7 @@ type Pool struct {
 	yiilog         *persist.Logger
 	mu             deadlock.RWMutex
 	dbConnectionMu deadlock.RWMutex
+	lucklock       deadlock.RWMutex
 	persistDir     string
 	port           string
 	tg             threadgroup.ThreadGroup
