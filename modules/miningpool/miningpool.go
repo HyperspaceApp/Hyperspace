@@ -270,6 +270,7 @@ func (p *Pool) startServer() {
 
 			port := fmt.Sprintf("%d", p.InternalSettings().PoolNetworkPort)
 			go p.dispatcher.ListenHandlers(port)
+			go p.logLuckState()
 			p.tg.OnStop(func() error {
 				if p.dispatcher.ln == nil {
 					//panic(errors.New("network not opened yet"))
