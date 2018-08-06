@@ -14,6 +14,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/julienschmidt/httprouter"
+	"regexp"
 )
 
 var (
@@ -519,9 +520,21 @@ func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps h
 
 // renterFilesHandler handles the API call to list all of the files.
 func (api *API) renterFilesHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	WriteJSON(w, RenterFiles{
-		Files: api.renter.FileList(),
-	})
+	filter := req.FormValue("filter")
+	if len(filter) > 0 {
+		r, err := regexp.Compile(filter)
+		if err != nil {
+			WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+			return
+		}
+		WriteJSON(w, RenterFiles{
+			Files: api.renter.FileList(r),
+		})
+	} else {
+		WriteJSON(w, RenterFiles{
+			Files: api.renter.FileList(),
+		})
+	}
 }
 
 // renterPricesHandler reports the expected costs of various actions given the

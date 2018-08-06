@@ -7,6 +7,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"regexp"
 )
 
 // TestFileNumChunks checks the numChunks method of the file type.
@@ -451,5 +452,56 @@ func TestRenterRenameFile(t *testing.T) {
 	_, newexists := rt.renter.persist.Tracking["1b"]
 	if oldexists || !newexists {
 		t.Error("renaming should have updated the entry in the tracking set")
+	}
+}
+
+// TestRenterFileListWithFilter probes the FileList method of the renter type against a filter.
+func TestRenterFileListWithFilter(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	rt, err := newRenterTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rt.Close()
+
+	// Put a file in the renter.
+	rsc, _ := NewRSCode(1, 1)
+	rt.renter.files["1"] = &file{
+		name:        "one",
+		erasureCode: rsc,
+		pieceSize:   1,
+	}
+
+	// Put multiple files in the renter.
+	rt.renter.files["2"] = &file{
+		name:        "two",
+		erasureCode: rsc,
+		pieceSize:   1,
+	}
+
+	// Test regex returning all items
+	{
+		filter, _ := regexp.Compile(".*")
+		files := rt.renter.FileList(filter)
+		if !((files[0].SiaPath == "one" || files[0].SiaPath == "two") &&
+			(files[1].SiaPath == "one" || files[1].SiaPath == "two") &&
+			(files[0].SiaPath != files[1].SiaPath)) {
+			t.Error("FileList is returning wrong names for filtered files:", files[0].SiaPath, files[1].SiaPath)
+		}
+	}
+
+	// Test regex returning single item
+	{
+		filter, _ := regexp.Compile("one")
+		files := rt.renter.FileList(filter)
+		if len(files) != 1 {
+			t.Error("FileList is returning incorrect filtered length:", len(files))
+		}
+
+		if files[0].SiaPath != "one" {
+			t.Error("FileList is returning incorrect filtered items:", files[0].SiaPath)
+		}
 	}
 }

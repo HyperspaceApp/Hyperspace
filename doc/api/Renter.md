@@ -316,6 +316,12 @@ standard success or error response. See
 
 lists the status of all files.
 
+###### Query String Parameters
+```
+// Optional regular expression applied to 'hyperspacepath' that can be used to produce a filtered file list
+filter      // Regex string syntax
+```
+
 ###### JSON Response
 ```javascript
 {
