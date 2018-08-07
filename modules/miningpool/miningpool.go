@@ -154,6 +154,8 @@ type Pool struct {
 	yiilog         *persist.Logger
 	mu             deadlock.RWMutex
 	dbConnectionMu deadlock.RWMutex
+	lucklock       deadlock.RWMutex
+	computingLuck  bool
 	persistDir     string
 	port           string
 	tg             threadgroup.ThreadGroup
@@ -268,6 +270,7 @@ func (p *Pool) startServer() {
 
 			port := fmt.Sprintf("%d", p.InternalSettings().PoolNetworkPort)
 			go p.dispatcher.ListenHandlers(port)
+			go p.logLuckState()
 			p.tg.OnStop(func() error {
 				if p.dispatcher.ln == nil {
 					//panic(errors.New("network not opened yet"))

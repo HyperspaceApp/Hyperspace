@@ -261,6 +261,8 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 		p.log.Printf("Consensus change detected\n")
 		// we do this because the new block could have come from us
 
+		go p.logLuckState()
+
 		p.newSourceBlock()
 		if p.dispatcher != nil {
 			p.log.Printf("Notifying clients\n")
