@@ -13,9 +13,10 @@ in production.
 Overview
 --------
 
-The explorer API allow to get informations about the status of the blockchain,
-it is designed to allow developers build monitoring services. The explorer API
-supply also a websocket API to receive notifications about new blocks and transactions.
+The explorer API allows retrieval of information about the status of the blockchain.
+It is designed to allow developers build monitoring services. The explorer API
+also supplies a websocket API to receive push notifications about new blocks and
+transactions.
 
 Index
 -----
@@ -32,7 +33,7 @@ Index
 #### /explorer [GET]
 
 Returns information about the explorer set, such as the current height
-and the miners payout.
+and the miner payouts.
 
 ###### Response
 The JSON formatted block or a standard error response.
@@ -257,7 +258,7 @@ The JSON formatted block or a standard error response.
 
 #### /explorer/pending [GET]
 
-Returns informations about blocks found that are still waiting for confirmations.
+Returns informations about blocks found that are still waiting for confirmation.
 
 ###### Response
 The JSON formatted block or a standard error response.
@@ -383,7 +384,7 @@ The JSON formatted block or a standard error response.
 
 #### /explorer/blocks/:height [GET]
 
-Returns informations about a specific block for a given height.
+Returns information about a specific block for a given height.
 
 ###### Query String Parameters
 The following parameter can be specified.
@@ -495,13 +496,13 @@ The JSON formatted block or a standard error response.
 
 #### /explorer/hashes/:hash [GET]
 
-Get informations about a specific hash such as transactions and
-addresses.
+Get information about a specific hash such as that of a transaction or
+address.
 
 ###### Query String Parameters
 The following parameter can be specified.
 ```
-// Hash of the requested transaction.
+// Hash of the requested item.
 hash
 ```
 
@@ -591,10 +592,10 @@ The JSON formatted block or a standard error response.
 
 #### /explorer/ws [GET]
 
-Subscribe to the blocks websocket. The websocket notify subscribers
+Subscribe to the blocks websocket. The websocket notifies subscribers
 when a new block is found in the blockchain.
 
 #### /explorer/tx/ws [GET]
 
-Subscribe to the transactions websocket. The websocket notify subscribers
+Subscribe to the transactions websocket. The websocket notifies subscribers
 about new transactions in the blockchain.
