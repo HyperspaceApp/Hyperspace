@@ -626,7 +626,7 @@ func (srv *Server) loadModules() error {
 
 	// Attempt to auto-unlock the wallet using the HYPERSPACE_WALLET_PASSWORD env variable
 	if password := os.Getenv("HYPERSPACE_WALLET_PASSWORD"); password != "" {
-		fmt.Println("Sia Wallet Password found, attempting to auto-unlock wallet")
+		fmt.Println("Hyperspace Wallet Password found, attempting to auto-unlock wallet")
 		if err := unlockWallet(w, password); err != nil {
 			fmt.Println("Auto-unlock failed.")
 		} else {
