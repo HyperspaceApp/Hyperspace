@@ -21,9 +21,10 @@ var (
 )
 
 const (
-	sqlReconnectRetry  = 6
-	sqlRetryDelay      = 10
-	confirmedButUnpaid = "Confirmed but unpaid"
+	sqlReconnectRetry   = 6
+	sqlRetryDelay       = 10
+	confirmedButUnpaid  = "Confirmed but unpaid"
+	poolDiffToBlockDiff = 4295032833.0
 )
 
 func (p *Pool) newDbConnection() error {
@@ -315,4 +316,113 @@ func (c *Client) addWorkerDB(w *Worker) error {
 	}
 
 	return nil
+}
+
+func (p *Pool) logLuckState() {
+	if !p.InternalSettings().Luck {
+		return
+	}
+	if p.computingLuck {
+		return
+	}
+
+	p.lucklock.Lock()
+	p.computingLuck = true
+	defer func() {
+		p.computingLuck = false
+		p.lucklock.Unlock()
+	}()
+
+	// lock
+	var lastLogHeight sql.NullInt64
+	err := p.sqldb.QueryRow("SELECT max(height) as maxheight FROM luck WHERE coinid = ?",
+		CoinID).Scan(&lastLogHeight)
+	if err != nil && err != sql.ErrNoRows {
+		p.yiilog.Printf("logLuckState failed: %s\n", err)
+		return
+	}
+	p.yiilog.Printf("logLuckState lastLogHeight: %d\n", lastLogHeight.Int64)
+
+	for i := lastLogHeight.Int64 + 1; i <= int64(p.cs.Height()); i++ {
+		// if time over 24h, skip
+		p.yiilog.Printf("logLuckState Start for: %d\n", i)
+		preBlock, ok := p.cs.BlockAtHeight(types.BlockHeight(i - 1))
+		if !ok {
+			p.yiilog.Printf("logLuckState can't fetch block: %d\n", i-1)
+			continue
+		}
+		startTime := preBlock.Timestamp
+		if time.Now().Unix()-int64(startTime) > 86400 { // we only have 24h shares
+			p.yiilog.Printf("logLuckState skip block, block too old: %d\n", i)
+			continue
+		}
+
+		var poolDifficulty sql.NullFloat64
+		var poolDiffShareCount int64
+		err := p.sqldb.QueryRow("SELECT sum(difficulty), count(*) FROM shares WHERE coinid = ? AND height = ? AND valid=1",
+			CoinID, i).Scan(&poolDifficulty, &poolDiffShareCount)
+		if err != nil && err != sql.ErrNoRows {
+			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			return
+		}
+		if poolDiffShareCount == 0 {
+			p.yiilog.Printf("logLuckState no share for this block\n", err)
+			continue
+		}
+
+		p.yiilog.Printf("logLuckState poolDifficulty: %f\n", poolDifficulty.Float64)
+
+		var lastMineBlock sql.NullInt64 // search our pool block just before current height
+		err = p.sqldb.QueryRow("SELECT max(height) as height FROM blocks WHERE coin_id = ? AND height < ?",
+			CoinID, i).Scan(&lastMineBlock)
+		if err != nil && err != sql.ErrNoRows {
+			p.yiilog.Printf("logLuckState lastMineBlock failed: %s\n", err)
+			return
+		}
+		p.yiilog.Printf("logLuckState lastMineBlock: %d\n", lastMineBlock.Int64)
+
+		var sumHistoryDiff sql.NullFloat64
+		err = p.sqldb.QueryRow("SELECT sum(diff) FROM luck WHERE coinid = ? AND height > ?",
+			CoinID, lastMineBlock.Int64).Scan(&sumHistoryDiff)
+		if err != nil && err != sql.ErrNoRows {
+			p.yiilog.Printf("logLuckState sumHistoryDiff failed: %s\n", err)
+			return
+		}
+		totalSumDiff := sumHistoryDiff.Float64 + poolDifficulty.Float64
+
+		blockTarget, _ := p.cs.ChildTarget(preBlock.ID())
+		blockTargetDifficulty, _ := blockTarget.Difficulty().Uint64()
+		blockPoolDifficulty := float64(blockTargetDifficulty) / float64(poolDiffToBlockDiff)
+
+		tx, err := p.sqldb.Begin()
+		if err != nil {
+			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			return
+		}
+		defer tx.Rollback()
+
+		stmt, err := tx.Prepare(`
+			INSERT INTO luck (height, coinid, diff, sumdiff, blockdiff, luck)
+			VALUES (?, ?, ?, ?, ?, ?);
+		`)
+		if err != nil {
+			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			return
+		}
+		defer stmt.Close()
+
+		rs, err := stmt.Exec(i, CoinID, poolDifficulty, totalSumDiff,
+			blockPoolDifficulty, totalSumDiff/blockPoolDifficulty)
+		if err != nil {
+			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			return
+		}
+		id, err := rs.LastInsertId()
+		p.yiilog.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d", id, i, CoinID)
+	}
 }

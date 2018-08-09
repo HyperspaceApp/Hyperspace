@@ -25,6 +25,7 @@ type (
 		PoolDBConnection string           `json:"dbconnection"`
 		PoolDBName       string           `json:"dbname"`
 		PoolWallet       types.UnlockHash `json:"poolwallet"`
+		Luck             bool             `json:"luck"`
 	}
 
 	// PoolClient contains summary info for a mining client

@@ -184,6 +184,7 @@ func (mp *Pool) setPoolSettings(initConfig config.MiningPoolConfig) error {
 		PoolID:           initConfig.PoolID,
 		PoolDBConnection: initConfig.PoolDBConnection,
 		PoolWallet:       poolWallet,
+		Luck:             initConfig.Luck,
 	}
 	mp.persist.SetSettings(internalSettings)
 	mp.newSourceBlock()
