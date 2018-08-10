@@ -50,7 +50,7 @@ var (
 		Long: `Generate a new address, send coins to another wallet, or view info about the wallet.
 
 Units:
-The smallest unit of siacoins is the hasting. One space cash is 10^24 hastings. Other supported units are:
+The smallest unit of SPACE is the hasting. One space cash is 10^24 hastings. Other supported units are:
   pS (pico,  10^-12 SPACE)
   nS (nano,  10^-9 SPACE)
   uS (micro, 10^-6 SPACE)
@@ -153,7 +153,7 @@ will be sent to your wallet.`,
 		Short: "Unlock the wallet",
 		Long: `Decrypt and load the wallet into memory.
 Automatic unlocking is also supported via environment variable: if the
-SIA_WALLET_PASSWORD environment variable is set, the unlock command will
+HYPERSPACE_WALLET_PASSWORD environment variable is set, the unlock command will
 use it instead of displaying the typical interactive prompt.`,
 		Run: wrap(walletunlockcmd),
 	}
@@ -339,7 +339,7 @@ func walletseedscmd() {
 	}
 }
 
-// walletsendsiacoinscmd sends siacoins to a destination address.
+// walletsendsiacoinscmd sends SPACE to a destination address.
 func walletsendsiacoinscmd(amount, dest string) {
 	hastings, err := parseCurrency(amount)
 	if err != nil {
@@ -469,9 +469,9 @@ func wallettransactionscmd() {
 func walletunlockcmd() {
 	// try reading from environment variable first, then fallback to
 	// interactive method. Also allow overriding auto-unlock via -p
-	password := os.Getenv("SIA_WALLET_PASSWORD")
+	password := os.Getenv("HYPERSPACE_WALLET_PASSWORD")
 	if password != "" && !initPassword {
-		fmt.Println("Using SIA_WALLET_PASSWORD environment variable")
+		fmt.Println("Using HYPERSPACE_WALLET_PASSWORD environment variable")
 		err := httpClient.WalletUnlockPost(password)
 		if err != nil {
 			fmt.Println("Automatic unlock failed!")

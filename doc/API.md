@@ -120,8 +120,8 @@ returns the set of constants in use.
   "mediantimestampwindow":  11,         // blocks
   "targetwindow":           1000,       // blocks
 
-  "initialcoinbase": 60000, // Siacoins (see note in Daemon.md)
-  "minimumcoinbase": 6000,  // Siacoins (see note in Daemon.md)
+  "initialcoinbase": 60000, // SPACE (see note in Daemon.md)
+  "minimumcoinbase": 6000,  // SPACE (see note in Daemon.md)
 
   "roottarget": [0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   "rootdepth":  [255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255],
@@ -129,7 +129,7 @@ returns the set of constants in use.
   "maxtargetadjustmentup":   "5/2",
   "maxtargetadjustmentdown": "2/5",
 
-  "siacoinprecision": "1000000000000000000000000" // hastings per siacoin
+  "siacoinprecision": "1000000000000000000000000" // hastings per SPACE
 }
 ```
 

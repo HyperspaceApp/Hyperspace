@@ -3,6 +3,7 @@ package pool
 import (
 	// "fmt"
 
+	"log"
 	"net"
 	"time"
 
@@ -141,6 +142,19 @@ func (d *Dispatcher) ClearJobAndNotifyClients() {
 	defer d.mu.Unlock()
 	d.log.Printf("Clear jobs and Notifying %d clients\n", len(d.handlers))
 	for _, h := range d.handlers {
+		if h != nil && h.s != nil {
+			if h.s.CurrentWorker == nil {
+				log.Printf("Clear jobs and Notifying client: worker is nil\n")
+				continue
+			}
+			if h.s.remoteAddr == "" {
+				log.Printf("Clear jobs and Notifying client: remote addr nil\n")
+				continue
+			}
+		} else {
+			log.Printf("Clear jobs and Notifying client: handler or session nil\n")
+			continue
+		}
 		h.s.clearJobs()
 		h.notify <- true
 	}

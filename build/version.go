@@ -13,7 +13,7 @@ const (
 	// commit hash.
 	MaxEncodedVersionLength = 100
 
-	// Version is the current version of siad.
+	// Version is the current version of hsd.
 	Version = "0.1.1"
 )
 
