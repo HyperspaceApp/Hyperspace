@@ -3,7 +3,6 @@ package pool
 import (
 	// "fmt"
 
-	"log"
 	"net"
 	"time"
 
@@ -144,15 +143,15 @@ func (d *Dispatcher) ClearJobAndNotifyClients() {
 	for _, h := range d.handlers {
 		if h != nil && h.s != nil {
 			if h.s.CurrentWorker == nil {
-				log.Printf("Clear jobs and Notifying client: worker is nil\n")
-				continue
-			}
-			if h.s.remoteAddr == "" {
-				log.Printf("Clear jobs and Notifying client: remote addr nil\n")
+				// this will happen when handler init, session init,
+				// no mining.authorize happen yet, so worker is nil,
+				// at this time, no stratum notify ever happen, no need to clear or notify
+				d.log.Printf("Clear jobs and Notifying client: worker is nil\n")
 				continue
 			}
 		} else {
-			log.Printf("Clear jobs and Notifying client: handler or session nil\n")
+			// this will happen when handler init, seesion is not
+			d.log.Printf("Clear jobs and Notifying client: handler or session nil\n")
 			continue
 		}
 		h.s.clearJobs()
