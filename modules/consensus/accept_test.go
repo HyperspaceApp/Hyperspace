@@ -160,7 +160,7 @@ func (m *mockBlockMarshaler) AddPredefinedUnmarshal(u predefinedBlockUnmarshal) 
 
 // minimumValidChildTimestamp returns the minimum timestamp of pb that can be
 // considered a valid block.
-func (brh mockBlockRuleHelper) minimumValidChildTimestamp(blockMap dbBucket, pb *processedBlock) types.Timestamp {
+func (brh mockBlockRuleHelper) minimumValidChildTimestamp(blockMap dbBucket, parentID types.BlockID, blockTimestamp types.Timestamp) types.Timestamp {
 	return brh.minTimestamp
 }
 
@@ -296,7 +296,7 @@ func TestUnitValidateHeaderAndBlock(t *testing.T) {
 		}
 		// Reset the stored parameters to ValidateBlock.
 		validateBlockParamsGot = validateBlockParams{}
-		_, err := cs.validateHeaderAndBlock(tx, tt.block, tt.block.ID())
+		_, err := cs.validateHeaderAndBlock(tx, tt.block)
 		if err != tt.errWant {
 			t.Errorf("%s: expected to fail with `%v', got: `%v'", tt.msg, tt.errWant, err)
 		}
@@ -482,7 +482,7 @@ func TestUnitValidateHeader(t *testing.T) {
 				minTimestamp: tt.earliestValidTimestamp,
 			},
 		}
-		err := cs.validateHeader(tx, tt.header)
+		_, err := cs.validateHeader(tx, tt.header)
 		if err != tt.errWant {
 			t.Errorf("%s: expected to fail with `%v', got: `%v'", tt.msg, tt.errWant, err)
 		}
