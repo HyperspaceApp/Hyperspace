@@ -241,14 +241,14 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 	})
 
 	// Register RPCs.
-	g.RegisterRPC("ShareNodes", g.shareNodes)
-	g.RegisterRPC("DiscoverIP", g.discoverPeerIP)
-	g.RegisterConnectCall("ShareNodes", g.requestNodes)
+	g.RegisterRPC(modules.ShareNodesCmd, g.shareNodes)
+	g.RegisterRPC(modules.DiscoverIPCmd, g.discoverPeerIP)
+	g.RegisterConnectCall(modules.ShareNodesCmd, g.requestNodes)
 	// Establish the de-registration of the RPCs.
 	g.threads.OnStop(func() {
-		g.UnregisterRPC("ShareNodes")
-		g.UnregisterRPC("DiscoverIP")
-		g.UnregisterConnectCall("ShareNodes")
+		g.UnregisterRPC(modules.ShareNodesCmd)
+		g.UnregisterRPC(modules.DiscoverIPCmd)
+		g.UnregisterConnectCall(modules.ShareNodesCmd)
 	})
 
 	// Load the old node list. If it doesn't exist, no problem, but if it does,

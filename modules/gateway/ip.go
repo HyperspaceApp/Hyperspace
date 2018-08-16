@@ -56,7 +56,7 @@ func (g *Gateway) managedIPFromPeers(cancel <-chan struct{}) (string, error) {
 		// Ask all the peers about our ip in parallel
 		returnChan := make(chan string)
 		for _, peer := range peers {
-			go g.RPC(peer.NetAddress, "DiscoverIP", func(conn modules.PeerConn) error {
+			go g.RPC(peer.NetAddress, modules.DiscoverIPCmd, func(conn modules.PeerConn) error {
 				var address string
 				err := encoding.ReadObject(conn, &address, 100)
 				if err != nil {
