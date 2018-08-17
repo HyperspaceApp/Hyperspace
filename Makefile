@@ -36,6 +36,7 @@ dependencies:
 	go get -u github.com/lib/pq
 	go get github.com/sasha-s/go-deadlock/...
 	go get -u github.com/gorilla/websocket
+	go get -u github.com/dchest/siphash
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
@@ -50,7 +51,7 @@ dependencies:
 # pkgs changes which packages the makefile calls operate on. run changes which
 # tests are run during testing.
 run = .
-pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./modules ./modules/consensus ./modules/explorer \
+pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./gcs ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
        ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
        ./modules/wallet ./modules/transactionpool ./modules/stratumminer ./node ./node/api ./persist ./siatest \
