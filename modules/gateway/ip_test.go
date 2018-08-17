@@ -28,7 +28,7 @@ func TestIpRPC(t *testing.T) {
 	}
 
 	// Call RPC
-	err = g1.RPC(g2.Address(), "DiscoverIP", func(conn modules.PeerConn) error {
+	err = g1.RPC(g2.Address(), modules.DiscoverIPCmd, func(conn modules.PeerConn) error {
 		var address string
 		err := encoding.ReadObject(conn, &address, 100)
 		if err != nil {

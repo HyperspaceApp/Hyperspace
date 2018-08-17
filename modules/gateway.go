@@ -10,6 +10,13 @@ const (
 	// GatewayDir is the name of the directory used to store the gateway's
 	// persistent data.
 	GatewayDir = "gateway"
+
+	ShareNodesCmd = "ShareNodes"
+	DiscoverIPCmd = "DiscoverIP"
+	SendBlocksCmd = "SendBlocks"
+	SendBlockCmd = "SendBlk"
+	RelayHeaderCmd = "RelayHeader"
+	RelayTransactionSetCmd = "RelayTransactionSet"
 )
 
 var (

@@ -313,7 +313,7 @@ func (g *Gateway) permanentNodeManager(closeChan chan struct{}) {
 		// nodelist. If there are not, use the random peer from earlier to
 		// expand the node list.
 		if numNodes < healthyNodeListLen {
-			err := g.managedRPC(peer, "ShareNodes", g.requestNodes)
+			err := g.managedRPC(peer, modules.ShareNodesCmd, g.requestNodes)
 			if err != nil {
 				g.log.Debugf("WARN: RPC ShareNodes failed on peer %q: %v", peer, err)
 				continue
