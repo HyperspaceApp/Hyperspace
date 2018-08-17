@@ -97,7 +97,7 @@ func TestFileContractPayoutsMissingProof(t *testing.T) {
 	}
 
 	// Create and fund valid file contracts.
-	builder := et.wallet.StartTransaction()
+	builder, _ := et.wallet.StartTransaction()
 	payout := types.NewCurrency64(1e9)
 	err = builder.FundSiacoins(payout)
 	if err != nil {
@@ -111,8 +111,8 @@ func TestFileContractPayoutsMissingProof(t *testing.T) {
 		WindowStart:        windowStart,
 		WindowEnd:          windowEnd,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 		UnlockHash:         types.UnlockConditions{}.UnlockHash(),
 	}
 
@@ -193,12 +193,12 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		WindowStart:        et.cs.Height() + 1,
 		WindowEnd:          et.cs.Height() + 2,
 		Payout:             payout,
-		ValidProofOutputs:  []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
-		MissedProofOutputs: []types.SiacoinOutput{{Value: types.PostTax(et.cs.Height(), payout)}},
+		ValidProofOutputs:  []types.SiacoinOutput{{Value: payout}},
+		MissedProofOutputs: []types.SiacoinOutput{{Value: payout}},
 	}
 
 	// Submit a transaction with the file contract.
-	builder := et.wallet.StartTransaction()
+	builder, _ := et.wallet.StartTransaction()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestFileContractsPayoutValidProof(t *testing.T) {
 		HashSet:  hashSet,
 	}
 	copy(sp.Segment[:], segment)
-	builder = et.wallet.StartTransaction()
+	builder, _ = et.wallet.StartTransaction()
 	builder.AddStorageProof(sp)
 	tSet, err = builder.Sign(true)
 	if err != nil {
