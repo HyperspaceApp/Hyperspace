@@ -14,7 +14,7 @@ all: release
 dependencies:
 	# Consensus Dependencies
 	go get -u gitlab.com/NebulousLabs/demotemutex
-	go get -u gitlab.com/NebulousLabs/fastrand
+	go get -u github.com/HyperspaceApp/fastrand
 	go get -u gitlab.com/NebulousLabs/merkletree
 	go get -u gitlab.com/NebulousLabs/bolt
 	go get -u gitlab.com/NebulousLabs/Sia/sync

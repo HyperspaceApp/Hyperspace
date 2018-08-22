@@ -10,7 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"gitlab.com/NebulousLabs/errors"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestIntegrationAutoRenew tests that contracts are automatically renewed at

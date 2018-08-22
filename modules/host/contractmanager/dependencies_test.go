@@ -9,7 +9,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestParallelFileAccess using a single file handle + ReadAt and WriteAt to

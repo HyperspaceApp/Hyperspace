@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 const (

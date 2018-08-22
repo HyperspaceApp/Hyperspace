@@ -19,7 +19,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/renter"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 const (

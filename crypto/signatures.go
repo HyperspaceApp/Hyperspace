@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/HyperspaceApp/Hyperspace/encoding"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 
 	"golang.org/x/crypto/ed25519"
 )

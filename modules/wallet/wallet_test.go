@@ -13,7 +13,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // A Wallet tester contains a ConsensusTester and has a bunch of helpful

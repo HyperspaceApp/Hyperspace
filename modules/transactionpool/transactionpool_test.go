@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // A tpoolTester is used during testing to initialize a transaction pool and

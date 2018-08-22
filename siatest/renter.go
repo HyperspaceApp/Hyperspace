@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/node/api"
 
 	"gitlab.com/NebulousLabs/errors"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // DownloadToDisk downloads a previously uploaded file. The file will be downloaded

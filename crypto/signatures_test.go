@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/encoding"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestUnitSignatureEncoding creates and encodes a public key, and verifies

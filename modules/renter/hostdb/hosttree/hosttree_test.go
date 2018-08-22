@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 func verifyTree(tree *HostTree, nentries int) error {

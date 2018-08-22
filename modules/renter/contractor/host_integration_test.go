@@ -21,7 +21,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	modWallet "github.com/HyperspaceApp/Hyperspace/modules/wallet"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // newTestingWallet is a helper function that creates a ready-to-use wallet

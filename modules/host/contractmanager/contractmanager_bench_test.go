@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // BenchmarkSectorLocations explores the cost of creating the sectorLocations

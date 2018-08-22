@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestMapHeapSimple test max-heap and min-heap versions of the MapHeap on the

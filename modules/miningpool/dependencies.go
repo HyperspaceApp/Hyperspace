@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // Fake errors that get returned when a simulated failure of a dependency is

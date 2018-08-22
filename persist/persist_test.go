@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestIntegrationRandomSuffix checks that the random suffix creator creates
