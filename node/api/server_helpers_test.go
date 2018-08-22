@@ -114,7 +114,11 @@ func NewServer(APIaddr string, requiredUserAgent string, requiredPassword string
 		return nil, err
 	}
 
-	api := New(requiredUserAgent, requiredPassword, cs, e, g, h, m, r, tp, w, mp, sm, i)
+	api, err := New(requiredUserAgent, requiredPassword, cs, e, g, h, m, r, tp, w, mp, sm, i)
+	if err != nil {
+		return nil, err
+	}
+
 	srv := &Server{
 		api: api,
 		apiServer: &http.Server{
@@ -338,7 +342,11 @@ func assembleExplorerServerTester(testdir string) (*serverTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	e, err := explorer.New(cs, filepath.Join(testdir, modules.ExplorerDir))
+	tp, err := transactionpool.New(cs, g, filepath.Join(testdir, modules.TransactionPoolDir))
+	if err != nil {
+		return nil, err
+	}
+	e, err := explorer.New(cs, tp, filepath.Join(testdir, modules.ExplorerDir))
 	if err != nil {
 		return nil, err
 	}

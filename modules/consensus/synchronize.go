@@ -441,7 +441,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := cs.gateway.RPC(conn.RPCAddr(), "SendBlocks", cs.managedReceiveBlocks)
+			err := cs.gateway.RPC(conn.RPCAddr(), modules.SendBlocksCmd, cs.managedReceiveBlocks)
 			if err != nil {
 				cs.log.Debugln("WARN: failed to get parents of orphan header:", err)
 			}
@@ -455,7 +455,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err = cs.gateway.RPC(conn.RPCAddr(), "SendBlk", cs.managedReceiveBlock(h.ID()))
+		err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlock(h.ID()))
 		if err != nil {
 			cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
 		}
@@ -576,7 +576,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 
 				// Request blocks from the peer. The error returned will only be
 				// 'nil' if there are no more blocks to receive.
-				err = cs.gateway.RPC(p.NetAddress, "SendBlocks", cs.managedReceiveBlocks)
+				err = cs.gateway.RPC(p.NetAddress, modules.SendBlocksCmd, cs.managedReceiveBlocks)
 				if err == nil {
 					numOutboundSynced++
 					// In this case, 'return nil' is equivalent to skipping to

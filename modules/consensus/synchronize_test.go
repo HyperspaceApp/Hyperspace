@@ -295,7 +295,7 @@ func TestSendBlocksBroadcastsOnce(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), "SendBlocks", cst1.cs.threadedReceiveBlocks)
+		err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), modules.SendBlocksCmd, cst1.cs.threadedReceiveBlocks)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -486,7 +486,7 @@ func TestIntegrationRPCSendBlocks(t *testing.T) {
 		localCurrentBlockID := localCST.cs.CurrentBlock().ID()
 		remoteCurrentBlockID := remoteCST.cs.CurrentBlock().ID()
 
-		err = localCST.cs.gateway.RPC(remoteCST.cs.gateway.Address(), "SendBlocks", localCST.cs.threadedReceiveBlocks)
+		err = localCST.cs.gateway.RPC(remoteCST.cs.gateway.Address(), modules.SendBlocksCmd, localCST.cs.threadedReceiveBlocks)
 		if err != nil {
 			t.Errorf("test #%d, %v: %v", i, tt.msg, err)
 		}
@@ -593,7 +593,7 @@ func TestRPCSendBlockSendsOnlyNecessaryBlocks(t *testing.T) {
 		addedBlocks[b.ID()] = struct{}{}
 	}
 
-	err = cs.gateway.RPC(cst.cs.gateway.Address(), "SendBlocks", func(conn modules.PeerConn) error {
+	err = cs.gateway.RPC(cst.cs.gateway.Address(), modules.SendBlocksCmd, func(conn modules.PeerConn) error {
 		// Get blockIDs to send.
 		var history [32]types.BlockID
 		cs.mu.RLock()
@@ -928,12 +928,12 @@ func TestIntegrationSendBlkRPC(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	// Test that cst1 doesn't accept a block it's already seen (the genesis block).
-	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), "SendBlk", cst1.cs.managedReceiveBlock(types.GenesisID))
+	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), modules.SendBlockCmd, cst1.cs.managedReceiveBlock(types.GenesisID))
 	if err != modules.ErrBlockKnown && err != modules.ErrNonExtendingBlock {
 		t.Errorf("cst1 should reject known blocks: expected error '%v', got '%v'", modules.ErrBlockKnown, err)
 	}
 	// Test that cst2 errors when it doesn't recognize the requested block.
-	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), "SendBlk", cst1.cs.managedReceiveBlock(types.BlockID{}))
+	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), modules.SendBlockCmd, cst1.cs.managedReceiveBlock(types.BlockID{}))
 	if err != io.EOF {
 		t.Errorf("cst2 shouldn't return a block it doesn't recognize: expected error '%v', got '%v'", io.EOF, err)
 	}
@@ -947,7 +947,7 @@ func TestIntegrationSendBlkRPC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), "SendBlk", cst1.cs.managedReceiveBlock(block.ID()))
+	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), modules.SendBlockCmd, cst1.cs.managedReceiveBlock(block.ID()))
 	if err != nil {
 		t.Errorf("cst1 should accept a block that extends its longest chain: expected nil error, got '%v'", err)
 	}
@@ -961,7 +961,7 @@ func TestIntegrationSendBlkRPC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = cst2.cs.gateway.RPC(cst1.cs.gateway.Address(), "SendBlk", cst2.cs.managedReceiveBlock(block.ID()))
+	err = cst2.cs.gateway.RPC(cst1.cs.gateway.Address(), modules.SendBlockCmd, cst2.cs.managedReceiveBlock(block.ID()))
 	if err != nil {
 		t.Errorf("cst2 should accept a block that extends its longest chain: expected nil error, got '%v'", err)
 	}
@@ -983,7 +983,7 @@ func TestIntegrationSendBlkRPC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), "SendBlk", cst1.cs.managedReceiveBlock(block.ID()))
+	err = cst1.cs.gateway.RPC(cst2.cs.gateway.Address(), modules.SendBlockCmd, cst1.cs.managedReceiveBlock(block.ID()))
 	if err != errOrphan {
 		t.Errorf("cst1 should not accept an orphan block: expected error '%v', got '%v'", errOrphan, err)
 	}
@@ -1500,7 +1500,7 @@ func TestIntegrationSendBlocksStalls(t *testing.T) {
 	// Lock the remote CST so that SendBlocks blocks and timesout.
 	cstRemote.cs.mu.Lock()
 	defer cstRemote.cs.mu.Unlock()
-	err = cstLocal.cs.gateway.RPC(cstRemote.cs.gateway.Address(), "SendBlocks", cstLocal.cs.threadedReceiveBlocks)
+	err = cstLocal.cs.gateway.RPC(cstRemote.cs.gateway.Address(), modules.SendBlocksCmd, cstLocal.cs.threadedReceiveBlocks)
 	if err != errSendBlocksStalled {
 		t.Fatal(err)
 	}

@@ -449,10 +449,15 @@ func validateSiapath(hyperspacepath string) error {
 	if strings.HasPrefix(hyperspacepath, "./") {
 		return errors.New("hyperspacepath connot begin with ./")
 	}
+	var prevElem string
 	for _, pathElem := range strings.Split(hyperspacepath, "/") {
 		if pathElem == "." || pathElem == ".." {
 			return errors.New("hyperspacepath cannot contain . or .. elements")
 		}
+		if prevElem != "" && pathElem == "" {
+			return ErrEmptyFilename
+		}
+		prevElem = pathElem
 	}
 	return nil
 }

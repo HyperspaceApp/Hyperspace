@@ -173,15 +173,15 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		defer cs.tg.Done()
 
 		// Register RPCs
-		gateway.RegisterRPC("SendBlocks", cs.rpcSendBlocks)
-		gateway.RegisterRPC("RelayHeader", cs.threadedRPCRelayHeader)
-		gateway.RegisterRPC("SendBlk", cs.rpcSendBlk)
-		gateway.RegisterConnectCall("SendBlocks", cs.threadedReceiveBlocks)
+		gateway.RegisterRPC(modules.SendBlocksCmd, cs.rpcSendBlocks)
+		gateway.RegisterRPC(modules.RelayHeaderCmd, cs.threadedRPCRelayHeader)
+		gateway.RegisterRPC(modules.SendBlockCmd, cs.rpcSendBlk)
+		gateway.RegisterConnectCall(modules.SendBlocksCmd, cs.threadedReceiveBlocks)
 		cs.tg.OnStop(func() {
-			cs.gateway.UnregisterRPC("SendBlocks")
-			cs.gateway.UnregisterRPC("RelayHeader")
-			cs.gateway.UnregisterRPC("SendBlk")
-			cs.gateway.UnregisterConnectCall("SendBlocks")
+			cs.gateway.UnregisterRPC(modules.SendBlocksCmd)
+			cs.gateway.UnregisterRPC(modules.RelayHeaderCmd)
+			cs.gateway.UnregisterRPC(modules.SendBlockCmd)
+			cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
 		})
 
 		// Mark that we are synced with the network.

@@ -27,14 +27,14 @@ Index
 | [/renter/downloads](#renterdownloads-get)                                       | GET       |
 | [/renter/downloads/clear](#renterdownloadsclear-post)                           | POST      |
 | [/renter/files](#renterfiles-get)                                               | GET       |
-| [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)                     | GET       |
+| [/renter/file/*___hyperspacepath___](#renterfilehyperspacepath-get)                           | GET       |
 | [/renter/prices](#renter-prices-get)                                            | GET       |
-| [/renter/delete/___*hyperspacepath___](#renterdelete___hyperspacepath___-post)                | POST      |
-| [/renter/download/___*hyperspacepath___](#renterdownload__hyperspacepath___-get)              | GET       |
-| [/renter/downloadasync/___*hyperspacepath___](#renterdownloadasync__hyperspacepath___-get)    | GET       |
-| [/renter/rename/___*hyperspacepath___](#renterrename___hyperspacepath___-post)                | POST      |
+| [/renter/delete/___*hyperspacepath___](#renterdeletehyperspacepath-post)                      | POST      |
+| [/renter/download/___*hyperspacepath___](#renterdownloadhyperspacepath-get)                   | GET       |
+| [/renter/downloadasync/___*hyperspacepath___](#renterdownloadasynchyperspacepath-get)         | GET       |
+| [/renter/rename/___*hyperspacepath___](#renterrenamehyperspacepath-post)                      | POST      |
 | [/renter/stream/___*hyperspacepath___](#renterstreamhyperspacepath-get)                       | GET       |
-| [/renter/upload/___*hyperspacepath___](#renterupload___hyperspacepath___-post)                | POST      |
+| [/renter/upload/___*hyperspacepath___](#renteruploadhyperspacepath-post)                      | POST      |
 
 #### /renter [GET]
 

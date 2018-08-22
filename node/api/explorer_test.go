@@ -18,7 +18,7 @@ func TestIntegrationExplorerGET(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	var eg ExplorerGET
+	var eg ExplorerBlock
 	err = st.getAPI("/explorer", &eg)
 	if err != nil {
 		t.Fatal(err)
@@ -48,10 +48,10 @@ func TestIntegrationExplorerBlockGET(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ebg.Block.BlockID != ebg.Block.RawBlock.ID() {
+	if ebg.Blocks[0].BlockID != ebg.Blocks[0].RawBlock.ID() {
 		t.Error("block id and block do not match up from api call")
 	}
-	if ebg.Block.BlockID != types.GenesisBlock.ID() {
+	if ebg.Blocks[0].BlockID != types.GenesisBlock.ID() {
 		t.Error("wrong block returned by /explorer/block?height=0")
 	}
 }
