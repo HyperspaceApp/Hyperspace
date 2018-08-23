@@ -10,12 +10,19 @@ const (
 	// GatewayDir is the name of the directory used to store the gateway's
 	// persistent data.
 	GatewayDir = "gateway"
-
+	// ShareNodesCmd requests that a node share a list of the other network
+	// nodes it knows
 	ShareNodesCmd = "ShareNodes"
+	// DiscoverIPCmd requests that a node tell us what our external IP is
 	DiscoverIPCmd = "DiscoverIP"
+	// SendBlocksCmd requests that a node send us a list of consensus blocks
 	SendBlocksCmd = "SendBlocks"
+	// SendBlockCmd requests that a node send us a specific consensus block
 	SendBlockCmd = "SendBlk"
+	// RelayHeaderCmd sends a block header to a peer with the expectation
+	// that the peer will pass on the header to other nodes
 	RelayHeaderCmd = "RelayHeader"
+	// RelayTransactionSetCmd sends a transaction set to a peer.
 	RelayTransactionSetCmd = "RelayTransactionSet"
 )
 

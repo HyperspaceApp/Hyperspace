@@ -705,7 +705,7 @@ func (t Transaction) marshalSiaNoSignatures(w io.Writer) {
 	}
 }
 
-// Hyperspace wrapper for miningpool.
+// MarshalSiaNoSignatures is a wrapper used for the miningpool module.
 // NOTE: Remove it when will be not needed
 func (t Transaction) MarshalSiaNoSignatures(w io.Writer) {
 	t.marshalSiaNoSignatures(w)

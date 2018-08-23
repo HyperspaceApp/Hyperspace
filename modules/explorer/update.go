@@ -11,6 +11,8 @@ import (
 	"github.com/coreos/bbolt"
 )
 
+// ReceiveUpdatedUnconfirmedTransactions processes and updates the explorer module
+// with unconfirmed transactions as they come in from the transaction pool
 func (e *Explorer) ReceiveUpdatedUnconfirmedTransactions(diff *modules.TransactionPoolDiff) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
