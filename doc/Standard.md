@@ -8,8 +8,9 @@ the rules for standard Hyperspace transactions.
 Transaction Size
 ----------------
 
-Consensus rules limit the size of a block, but not the size of a transaction.
-Standard rules however limit the size of a single transaction to 32kb.
+Consensus rules limit the size of a block as well as the size of a transaction.
+Transaction sizes are limited to 64kb. Standard rules implemented in the
+transaction pool, however, limit the size of a single transaction to 32kb.
 
 A chain of dependent transactions cannot exceed 250kb.
 
