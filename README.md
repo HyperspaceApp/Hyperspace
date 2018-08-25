@@ -63,7 +63,7 @@ as a sole means of storing important data.
 This release comes with 2 binaries, hsd and hsc. hsd is a background
 service, or "daemon," that runs the Hyperspace protocol and exposes an HTTP API on
 port 5580. hsc is a command-line client that can be used to interact with
-hsd in a user-friendly way. There is also a graphical client, [Hyperspace-UI](https://github.com/HyperspaceApp/Hyperspace-UI), which
+hsd in a user-friendly way. There is also a graphical client, [Hyperspace.app](https://github.com/HyperspaceApp/Hyperspace.app), which
 is the preferred way of using Hyperspace for most users. For interested developers,
 the hsd API is documented [here](doc/API.md).
 
