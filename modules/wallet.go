@@ -360,6 +360,9 @@ type (
 		// relative to the wallet.
 		UnconfirmedTransactions() ([]ProcessedTransaction, error)
 
+		// UnspentOutputs returns all unspent outputs relative to the wallet
+		UnspentOutputs() ([]types.SiacoinOutput, error)
+
 		// RegisterTransaction takes a transaction and its parents and returns
 		// a TransactionBuilder which can be used to expand the transaction.
 		RegisterTransaction(t types.Transaction, parents []types.Transaction) (TransactionBuilder, error)

@@ -93,6 +93,11 @@ type (
 		UnconfirmedTransactions []modules.ProcessedTransaction `json:"unconfirmedtransactions"`
 	}
 
+	// WalletUnspentOutputsGET contains the specified set of unused outputs.
+	WalletUnspentOutputsGET struct {
+		UnspentOutputs []types.SiacoinOutput `json:"unspentoutputs"`
+	}
+
 	// WalletVerifyAddressGET contains a bool indicating if the address passed to
 	// /wallet/verify/address/:addr is a valid address.
 	WalletVerifyAddressGET struct {
@@ -613,6 +618,16 @@ func (api *API) walletChangePasswordHandler(w http.ResponseWriter, req *http.Req
 		}
 	}
 	WriteError(w, Error{"error when calling /wallet/changepassword: " + modules.ErrBadEncryptionKey.Error()}, http.StatusBadRequest)
+}
+
+// walletUnspentOutputsHandler handles API calls to /wallet/unspentoutputs
+func (api *API) walletUnspentOutputsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	outputs, err := api.wallet.UnspentOutputs()
+	if err != nil {
+		WriteError(w, Error{"error when calling /wallet/unspentoutputs: " + err.Error()}, http.StatusBadRequest)
+	} else {
+		WriteJSON(w, WalletUnspentOutputsGET{UnspentOutputs: outputs})
+	}
 }
 
 // walletVerifyAddressHandler handles API calls to /wallet/verify/address/:addr.

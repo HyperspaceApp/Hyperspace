@@ -2,10 +2,13 @@ package wallet
 
 import (
 	"errors"
+	"sort"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/coreos/bbolt"
 )
 
 // sortedOutputs is a struct containing a slice of siacoin outputs and their
@@ -86,6 +89,85 @@ func (w *Wallet) UnconfirmedBalance() (outgoingSiacoins types.Currency, incoming
 			if output.FundType == types.SpecifierSiacoinOutput && output.WalletAddress && output.Value.Cmp(dustThreshold) > 0 {
 				incomingSiacoins = incomingSiacoins.Add(output.Value)
 			}
+		}
+	}
+	return
+}
+
+// getSortedOutputs is a helper function that returns outputs sorted from most recent
+// to oldest
+func (w *Wallet) getSortedOutputs() (so sortedOutputs, err error) {
+	// Collect a value-sorted set of siacoin outputs.
+	err = dbForEachSiacoinOutput(w.dbTx, func(scoid types.SiacoinOutputID, sco types.SiacoinOutput) {
+		so.ids = append(so.ids, scoid)
+		so.outputs = append(so.outputs, sco)
+	})
+	if err != nil {
+		return so, err
+	}
+	// Add all of the unconfirmed outputs as well.
+	for _, upt := range w.unconfirmedProcessedTransactions {
+		for i, sco := range upt.Transaction.SiacoinOutputs {
+			// Determine if the output belongs to the wallet.
+			_, exists := w.keys[sco.UnlockHash]
+			if !exists {
+				continue
+			}
+			so.ids = append(so.ids, upt.Transaction.SiacoinOutputID(uint64(i)))
+			so.outputs = append(so.outputs, sco)
+		}
+	}
+	sort.Sort(sort.Reverse(so))
+	return
+}
+
+// checkOutput is a helper function used to determine if an output is usable.
+// TODO this doesn't thrown an error on old spent outputs, but it should
+func (w *Wallet) checkOutput(tx *bolt.Tx, currentHeight types.BlockHeight, id types.SiacoinOutputID, output types.SiacoinOutput, dustThreshold types.Currency) error {
+	// Check that an output is not dust
+	if output.Value.Cmp(dustThreshold) < 0 {
+		return errDustOutput
+	}
+	// Check that this output has not recently been spent by the wallet.
+	spendHeight, err := dbGetSpentOutput(tx, types.OutputID(id))
+	if err == nil {
+		if spendHeight+RespendTimeout > currentHeight {
+			return errSpendHeightTooHigh
+		}
+	}
+	outputUnlockConditions := w.keys[output.UnlockHash].UnlockConditions
+	if currentHeight < outputUnlockConditions.Timelock {
+		return errOutputTimelock
+	}
+
+	return nil
+}
+
+// UnspentOutputs returns all unspent outputs relative to the wallet
+// TODO this currently relies on the broken checkOutput function
+func (w *Wallet) UnspentOutputs() (outputs []types.SiacoinOutput, err error) {
+	// dustThreshold has to be obtained separate from the lock
+	dustThreshold, err := w.DustThreshold()
+	if err != nil {
+		return nil, err
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	height, err := dbGetConsensusHeight(w.dbTx)
+	if err != nil {
+		return nil, err
+	}
+
+	so, err := w.getSortedOutputs()
+	if err != nil {
+		return nil, err
+	}
+	for i := range so.outputs {
+		scoid := so.ids[i]
+		sco := so.outputs[i]
+		if spendableErr := w.checkOutput(w.dbTx, height, scoid, sco, dustThreshold); spendableErr == nil {
+			outputs = append(outputs, sco)
 		}
 	}
 	return

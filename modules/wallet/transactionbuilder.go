@@ -3,14 +3,11 @@ package wallet
 import (
 	"bytes"
 	"errors"
-	"sort"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
-
-	"github.com/coreos/bbolt"
 )
 
 var (
@@ -90,27 +87,6 @@ func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.Unlo
 	return newSigIndices
 }
 
-// checkOutput is a helper function used to determine if an output is usable.
-func (w *Wallet) checkOutput(tx *bolt.Tx, currentHeight types.BlockHeight, id types.SiacoinOutputID, output types.SiacoinOutput, dustThreshold types.Currency) error {
-	// Check that an output is not dust
-	if output.Value.Cmp(dustThreshold) < 0 {
-		return errDustOutput
-	}
-	// Check that this output has not recently been spent by the wallet.
-	spendHeight, err := dbGetSpentOutput(tx, types.OutputID(id))
-	if err == nil {
-		if spendHeight+RespendTimeout > currentHeight {
-			return errSpendHeightTooHigh
-		}
-	}
-	outputUnlockConditions := w.keys[output.UnlockHash].UnlockConditions
-	if currentHeight < outputUnlockConditions.Timelock {
-		return errOutputTimelock
-	}
-
-	return nil
-}
-
 // FundSiacoinsForOutputs will add enough inputs to cover the outputs to be
 // sent in the transaction. In contrast to FundSiacoins, FundSiacoinsForOutputs
 // does not aggregate inputs into one output equaling 'amount' - with a refund,
@@ -148,28 +124,10 @@ func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutp
 		amount = amount.Add(fee)
 	}
 
-	// Collect a value-sorted set of siacoin outputs.
-	var so sortedOutputs
-	err = dbForEachSiacoinOutput(tb.wallet.dbTx, func(scoid types.SiacoinOutputID, sco types.SiacoinOutput) {
-		so.ids = append(so.ids, scoid)
-		so.outputs = append(so.outputs, sco)
-	})
+	so, err := tb.wallet.getSortedOutputs()
 	if err != nil {
 		return err
 	}
-	// Add all of the unconfirmed outputs as well.
-	for _, upt := range tb.wallet.unconfirmedProcessedTransactions {
-		for i, sco := range upt.Transaction.SiacoinOutputs {
-			// Determine if the output belongs to the wallet.
-			_, exists := tb.wallet.keys[sco.UnlockHash]
-			if !exists {
-				continue
-			}
-			so.ids = append(so.ids, upt.Transaction.SiacoinOutputID(uint64(i)))
-			so.outputs = append(so.outputs, sco)
-		}
-	}
-	sort.Sort(sort.Reverse(so))
 
 	var fund types.Currency
 	// potentialFund tracks the balance of the wallet including outputs that
@@ -260,28 +218,10 @@ func (tb *transactionBuilder) FundSiacoins(amount types.Currency) error {
 		return err
 	}
 
-	// Collect a value-sorted set of siacoin outputs.
-	var so sortedOutputs
-	err = dbForEachSiacoinOutput(tb.wallet.dbTx, func(scoid types.SiacoinOutputID, sco types.SiacoinOutput) {
-		so.ids = append(so.ids, scoid)
-		so.outputs = append(so.outputs, sco)
-	})
+	so, err := tb.wallet.getSortedOutputs()
 	if err != nil {
 		return err
 	}
-	// Add all of the unconfirmed outputs as well.
-	for _, upt := range tb.wallet.unconfirmedProcessedTransactions {
-		for i, sco := range upt.Transaction.SiacoinOutputs {
-			// Determine if the output belongs to the wallet.
-			_, exists := tb.wallet.keys[sco.UnlockHash]
-			if !exists {
-				continue
-			}
-			so.ids = append(so.ids, upt.Transaction.SiacoinOutputID(uint64(i)))
-			so.outputs = append(so.outputs, sco)
-		}
-	}
-	sort.Sort(sort.Reverse(so))
 
 	// Create and fund a parent transaction that will add the correct amount of
 	// siacoins to the transaction.

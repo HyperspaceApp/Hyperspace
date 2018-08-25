@@ -1570,3 +1570,36 @@ func TestWalletTransactionsGetAddr(t *testing.T) {
 		t.Errorf("There should be exactly 0 unconfirmed and 1 confirmed related txns")
 	}
 }
+
+// TestWalletUnspentOutputsGET tests the consistency of the wallet unspent outputs API point
+func TestWalletUnspentOutputsGET(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+	st, err := createServerTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var wuog WalletUnspentOutputsGET
+	err = st.getAPI("/wallet/unspentoutputs", &wuog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if types.CalculateCoinbase(1).Cmp(wuog.UnspentOutputs[0].Value) != 0 {
+		t.Errorf("Coinbase of block 1 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(1), wuog.UnspentOutputs[0].Value)
+	}
+	// Mine a block to confirm the send.
+	_, err = st.miner.AddBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = st.getAPI("/wallet/unspentoutputs", &wuog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if types.CalculateCoinbase(2).Cmp(wuog.UnspentOutputs[1].Value) != 0 {
+		t.Errorf("Coinbase of block 2 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(2), wuog.UnspentOutputs[1].Value)
+	}
+}
