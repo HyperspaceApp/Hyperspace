@@ -574,6 +574,10 @@ paritypieces // int
 
 // Location on disk of the file being uploaded.
 source // string - a filepath
+
+// Optional paramater used to overwrite an existing file
+// Default is 'false' if unspecified
+overwrite // bool
 ```
 
 ###### Response
