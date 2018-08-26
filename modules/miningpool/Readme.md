@@ -8,7 +8,8 @@
   "params": [
     "cgminer/4.10.0" // client version
   ]
-}```
+}
+```
 
 ## server respond subscribe
 ```{
@@ -30,7 +31,8 @@
     "1ffefc07", // extra nonce 1
     4 // extra nonce 2 size
   ]
-}```
+}
+```
 
 ## miner request authorize
 ```{
@@ -40,7 +42,8 @@
     "a2fd0d1916d23262dcc03529ea8f94b95ef097df25f1dffb25aac81e9eb3d31269321e01c16c.obelisk", // address.workername
     "x" // unknown
   ]
-}```
+}
+```
 
 ## server respond authorize success
 ```{
@@ -49,7 +52,8 @@
   "method": "mining.authorize",
   "params": null,
   "result": true // sucess
-}```
+}
+```
 
 ## server set difficulty
 ```{
@@ -58,7 +62,8 @@
   "params": [
     700 // difficulty
   ]
-}```
+}
+```
 
 ## server send notify
 ```{
@@ -77,7 +82,8 @@
     "ee51825b00000000", // ntime
     true // cleanjobs
   ]
-}```
+}
+```
 
 ## miner submit nonce
 ```{
@@ -90,7 +96,8 @@
   ],
   "id": 2,
   "method": "mining.submit"
-}```
+}
+```
 
 ## server reject
 ```{
@@ -102,4 +109,5 @@
   ],
   "method": "mining.submit",
   "params": null
-}```
+}
+```
