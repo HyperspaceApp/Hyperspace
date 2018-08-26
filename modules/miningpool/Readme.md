@@ -43,7 +43,7 @@
   "method": "mining.authorize",
   "params": [
     "a2fd0d1916d23262dcc03529ea8f94b95ef097df25f1dffb25aac81e9eb3d31269321e01c16c.obelisk", // address.workername
-    "x" // unknown
+    "x" // password
   ]
 }
 ```
