@@ -2,7 +2,8 @@
 
 
 ## miner subscribe
-```{
+```
+{
   "id": 0,
   "method": "mining.subscribe",
   "params": [
@@ -12,7 +13,8 @@
 ```
 
 ## server respond subscribe
-```{
+```
+{
   "error": null,
   "id": 0,
   "method": "mining.subscribe",
@@ -35,7 +37,8 @@
 ```
 
 ## miner request authorize
-```{
+```
+{
   "id": 1,
   "method": "mining.authorize",
   "params": [
@@ -46,7 +49,8 @@
 ```
 
 ## server respond authorize success
-```{
+```
+{
   "error": null,
   "id": 1,
   "method": "mining.authorize",
@@ -56,7 +60,8 @@
 ```
 
 ## server set difficulty
-```{
+```
+{
   "id": 0,
   "method": "mining.set_difficulty",
   "params": [
@@ -66,7 +71,8 @@
 ```
 
 ## server send notify
-```{
+```
+{
   "id": 0,
   "method": "mining.notify",
   "params": [
@@ -86,7 +92,8 @@
 ```
 
 ## miner submit nonce
-```{
+```
+{
   "params": [
     "a2fd0d1916d23262dcc03529ea8f94b95ef097df25f1dffb25aac81e9eb3d31269321e01c16c.obelisk", // address.workername
     "4d65822107fcfe20", // jobid
@@ -100,7 +107,8 @@
 ```
 
 ## server reject
-```{
+```
+{
   "id": 2,
   "result": false,
   "error": [
