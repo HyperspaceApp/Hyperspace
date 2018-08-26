@@ -255,6 +255,11 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 		h.s.SetCurrentDifficulty(1024)
 		h.s.SetDisableVarDiff(true)
 	}
+	if len(m.Params) > 0 && m.Params[0].(string) == "cgminer/4.10.0" {
+		h.s.SetHighestDifficulty(700)
+		h.s.SetCurrentDifficulty(700)
+		h.s.SetDisableVarDiff(true)
+	}
 	if len(m.Params) > 0 && m.Params[0].(string) == "gominer" {
 		h.s.SetHighestDifficulty(0.03)
 		h.s.SetCurrentDifficulty(0.03)
