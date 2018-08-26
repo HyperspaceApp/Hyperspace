@@ -1267,7 +1267,6 @@ Wallet
 | Route                                                           | HTTP verb |
 | --------------------------------------------------------------- | --------- |
 | [/wallet](#wallet-get)                                          | GET       |
-| [/wallet/033x](#wallet033x-post)                                | POST      |
 | [/wallet/address](#walletaddress-get)                           | GET       |
 | [/wallet/addresses](#walletaddresses-get)                       | GET       |
 | [/wallet/backup](#walletbackup-get)                             | GET       |
@@ -1310,22 +1309,6 @@ locked or unlocked.
   "dustthreshold": "1234", // hastings / byte, big int
 }
 ```
-
-#### /wallet/033x [POST]
-
-loads a v0.3.3.x wallet into the current wallet, harvesting all of the secret
-keys. All spendable addresses in the loaded wallet will become spendable from
-the current wallet.
-
-###### Query String Parameters [(with comments)](/doc/api/Wallet.md#query-string-parameters)
-```
-source
-encryptionpassword
-```
-
-###### Response
-standard success or error response. See
-[#standard-responses](#standard-responses).
 
 #### /wallet/address [GET]
 
