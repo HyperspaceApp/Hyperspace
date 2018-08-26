@@ -2,16 +2,16 @@
 
 
 ## miner subscribe
-`{
+```{
   "id": 0,
   "method": "mining.subscribe",
   "params": [
     "cgminer/4.10.0" // client version
   ]
-}`
+}```
 
 ## server respond subscribe
-`{
+```{
   "error": null,
   "id": 0,
   "method": "mining.subscribe",
@@ -30,38 +30,38 @@
     "1ffefc07", // extra nonce 1
     4 // extra nonce 2 size
   ]
-}`
+}```
 
 ## miner request authorize
-`{
+```{
   "id": 1,
   "method": "mining.authorize",
   "params": [
     "a2fd0d1916d23262dcc03529ea8f94b95ef097df25f1dffb25aac81e9eb3d31269321e01c16c.obelisk", // address.workername
     "x" // unknown
   ]
-}`
+}```
 
 ## server respond authorize success
-`{
+```{
   "error": null,
   "id": 1,
   "method": "mining.authorize",
   "params": null,
   "result": true // sucess
-}`
+}```
 
 ## server set difficulty
-`{
+```{
   "id": 0,
   "method": "mining.set_difficulty",
   "params": [
     700 // difficulty
   ]
-}`
+}```
 
 ## server send notify
-`{
+```{
   "id": 0,
   "method": "mining.notify",
   "params": [
@@ -77,10 +77,10 @@
     "ee51825b00000000", // ntime
     true // cleanjobs
   ]
-}`
+}```
 
 ## miner submit nonce
-`{
+```{
   "params": [
     "a2fd0d1916d23262dcc03529ea8f94b95ef097df25f1dffb25aac81e9eb3d31269321e01c16c.obelisk", // address.workername
     "4d65822107fcfe20", // jobid
@@ -90,10 +90,10 @@
   ],
   "id": 2,
   "method": "mining.submit"
-}`
+}```
 
 ## server reject
-`{
+```{
   "id": 2,
   "result": false,
   "error": [
@@ -102,4 +102,4 @@
   ],
   "method": "mining.submit",
   "params": null
-}`
+}```
