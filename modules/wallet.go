@@ -115,7 +115,7 @@ type (
 	//
 	// Transaction builders are not thread safe.
 	TransactionBuilder interface {
-		// FundSiacoinForOutputs will aggregate enough inputs to cover the
+		// FundSiacoinsForOutputs will aggregate enough inputs to cover the
 		// total value of the outputs and the miner fee if any. A refund
 		// output will be generated if necessary. All the outputs will be
 		// added to the transaction being built along with a miner fee if
