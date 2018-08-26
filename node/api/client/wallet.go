@@ -148,3 +148,10 @@ func (c *Client) WalletUnlockPost(password string) (err error) {
 	err = c.post("/wallet/unlock", values.Encode(), nil)
 	return
 }
+
+// WalletUnspentOutputs uses the /wallet/unspentoutputs endpoint to retrieve a
+// list of all unspent outputs from the wallet.
+func (c *Client) WalletUnspentOutputs() (wuog api.WalletUnspentOutputsGET, err error) {
+	err = c.get("/wallet/unspentoutputs", &wuog)
+	return
+}
