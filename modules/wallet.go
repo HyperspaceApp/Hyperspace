@@ -367,6 +367,16 @@ type (
 		// a TransactionBuilder which can be used to expand the transaction.
 		RegisterTransaction(t types.Transaction, parents []types.Transaction) (TransactionBuilder, error)
 
+		// NewUnsignedTransaction takes a list of outputs and a tx fee and
+		// returns an unsigned transaction constructed from the wallet's
+		// unspent outputs
+		NewUnsignedTransaction(outputs []types.SiacoinOutput, fee types.Currency) (types.Transaction, error)
+
+		// NewUnsignedTransaction takes a destination unlock hash, transfer amount,
+		// and a tx fee, and returns an unsigned transaction constructed from the
+		// wallet's unspent outputs
+		NewUnsignedTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (types.Transaction, error)
+
 		// Rescanning reports whether the wallet is currently rescanning the
 		// blockchain.
 		Rescanning() (bool, error)

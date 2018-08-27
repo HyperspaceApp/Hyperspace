@@ -133,6 +133,14 @@ func (c *Client) WalletTransactionsGet(startHeight types.BlockHeight, endHeight 
 	return
 }
 
+// WalletTransactionsBuildGet requests the /wallet/transactions/build api resource for a
+// certain destiniation and amount
+func (c *Client) WalletTransactionsBuildGet(destination types.UnlockHash, amount types.Currency) (wtbg api.WalletTransactionsGET, err error) {
+	err = c.get(fmt.Sprintf("/wallet/transactions/build?destination=%v&amount=%v",
+		destination, amount), &wtbg)
+	return
+}
+
 // WalletTransactionGet requests the /wallet/transaction/:id api resource for a
 // certain TransactionID.
 func (c *Client) WalletTransactionGet(id types.TransactionID) (wtg api.WalletTransactionGETid, err error) {

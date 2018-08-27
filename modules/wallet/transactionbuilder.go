@@ -87,6 +87,20 @@ func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.Unlo
 	return newSigIndices
 }
 
+func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currency) types.Currency {
+	// Calculate the total amount we need to send
+	var amount types.Currency
+	for i := range outputs {
+		output := outputs[i]
+		amount = amount.Add(output.Value)
+	}
+
+	if fee.Cmp64(0) > 0 {
+		amount = amount.Add(fee)
+	}
+	return amount
+}
+
 // FundSiacoinsForOutputs will add enough inputs to cover the outputs to be
 // sent in the transaction. In contrast to FundSiacoins, FundSiacoinsForOutputs
 // does not aggregate inputs into one output equaling 'amount' - with a refund,
@@ -110,18 +124,12 @@ func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutp
 		return err
 	}
 
-	// Calculate the total amount we need to send
-	var amount types.Currency
-	for i := range outputs {
-		output := outputs[i]
-		amount = amount.Add(output.Value)
-	}
+	amount := calculateAmountFromOutputs(outputs, fee)
 
 	// Add a miner fee if the passed fee was greater than 0. The fee also
 	// needs to be added to the input amount we need to aggregate.
 	if fee.Cmp64(0) > 0 {
 		tb.transaction.MinerFees = append(tb.transaction.MinerFees, fee)
-		amount = amount.Add(fee)
 	}
 
 	so, err := tb.wallet.getSortedOutputs()
@@ -587,4 +595,30 @@ func (w *Wallet) StartTransaction() (modules.TransactionBuilder, error) {
 	}
 	defer w.tg.Done()
 	return w.RegisterTransaction(types.Transaction{}, nil)
+}
+
+func (w *Wallet) NewUnsignedTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
+	tb, err := w.StartTransaction()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err != nil {
+			tb.Drop()
+		}
+	}()
+	err = tb.FundSiacoinsForOutputs(outputs, fee)
+	if err != nil {
+		return
+	}
+	tx, _ = tb.View()
+	return
+}
+
+func (w *Wallet) NewUnsignedTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (tx types.Transaction, err error) {
+	output := types.SiacoinOutput{
+		Value:      amount,
+		UnlockHash: dest,
+	}
+	return w.NewUnsignedTransaction([]types.SiacoinOutput{output}, fee)
 }

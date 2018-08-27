@@ -78,6 +78,12 @@ type (
 		Transaction modules.ProcessedTransaction `json:"transaction"`
 	}
 
+	// WalletTransactionsBuildGETid contains the transaction returned by a call to
+	// /wallet/transactions/build
+	WalletTransactionsBuildGET struct {
+		Transaction types.Transaction `json:"transaction"`
+	}
+
 	// WalletTransactionsGET contains the specified set of confirmed and
 	// unconfirmed transactions.
 	WalletTransactionsGET struct {
@@ -575,6 +581,32 @@ func (api *API) walletTransactionsAddrHandler(w http.ResponseWriter, req *http.R
 	WriteJSON(w, WalletTransactionsGETaddr{
 		ConfirmedTransactions:   confirmedATs,
 		UnconfirmedTransactions: unconfirmedATs,
+	})
+}
+
+// walletTransactionsBuildHandler handles API calls to
+// /wallet/transactions/build.
+func (api *API) walletTransactionsBuildHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	// single amount + destination
+	amount, ok := scanAmount(req.FormValue("amount"))
+	if !ok {
+		WriteError(w, Error{"could not read amount from GET call to /wallet/transactions/build"}, http.StatusBadRequest)
+		return
+	}
+	dest, err := scanAddress(req.FormValue("destination"))
+	if err != nil {
+		WriteError(w, Error{"could not read address from GET call to /wallet/transactions/build"}, http.StatusBadRequest)
+		return
+	}
+	var fee types.Currency
+
+	txn, err := api.wallet.NewUnsignedTransactionForAddress(dest, amount, fee)
+	if err != nil {
+		WriteError(w, Error{"error when calling /wallet/transactions/build:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, WalletTransactionsBuildGET{
+		Transaction: txn,
 	})
 }
 
