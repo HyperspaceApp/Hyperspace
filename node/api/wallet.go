@@ -584,25 +584,25 @@ func (api *API) walletTransactionsAddrHandler(w http.ResponseWriter, req *http.R
 	})
 }
 
-// walletTransactionsBuildHandler handles API calls to
+// walletBuildTransactionHandler handles API calls to
 // /wallet/transactions/build.
-func (api *API) walletTransactionsBuildHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+func (api *API) walletBuildTransactionHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	// single amount + destination
 	amount, ok := scanAmount(req.FormValue("amount"))
 	if !ok {
-		WriteError(w, Error{"could not read amount from GET call to /wallet/transactions/build"}, http.StatusBadRequest)
+		WriteError(w, Error{"could not read amount from GET call to /wallet/build/transaction"}, http.StatusBadRequest)
 		return
 	}
 	dest, err := scanAddress(req.FormValue("destination"))
 	if err != nil {
-		WriteError(w, Error{"could not read address from GET call to /wallet/transactions/build"}, http.StatusBadRequest)
+		WriteError(w, Error{"could not read address from GET call to /wallet/build/transaction"}, http.StatusBadRequest)
 		return
 	}
 	var fee types.Currency
 
 	txn, err := api.wallet.NewUnsignedTransactionForAddress(dest, amount, fee)
 	if err != nil {
-		WriteError(w, Error{"error when calling /wallet/transactions/build:" + err.Error()}, http.StatusBadRequest)
+		WriteError(w, Error{"error when calling /wallet/build/transaction:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	WriteJSON(w, WalletTransactionsBuildGET{
