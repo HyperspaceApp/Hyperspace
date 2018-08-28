@@ -78,9 +78,9 @@ type (
 		Transaction modules.ProcessedTransaction `json:"transaction"`
 	}
 
-	// WalletTransactionsBuildGETid contains the transaction returned by a call to
-	// /wallet/transactions/build
-	WalletTransactionsBuildGET struct {
+	// WalletBuildTransactionGET contains the transaction returned by a call to
+	// /wallet/build/transaction
+	WalletBuildTransactionGET struct {
 		Transaction types.Transaction `json:"transaction"`
 	}
 
@@ -605,7 +605,7 @@ func (api *API) walletBuildTransactionHandler(w http.ResponseWriter, req *http.R
 		WriteError(w, Error{"error when calling /wallet/build/transaction:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
-	WriteJSON(w, WalletTransactionsBuildGET{
+	WriteJSON(w, WalletBuildTransactionGET{
 		Transaction: txn,
 	})
 }
