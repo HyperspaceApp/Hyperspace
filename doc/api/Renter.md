@@ -19,16 +19,16 @@ allocated funds.
 Index
 -----
 
-| Route                                                                           | HTTP verb |
-| ------------------------------------------------------------------------------- | --------- |
-| [/renter](#renter-get)                                                          | GET       |
-| [/renter](#renter-post)                                                         | POST      |
-| [/renter/contracts](#rentercontracts-get)                                       | GET       |
-| [/renter/downloads](#renterdownloads-get)                                       | GET       |
-| [/renter/downloads/clear](#renterdownloadsclear-post)                           | POST      |
-| [/renter/files](#renterfiles-get)                                               | GET       |
+| Route                                                                                         | HTTP verb |
+| ----------------------------------------------------------------------------------------------| --------- |
+| [/renter](#renter-get)                                                                        | GET       |
+| [/renter](#renter-post)                                                                       | POST      |
+| [/renter/contracts](#rentercontracts-get)                                                     | GET       |
+| [/renter/downloads](#renterdownloads-get)                                                     | GET       |
+| [/renter/downloads/clear](#renterdownloadsclear-post)                                         | POST      |
+| [/renter/files](#renterfiles-get)                                                             | GET       |
 | [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)                     | GET       |
-| [/renter/prices](#renter-prices-get)                                            | GET       |
+| [/renter/prices](#renter-prices-get)                                                          | GET       |
 | [/renter/delete/___*hyperspacepath___](#renterdelete___hyperspacepath___-post)                | POST      |
 | [/renter/download/___*hyperspacepath___](#renterdownload__hyperspacepath___-get)              | GET       |
 | [/renter/downloadasync/___*hyperspacepath___](#renterdownloadasync__hyperspacepath___-get)    | GET       |

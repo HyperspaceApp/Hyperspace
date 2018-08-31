@@ -10,6 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"gitlab.com/NebulousLabs/errors"
 	"github.com/HyperspaceApp/fastrand"
 
@@ -69,6 +70,9 @@ func (w *Wallet) openDB(filename string) (err error) {
 		}
 		if wb.Get(keySpendableKeyFiles) == nil {
 			wb.Put(keySpendableKeyFiles, encoding.Marshal([]spendableKeyFile{}))
+		}
+		if wb.Get(keyWatchedAddrs) == nil {
+			wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
 		}
 
 		// build the bucketAddrTransactions bucket if necessary

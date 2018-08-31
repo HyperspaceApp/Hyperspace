@@ -19,12 +19,12 @@ the transaction pool and submitting transactions to the transaction pool.
 Index
 -----
 
-| Route                                       | HTTP verb |
-| ------------------------------------------- | --------- |
-| [/tpool/confirmed/:id](#tpoolconfirmed-get) | GET       |
-| [/tpool/fee](#tpoolfee-get)                 | GET       |
-| [/tpool/raw/:id](#tpoolraw-get)             | GET       |
-| [/tpool/raw](#tpoolraw-post)                | POST      |
+| Route                                         | HTTP verb |
+| --------------------------------------------- | --------- |
+| [/tpool/confirmed/:id](#tpoolconfirmedid-get) | GET       |
+| [/tpool/fee](#tpoolfee-get)                   | GET       |
+| [/tpool/raw/:id](#tpoolrawid-get)             | GET       |
+| [/tpool/raw](#tpoolraw-post)                  | POST      |
 
 #### /tpool/confirmed/:id [GET]
 
@@ -71,7 +71,7 @@ returns the ID for the requested transaction and its raw encoded parents and tra
 
 submits a raw transaction to the transaction pool, broadcasting it to the transaction pool's peers.
 
-###### Query String Parameters [(with comments)](/doc/api/Transactionpool.md#query-string-parameters)
+###### Query String Parameters
 
 ```
 parents     string // raw base64 encoded transaction parents

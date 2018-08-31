@@ -27,26 +27,31 @@ require the miner to be unlocked.
 Index
 -----
 
-| Route                                                           | HTTP verb |
-| --------------------------------------------------------------- | --------- |
-| [/wallet](#wallet-get)                                          | GET       |
-| [/wallet/address](#walletaddress-get)                           | GET       |
-| [/wallet/addresses](#walletaddresses-get)                       | GET       |
-| [/wallet/backup](#walletbackup-get)                             | GET       |
-| [/wallet/init](#walletinit-post)                                | POST      |
-| [/wallet/init/seed](#walletinitseed-post)                       | POST      |
-| [/wallet/lock](#walletlock-post)                                | POST      |
-| [/wallet/seed](#walletseed-post)                                | POST      |
-| [/wallet/seeds](#walletseeds-get)                               | GET       |
-| [/wallet/spacecash](#walletspacecash-post)                      | POST      |
-| [/wallet/siagkey](#walletsiagkey-post)                          | POST      |
-| [/wallet/sweep/seed](#walletsweepseed-post)                     | POST      |
-| [/wallet/transaction/___:id___](#wallettransactionid-get)       | GET       |
-| [/wallet/transactions](#wallettransactions-get)                 | GET       |
-| [/wallet/transactions/___:addr___](#wallettransactionsaddr-get) | GET       |
-| [/wallet/unlock](#walletunlock-post)                            | POST      |
-| [/wallet/verify/address/:___addr___](#walletverifyaddress-get)  | GET       |
-| [/wallet/changepassword](#walletchangepassword-post)            | POST      |
+| Route                                                                   | HTTP verb |
+| ----------------------------------------------------------------------- | --------- |
+| [/wallet](#wallet-get)                                                  | GET       |
+| [/wallet/address](#walletaddress-get)                                   | GET       |
+| [/wallet/addresses](#walletaddresses-get)                               | GET       |
+| [/wallet/backup](#walletbackup-get)                                     | GET       |
+| [/wallet/changepassword](#walletchangepassword-post)                    | POST      |
+| [/wallet/init](#walletinit-post)                                        | POST      |
+| [/wallet/init/seed](#walletinitseed-post)                               | POST      |
+| [/wallet/lock](#walletlock-post)                                        | POST      |
+| [/wallet/seed](#walletseed-post)                                        | POST      |
+| [/wallet/seeds](#walletseeds-get)                                       | GET       |
+| [/wallet/sign](#walletsign-post)                                        | POST      |
+| [/wallet/spacecash](#walletspacecash-post)                              | POST      |
+| [/wallet/siagkey](#walletsiagkey-post)                                  | POST      |
+| [/wallet/sweep/seed](#walletsweepseed-post)                             | POST      |
+| [/wallet/transaction/___:id___](#wallettransactionid-get)               | GET       |
+| [/wallet/transactions](#wallettransactions-get)                         | GET       |
+| [/wallet/transactions/___:addr___](#wallettransactionsaddr-get)         | GET       |
+| [/wallet/unlockconditions](#walletunlockconditions-post)                | POST      |
+| [/wallet/unlockconditions/___:addr___](#walletunlockconditionsaddr-get) | GET       |
+| [/wallet/unlock](#walletunlock-post)                                    | POST      |
+| [/wallet/verify/address/:___addr___](#walletverifyaddress-get)          | GET       |
+| [/wallet/watch](#walletwatch-post)                                      | POST      |
+
 
 #### /wallet [GET]
 
@@ -147,6 +152,22 @@ destination
 ###### Response
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
+
+#### /wallet/changepassword [POST]
+
+changes the wallet's encryption password.
+
+###### Query String Parameter
+```
+// encryptionpassword is the wallet's current encryption password.
+encryptionpassword
+// newpassword is the new password for the wallet.
+newpassword
+```
+
+###### Response
+standard success or error response. See
+[#standard-responses](#standard-responses).
 
 #### /wallet/init [POST]
 
@@ -417,6 +438,36 @@ keyfiles
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
 
+#### /wallet/sign [POST]
+
+Function: Sign a transaction. The transaction's TransactionSignatures should
+be complete except for the Signature field. If `tosign` is provided, the
+wallet will attempt to fill in signatures for each TransactionSignature
+specified. If `tosign` is not provided, the wallet will add signatures for
+every TransactionSignature that it has keys for.
+
+###### Request Body
+```javascript
+{
+  // Unsigned transaction
+  "transaction": { }, // types.Transaction
+
+  // Optional IDs to sign; each should correspond to a ParentID in the TransactionSignatures.
+  "tosign": {
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  }
+}
+```
+
+###### Response
+```javascript
+{
+  // signed transaction
+  "transaction": { } // types.Transaction
+}
+```
+
 #### /wallet/sweep/seed [POST]
 
 Function: Scan the blockchain for outputs belonging to a seed and send them to
@@ -493,9 +544,8 @@ gets the transaction associated with a specific transaction id.
         // The id of the output being spent.
         "parentid": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 
-        // Type of fund represented by the input. Possible values is
-        // 'siacoin input'
-        "fundtype": "siacoin input",
+        // Type of fund represented by the input.
+        "fundtype": "spacecash input",
 
         // true if the address is owned by the wallet.
         "walletaddress": false,
@@ -517,12 +567,12 @@ gets the transaction associated with a specific transaction id.
         "id": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 
         // Type of fund is represented by the output. Possible values are
-        // 'siacoin output' and 'miner payout'. Siacoin outputs relate to SPACE.
+        // 'spacecash output' and 'miner payout'. Space Cash outputs relate to SPACE.
         // Miner payouts point to SPACE that has been spent on a miner payout.
         // Because the destination of the miner payout is determined by the
         // block and not the transaction, the data 'maturityheight', 'walletaddress',
         // and'relatedaddress' are left blank.
-        "fundtype": "siacoin output",
+        "fundtype": "spacecash output",
 
         // Block height the output becomes available to be spent. SPACE
         // outputs mature immediately - their maturity
@@ -621,7 +671,84 @@ encryptionpassword string
 standard success or error response. See
 [API.md#standard-responses](/doc/API.md#standard-responses).
 
-#### /wallet/verify/address/:addr [GET]
+#### /wallet/unlockconditions [POST]
+
+stores a set of unlock conditions in the wallet database.
+
+###### Request Body
+```javascript
+{
+  "unlockconditions": {
+    // the minimum blockheight required
+    "timelock": 0,
+    // the number of signatures required
+    "signaturesrequired": 1,
+    // the set of keys whose signatures count towards signaturesrequired
+    "publickeys": [{
+      "algorithm": "ed25519",
+      "key": "/XUGj8PxMDkqdae6Js6ubcERxfxnXN7XPjZyANBZH1I="
+    }]
+  }
+}
+```
+
+###### Response
+standard success or error response. See
+[API.md#standard-responses](/doc/API.md#standard-responses).
+
+#### /wallet/unlockconditions/___:addr___ [GET]
+
+returns the unlock conditions of :addr, if they are known to the wallet.
+
+###### Response
+```javascript
+{
+  "unlockconditions": {
+    // the minimum blockheight required
+    "timelock": 0,
+    // the number of signatures required
+    "signaturesrequired": 1,
+    // the set of keys whose signatures count towards signaturesrequired
+    "publickeys": [{
+      "algorithm": "ed25519",
+      "key": "/XUGj8PxMDkqdae6Js6ubcERxfxnXN7XPjZyANBZH1I="
+    }]
+  }
+}
+```
+
+#### /wallet/unspent [GET]
+
+returns a list of unspent outputs that the wallet is tracking.
+
+###### Response
+```javascript
+{
+  // Array of outputs that the wallet can spend.
+  "outputs": [
+    {
+      // The id of the output.
+      "id": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+
+      // Type of output.
+      "fundtype": "spacecash output",
+
+      // Height of block in which the output appeared. To calculate the
+      // number of confirmations, subtract this number from the current
+      // block height.
+      "confirmationheight": 50000,
+
+      // Hash of the output's unlock conditions, commonly known as the "address".
+      "unlockhash": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
+
+      // Amount of funds in the output; hastings for space cash outputs
+      "value": "1234" // big int
+    }
+  ]
+}
+```
+
+#### /wallet/verify/address/___:addr___ [GET]
 
 takes the address specified by :addr and returns a JSON response indicating if the address is valid.
 
@@ -633,16 +760,18 @@ takes the address specified by :addr and returns a JSON response indicating if t
 }
 ```
 
-#### /wallet/changepassword [POST]
+#### /wallet/watch [POST]
 
-changes the wallet's encryption password.
+start tracking a set of addresses. Outputs owned by the addresses will be
+reported in /wallet/unspent.
 
-###### Query String Parameter
-```
-// encryptionpassword is the wallet's current encryption password.
-encryptionpassword
-// newpassword is the new password for the wallet.
-newpassword
+###### Request Body
+```javascript
+[
+  // unlock hashes to track
+  "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+]
 ```
 
 ###### Response

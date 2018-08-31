@@ -35,6 +35,10 @@ var (
 	// these outputs so that it can reuse them if they are not confirmed on
 	// the blockchain.
 	bucketSpentOutputs = []byte("bucketSpentOutputs")
+	// bucketUnlockConditions maps an UnlockHash to its UnlockConditions. It
+	// is used to track UnlockConditions manually stored by the user,
+	// typically with an offline wallet.
+	bucketUnlockConditions = []byte("bucketUnlockConditions")
 	// bucketWallet contains various fields needed by the wallet, such as its
 	// UID, EncryptionVerification, and PrimarySeedFile.
 	bucketWallet = []byte("bucketWallet")
@@ -45,6 +49,7 @@ var (
 		bucketAddrTransactions,
 		bucketSiacoinOutputs,
 		bucketSpentOutputs,
+		bucketUnlockConditions,
 		bucketWallet,
 	}
 
@@ -59,6 +64,7 @@ var (
 	keyPrimarySeedProgress    = []byte("keyPrimarySeedProgress")
 	keySpendableKeyFiles      = []byte("keySpendableKeyFiles")
 	keyUID                    = []byte("keyUID")
+	keyWatchedAddrs           = []byte("keyWatchedAddrs")
 )
 
 // threadedDBUpdate commits the active database transaction and starts a new
@@ -135,6 +141,7 @@ func dbReset(tx *bolt.Tx) error {
 	wb.Put(keyConsensusHeight, encoding.Marshal(uint64(0)))
 	wb.Put(keyAuxiliarySeedFiles, encoding.Marshal([]seedFile{}))
 	wb.Put(keySpendableKeyFiles, encoding.Marshal([]spendableKeyFile{}))
+	wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
 	dbPutConsensusHeight(tx, 0)
 	dbPutConsensusChangeID(tx, modules.ConsensusChangeBeginning)
 
@@ -216,6 +223,14 @@ func dbPutAddrTransactions(tx *bolt.Tx, addr types.UnlockHash, txns []uint64) er
 }
 func dbGetAddrTransactions(tx *bolt.Tx, addr types.UnlockHash) (txns []uint64, err error) {
 	err = dbGet(tx.Bucket(bucketAddrTransactions), addr, &txns)
+	return
+}
+
+func dbPutUnlockConditions(tx *bolt.Tx, uc types.UnlockConditions) error {
+	return dbPut(tx.Bucket(bucketUnlockConditions), uc.UnlockHash(), uc)
+}
+func dbGetUnlockConditions(tx *bolt.Tx, addr types.UnlockHash) (uc types.UnlockConditions, err error) {
+	err = dbGet(tx.Bucket(bucketUnlockConditions), addr, &uc)
 	return
 }
 
