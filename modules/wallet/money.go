@@ -143,36 +143,6 @@ func (w *Wallet) checkOutput(tx *bolt.Tx, currentHeight types.BlockHeight, id ty
 	return nil
 }
 
-// UnspentOutputs returns all unspent outputs relative to the wallet
-// TODO this currently relies on the broken checkOutput function
-func (w *Wallet) UnspentOutputs() (outputs []types.SiacoinOutput, err error) {
-	// dustThreshold has to be obtained separate from the lock
-	dustThreshold, err := w.DustThreshold()
-	if err != nil {
-		return nil, err
-	}
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	height, err := dbGetConsensusHeight(w.dbTx)
-	if err != nil {
-		return nil, err
-	}
-
-	so, err := w.getSortedOutputs()
-	if err != nil {
-		return nil, err
-	}
-	for i := range so.outputs {
-		scoid := so.ids[i]
-		sco := so.outputs[i]
-		if spendableErr := w.checkOutput(w.dbTx, height, scoid, sco, dustThreshold); spendableErr == nil {
-			outputs = append(outputs, sco)
-		}
-	}
-	return
-}
-
 // SendSiacoins creates a transaction sending 'amount' to 'dest'. The transaction
 // is submitted to the transaction pool and is also returned.
 func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txns []types.Transaction, err error) {

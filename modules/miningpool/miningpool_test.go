@@ -21,7 +21,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/fastrand"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 
 	_ "github.com/go-sql-driver/mysql"
 )

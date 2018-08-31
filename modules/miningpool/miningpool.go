@@ -23,7 +23,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/sasha-s/go-deadlock"
-	"gitlab.com/NebulousLabs/threadgroup"
+	"github.com/HyperspaceApp/threadgroup"
 
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"

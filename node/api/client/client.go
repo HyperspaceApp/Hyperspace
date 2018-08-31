@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/HyperspaceApp/Hyperspace/node/api"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 // A Client makes requests to the hsd HTTP API.

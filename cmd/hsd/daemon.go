@@ -15,7 +15,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/profile"
-	mnemonics "gitlab.com/NebulousLabs/entropy-mnemonics"
+	mnemonics "github.com/HyperspaceApp/entropy-mnemonics"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

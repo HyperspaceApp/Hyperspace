@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 	"gitlab.com/NebulousLabs/go-upnp"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
