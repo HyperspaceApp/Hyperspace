@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 // streamHeap is a priority queue and implements heap.Interface and holds chunkData

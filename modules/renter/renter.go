@@ -35,7 +35,7 @@ import (
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/threadgroup"
+	"github.com/HyperspaceApp/threadgroup"
 )
 
 var (

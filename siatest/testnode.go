@@ -6,7 +6,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/node/api/server"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 // TestNode is a helper struct for testing that contains a server and a client

@@ -11,7 +11,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 	"gitlab.com/NebulousLabs/ratelimit"
 )
 

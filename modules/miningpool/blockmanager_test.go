@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 func TestBlockForWork(t *testing.T) {

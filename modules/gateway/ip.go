@@ -6,7 +6,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 // discoverPeerIP is the handler for the discoverPeer RPC. It returns the

@@ -8,7 +8,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 // uploadChunkID is a unique identifier for each chunk in the renter.

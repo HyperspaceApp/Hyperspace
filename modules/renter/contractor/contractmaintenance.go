@@ -13,7 +13,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 var (

@@ -5,7 +5,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 
-	"gitlab.com/NebulousLabs/merkletree"
+	"github.com/HyperspaceApp/merkletree"
 )
 
 const (

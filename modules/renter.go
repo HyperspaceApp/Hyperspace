@@ -8,7 +8,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 	"regexp"
 )
 

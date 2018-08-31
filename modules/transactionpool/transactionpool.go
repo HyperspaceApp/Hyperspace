@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/coreos/bbolt"
-	"gitlab.com/NebulousLabs/demotemutex"
+	"github.com/HyperspaceApp/demotemutex"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"

@@ -16,7 +16,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
-	"gitlab.com/NebulousLabs/demotemutex"
+	"github.com/HyperspaceApp/demotemutex"
 )
 
 var (

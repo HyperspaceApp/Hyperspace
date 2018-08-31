@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 type (

@@ -14,7 +14,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/julienschmidt/httprouter"
-	"gitlab.com/NebulousLabs/entropy-mnemonics"
+	"github.com/HyperspaceApp/entropy-mnemonics"
 )
 
 type (

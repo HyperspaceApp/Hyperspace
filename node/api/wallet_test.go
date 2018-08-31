@@ -18,7 +18,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/fastrand"
 )
 

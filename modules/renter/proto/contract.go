@@ -10,8 +10,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/errors"
-	"gitlab.com/NebulousLabs/writeaheadlog"
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 const (

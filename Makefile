@@ -13,20 +13,20 @@ all: release
 # Sia.
 dependencies:
 	# Consensus Dependencies
-	go get -u gitlab.com/NebulousLabs/demotemutex
+	go get -u github.com/HyperspaceApp/demotemutex
 	go get -u github.com/HyperspaceApp/fastrand
-	go get -u gitlab.com/NebulousLabs/merkletree
-	go get -u gitlab.com/NebulousLabs/bolt
-	go get -u gitlab.com/NebulousLabs/Sia/sync
+	go get -u github.com/HyperspaceApp/merkletree
+	go get -u gitlab.com/HyperspaceApp/bolt
+	go get -u github.com/HyperspaceApp/Hyperspace/sync
 	go get -u golang.org/x/crypto/blake2b
 	go get -u golang.org/x/crypto/ed25519
 	# Module + Daemon Dependencies
-	go get -u gitlab.com/NebulousLabs/entropy-mnemonics
-	go get -u gitlab.com/NebulousLabs/errors
+	go get -u github.com/HyperspaceApp/entropy-mnemonics
+	go get -u github.com/HyperspaceApp/errors
 	go get -u gitlab.com/NebulousLabs/go-upnp
 	go get -u gitlab.com/NebulousLabs/ratelimit
-	go get -u gitlab.com/NebulousLabs/threadgroup
-	go get -u gitlab.com/NebulousLabs/writeaheadlog
+	go get -u github.com/HyperspaceApp/threadgroup
+	go get -u github.com/HyperspaceApp/writeaheadlog
 	go get -u github.com/klauspost/reedsolomon
 	go get -u github.com/julienschmidt/httprouter
 	go get -u github.com/inconshreveable/go-update

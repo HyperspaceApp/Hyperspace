@@ -24,7 +24,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/siatest"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/fastrand"
 )
 

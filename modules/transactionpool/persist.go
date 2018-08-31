@@ -12,7 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 )
 
 const tpoolSyncRate = time.Minute * 2

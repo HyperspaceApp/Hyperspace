@@ -17,7 +17,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/threadgroup"
+	"github.com/HyperspaceApp/threadgroup"
 )
 
 var (

@@ -9,7 +9,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/fastrand"
 )
 

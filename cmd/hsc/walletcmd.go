@@ -19,7 +19,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"gitlab.com/NebulousLabs/entropy-mnemonics"
+	"github.com/HyperspaceApp/entropy-mnemonics"
 )
 
 var (
