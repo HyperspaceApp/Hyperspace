@@ -1582,24 +1582,24 @@ func TestWalletUnspentOutputsGET(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	var wuog WalletUnspentOutputsGET
-	err = st.getAPI("/wallet/unspentoutputs", &wuog)
+	var wug WalletUnspentGET
+	err = st.getAPI("/wallet/unspent", &wug)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if types.CalculateCoinbase(1).Cmp(wuog.UnspentOutputs[0].Value) != 0 {
-		t.Errorf("Coinbase of block 1 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(1), wuog.UnspentOutputs[0].Value)
+	if types.CalculateCoinbase(1).Cmp(wug.Outputs[0].Value) != 0 {
+		t.Errorf("Coinbase of block 1 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(1), wug.Outputs[0].Value)
 	}
 	// Mine a block to confirm the send.
 	_, err = st.miner.AddBlock()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = st.getAPI("/wallet/unspentoutputs", &wuog)
+	err = st.getAPI("/wallet/unspentoutputs", &wug)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if types.CalculateCoinbase(2).Cmp(wuog.UnspentOutputs[1].Value) != 0 {
-		t.Errorf("Coinbase of block 2 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(2), wuog.UnspentOutputs[1].Value)
+	if types.CalculateCoinbase(2).Cmp(wug.Outputs[1].Value) != 0 {
+		t.Errorf("Coinbase of block 2 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(2), wug.Outputs[1].Value)
 	}
 }

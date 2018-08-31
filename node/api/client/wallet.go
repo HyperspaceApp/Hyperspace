@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -106,6 +107,19 @@ func (c *Client) WalletSiacoinsPost(amount types.Currency, destination types.Unl
 	return
 }
 
+// WalletSignPost uses the /wallet/sign api endpoint to sign a transaction.
+func (c *Client) WalletSignPost(txn types.Transaction, toSign []crypto.Hash) (wspr api.WalletSignPOSTResp, err error) {
+	json, err := json.Marshal(api.WalletSignPOSTParams{
+		Transaction: txn,
+		ToSign:      toSign,
+	})
+	if err != nil {
+		return
+	}
+	err = c.post("/wallet/sign", string(json), &wspr)
+	return
+}
+
 // WalletSiagKeyPost uses the /wallet/siagkey endpoint to load a siag key into
 // the wallet.
 func (c *Client) WalletSiagKeyPost(keyfiles, password string) (err error) {
@@ -157,9 +171,26 @@ func (c *Client) WalletUnlockPost(password string) (err error) {
 	return
 }
 
-// WalletUnspentOutputs uses the /wallet/unspentoutputs endpoint to retrieve a
-// list of all unspent outputs from the wallet.
-func (c *Client) WalletUnspentOutputs() (wuog api.WalletUnspentOutputsGET, err error) {
-	err = c.get("/wallet/unspentoutputs", &wuog)
+// WalletUnlockConditionsGet requests the /wallet/unlockconditions endpoint
+// and returns the UnlockConditions of addr.
+func (c *Client) WalletUnlockConditionsGet(addr types.UnlockHash) (wucg api.WalletUnlockConditionsGET, err error) {
+	err = c.get("/wallet/unlockconditions/"+addr.String(), &wucg)
 	return
+}
+
+// WalletUnspentGet requests the /wallet/unspent endpoint and returns all of
+// the unspent outputs related to the wallet.
+func (c *Client) WalletUnspentGet() (wug api.WalletUnspentGET, err error) {
+	err = c.get("/wallet/unspent", &wug)
+	return
+}
+
+// WalletWatchPost uses the /wallet/watch endpoint to track a set of
+// addresses.
+func (c *Client) WalletWatchPost(addrs []types.UnlockHash) error {
+	json, err := json.Marshal(addrs)
+	if err != nil {
+		return err
+	}
+	return c.post("/wallet/watch", string(json), nil)
 }

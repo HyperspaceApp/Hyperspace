@@ -104,6 +104,16 @@ type (
 		Outputs []ProcessedOutput `json:"outputs"`
 	}
 
+	// A UnspentOutput is a SiacoinOutput or SiafundOutput that the wallet
+	// is tracking.
+	UnspentOutput struct {
+		ID                 types.OutputID    `json:"id"`
+		FundType           types.Specifier   `json:"fundtype"`
+		UnlockHash         types.UnlockHash  `json:"unlockhash"`
+		Value              types.Currency    `json:"value"`
+		ConfirmationHeight types.BlockHeight `json:"confirmationheight"`
+	}
+
 	// TransactionBuilder is used to construct custom transactions. A transaction
 	// builder is initialized via 'RegisterTransaction' and then can be modified by
 	// adding funds or other fields. The transaction is completed by calling
@@ -307,6 +317,11 @@ type (
 		// generated from the seed.
 		PrimarySeed() (Seed, uint64, error)
 
+		// SignTransaction signs txn using secret keys known to the wallet.
+		// The transaction should be complete with the exception of the
+		// Signature fields of each TransactionSignature referenced by toSign.
+		SignTransaction(txn *types.Transaction, toSign []crypto.Hash) error
+
 		// SweepSeed scans the blockchain for outputs generated from seed and
 		// creates a transaction that transfers them to the wallet. Note that
 		// this incurs a transaction fee. It returns the total value of the
@@ -320,6 +335,9 @@ type (
 	Wallet interface {
 		EncryptionManager
 		KeyManager
+
+		// AddUnlockConditions adds a set of UnlockConditions to the wallet database.
+		AddUnlockConditions(uc types.UnlockConditions) error
 
 		// Close permits clean shutdown during testing and serving.
 		Close() error
@@ -359,9 +377,6 @@ type (
 		// UnconfirmedTransactions returns all unconfirmed transactions
 		// relative to the wallet.
 		UnconfirmedTransactions() ([]ProcessedTransaction, error)
-
-		// UnspentOutputs returns all unspent outputs relative to the wallet
-		UnspentOutputs() ([]types.SiacoinOutput, error)
 
 		// RegisterTransaction takes a transaction and its parents and returns
 		// a TransactionBuilder which can be used to expand the transaction.
@@ -403,6 +418,17 @@ type (
 		// DustThreshold returns the quantity per byte below which a Currency is
 		// considered to be Dust.
 		DustThreshold() (types.Currency, error)
+
+		// UnspentOutputs returns the unspent outputs tracked by the wallet.
+		UnspentOutputs() ([]UnspentOutput, error)
+
+		// UnlockConditions returns the UnlockConditions for the specified
+		// address, if they are known to the wallet.
+		UnlockConditions(addr types.UnlockHash) (types.UnlockConditions, error)
+
+		// WatchAddresses instructs the wallet to begin tracking a set of addresses,
+		// replacing any addresses it was previously tracking.
+		WatchAddresses(addrs []types.UnlockHash) error
 	}
 
 	// WalletSettings control the behavior of the Wallet.

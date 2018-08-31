@@ -3,7 +3,7 @@ package renter
 import (
 	"os"
 
-	"gitlab.com/NebulousLabs/Sia/siatest"
+	"github.com/HyperspaceApp/Hyperspace/siatest"
 )
 
 // renterTestDir creates a temporary testing directory for a renter test. This
