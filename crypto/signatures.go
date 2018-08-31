@@ -3,12 +3,13 @@ package crypto
 import (
 	"bytes"
 	"errors"
+	"encoding/hex"
 	"io"
 
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/fastrand"
 
-	"golang.org/x/crypto/ed25519"
+	"github.com/HyperspaceApp/ed25519"
 )
 
 const (
@@ -24,12 +25,19 @@ const (
 
 	// SignatureSize defines the size of signatures in bytes.
 	SignatureSize = ed25519.SignatureSize
+
+	// CurvePointSize defines the size of a curve point in bytes.
+	CurvePointSize = ed25519.CurvePointSize
 )
 
 var (
 	// ErrInvalidSignature is returned if a signature is provided that does not
 	// match the data and public key.
 	ErrInvalidSignature = errors.New("invalid signature")
+
+	// ErrCurvePointWrongLen is the error when encoded value has the wrong length to
+	// be a curve point
+	ErrCurvePointWrongLen = errors.New("encoded value has the wrong length to be a curve point")
 )
 
 type (
@@ -42,6 +50,9 @@ type (
 	// Signature proves that data was signed by the owner of a particular
 	// public key's corresponding secret key.
 	Signature [SignatureSize]byte
+
+	// CurvePoint represents a point on the elliptic curve.
+	CurvePoint [CurvePointSize]byte
 )
 
 // PublicKey returns the public key that corresponds to a secret key.
@@ -112,4 +123,21 @@ func WriteSignedObject(w io.Writer, obj interface{}, sk SecretKey) error {
 	objBytes := encoding.Marshal(obj)
 	sig := SignHash(HashBytes(objBytes), sk)
 	return encoding.NewEncoder(w).EncodeAll(sig, objBytes)
+}
+
+func (cp *CurvePoint) String() string {
+        return hex.EncodeToString(cp[:])
+}
+
+func (cp *CurvePoint) LoadString(s string) error {
+        // *2 because there are 2 hex characters per byte.
+        if len(s) != CurvePointSize*2 {
+                return ErrCurvePointWrongLen
+        }
+        cpBytes, err := hex.DecodeString(s)
+        if err != nil {
+                return errors.New("could not unmarshal curve point: " + err.Error())
+        }
+	copy(cp[:], cpBytes)
+	return nil
 }
