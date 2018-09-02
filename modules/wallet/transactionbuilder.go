@@ -598,7 +598,7 @@ func (w *Wallet) StartTransaction() (modules.TransactionBuilder, error) {
 	return w.RegisterTransaction(types.Transaction{}, nil)
 }
 
-func (w *Wallet) NewUnsignedTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
+func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
 	tb, err := w.StartTransaction()
 	if err != nil {
 		return
@@ -612,16 +612,22 @@ func (w *Wallet) NewUnsignedTransaction(outputs []types.SiacoinOutput, fee types
 	if err != nil {
 		return
 	}
-	tx, _ = tb.View()
+	txnSet, err := tb.Sign(true)
+	if err != nil {
+		return
+	}
+	// NOTE: for now, we assume FundSiacoinsForOutputs returns a set with only one tx
+	// the transaction builder code is due for an overhaul
+	tx = txnSet[0]
 	return
 }
 
-func (w *Wallet) NewUnsignedTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (tx types.Transaction, err error) {
+func (w *Wallet) NewTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (tx types.Transaction, err error) {
 	output := types.SiacoinOutput{
 		Value:      amount,
 		UnlockHash: dest,
 	}
-	return w.NewUnsignedTransaction([]types.SiacoinOutput{output}, fee)
+	return w.NewTransaction([]types.SiacoinOutput{output}, fee)
 }
 
 // UnspentOutputs returns the unspent outputs tracked by the wallet.

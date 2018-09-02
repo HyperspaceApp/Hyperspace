@@ -629,7 +629,7 @@ func (api *API) walletBuildTransactionHandler(w http.ResponseWriter, req *http.R
 	}
 	var fee types.Currency
 
-	txn, err := api.wallet.NewUnsignedTransactionForAddress(dest, amount, fee)
+	txn, err := api.wallet.NewTransactionForAddress(dest, amount, fee)
 	if err != nil {
 		WriteError(w, Error{"error when calling /wallet/build/transaction:" + err.Error()}, http.StatusBadRequest)
 		return
