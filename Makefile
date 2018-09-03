@@ -16,7 +16,6 @@ dependencies:
 	go get -u github.com/HyperspaceApp/demotemutex
 	go get -u github.com/HyperspaceApp/fastrand
 	go get -u github.com/HyperspaceApp/merkletree
-	go get -u gitlab.com/HyperspaceApp/bolt
 	go get -u github.com/HyperspaceApp/Hyperspace/sync
 	go get -u golang.org/x/crypto/blake2b
 	go get -u golang.org/x/crypto/ed25519
