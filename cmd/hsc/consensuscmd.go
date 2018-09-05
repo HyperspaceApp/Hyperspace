@@ -49,9 +49,9 @@ Progress (estimated): %.1f%%
 // Block height is estimated by calculating the minutes since a known block in
 // the past and dividing by 10 minutes (the block time).
 func estimatedHeightAt(t time.Time) types.BlockHeight {
-	block100kTimestamp := time.Date(2017, time.April, 13, 23, 29, 49, 0, time.UTC)
+	block5kTimestamp := time.Unix(1535515310, 0)
 	blockTime := float64(9) // overestimate block time for better UX
-	diff := t.Sub(block100kTimestamp)
-	estimatedHeight := 100e3 + (diff.Minutes() / blockTime)
+	diff := t.Sub(block5kTimestamp)
+	estimatedHeight := 5000 + (diff.Minutes() / blockTime)
 	return types.BlockHeight(estimatedHeight + 0.5) // round to the nearest block
 }
