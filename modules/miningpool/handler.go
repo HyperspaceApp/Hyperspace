@@ -246,8 +246,8 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 	}
 
 	if len(m.Params) > 0 && m.Params[0].(string) == "sgminer/4.4.2" {
-		h.s.SetHighestDifficulty(4812.8)
-		h.s.SetCurrentDifficulty(4812.8)
+		h.s.SetHighestDifficulty(11500)
+		h.s.SetCurrentDifficulty(11500)
 		h.s.SetDisableVarDiff(true)
 	}
 	if len(m.Params) > 0 && m.Params[0].(string) == "cgminer/4.9.0" {
