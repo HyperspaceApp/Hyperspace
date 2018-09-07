@@ -126,6 +126,9 @@ var (
 	// The coinbase decreases in each block after the Genesis block,
 	// but it will not decrease past MinimumCoinbase.
 	MinimumCoinbase uint64
+	// MuSigHardforkBlock is the height at which the hardfork to switch to the MuSig
+	// signature aggregation method is triggered.
+	MuSigHardforkBlock BlockHeight
 
 	// Oak constants. Oak is the name of the difficulty algorithm for Hyperspace.
 
@@ -187,6 +190,8 @@ func init() {
 
 		MinimumCoinbase = 6000
 
+		MuSigHardforkBlock = 7000
+
 		OakDecayNum = 985
 		OakDecayDenom = 1000
 		OakMaxBlockShift = 3
@@ -212,6 +217,8 @@ func init() {
 		ExtremeFutureThreshold = 6 // 6 seconds
 
 		MinimumCoinbase = 59990 // Minimum coinbase is hit after 10 blocks to make testing minimum-coinbase code easier.
+
+		MuSigHardforkBlock = 7000
 
 		OakDecayNum = 9999
 		OakDecayDenom = 10e3
@@ -280,6 +287,10 @@ func init() {
 		// increasingly potent dropoff for about 5 years, until inflation more
 		// or less permanently settles around 2%.
 		MinimumCoinbase = 6000
+
+		// The MuSig signature aggregation hardfork is set to trigger at block
+		// 10,000.
+		MuSigHardforkBlock = 10000
 
 		// The decay is kept at 995/1000, or a decay of about 0.5% each block.
 		// This puts the halflife of a block's relevance at about 1 day. This
