@@ -9,7 +9,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/fastrand"
 
-	"github.com/HyperspaceApp/ed25519
+	"github.com/HyperspaceApp/ed25519"
 )
 
 const (
