@@ -27,7 +27,7 @@ const (
 	SignatureSize = ed25519.SignatureSize
 
 	// CurvePointSize defines the size of a curve point in bytes.
-	CurvePointSize = ed25519.SeedSize
+	CurvePointSize = ed25519.CurvePointSize
 )
 
 var (
