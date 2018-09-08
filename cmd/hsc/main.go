@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 )
 
@@ -17,6 +18,7 @@ var (
 	hostVerbose            bool   // display additional host info
 	initForce              bool   // destroy and re-encrypt the wallet on init if it already exists
 	initPassword           bool   // supply a custom password when creating a wallet
+	isTestnet              bool   // Use the testnet
 	renterAllContracts     bool   // Show all active and expired contracts
 	renterDownloadAsync    bool   // Downloads files asynchronously
 	renterListVerbose      bool   // Show additional info about uploaded files.
@@ -150,9 +152,16 @@ func main() {
 	root.AddCommand(mangenCmd)
 
 	// initialize client
-	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", "localhost:5580", "which host/port to communicate with (i.e. the host/port hsd is listening on)")
+	defaultAPIAddr := fmt.Sprintf("localhost:%d", config.APIPort)
+	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", defaultAPIAddr, "which host/port to communicate with (i.e. the host/port hsd is listening on)")
 	root.PersistentFlags().StringVarP(&httpClient.Password, "apipassword", "", "", "the password for the API's http authentication")
 	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by hsc to connect to the daemon's API")
+	root.PersistentFlags().BoolVarP(&isTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet API port (%d)", config.TestnetAPIPort))
+	if isTestnet {
+		if httpClient.Address == defaultAPIAddr {
+			httpClient.Address = fmt.Sprintf("localhost:%d", config.TestnetAPIPort)
+		}
+	}
 
 	// Check if the api password environment variable is set.
 	apiPassword := os.Getenv("HYPERSPACE_API_PASSWORD")

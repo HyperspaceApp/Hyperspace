@@ -42,6 +42,7 @@ type Config struct {
 		NoBootstrap       bool
 		RequiredUserAgent string
 		AuthenticateAPI   bool
+		IsTestnet         bool
 
 		Profile    string
 		ProfileDir string
@@ -172,18 +173,36 @@ func main() {
 		Run:   modulesCmd,
 	})
 
+	defaultAPIAddr := fmt.Sprintf("localhost:%d", config.APIPort)
+	defaultRPCAddr := fmt.Sprintf(":%d", config.RPCPort)
+	defaultHostAddr := fmt.Sprintf(":%d", config.HostPort)
 	// Set default values, which have the lowest priority.
 	root.Flags().StringVarP(&globalConfig.Siad.RequiredUserAgent, "agent", "", "Hyperspace-Agent", "required substring for the user agent")
-	root.Flags().StringVarP(&globalConfig.Siad.HostAddr, "host-addr", "", ":5582", "which port the host listens on")
+	root.Flags().StringVarP(&globalConfig.Siad.HostAddr, "host-addr", "", defaultHostAddr, "which port the host listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.ProfileDir, "profile-directory", "", "profiles", "location of the profiling directory")
-	root.Flags().StringVarP(&globalConfig.Siad.APIaddr, "api-addr", "", "localhost:5580", "which host:port the API server listens on")
+	root.Flags().StringVarP(&globalConfig.Siad.APIaddr, "api-addr", "", defaultAPIAddr, "which host:port the API server listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.SiaDir, "hyperspace-directory", "d", "", "location of the hyperspace directory")
 	root.Flags().BoolVarP(&globalConfig.Siad.NoBootstrap, "no-bootstrap", "", false, "disable bootstrapping on this run")
 	root.Flags().StringVarP(&globalConfig.Siad.Profile, "profile", "", "", "enable profiling with flags 'cmt' for CPU, memory, trace")
-	root.Flags().StringVarP(&globalConfig.Siad.RPCaddr, "rpc-addr", "", ":5581", "which port the gateway listens on")
+	root.Flags().StringVarP(&globalConfig.Siad.RPCaddr, "rpc-addr", "", defaultRPCAddr, "which port the gateway listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.Modules, "modules", "M", "cghrtw", "enabled modules, see 'hsd modules' for more info")
 	root.Flags().BoolVarP(&globalConfig.Siad.AuthenticateAPI, "authenticate-api", "", false, "enable API password protection")
 	root.Flags().BoolVarP(&globalConfig.Siad.AllowAPIBind, "disable-api-security", "", false, "allow hsd to listen on a non-localhost address (DANGEROUS)")
+	root.Flags().BoolVarP(&globalConfig.Siad.IsTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet ports (%d, %d, %d)", config.TestnetAPIPort, config.TestnetRPCPort, config.TestnetHostPort))
+	if globalConfig.Siad.IsTestnet {
+		testnetAPIAddr := fmt.Sprintf("localhost:%d", config.TestnetAPIPort)
+		testnetRPCAddr := fmt.Sprintf(":%d", config.TestnetRPCPort)
+		testnetHostAddr := fmt.Sprintf(":%d", config.TestnetHostPort)
+		if globalConfig.Siad.APIaddr == defaultAPIAddr {
+			globalConfig.Siad.APIaddr = testnetAPIAddr
+		}
+		if globalConfig.Siad.RPCaddr == defaultRPCAddr {
+			globalConfig.Siad.RPCaddr = testnetRPCAddr
+		}
+		if globalConfig.Siad.HostAddr == defaultHostAddr {
+			globalConfig.Siad.HostAddr = testnetHostAddr
+		}
+	}
 
 	// Parse cmdline flags, overwriting both the default values and the config
 	// file values.
