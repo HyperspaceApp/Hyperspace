@@ -132,16 +132,6 @@ type (
 		PublicKeys         []SiaPublicKey `json:"publickeys"`
 		SignaturesRequired uint64         `json:"signaturesrequired"`
 	}
-
-	// Each input has a list of public keys and a required number of signatures.
-	// inputSignatures keeps track of which public keys have been used and how many
-	// more signatures are needed.
-	inputSignatures struct {
-		remainingSignatures uint64
-		possibleKeys        []SiaPublicKey
-		usedKeys            map[uint64]struct{}
-		index               int
-	}
 )
 
 // Ed25519PublicKey returns pk as a SiaPublicKey, denoting its algorithm as

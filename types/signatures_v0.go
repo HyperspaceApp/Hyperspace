@@ -5,6 +5,25 @@ import (
 )
 
 type (
+	// A TransactionSignature is a signature that is included in the transaction.
+	// The signature should correspond to a public key in one of the
+	// UnlockConditions of the transaction. This key is specified first by
+	// 'ParentID', which specifies the UnlockConditions, and then
+	// 'PublicKeyIndex', which indicates the key in the UnlockConditions. There
+	// are two types that use UnlockConditions: SiacoinInputs
+	// and FileContractTerminations. Each of these types also references a
+	// ParentID, and this is the hash that 'ParentID' must match. The 'Timelock'
+	// prevents the signature from being used until a certain height.
+	// 'CoveredFields' indicates which parts of the transaction are being signed;
+	// see CoveredFields.
+	TransactionSignatureV0 struct {
+		ParentID       crypto.Hash   `json:"parentid"`
+		PublicKeyIndex uint64        `json:"publickeyindex"`
+		Timelock       BlockHeight   `json:"timelock"`
+		CoveredFields  CoveredFields `json:"coveredfields"`
+		Signature      []byte        `json:"signature"`
+	}
+
 	// UnlockConditions are a set of conditions which must be met to execute
 	// certain actions, such as spending a SiacoinOutput or terminating a
 	// FileContract.
@@ -24,6 +43,16 @@ type (
 		Timelock           BlockHeight    `json:"timelock"`
 		PublicKeys         []SiaPublicKey `json:"publickeys"`
 		SignaturesRequired uint64         `json:"signaturesrequired"`
+	}
+
+	// Each input has a list of public keys and a required number of signatures.
+	// inputSignatures keeps track of which public keys have been used and how many
+	// more signatures are needed.
+	inputSignatures struct {
+		remainingSignatures uint64
+		possibleKeys        []SiaPublicKey
+		usedKeys            map[uint64]struct{}
+		index               int
 	}
 )
 
