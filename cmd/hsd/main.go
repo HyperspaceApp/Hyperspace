@@ -189,6 +189,7 @@ func main() {
 	root.Flags().BoolVarP(&globalConfig.Siad.AuthenticateAPI, "authenticate-api", "", false, "enable API password protection")
 	root.Flags().BoolVarP(&globalConfig.Siad.AllowAPIBind, "disable-api-security", "", false, "allow hsd to listen on a non-localhost address (DANGEROUS)")
 	root.Flags().BoolVarP(&globalConfig.Siad.IsTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet ports (%d, %d, %d)", config.TestnetAPIPort, config.TestnetRPCPort, config.TestnetHostPort))
+	// set up testnet ports
 	if globalConfig.Siad.IsTestnet {
 		testnetAPIAddr := fmt.Sprintf("localhost:%d", config.TestnetAPIPort)
 		testnetRPCAddr := fmt.Sprintf(":%d", config.TestnetRPCPort)

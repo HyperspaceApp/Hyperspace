@@ -460,3 +460,43 @@ func init() {
 	// Calculate the genesis ID.
 	GenesisID = GenesisBlock.ID()
 }
+
+// InitTestnetConstants sets our key consensus constants dynamically.
+// These constants need to be set after main parses the --testnet flag
+// and so cannot be defined in an init() function like the constants
+// are done for the different build configurations. We want the testnet
+// to be accessible in standard and dev builds alike, so we don't define
+// these constants by using a "testnet" build.
+func InitTestnetConstants() {
+	BlockFrequency = 120                     // 12 seconds: slow enough for developers to see ~each block, fast enough that blocks don't waste time.
+	MaturityDelay = 100                      // 60 seconds before a delayed output matures.
+	GenesisTimestamp = Timestamp(1532510500) // Change as necessary.
+	RootTarget = Target{0, 0, 2}             // Standard developer CPUs will be able to mine blocks with the race library activated.
+
+	TargetWindow = 20                              // Difficulty is adjusted based on prior 20 blocks.
+	MaxTargetAdjustmentUp = big.NewRat(120, 100)   // Difficulty adjusts quickly.
+	MaxTargetAdjustmentDown = big.NewRat(100, 120) // Difficulty adjusts quickly.
+	FutureThreshold = 2 * 60                       // 2 minutes.
+	ExtremeFutureThreshold = 4 * 60                // 4 minutes.
+
+	MinimumCoinbase = 6000
+
+	MuSigHardforkBlock = 100
+
+	OakDecayNum = 985
+	OakDecayDenom = 1000
+	OakMaxBlockShift = 3
+	OakMaxRise = big.NewRat(102, 100)
+	OakMaxDrop = big.NewRat(100, 102)
+
+	GenesisAllocation = []SiacoinOutput{}
+	// Create the genesis block.
+	GenesisBlock = Block{
+		Timestamp: GenesisTimestamp,
+		Transactions: []Transaction{
+			{SiacoinOutputs: GenesisAllocation},
+		},
+	}
+	// Calculate the genesis ID.
+	GenesisID = GenesisBlock.ID()
+}

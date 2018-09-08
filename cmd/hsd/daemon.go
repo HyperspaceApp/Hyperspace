@@ -15,6 +15,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/profile"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	mnemonics "github.com/HyperspaceApp/entropy-mnemonics"
 
 	"github.com/spf13/cobra"
@@ -261,6 +262,9 @@ func startDaemon(config Config) (err error) {
 	go func() {
 		errChan <- srv.Serve()
 	}()
+	if config.Siad.IsTestnet {
+		types.InitTestnetConstants()
+	}
 	err = srv.loadModules()
 	if err != nil {
 		return err
