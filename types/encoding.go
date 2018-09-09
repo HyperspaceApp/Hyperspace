@@ -930,7 +930,7 @@ func (uh *UnlockHash) LoadTestnetString(strUH string) error {
 		return err
 	}
 	expectedChecksum := crypto.HashBytes(byteUnlockHash)
-	if !bytes.Equal(expectedChecksum[1:1+UnlockHashChecksumSize], checksum) {
+	if !bytes.Equal(expectedChecksum[:UnlockHashChecksumSize], checksum) {
 		return ErrInvalidUnlockHashChecksum
 	}
 
