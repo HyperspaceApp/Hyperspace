@@ -41,6 +41,9 @@ var (
 	// ErrUnlockHashWrongLen is the error when a marshalled unlock hash is the wrong
 	// length
 	ErrUnlockHashWrongLen = errors.New("marshalled unlock hash is the wrong length")
+	// ErrUnlockHashWrongPrefix is the error when a marshalled unlock hash has the
+	// wrong prefix
+	ErrUnlockHashWrongPrefix = errors.New("marshalled unlock hash has the wrong prefix")
 	// ErrWholeTransactionViolation is the error when there's a covered fields violation
 	ErrWholeTransactionViolation = errors.New("covered fields violation")
 

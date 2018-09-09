@@ -75,33 +75,6 @@ var (
 	// InitialCoinbase is the coinbase reward of the first block following the
 	// initial 2 blocks.
 	InitialCoinbase = uint64(60e3)
-	// AirdropValue is the total amount of coins generated in the genesis block
-	// for the airdrop.
-	AirdropValue = NewCurrency64(35373763032).Mul(SiacoinPrecision).Div(NewCurrency64(10))
-	// SingleDeveloperAirdropValue is the amount of coins generated in the genesis
-	// block for each developer's airdrop
-	SingleDeveloperAirdropValue = NewCurrency64(54e6).Mul(SiacoinPrecision)
-	// NumDevelopers is the number of developers who split the DeveloperAirdrop
-	NumDevelopers = uint64(10)
-	// DeveloperAirdropValue is the total amount of coins generated in the genesis
-	// block for the developers airdrops
-	DeveloperAirdropValue = SingleDeveloperAirdropValue.Mul(NewCurrency64(NumDevelopers))
-	// SingleContributorAirdropValue is the amount of coins generated in the genesis
-	// block for each contributor's airdrop
-	SingleContributorAirdropValue = NewCurrency64(10e6).Mul(SiacoinPrecision)
-	// NumContributors is the number of contributors who split the ContributorAirdrop
-	NumContributors = uint64(6)
-	// ContributorAirdropValue is the total amount of coins generated in the genesis
-	// block for the contributor airdrop
-	ContributorAirdropValue = SingleContributorAirdropValue.Mul(NewCurrency64(NumContributors))
-	// SinglePoolAirdropValue is the amount of coins generated in the genesis
-	// block for each pool's airdrop
-	SinglePoolAirdropValue = NewCurrency64(2 * InitialCoinbase).Mul(SiacoinPrecision)
-	// NumPools is the number of developers who split the DeveloperAirdrop
-	NumPools = uint64(7)
-	// PoolAirdropValue is the total amount of coins generated in the genesis
-	// block for the pool airdrop
-	PoolAirdropValue = SinglePoolAirdropValue.Mul(NewCurrency64(NumPools))
 	// MaturityDelay specifies the number of blocks that a maturity-required output
 	// is required to be on hold before it can be spent on the blockchain.
 	// Outputs are maturity-required if they are highly likely to be altered or
@@ -166,6 +139,37 @@ var (
 	// time has passed vs. how many blocks have been created. It's only used in the old,
 	// broken difficulty adjustment algorithm.
 	TargetWindow BlockHeight
+
+	// IsTestnet specifies if this is mainnet or the public testnet
+	IsTestnet bool
+
+	// AirdropValue is the total amount of coins generated in the genesis block
+	// for the airdrop.
+	AirdropValue = NewCurrency64(35373763032).Mul(SiacoinPrecision).Div(NewCurrency64(10))
+	// SingleDeveloperAirdropValue is the amount of coins generated in the genesis
+	// block for each developer's airdrop
+	SingleDeveloperAirdropValue = NewCurrency64(54e6).Mul(SiacoinPrecision)
+	// NumDevelopers is the number of developers who split the DeveloperAirdrop
+	NumDevelopers = uint64(10)
+	// DeveloperAirdropValue is the total amount of coins generated in the genesis
+	// block for the developers airdrops
+	DeveloperAirdropValue = SingleDeveloperAirdropValue.Mul(NewCurrency64(NumDevelopers))
+	// SingleContributorAirdropValue is the amount of coins generated in the genesis
+	// block for each contributor's airdrop
+	SingleContributorAirdropValue = NewCurrency64(10e6).Mul(SiacoinPrecision)
+	// NumContributors is the number of contributors who split the ContributorAirdrop
+	NumContributors = uint64(6)
+	// ContributorAirdropValue is the total amount of coins generated in the genesis
+	// block for the contributor airdrop
+	ContributorAirdropValue = SingleContributorAirdropValue.Mul(NewCurrency64(NumContributors))
+	// SinglePoolAirdropValue is the amount of coins generated in the genesis
+	// block for each pool's airdrop
+	SinglePoolAirdropValue = NewCurrency64(2 * InitialCoinbase).Mul(SiacoinPrecision)
+	// NumPools is the number of developers who split the DeveloperAirdrop
+	NumPools = uint64(7)
+	// PoolAirdropValue is the total amount of coins generated in the genesis
+	// block for the pool airdrop
+	PoolAirdropValue = SinglePoolAirdropValue.Mul(NewCurrency64(NumPools))
 )
 
 // init checks which build constant is in place and initializes the variables
@@ -499,4 +503,6 @@ func InitTestnetConstants() {
 	}
 	// Calculate the genesis ID.
 	GenesisID = GenesisBlock.ID()
+
+	IsTestnet = true
 }

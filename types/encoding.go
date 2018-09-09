@@ -885,8 +885,14 @@ func (uh UnlockHash) MarshalJSON() ([]byte, error) {
 // that has been encoded to a hex string.
 func (uh *UnlockHash) UnmarshalJSON(b []byte) error {
 	// Check the length of b.
-	if len(b) != crypto.HashSize*2+UnlockHashChecksumSize*2+2 && len(b) != crypto.HashSize*2+2 {
-		return ErrUnlockHashWrongLen
+	if IsTestnet {
+		if len(b) != 1+crypto.HashSize*2+UnlockHashChecksumSize*2+2 && len(b) != 1+crypto.HashSize*2+2 {
+			return ErrUnlockHashWrongLen
+		}
+	} else {
+		if len(b) != crypto.HashSize*2+UnlockHashChecksumSize*2+2 && len(b) != crypto.HashSize*2+2 {
+			return ErrUnlockHashWrongLen
+		}
 	}
 	return uh.LoadString(string(b[1 : len(b)-1]))
 }
@@ -895,13 +901,51 @@ func (uh *UnlockHash) UnmarshalJSON(b []byte) error {
 // includes a checksum.
 func (uh UnlockHash) String() string {
 	uhChecksum := crypto.HashObject(uh)
+	if IsTestnet {
+		return fmt.Sprintf("t%x%x", uh[:], uhChecksum[:UnlockHashChecksumSize])
+	}
 	return fmt.Sprintf("%x%x", uh[:], uhChecksum[:UnlockHashChecksumSize])
+}
+
+func (uh *UnlockHash) LoadTestnetString(strUH string) error {
+	// Check the length of strUH.
+	if len(strUH) != 1+crypto.HashSize*2+UnlockHashChecksumSize*2 {
+		return ErrUnlockHashWrongLen
+	}
+
+	// Decode the unlock hash.
+	var byteUnlockHash []byte
+	var checksum []byte
+	if strUH[0] != []byte("t")[0] {
+		return ErrUnlockHashWrongPrefix
+	}
+	_, err := fmt.Sscanf(strUH[1:1+crypto.HashSize*2], "%x", &byteUnlockHash)
+	if err != nil {
+		return err
+	}
+
+	// Decode and verify the checksum.
+	_, err = fmt.Sscanf(strUH[1+crypto.HashSize*2:], "%x", &checksum)
+	if err != nil {
+		return err
+	}
+	expectedChecksum := crypto.HashBytes(byteUnlockHash)
+	if !bytes.Equal(expectedChecksum[1:1+UnlockHashChecksumSize], checksum) {
+		return ErrInvalidUnlockHashChecksum
+	}
+
+	copy(uh[:], byteUnlockHash[:])
+	return nil
 }
 
 // LoadString loads a hex representation (including checksum) of an unlock hash
 // into an unlock hash object. An error is returned if the string is invalid or
 // fails the checksum.
 func (uh *UnlockHash) LoadString(strUH string) error {
+	if IsTestnet {
+		return uh.LoadTestnetString(strUH)
+	}
+
 	// Check the length of strUH.
 	if len(strUH) != crypto.HashSize*2+UnlockHashChecksumSize*2 {
 		return ErrUnlockHashWrongLen
