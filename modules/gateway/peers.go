@@ -146,18 +146,18 @@ func (g *Gateway) threadedAcceptConn(conn net.Conn) {
 	addr := modules.NetAddress(conn.RemoteAddr().String())
 	g.log.Debugf("INFO: %v wants to connect", addr)
 
-	remoteVersion, err := acceptVersionHandshake(conn, build.Version)
+	protocolVersion := build.Version
+	if types.IsTestnet {
+		protocolVersion = modules.TestnetProtocolVersion
+	}
+	remoteVersion, err := acceptVersionHandshake(conn, protocolVersion)
 	if err != nil {
 		g.log.Debugf("INFO: %v wanted to connect but version handshake failed: %v", addr, err)
 		conn.Close()
 		return
 	}
 
-	if build.VersionCmp(remoteVersion, minimumAcceptablePeerVersion) >= 0 {
-		err = g.managedAcceptConnPeer(conn, remoteVersion)
-	} else {
-		err = errors.New("version number is below threshold")
-	}
+	err = g.managedAcceptConnPeer(conn, remoteVersion)
 	if err != nil {
 		g.log.Debugf("INFO: %v wanted to connect, but failed: %v", addr, err)
 		conn.Close()
@@ -288,6 +288,13 @@ func (g *Gateway) acceptPeer(p *peer) {
 
 // acceptableVersion returns an error if the version is unacceptable.
 func acceptableVersion(version string) error {
+	if types.IsTestnet {
+		if version != modules.TestnetProtocolVersion {
+			return invalidVersionError(version)
+		} else {
+			return nil
+		}
+	}
 	if !build.IsVersion(version) {
 		return invalidVersionError(version)
 	}
@@ -430,18 +437,19 @@ func (g *Gateway) managedConnect(addr modules.NetAddress) error {
 		return err
 	}
 
-	// Perform peer initialization.
-	remoteVersion, err := connectVersionHandshake(conn, build.Version)
+	// Perform peer initialization, disconnecting if the peer returns an
+	// unacceptable version.
+	protocolVersion := build.Version
+	if types.IsTestnet {
+		protocolVersion = modules.TestnetProtocolVersion
+	}
+	remoteVersion, err := connectVersionHandshake(conn, protocolVersion)
 	if err != nil {
 		conn.Close()
 		return err
 	}
 
-	if build.VersionCmp(remoteVersion, minimumAcceptablePeerVersion) >= 0 {
-		err = g.managedConnectPeer(conn, remoteVersion, addr)
-	} else {
-		err = errors.New("version number is below threshold")
-	}
+	err = g.managedConnectPeer(conn, remoteVersion, addr)
 	if err != nil {
 		conn.Close()
 		return err

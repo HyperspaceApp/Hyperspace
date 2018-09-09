@@ -56,13 +56,9 @@ func (g *Gateway) staticPingNode(addr modules.NetAddress) error {
 	defer conn.Close()
 
 	// Read the node's version.
-	remoteVersion, err := connectVersionHandshake(conn, build.Version)
+	_, err = connectVersionHandshake(conn, build.Version)
 	if err != nil {
 		return err
-	}
-
-	if build.VersionCmp(remoteVersion, minimumAcceptablePeerVersion) < 0 {
-		return nil // for older versions, this is where pinging ends
 	}
 
 	// Send our header.

@@ -24,6 +24,10 @@ const (
 	RelayHeaderCmd = "RelayHeader"
 	// RelayTransactionSetCmd sends a transaction set to a peer.
 	RelayTransactionSetCmd = "RelayTransactionSet"
+	// TestnetProtocolVersion is the protocol version that gateway peers
+	// use to ensure that they are only communicating with other testnet
+	// peers
+	TestnetProtocolVersion = "testnet"
 )
 
 var (
