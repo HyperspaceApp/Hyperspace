@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/HyperspaceApp/errors"
 )
@@ -24,6 +25,9 @@ type Client struct {
 	// UserAgent must match the User-Agent required by the hsd server. If not
 	// set, it defaults to "Hyperspace-Agent".
 	UserAgent string
+
+	// UseTestnet determines whether or not to use the testnet
+	UseTestnet bool
 }
 
 // New creates a new Client using the provided address.
@@ -36,6 +40,11 @@ func New(address string) *Client {
 // NewRequest constructs a request to the hsd HTTP API, setting the correct
 // User-Agent and Basic Auth. The resource path must begin with /.
 func (c *Client) NewRequest(method, resource string, body io.Reader) (*http.Request, error) {
+	if c.UseTestnet {
+		if c.Address == config.DefaultAPIAddr {
+			c.Address = config.TestnetAPIAddr
+		}
+	}
 	url := "http://" + c.Address + resource
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {

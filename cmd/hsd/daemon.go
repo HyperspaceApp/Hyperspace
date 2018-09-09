@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	fileConfig "github.com/HyperspaceApp/Hyperspace/config"
+	daemonConfig "github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/profile"
@@ -170,7 +170,7 @@ func readFileConfig(config Config) error {
 		dbPort := poolViper.GetString("dbport")
 		dbName := poolViper.GetString("dbname")
 		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbAddress, dbPort, dbName)
-		poolConfig := fileConfig.MiningPoolConfig{
+		poolConfig := daemonConfig.MiningPoolConfig{
 			PoolNetworkPort:  int(poolViper.GetInt("networkport")),
 			PoolName:         poolViper.GetString("name"),
 			PoolID:           uint64(poolViper.GetInt("id")),
@@ -201,7 +201,7 @@ func readFileConfig(config Config) error {
 		dbPort := poolViper.GetString("dbport")
 		dbName := poolViper.GetString("dbname")
 		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbAddress, dbPort, dbName)
-		globalConfig.IndexConfig = fileConfig.IndexConfig{
+		globalConfig.IndexConfig = daemonConfig.IndexConfig{
 			PoolDBConnection: dbConnection,
 		}
 	}
@@ -254,6 +254,19 @@ func startDaemon(config Config) (err error) {
 	// Print a startup message.
 	fmt.Println("Loading...")
 	loadStart := time.Now()
+	if config.Siad.IsTestnet {
+		// set up testnet ports
+		if config.Siad.APIaddr == daemonConfig.DefaultAPIAddr {
+			config.Siad.APIaddr = daemonConfig.TestnetAPIAddr
+		}
+		if config.Siad.RPCaddr == daemonConfig.DefaultRPCAddr {
+			config.Siad.RPCaddr = daemonConfig.TestnetRPCAddr
+		}
+		if config.Siad.HostAddr == daemonConfig.DefaultHostAddr {
+			config.Siad.HostAddr = daemonConfig.TestnetHostAddr
+		}
+		types.InitTestnetConstants()
+	}
 	srv, err := NewServer(config)
 	if err != nil {
 		return err
@@ -262,9 +275,6 @@ func startDaemon(config Config) (err error) {
 	go func() {
 		errChan <- srv.Serve()
 	}()
-	if config.Siad.IsTestnet {
-		types.InitTestnetConstants()
-	}
 	err = srv.loadModules()
 	if err != nil {
 		return err

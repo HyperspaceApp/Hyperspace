@@ -78,8 +78,8 @@ func die(args ...interface{}) {
 func main() {
 	root := &cobra.Command{
 		Use:   os.Args[0],
-		Short: "Hard Drive Coin Client v" + build.Version,
-		Long:  "Hard Drive Coin Client v" + build.Version,
+		Short: "Hyperspace Client v" + build.Version,
+		Long:  "Hyperspace Client v" + build.Version,
 		Run:   wrap(consensuscmd),
 	}
 
@@ -152,16 +152,10 @@ func main() {
 	root.AddCommand(mangenCmd)
 
 	// initialize client
-	defaultAPIAddr := fmt.Sprintf("localhost:%d", config.APIPort)
-	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", defaultAPIAddr, "which host/port to communicate with (i.e. the host/port hsd is listening on)")
+	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", config.DefaultAPIAddr, "which host/port to communicate with (i.e. the host/port hsd is listening on)")
 	root.PersistentFlags().StringVarP(&httpClient.Password, "apipassword", "", "", "the password for the API's http authentication")
 	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by hsc to connect to the daemon's API")
-	root.PersistentFlags().BoolVarP(&isTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet API port (%d)", config.TestnetAPIPort))
-	if isTestnet {
-		if httpClient.Address == defaultAPIAddr {
-			httpClient.Address = fmt.Sprintf("localhost:%d", config.TestnetAPIPort)
-		}
-	}
+	root.PersistentFlags().BoolVarP(&httpClient.UseTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet API port (%d)", config.TestnetAPIPort))
 
 	// Check if the api password environment variable is set.
 	apiPassword := os.Getenv("HYPERSPACE_API_PASSWORD")
