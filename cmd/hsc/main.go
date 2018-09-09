@@ -10,6 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/config"
 	"github.com/HyperspaceApp/Hyperspace/node/api/client"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 var (
@@ -80,6 +81,11 @@ func main() {
 		Use:   os.Args[0],
 		Short: "Hyperspace Client v" + build.Version,
 		Long:  "Hyperspace Client v" + build.Version,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if httpClient.UseTestnet {
+				types.InitTestnetConstants()
+			}
+		},
 		Run:   wrap(consensuscmd),
 	}
 
