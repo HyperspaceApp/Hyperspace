@@ -1,7 +1,10 @@
 package types
 
 import (
+	"bytes"
+
 	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 )
 
 type (
@@ -24,7 +27,7 @@ type (
 		Signature      []byte        `json:"signature"`
 	}
 
-	// UnlockConditions are a set of conditions which must be met to execute
+	// UnlockConditionsV0 are a set of conditions which must be met to execute
 	// certain actions, such as spending a SiacoinOutput or terminating a
 	// FileContract.
 	//
@@ -56,8 +59,122 @@ type (
 	}
 )
 
+// SigHash returns the hash of the fields in a transaction covered by a given
+// signature. See CoveredFields for more details.
+func (t TransactionV0) SigHash(i int) (hash crypto.Hash) {
+	cf := t.TransactionSignatures[i].CoveredFields
+	h := crypto.NewHash()
+	if cf.WholeTransaction {
+		t.marshalSiaNoSignatures(h)
+		h.Write(t.TransactionSignatures[i].ParentID[:])
+		encoding.WriteUint64(h, t.TransactionSignatures[i].PublicKeyIndex)
+		encoding.WriteUint64(h, uint64(t.TransactionSignatures[i].Timelock))
+	} else {
+		for _, input := range cf.SiacoinInputs {
+			t.SiacoinInputs[input].MarshalSia(h)
+		}
+		for _, output := range cf.SiacoinOutputs {
+			t.SiacoinOutputs[output].MarshalSia(h)
+		}
+		for _, contract := range cf.FileContracts {
+			t.FileContracts[contract].MarshalSia(h)
+		}
+		for _, revision := range cf.FileContractRevisions {
+			t.FileContractRevisions[revision].MarshalSia(h)
+		}
+		for _, storageProof := range cf.StorageProofs {
+			t.StorageProofs[storageProof].MarshalSia(h)
+		}
+		for _, minerFee := range cf.MinerFees {
+			t.MinerFees[minerFee].MarshalSia(h)
+		}
+		for _, arbData := range cf.ArbitraryData {
+			encoding.WritePrefixedBytes(h, t.ArbitraryData[arbData])
+		}
+	}
+
+	for _, sig := range cf.TransactionSignatures {
+		t.TransactionSignatures[sig].MarshalSia(h)
+	}
+
+	h.Sum(hash[:0])
+	return
+}
+
+// UnlockHash calculates the root hash of a Merkle tree of the
+// UnlockConditions object. The leaves of this tree are formed by taking the
+// hash of the timelock, the hash of the public keys (one leaf each), and the
+// hash of the number of signatures. The keys are put in the middle because
+// Timelock and SignaturesRequired are both low entropy fields; they can be
+// protected by having random public keys next to them.
+func (uc UnlockConditionsV0) UnlockHash() UnlockHash {
+	var buf bytes.Buffer
+	e := encoding.NewEncoder(&buf)
+	tree := crypto.NewTree()
+	e.WriteUint64(uint64(uc.Timelock))
+	tree.Push(buf.Bytes())
+	buf.Reset()
+	for _, key := range uc.PublicKeys {
+		key.MarshalSia(e)
+		tree.Push(buf.Bytes())
+		buf.Reset()
+	}
+	e.WriteUint64(uc.SignaturesRequired)
+	tree.Push(buf.Bytes())
+	return UnlockHash(tree.Root())
+}
+
+// validCoveredFields makes sure that all covered fields objects in the
+// signatures follow the rules. This means that if 'WholeTransaction' is set to
+// true, all fields except for 'Signatures' must be empty. All fields must be
+// sorted numerically, and there can be no repeats.
+func (t TransactionV0) validCoveredFields() error {
+	for _, sig := range t.TransactionSignatures {
+		// convenience variables
+		cf := sig.CoveredFields
+		fieldMaxs := []struct {
+			field []uint64
+			max   int
+		}{
+			{cf.SiacoinInputs, len(t.SiacoinInputs)},
+			{cf.SiacoinOutputs, len(t.SiacoinOutputs)},
+			{cf.FileContracts, len(t.FileContracts)},
+			{cf.FileContractRevisions, len(t.FileContractRevisions)},
+			{cf.StorageProofs, len(t.StorageProofs)},
+			{cf.MinerFees, len(t.MinerFees)},
+			{cf.ArbitraryData, len(t.ArbitraryData)},
+			{cf.TransactionSignatures, len(t.TransactionSignatures)},
+		}
+
+		// Check that all fields are empty if 'WholeTransaction' is set, except
+		// for the Signatures field which isn't affected.
+		if cf.WholeTransaction {
+			// 'WholeTransaction' does not check signatures.
+			for _, fieldMax := range fieldMaxs[:len(fieldMaxs)-1] {
+				if len(fieldMax.field) != 0 {
+					return ErrWholeTransactionViolation
+				}
+			}
+		}
+
+		// Check that all fields are sorted, and without repeat values, and
+		// that all elements point to objects that exists within the
+		// transaction. If there are repeats, it means a transaction is trying
+		// to sign the same object twice. This is unncecessary, and opens up a
+		// DoS vector where the transaction asks the verifier to verify many GB
+		// of data.
+		for _, fieldMax := range fieldMaxs {
+			if !sortedUnique(fieldMax.field, fieldMax.max) {
+				return ErrSortedUniqueViolation
+			}
+		}
+	}
+
+	return nil
+}
+
 // validSignatures checks the validaty of all signatures in a transaction.
-func (t *Transaction) validSignaturesV0(currentHeight BlockHeight) error {
+func (t *TransactionV0) validSignatures(currentHeight BlockHeight) error {
 	// Check that all covered fields objects follow the rules.
 	err := t.validCoveredFields()
 	if err != nil {

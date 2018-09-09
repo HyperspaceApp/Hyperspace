@@ -144,11 +144,6 @@ func (w *Wallet) loadSiagKeys(masterKey crypto.TwofishKey, keyfiles []string) er
 			return ErrInconsistentKeys
 		}
 	}
-	if uint64(len(skps)) < skps[0].UnlockConditions.SignaturesRequired {
-		return ErrInsufficientKeys
-	}
-	// Drop all unneeded keys.
-	skps = skps[0:skps[0].UnlockConditions.SignaturesRequired]
 
 	// Merge the keys into a single spendableKey and save it to the wallet.
 	var sk spendableKey

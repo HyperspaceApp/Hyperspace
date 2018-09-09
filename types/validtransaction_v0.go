@@ -5,48 +5,9 @@ package types
 // size of the transaction, the content of the signatures, and a large set of
 // other rules that are inherent to how a transaction should be constructed.
 
-import (
-	"errors"
-)
-
-var (
-	// ErrDoubleSpend is an error when a transaction uses a parent object
-	// twice
-	ErrDoubleSpend = errors.New("transaction uses a parent object twice")
-	// ErrFileContractOutputSumViolation is an error when a file contract
-	// has invalid output sums
-	ErrFileContractOutputSumViolation = errors.New("file contract has invalid output sums")
-	// ErrFileContractWindowEndViolation is an error when a file contract
-	// window must end at least one block after it starts
-	ErrFileContractWindowEndViolation = errors.New("file contract window must end at least one block after it starts")
-	// ErrFileContractWindowStartViolation is an error when a file contract
-	// window must start in the future
-	ErrFileContractWindowStartViolation = errors.New("file contract window must start in the future")
-	// ErrNonZeroRevision is an error when a new file contract has a
-	// nonzero revision number
-	ErrNonZeroRevision = errors.New("new file contract has a nonzero revision number")
-	// ErrStorageProofWithOutputs is an error when a transaction has both
-	// a storage proof and other outputs
-	ErrStorageProofWithOutputs = errors.New("transaction has both a storage proof and other outputs")
-	// ErrTimelockNotSatisfied is an error when a timelock has not been met
-	ErrTimelockNotSatisfied = errors.New("timelock has not been met")
-	// ErrTransactionTooLarge is an error when a transaction is too large
-	// to fit in a block
-	ErrTransactionTooLarge = errors.New("transaction is too large to fit in a block")
-	// ErrZeroMinerFee is an error when a transaction has a zero value miner
-	// fee
-	ErrZeroMinerFee = errors.New("transaction has a zero value miner fee")
-	// ErrZeroOutput is an error when a transaction cannot have an output
-	// or payout that has zero value
-	ErrZeroOutput = errors.New("transaction cannot have an output or payout that has zero value")
-	// ErrZeroRevision is an error when a transaction has a file contract
-	// revision with RevisionNumber=0
-	ErrZeroRevision = errors.New("transaction has a file contract revision with RevisionNumber=0")
-)
-
 // correctFileContracts checks that the file contracts adhere to the file
 // contract rules.
-func (t Transaction) correctFileContracts(currentHeight BlockHeight) error {
+func (t TransactionV0) correctFileContracts(currentHeight BlockHeight) error {
 	// Check that FileContract rules are being followed.
 	for _, fc := range t.FileContracts {
 		// Check that start and expiration are reasonable values.
@@ -84,7 +45,7 @@ func (t Transaction) correctFileContracts(currentHeight BlockHeight) error {
 
 // correctFileContractRevisions checks that any file contract revisions adhere
 // to the revision rules.
-func (t Transaction) correctFileContractRevisions(currentHeight BlockHeight) error {
+func (t TransactionV0) correctFileContractRevisions(currentHeight BlockHeight) error {
 	for _, fcr := range t.FileContractRevisions {
 		// Check that start and expiration are reasonable values.
 		if fcr.NewWindowStart <= currentHeight {
@@ -120,7 +81,7 @@ func (t Transaction) correctFileContractRevisions(currentHeight BlockHeight) err
 
 // fitsInABlock checks if the transaction is likely to fit in a block.
 // Transactions must be smaller than 64 KiB.
-func (t Transaction) fitsInABlock(currentHeight BlockHeight) error {
+func (t TransactionV0) fitsInABlock(currentHeight BlockHeight) error {
 	// Check that the transaction will fit inside of a block, leaving 5kb for
 	// overhead.
 	size := uint64(t.MarshalSiaSize())
@@ -135,7 +96,7 @@ func (t Transaction) fitsInABlock(currentHeight BlockHeight) error {
 
 // followsMinimumValues checks that all outputs adhere to the rules for the
 // minimum allowed value (generally 1).
-func (t Transaction) followsMinimumValues() error {
+func (t TransactionV0) followsMinimumValues() error {
 	for _, sco := range t.SiacoinOutputs {
 		if sco.Value.IsZero() {
 			return ErrZeroOutput
@@ -156,7 +117,7 @@ func (t Transaction) followsMinimumValues() error {
 
 // FollowsStorageProofRules checks that a transaction follows the limitations
 // placed on transactions that have storage proofs.
-func (t Transaction) followsStorageProofRules() error {
+func (t TransactionV0) followsStorageProofRules() error {
 	// No storage proofs, no problems.
 	if len(t.StorageProofs) == 0 {
 		return nil
@@ -188,7 +149,7 @@ func (t Transaction) followsStorageProofRules() error {
 // act on the same file contract. There is very little overhead for doing so,
 // and the check is only frivolous because of the current rule that file
 // contract terminations are not valid after the proof window opens.
-func (t Transaction) noRepeats() error {
+func (t TransactionV0) noRepeats() error {
 	// Check that there are no repeat instances of siacoin outputs, storage
 	// proofs, or contract terminations.
 	siacoinInputs := make(map[SiacoinOutputID]struct{})
@@ -217,12 +178,12 @@ func (t Transaction) noRepeats() error {
 	return nil
 }
 
-// validUnlockConditions checks that the conditions of uc have been met. The
+// validUnlockConditionsV0 checks that the conditions of uc have been met. The
 // height is taken as input so that modules who might be at a different height
 // can do the verification without needing to use their own function.
 // Additionally, it means that the function does not need to be a method of the
 // consensus set.
-func validUnlockConditions(uc UnlockConditions, currentHeight BlockHeight) (err error) {
+func validUnlockConditionsV0(uc UnlockConditionsV0, currentHeight BlockHeight) (err error) {
 	if uc.Timelock > currentHeight {
 		return ErrTimelockNotSatisfied
 	}
@@ -231,15 +192,15 @@ func validUnlockConditions(uc UnlockConditions, currentHeight BlockHeight) (err 
 
 // validUnlockConditions checks that all of the unlock conditions in the
 // transaction are valid.
-func (t Transaction) validUnlockConditions(currentHeight BlockHeight) (err error) {
+func (t TransactionV0) validUnlockConditions(currentHeight BlockHeight) (err error) {
 	for _, sci := range t.SiacoinInputs {
-		err = validUnlockConditions(sci.UnlockConditions, currentHeight)
+		err = validUnlockConditionsV0(sci.UnlockConditions, currentHeight)
 		if err != nil {
 			return
 		}
 	}
 	for _, fcr := range t.FileContractRevisions {
-		err = validUnlockConditions(fcr.UnlockConditions, currentHeight)
+		err = validUnlockConditionsV0(fcr.UnlockConditions, currentHeight)
 		if err != nil {
 			return
 		}
@@ -251,7 +212,7 @@ func (t Transaction) validUnlockConditions(currentHeight BlockHeight) (err error
 // context, for example if the same output is spent twice in the same
 // transaction. StandaloneValid will not check that all outputs being spent are
 // legal outputs, as it has no confirmed or unconfirmed set to look at.
-func (t Transaction) StandaloneValid(currentHeight BlockHeight) (err error) {
+func (t TransactionV0) StandaloneValid(currentHeight BlockHeight) (err error) {
 	err = t.fitsInABlock(currentHeight)
 	if err != nil {
 		return
@@ -280,7 +241,7 @@ func (t Transaction) StandaloneValid(currentHeight BlockHeight) (err error) {
 	if err != nil {
 		return
 	}
-	err = t.validSignature(currentHeight)
+	err = t.validSignatures(currentHeight)
 	if err != nil {
 		return
 	}

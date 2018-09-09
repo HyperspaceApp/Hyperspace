@@ -38,7 +38,6 @@ func generateSpendableKey(seed modules.Seed, index uint64) spendableKey {
 	return spendableKey{
 		UnlockConditions: types.UnlockConditions{
 			PublicKeys:         []types.SiaPublicKey{types.Ed25519PublicKey(pk)},
-			SignaturesRequired: 1,
 		},
 		SecretKeys: []crypto.SecretKey{sk},
 	}

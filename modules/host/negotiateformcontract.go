@@ -194,6 +194,7 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 
 // managedVerifyNewContract checks that an incoming file contract matches the host's
 // expectations for a valid contract.
+// TODO joint signatures
 func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, renterPK crypto.PublicKey, eSettings modules.HostExternalSettings) error {
 	// Check that the transaction set is not empty.
 	if len(txnSet) < 1 {
@@ -279,7 +280,6 @@ func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, renterPK cry
 			types.Ed25519PublicKey(renterPK),
 			publicKey,
 		},
-		SignaturesRequired: 2,
 	}.UnlockHash()
 	if fc.UnlockHash != expectedUH {
 		return errBadUnlockHash

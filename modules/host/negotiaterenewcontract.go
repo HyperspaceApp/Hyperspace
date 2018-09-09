@@ -207,6 +207,7 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 
 // managedVerifyRenewedContract checks that the contract renewal matches the
 // previous contract and makes all of the appropriate payments.
+// TODO joint signatures
 func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types.Transaction, renterPK crypto.PublicKey) error {
 	// Check that the transaction set is not empty.
 	if len(txnSet) < 1 {
@@ -297,7 +298,6 @@ func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types
 			types.Ed25519PublicKey(renterPK),
 			publicKey,
 		},
-		SignaturesRequired: 2,
 	}.UnlockHash()
 	if fc.UnlockHash != expectedUH {
 		return errBadUnlockHash

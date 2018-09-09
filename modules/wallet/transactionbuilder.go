@@ -81,7 +81,7 @@ func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.Unlo
 
 		// If there are enough signatures to satisfy the unlock conditions,
 		// break out of the outer loop.
-		if totalSignatures == uc.SignaturesRequired {
+		if totalSignatures == uint64(len(txn.SiacoinInputs)) {
 			break
 		}
 	}

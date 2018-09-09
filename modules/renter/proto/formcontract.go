@@ -14,6 +14,7 @@ import (
 // FormContract forms a contract with a host and submits the contract
 // transaction to tpool. The contract is added to the ContractSet and its
 // metadata is returned.
+// TODO joint signature
 func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactionBuilder, tpool transactionPool, hdb hostDB, cancel <-chan struct{}) (rc modules.RenterContract, err error) {
 	// Extract vars from params, for convenience.
 	host, funding, startHeight, endHeight, refundAddress := params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
@@ -26,7 +27,6 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 			types.Ed25519PublicKey(ourPK),
 			host.PublicKey,
 		},
-		SignaturesRequired: 2,
 	}
 
 	// Calculate the anticipated transaction fee.
