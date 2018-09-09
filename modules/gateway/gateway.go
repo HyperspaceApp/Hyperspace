@@ -106,6 +106,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/fastrand"
 )
 
@@ -269,8 +270,12 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 	})
 
 	// Add the bootstrap peers to the node list.
+	peers := modules.BootstrapPeers
+	if types.IsTestnet {
+		peers = modules.TestnetBootstrapPeers
+	}
 	if bootstrap {
-		for _, addr := range modules.BootstrapPeers {
+		for _, addr := range peers {
 			err := g.addNode(addr)
 			if err != nil && err != errNodeExists {
 				g.log.Printf("WARN: failed to add the bootstrap node '%v': %v", addr, err)

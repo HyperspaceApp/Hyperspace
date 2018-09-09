@@ -64,6 +64,15 @@ var (
 		},
 		Testing: []NetAddress(nil),
 	}).([]NetAddress)
+
+	// TestnetBootstrapPeers is a list of bootstrap peers for the testnet.
+	TestnetBootstrapPeers = []NetAddress{
+		"69.164.192.240:5591",
+		"45.33.42.181:5591",
+		"139.162.118.62:5591",
+		"172.104.155.40:5591",
+		"172.104.188.185:5591",
+	}
 )
 
 type (
