@@ -47,6 +47,50 @@ type transactionBuilder struct {
 // addSignatures will sign a transaction using a spendable key, with support
 // for multisig spendable keys. Because of the restricted input, the function
 // is compatible with space cash inputs.
+func addSignaturesV0(txn *types.TransactionV0, cf types.CoveredFields, uc types.UnlockConditionsV0, parentID crypto.Hash, spendKey spendableKey) (newSigIndices []int) {
+	// Try to find the matching secret key for each public key - some public
+	// keys may not have a match. Some secret keys may be used multiple times,
+	// which is why public keys are used as the outer loop.
+	totalSignatures := uint64(0)
+	for i, siaPubKey := range uc.PublicKeys {
+		// Search for the matching secret key to the public key.
+		for j := range spendKey.SecretKeys {
+			pubKey := spendKey.SecretKeys[j].PublicKey()
+			if !bytes.Equal(siaPubKey.Key, pubKey[:]) {
+				continue
+			}
+
+			// Found the right secret key, add a signature.
+			sig := types.TransactionSignature{
+				ParentID:       parentID,
+				CoveredFields:  cf,
+				PublicKeyIndex: uint64(i),
+			}
+			newSigIndices = append(newSigIndices, len(txn.TransactionSignatures))
+			txn.TransactionSignatures = append(txn.TransactionSignatures, sig)
+			sigIndex := len(txn.TransactionSignatures) - 1
+			sigHash := txn.SigHash(sigIndex)
+			encodedSig := crypto.SignHash(sigHash, spendKey.SecretKeys[j])
+			txn.TransactionSignatures[sigIndex].Signature = encodedSig[:]
+
+			// Count that the signature has been added, and break out of the
+			// secret key loop.
+			totalSignatures++
+			break
+		}
+
+		// If there are enough signatures to satisfy the unlock conditions,
+		// break out of the outer loop.
+		if totalSignatures == uc.SignaturesRequired {
+			break
+		}
+	}
+	return newSigIndices
+}
+
+// addSignatures will sign a transaction using a spendable key, with support
+// for multisig spendable keys. Because of the restricted input, the function
+// is compatible with space cash inputs.
 func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.UnlockConditions, parentID crypto.Hash, spendKey spendableKey) (newSigIndices []int) {
 	// Try to find the matching secret key for each public key - some public
 	// keys may not have a match. Some secret keys may be used multiple times,
@@ -87,6 +131,7 @@ func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.Unlo
 	}
 	return newSigIndices
 }
+
 
 func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currency) types.Currency {
 	// Calculate the total amount we need to send
