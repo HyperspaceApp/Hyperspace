@@ -9,6 +9,7 @@ package consensus
 import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
@@ -37,6 +38,12 @@ var (
 	// keyed by their id. This includes blocks that are not currently in the
 	// consensus set, and blocks that may not have been fully validated yet.
 	BlockMap = []byte("BlockMap")
+
+	// BlockHeaderMap is a database bucket containing all of the processed
+	// block headers, keyed by their id. This includes block headers that are
+	// not currently in the consensus set, and blocks that may not have been
+	// fully validated yet.
+	BlockHeaderMap = []byte("BlockHeaderMap")
 
 	// BlockPath is a database bucket containing a mapping from the height of a
 	// block to the id of the block at that height. BlockPath only includes
@@ -74,6 +81,34 @@ var (
 	// difficulty adjustment fields have been correctly intialized.
 	ValueOakInit = []byte("true")
 )
+
+// createConsensusObjects initialzes the consensus portions of the database.
+func (cs *ConsensusSet) createHeaderConsensusDB(tx *bolt.Tx) error {
+	// Enumerate and create the database buckets.
+	buckets := [][]byte{
+		BlockHeaderMap,
+	}
+	for _, bucket := range buckets {
+		_, err := tx.CreateBucket(bucket)
+		if err != nil {
+			return err
+		}
+	}
+
+	filter, err := blockcf.BuildFilter(&cs.blockRoot.Block)
+	if err != nil {
+		return err
+	}
+
+	addBlockHeaderMap(tx, &processedBlockHeader{
+		BlockHeader: cs.blockRoot.Block.Header(),
+		Height:      types.BlockHeight(0),
+		Depth:       types.RootDepth,
+		ChildTarget: types.RootTarget,
+		GCSFilter:   filter,
+	})
+	return nil
+}
 
 // createConsensusObjects initialzes the consensus portions of the database.
 func (cs *ConsensusSet) createConsensusDB(tx *bolt.Tx) error {
@@ -183,6 +218,15 @@ func getBlockMap(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
 		panic(err)
 	}
 	return &pb, nil
+}
+
+// addBlockHeaderMap adds a processed block header to the block map.
+func addBlockHeaderMap(tx *bolt.Tx, pbh *processedBlockHeader) {
+	id := pbh.BlockHeader.ID()
+	err := tx.Bucket(BlockHeaderMap).Put(id[:], encoding.Marshal(*pbh))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
 }
 
 // addBlockMap adds a processed block to the block map.

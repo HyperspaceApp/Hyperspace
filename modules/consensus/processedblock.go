@@ -6,6 +6,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs"
+	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
@@ -36,6 +38,15 @@ type processedBlock struct {
 	DelayedSiacoinOutputDiffs []modules.DelayedSiacoinOutputDiff
 
 	ConsensusChecksum crypto.Hash
+}
+
+// processedBlockHeader is a copy of block header with
+type processedBlockHeader struct {
+	BlockHeader types.BlockHeader
+	Height      types.BlockHeight
+	Depth       types.Target
+	ChildTarget types.Target
+	GCSFilter   *gcs.Filter
 }
 
 // heavierThan returns true if the blockNode is sufficiently heavier than
@@ -143,6 +154,26 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 	err = blockMap.Put(childID[:], encoding.Marshal(*child))
 	if build.DEBUG && err != nil {
 		panic(err)
+	}
+
+	if cs.spv {
+		filter, err := blockcf.BuildFilter(&b)
+		if build.DEBUG && err != nil {
+			panic(err)
+		}
+		childHeader := &processedBlockHeader{
+			BlockHeader: b.Header(),
+			Height:      child.Height,
+			Depth:       child.Depth,
+			ChildTarget: child.ChildTarget,
+			GCSFilter:   filter,
+		}
+
+		blockHeaderMap := tx.Bucket(BlockHeaderMap)
+		err = blockHeaderMap.Put(childID[:], encoding.Marshal(*childHeader))
+		if build.DEBUG && err != nil {
+			panic(err)
+		}
 	}
 	return child
 }

@@ -86,6 +86,21 @@ func (cs *ConsensusSet) openDB(filename string) (err error) {
 // initDB is run if there is no existing consensus database, creating a
 // database with all the required buckets and sane initial values.
 func (cs *ConsensusSet) initDB(tx *bolt.Tx) error {
+	if cs.spv {
+		if tx.Bucket(BlockHeaderMap) == nil {
+			err := cs.createHeaderConsensusDB(tx)
+			if err != nil {
+				return err
+			}
+		}
+		if tx.Bucket(HeaderChangeLog) == nil {
+			err := cs.createHeaderChangeLog(tx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// If the database has already been initialized, there is nothing to do.
 	// Initialization can be detected by looking for the presence of the file
 	// contracts bucket. (legacy design chioce - ultimately probably not the
