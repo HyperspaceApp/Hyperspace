@@ -58,6 +58,9 @@ func BuildFilter(block *types.Block) (*gcs.Filter, error) {
 			data.AddUnlockhash(sci.UnlockConditions.UnlockHash())
 		}
 	}
+	for _, minerPayout := range block.MinerPayouts {
+		data.AddUnlockhash(minerPayout.UnlockHash)
+	}
 
 	// Create the key by truncating the block hash.
 	blockHash := block.ID()
