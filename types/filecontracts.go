@@ -109,3 +109,29 @@ func (fcid FileContractID) StorageProofOutputID(proofStatus ProofStatus, i uint6
 		i,
 	))
 }
+
+// OutputUnlockHashes returns a list of all the unlock hashes referenced
+// by this file contract.
+func (fc FileContract) OutputUnlockHashes() []UnlockHash {
+	var hashes []UnlockHash
+	for _, vpo := range fc.ValidProofOutputs {
+		hashes = append(hashes, vpo.UnlockHash)
+	}
+	for _, mpo := range fc.MissedProofOutputs {
+		hashes = append(hashes, mpo.UnlockHash)
+	}
+	return hashes
+}
+
+// OutputUnlockHashes returns a list of all the unlock hashes referenced
+// by this file contract revision
+func (fcr FileContractRevision) OutputUnlockHashes() []UnlockHash {
+	var hashes []UnlockHash
+	for _, vpo := range fcr.NewValidProofOutputs {
+		hashes = append(hashes, vpo.UnlockHash)
+	}
+	for _, mpo := range fcr.NewMissedProofOutputs {
+		hashes = append(hashes, mpo.UnlockHash)
+	}
+	return hashes
+}

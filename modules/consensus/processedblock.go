@@ -147,7 +147,13 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 	}
 
 	if cs.spv {
-		filter, err := blockcf.BuildFilter(&b)
+		var hashes []types.UnlockHash
+		fileContracts := getRelatedFileContracts(tx, &b)
+		for _, fc := range fileContracts {
+			contractHashes := fc.OutputUnlockHashes()
+			hashes = append(hashes, contractHashes...)
+		}
+		filter, err := blockcf.BuildFilter(&b, hashes)
 		if build.DEBUG && err != nil {
 			panic(err)
 		}
