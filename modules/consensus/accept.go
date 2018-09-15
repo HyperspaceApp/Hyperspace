@@ -22,9 +22,9 @@ var (
 )
 
 // managedBroadcastBlock will broadcast a block to the consensus set's peers.
-func (cs *ConsensusSet) managedBroadcastBlock(b types.Block) {
+func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 	// broadcast the block header to all peers
-	go cs.gateway.Broadcast("RelayHeader", b.Header(), cs.gateway.Peers())
+	go cs.gateway.Broadcast("RelayHeader", bh, cs.gateway.Peers())
 }
 
 // validateHeaderAndBlock does some early, low computation verification on the
@@ -215,7 +215,7 @@ func (cs *ConsensusSet) threadedSleepOnFutureBlock(b types.Block) {
 		if err != nil {
 			cs.log.Debugln("WARN: failed to accept a future block:", err)
 		}
-		cs.managedBroadcastBlock(b)
+		cs.managedBroadcastBlock(b.Header())
 	}
 }
 
@@ -341,7 +341,7 @@ func (cs *ConsensusSet) AcceptBlock(b types.Block) error {
 		return err
 	}
 	if chainExtended {
-		cs.managedBroadcastBlock(b)
+		cs.managedBroadcastBlock(b.Header())
 	}
 	return nil
 }
