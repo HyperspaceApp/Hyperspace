@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"math/big"
 	"errors"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -280,4 +281,26 @@ func (cc ConsensusChange) Append(cc2 ConsensusChange) ConsensusChange {
 		FileContractDiffs:         append(cc.FileContractDiffs, cc2.FileContractDiffs...),
 		DelayedSiacoinOutputDiffs: append(cc.DelayedSiacoinOutputDiffs, cc2.DelayedSiacoinOutputDiffs...),
 	}
+}
+
+// TODO move this back into the consensus package
+// SurpassThreshold is a percentage that dictates how much heavier a competing
+// chain has to be before the node will switch to mining on that chain. This is
+// not a consensus rule. This percentage is only applied to the most recent
+// block, not the entire chain; see blockNode.heavierThan.
+//
+// If no threshold were in place, it would be possible to manipulate a block's
+// timestamp to produce a sufficiently heavier block.
+var SurpassThreshold = big.NewRat(20, 100)
+
+func (pbh *ProcessedBlockHeader) HeavierThan(cmp *ProcessedBlockHeader) bool {
+	requirement := cmp.Depth.AddDifficulties(cmp.ChildTarget.MulDifficulty(SurpassThreshold))
+	return requirement.Cmp(pbh.Depth) > 0
+}
+
+// childDepth returns the depth of a headerNode's child nodes. The depth is the
+// "sum" of the current depth and current difficulty. See target.Add for more
+// detailed information.
+func (pbh *ProcessedBlockHeader) ChildDepth() types.Target {
+	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
 }

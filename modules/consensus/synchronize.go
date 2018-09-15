@@ -422,7 +422,8 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	cs.mu.RLock()
 	err = cs.db.View(func(tx *bolt.Tx) error {
 		// Do some relatively inexpensive checks to validate the header
-		return cs.validateHeader(boltTxWrapper{tx}, h)
+		_, err := cs.validateHeader(boltTxWrapper{tx}, h)
+		return err
 	})
 	cs.mu.RUnlock()
 	// WARN: orphan multithreading logic (dangerous areas, see below)
