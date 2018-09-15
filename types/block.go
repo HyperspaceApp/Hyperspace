@@ -12,7 +12,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
-	"github.com/HyperspaceApp/Hyperspace/gcs"
 )
 
 const (
@@ -51,7 +50,7 @@ type (
 		Height      BlockHeight
 		Depth       Target
 		ChildTarget Target
-		GCSFilter   gcs.Filter
+		GCSFilter   GCSFilter
 	}
 
 	// BlockHeight is the number of blocks that exist after the genesis block.

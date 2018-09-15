@@ -10,12 +10,9 @@ package gcs
 import (
 	"encoding/binary"
 	"errors"
-	"io"
 	"math"
 	"sort"
 	"sync"
-
-	"github.com/HyperspaceApp/Hyperspace/encoding"
 
 	"github.com/dchest/siphash"
 )
@@ -139,26 +136,6 @@ func NewFilter(P uint8, key [KeySize]byte, data [][]byte) (*Filter, error) {
 	return &f, nil
 }
 
-// MarshalSia marshal filter to bytes
-func (f Filter) MarshalSia(w io.Writer) error {
-	e := encoding.NewEncoder(w)
-	e.WritePrefixedBytes(f.NPBytes())
-	return nil
-}
-
-// UnmarshalSia unmarshal filter from bytes
-func (f *Filter) UnmarshalSia(r io.Reader) error {
-	d := encoding.NewDecoder(r)
-	newFilter, err := FromNPBytes(d.ReadPrefixedBytes())
-	if err != nil {
-		return err
-	}
-	f.n = newFilter.n
-	f.p = newFilter.p
-	f.modulusNP = newFilter.modulusNP
-	f.filterNData = newFilter.filterNData
-	return nil
-}
 
 // FromBytes deserializes a GCS filter from a known N, P, and serialized filter
 // as returned by Bytes().
@@ -255,7 +232,7 @@ func (f *Filter) P() uint8 {
 }
 
 // N returns the length of the data to build the filter
-func (f Filter) N() uint32 {
+func (f *Filter) N() uint32 {
 	return f.n
 }
 
@@ -374,12 +351,4 @@ func (f *Filter) readFullUint64(b *bitReader) (uint64, error) {
 
 	// Add the multiple and the remainder.
 	return v<<f.p + rem, nil
-}
-
-// MatchUnlockHash checks whether an unlockhash in a processed block
-func (f Filter) MatchUnlockHash(id []byte, data [][]byte) bool {
-	var key [KeySize]byte
-	copy(key[:], id)
-
-	return f.MatchAny(key, data)
 }

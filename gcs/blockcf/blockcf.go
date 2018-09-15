@@ -48,7 +48,7 @@ func Key(hash *types.BlockID) [gcs.KeySize]byte {
 // contain all the previous output unlockhash spent within a block, as well as
 // the data pushes within all the outputs unlockhash created within a block
 // which can be spent by regular transactions.
-func BuildFilter(block *types.Block) (*gcs.Filter, error) {
+func BuildFilter(block *types.Block) (*types.GCSFilter, error) {
 	var data Entries
 	for _, t := range block.Transactions {
 		for _, sco := range t.SiacoinOutputs {
@@ -66,5 +66,10 @@ func BuildFilter(block *types.Block) (*gcs.Filter, error) {
 	blockHash := block.ID()
 	key := Key(&blockHash)
 
-	return gcs.NewFilter(P, key, data)
+	newFilter, err := gcs.NewFilter(P, key, data)
+	if err != nil {
+		return nil, err
+	}
+	gcsFilter := types.NewGCSFilter(newFilter)
+	return &gcsFilter, nil
 }

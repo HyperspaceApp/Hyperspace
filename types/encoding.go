@@ -939,3 +939,20 @@ func (uh *UnlockHash) Scan(s fmt.ScanState, ch rune) error {
 	}
 	return uh.LoadString(string(tok))
 }
+
+// MarshalSia marshal filter to bytes
+func (f GCSFilter) MarshalSia(w io.Writer) error {
+	e := encoding.NewEncoder(w)
+	e.WritePrefixedBytes(f.filter.NPBytes())
+	return nil
+}
+
+// UnmarshalSia unmarshal filter from bytes
+func (f *GCSFilter) UnmarshalSia(r io.Reader) error {
+	d := encoding.NewDecoder(r)
+	err := f.LoadBytes(d.ReadPrefixedBytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
