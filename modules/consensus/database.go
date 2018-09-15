@@ -93,12 +93,12 @@ func (cs *ConsensusSet) initDB(tx *bolt.Tx) error {
 				return err
 			}
 		}
-		if tx.Bucket(HeaderChangeLog) == nil {
-			err := cs.createHeaderChangeLog(tx)
-			if err != nil {
-				return err
-			}
-		}
+		// if tx.Bucket(HeaderChangeLog) == nil {
+		// 	err := cs.createHeaderChangeLog(tx)
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// }
 	}
 
 	// If the database has already been initialized, there is nothing to do.
@@ -138,4 +138,18 @@ func markInconsistency(tx *bolt.Tx) {
 		panic(err)
 	}
 
+}
+
+// loadBlockHeader load processed block header from bolt db
+func (cs *ConsensusSet) loadProcessedBlockHeader(tx *bolt.Tx) error {
+	entry := cs.genesisEntry()
+	exists := true
+	for exists {
+		for _, blockID := range entry.AppliedBlocks {
+			processedBlock, _ := getBlockHeaderMap(tx, blockID)
+			cs.processedBlockHeaders[processedBlock.BlockHeader.ID()] = processedBlock
+		}
+		entry, exists = entry.NextEntry(tx)
+	}
+	return nil
 }

@@ -56,6 +56,12 @@ func (cs *ConsensusSet) loadDB() error {
 		if genesisID != cs.blockRoot.Block.ID() {
 			return errors.New("Blockchain has wrong genesis block, exiting.")
 		}
+		// load processed block headers
+		err = cs.loadProcessedBlockHeader(tx)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 }

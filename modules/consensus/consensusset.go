@@ -46,6 +46,9 @@ type ConsensusSet struct {
 	// The block root contains the genesis block.
 	blockRoot processedBlock
 
+	// headerSubscribers subscribe header change
+	headerSubscribers []modules.HeaderConsensusSetSubscriber
+
 	// Subscribers to the consensus set will receive a changelog every time
 	// there is an update to the consensus set. At initialization, they receive
 	// all changes that they are missing.
@@ -95,7 +98,8 @@ type ConsensusSet struct {
 	tg         siasync.ThreadGroup
 
 	// If using Simplified Payment Verification mode
-	spv bool
+	spv                   bool
+	processedBlockHeaders map[types.BlockID]*types.ProcessedBlockHeader
 }
 
 // New returns a new ConsensusSet, containing at least the genesis block. If
@@ -390,4 +394,16 @@ func (cs *ConsensusSet) StorageProofSegment(fcid types.FileContractID) (index ui
 // Db returns the database associated with the ConsensusSet
 func (cs *ConsensusSet) Db() *persist.BoltDatabase {
 	return cs.db
+}
+
+// SpvMode return true if in spv mode
+func (cs *ConsensusSet) SpvMode() bool {
+	return cs.spv
+}
+
+// ProcessedBlockHeaderByID return processed block header if exist
+func (cs *ConsensusSet) ProcessedBlockHeaderByID(id types.BlockID) (pbh *types.ProcessedBlockHeader, exists bool) {
+	// get processed block header by id from mem
+	pbh, exists = cs.processedBlockHeaders[id]
+	return
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
-	"github.com/HyperspaceApp/Hyperspace/gcs"
 	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -38,15 +37,6 @@ type processedBlock struct {
 	DelayedSiacoinOutputDiffs []modules.DelayedSiacoinOutputDiff
 
 	ConsensusChecksum crypto.Hash
-}
-
-// processedBlockHeader is a copy of block header with
-type processedBlockHeader struct {
-	BlockHeader types.BlockHeader
-	Height      types.BlockHeight
-	Depth       types.Target
-	ChildTarget types.Target
-	GCSFilter   *gcs.Filter
 }
 
 // heavierThan returns true if the blockNode is sufficiently heavier than
@@ -161,7 +151,7 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 		if build.DEBUG && err != nil {
 			panic(err)
 		}
-		childHeader := &processedBlockHeader{
+		childHeader := &types.ProcessedBlockHeader{
 			BlockHeader: b.Header(),
 			Height:      child.Height,
 			Depth:       child.Depth,
@@ -174,6 +164,7 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 		if build.DEBUG && err != nil {
 			panic(err)
 		}
+		cs.processedBlockHeaders[childID] = childHeader
 	}
 	return child
 }

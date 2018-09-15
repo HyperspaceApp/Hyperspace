@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/decred/dcrd/gcs"
 
 	"github.com/dchest/siphash"
 )
@@ -374,4 +375,12 @@ func MakeHeaderForFilter(filter *Filter, prevHeader *crypto.Hash) crypto.Hash {
 	// The final filter hash is the blake2b of the hash computed above.
 	hash := crypto.HashBytes(filterTip)
 	return hash
+}
+
+// MatchUnlockHash checks whether an unlockhash in a processed block
+func (f *Filter) MatchUnlockHash(id []byte, data [][]byte) bool {
+	var key [gcs.KeySize]byte
+	copy(key[:], id)
+
+	return f.MatchAny(key, data)
 }

@@ -57,6 +57,9 @@ type (
 	// ConsensusChangeID is the id of a consensus change.
 	ConsensusChangeID crypto.Hash
 
+	// HeaderConsensusChangeID is the id of a header consensus change.
+	// HeaderConsensusChangeID crypto.Hash
+
 	// A DiffDirection indicates the "direction" of a diff, either applied or
 	// reverted. A bool is used to restrict the value to these two possibilities.
 	DiffDirection bool
@@ -69,6 +72,24 @@ type (
 		// There may not be any reverted blocks, but there will always be
 		// applied blocks.
 		ProcessConsensusChange(ConsensusChange)
+	}
+
+	// HeaderConsensusSetSubscriber sends a consensus update to subscriber
+	HeaderConsensusSetSubscriber interface {
+		ProcessHeaderConsensusChange(HeaderConsensusChange)
+	}
+
+	// HeaderConsensusChange is the header consensus change
+	HeaderConsensusChange struct {
+		// ID is a unique id for the consensus change derived from the reverted
+		// and applied blocks.
+		ID ConsensusChangeID
+
+		// RevertedBlockHeaders
+		RevertedBlockHeaders []types.ProcessedBlockHeader
+
+		// AppliedBlockHeaders
+		AppliedBlockHeaders []types.ProcessedBlockHeader
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
@@ -184,6 +205,10 @@ type (
 		// A channel can be provided to abort the subscription process.
 		ConsensusSetSubscribe(ConsensusSetSubscriber, ConsensusChangeID, <-chan struct{}) error
 
+		// HeaderConsensusSetSubscribe adds a subscriber to the list of subscribers
+		// and gives them every consensus change
+		HeaderConsensusSetSubscribe(HeaderConsensusSetSubscriber, ConsensusChangeID, <-chan struct{}) error
+
 		// CurrentBlock returns the latest block in the heaviest known
 		// blockchain.
 		CurrentBlock() types.Block
@@ -223,7 +248,13 @@ type (
 		// not found in the subscriber database, no action is taken.
 		Unsubscribe(ConsensusSetSubscriber)
 
+		// HeaderUnsubscribe unsubscribe header change
+		HeaderUnsubscribe(HeaderConsensusSetSubscriber)
+
 		Db() *persist.BoltDatabase
+
+		// SpvMode return true if the consensus set is in spv mode
+		SpvMode() bool
 	}
 )
 

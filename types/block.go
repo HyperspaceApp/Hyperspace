@@ -12,6 +12,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs"
 )
 
 const (
@@ -42,6 +43,15 @@ type (
 		Nonce      BlockNonce  `json:"nonce"`
 		Timestamp  Timestamp   `json:"timestamp"`
 		MerkleRoot crypto.Hash `json:"merkleroot"`
+	}
+
+	// ProcessedBlockHeader is a header with more info
+	ProcessedBlockHeader struct {
+		BlockHeader BlockHeader
+		Height      BlockHeight
+		Depth       Target
+		ChildTarget Target
+		GCSFilter   *gcs.Filter
 	}
 
 	// BlockHeight is the number of blocks that exist after the genesis block.
