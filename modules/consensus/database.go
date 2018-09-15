@@ -146,7 +146,10 @@ func (cs *ConsensusSet) loadProcessedBlockHeader(tx *bolt.Tx) error {
 	exists := true
 	for exists {
 		for _, blockID := range entry.AppliedBlocks {
-			processedBlock, _ := getBlockHeaderMap(tx, blockID)
+			processedBlock, err := getBlockHeaderMap(tx, blockID)
+			if err != nil {
+				return err
+			}
 			cs.processedBlockHeaders[processedBlock.BlockHeader.ID()] = processedBlock
 		}
 		entry, exists = entry.NextEntry(tx)

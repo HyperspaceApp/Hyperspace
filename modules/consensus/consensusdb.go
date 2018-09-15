@@ -206,7 +206,11 @@ func currentProcessedBlock(tx *bolt.Tx) *processedBlock {
 // getBlockHeaderMap returns a processed block header with the input id.
 func getBlockHeaderMap(tx *bolt.Tx, id types.BlockID) (*types.ProcessedBlockHeader, error) {
 	// Look up the encoded block.
-	pbhBytes := tx.Bucket(BlockHeaderMap).Get(id[:])
+	bucket := tx.Bucket(BlockHeaderMap)
+	if bucket == nil {
+		return nil, errNilItem
+	}
+	pbhBytes := bucket.Get(id[:])
 	if pbhBytes == nil {
 		return nil, errNilItem
 	}
