@@ -1,12 +1,14 @@
 package host
 
 import (
+	"net"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/ed25519"
 )
 
 var (
@@ -134,84 +136,18 @@ var (
 	errUnknownModification = ErrorCommunication("renter is attempting an action that the host does not understand")
 )
 
-// createRevisionSignature creates a signature for a file contract revision
-// that signs on the file contract revision. The renter should have already
-// provided the signature. createRevisionSignature will check to make sure that
-// the renter's signature is valid.
-func createRevisionSignature(fcr types.FileContractRevision, renterSig types.TransactionSignature, secretKey crypto.SecretKey, blockHeight types.BlockHeight) (types.Transaction, error) {
-	hostSig := types.TransactionSignature{
-		ParentID:       crypto.Hash(fcr.ParentID),
-		PublicKeyIndex: 1,
-		CoveredFields: types.CoveredFields{
-			FileContractRevisions: []uint64{0},
-		},
-	}
-	txn := types.Transaction{
-		FileContractRevisions: []types.FileContractRevision{fcr},
-		TransactionSignatures: []types.TransactionSignature{renterSig, hostSig},
-	}
-	sigHash := txn.SigHash(1)
-	encodedSig := crypto.SignHash(sigHash, secretKey)
-	txn.TransactionSignatures[1].Signature = encodedSig[:]
-	err := modules.VerifyFileContractRevisionTransactionSignatures(fcr, txn.TransactionSignatures, blockHeight)
-	if err != nil {
-		return types.Transaction{}, err
-	}
-	return txn, nil
-}
-
 // managedFinalizeContract will take a file contract, add the host's
 // collateral, and then try submitting the file contract to the transaction
 // pool. If there is no error, the completed transaction set will be returned
 // to the caller.
 // TODO joint signatures
-func (h *Host) managedFinalizeContract(builder modules.TransactionBuilder, renterPK crypto.PublicKey, renterSignatures []types.TransactionSignature, renterRevisionSignature types.TransactionSignature, initialSectorRoots []crypto.Hash, hostCollateral, hostInitialRevenue, hostInitialRisk types.Currency, settings modules.HostExternalSettings) ([]types.TransactionSignature, types.TransactionSignature, types.FileContractID, error) {
-	for _, sig := range renterSignatures {
-		builder.AddTransactionSignature(sig)
-	}
-	fullTxnSet, err := builder.Sign(true)
-	if err != nil {
-		builder.Drop()
-		return nil, types.TransactionSignature{}, types.FileContractID{}, err
-	}
-
-	// Verify that the signature for the revision from the renter is correct.
-	h.mu.RLock()
-	blockHeight := h.blockHeight
-	hostSPK := h.publicKey
-	hostSK := h.secretKey
-	h.mu.RUnlock()
-	contractTxn := fullTxnSet[len(fullTxnSet)-1]
-	fc := contractTxn.FileContracts[0]
-	noOpRevision := types.FileContractRevision{
-		ParentID: contractTxn.FileContractID(0),
-		UnlockConditions: types.UnlockConditions{
-			PublicKeys: []types.SiaPublicKey{
-				types.Ed25519PublicKey(renterPK),
-				hostSPK,
-			},
-		},
-		NewRevisionNumber: fc.RevisionNumber + 1,
-
-		NewFileSize:           fc.FileSize,
-		NewFileMerkleRoot:     fc.FileMerkleRoot,
-		NewWindowStart:        fc.WindowStart,
-		NewWindowEnd:          fc.WindowEnd,
-		NewValidProofOutputs:  fc.ValidProofOutputs,
-		NewMissedProofOutputs: fc.MissedProofOutputs,
-		NewUnlockHash:         fc.UnlockHash,
-	}
-	// createRevisionSignature will also perform validation on the result,
-	// returning an error if the renter provided an incorrect signature.
-	revisionTransaction, err := createRevisionSignature(noOpRevision, renterRevisionSignature, hostSK, blockHeight)
-	if err != nil {
-		return nil, types.TransactionSignature{}, types.FileContractID{}, err
-	}
-
+func (h *Host) managedFinalizeContract(jointSecretKey crypto.SecretKey, fullTxnSet []types.Transaction, revisionTransaction types.Transaction, builder modules.TransactionBuilder, initialSectorRoots []crypto.Hash, hostCollateral, hostInitialRevenue, hostInitialRisk types.Currency, settings modules.HostExternalSettings) ([]types.TransactionSignature, types.FileContractID, error) {
 	// Create and add the storage obligation for this file contract.
 	fullTxn, _ := builder.View()
 	so := storageObligation{
 		SectorRoots: initialSectorRoots,
+
+		JointSecretKey:          jointSecretKey,
 
 		ContractCost:            settings.ContractPrice,
 		LockedCollateral:        hostCollateral,
@@ -226,8 +162,9 @@ func (h *Host) managedFinalizeContract(builder modules.TransactionBuilder, rente
 	lockErr := h.managedTryLockStorageObligation(so.id())
 	if lockErr != nil {
 		build.Critical("failed to get a lock on a brand new storage obligation")
-		return nil, types.TransactionSignature{}, types.FileContractID{}, lockErr
+		return nil, types.FileContractID{}, lockErr
 	}
+	var err error
 	defer func() {
 		if err != nil {
 			h.managedUnlockStorageObligation(so.id())
@@ -266,7 +203,7 @@ func (h *Host) managedFinalizeContract(builder modules.TransactionBuilder, rente
 		}
 	}()
 	if err != nil {
-		return nil, types.TransactionSignature{}, types.FileContractID{}, err
+		return nil, types.FileContractID{}, err
 	}
 
 	// Get the host's transaction signatures from the builder.
@@ -275,5 +212,47 @@ func (h *Host) managedFinalizeContract(builder modules.TransactionBuilder, rente
 	for _, sigIndex := range txnSigIndices {
 		hostTxnSignatures = append(hostTxnSignatures, fullTxn.TransactionSignatures[sigIndex])
 	}
-	return hostTxnSignatures, revisionTransaction.TransactionSignatures[1], so.id(), nil
+	return hostTxnSignatures, so.id(), nil
+}
+
+func (h *Host) managedNegotiateRevisionSignature(conn net.Conn, revisionTransaction types.Transaction, secretKey, jointSecretKey crypto.SecretKey, blockHeight types.BlockHeight) (types.Transaction, error) {
+	privateKey := make([]byte, ed25519.PrivateKeySize)
+	jointPrivateKey := make([]byte, ed25519.PrivateKeySize)
+	copy(privateKey[:], secretKey[:])
+	copy(jointPrivateKey[:], jointSecretKey[:])
+	msg := revisionTransaction.SigHash(0)
+	hostNoncePoint := ed25519.GenerateNoncePoint(privateKey, msg[:])
+
+	// Extend the deadline to meet the nonce point negotiation.
+	conn.SetDeadline(time.Now().Add(modules.NegotiateCurvePointTime))
+	// Grab the renter's nonce point of the contract transaction so that we can make a joint
+	// signature
+	var renterNoncePoint ed25519.CurvePoint
+	err := modules.ReadCurvePoint(conn, &renterNoncePoint)
+	if err != nil {
+		return revisionTransaction, extendErr("could not read renter nonce point: ", ErrorConnection(err.Error()))
+	}
+
+	// Send our contract tx nonce point to the renter
+	if err = modules.WriteCurvePoint(conn, hostNoncePoint); err != nil {
+		return revisionTransaction, extendErr("could not send our contract transaction nonce point: ", ErrorConnection(err.Error()))
+	}
+
+	renterRevisionSignature := make([]byte, ed25519.SignatureSize)
+	err = modules.ReadSignature(conn, renterRevisionSignature)
+	if err != nil {
+		return revisionTransaction, extendErr("could not read renter revision signatures: ", ErrorConnection(err.Error()))
+	}
+
+	noncePoints := []ed25519.CurvePoint{hostNoncePoint, renterNoncePoint}
+	hostRevisionSignature := ed25519.JointSign(privateKey, jointPrivateKey, noncePoints, msg[:])
+	aggregateSignature := ed25519.AddSignature(hostRevisionSignature, renterRevisionSignature)
+	revisionTransaction.TransactionSignatures[0].Signature = aggregateSignature
+
+	fcr := revisionTransaction.FileContractRevisions[0]
+	err = modules.VerifyFileContractRevisionTransactionSignatures(fcr, revisionTransaction.TransactionSignatures, blockHeight)
+	if err != nil {
+		return revisionTransaction, extendErr("could not verify revision signature: ", ErrorConnection(err.Error()))
+	}
+	return revisionTransaction, nil
 }

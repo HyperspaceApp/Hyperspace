@@ -120,6 +120,9 @@ type storageObligation struct {
 	// much computational or I/O expense.
 	SectorRoots []crypto.Hash
 
+	// JointSecretKey is the agreed upon joint secret key for this file contract.
+	JointSecretKey crypto.SecretKey
+
 	// Variables about the file contract that enforces the storage obligation.
 	// The origin an revision transaction are stored as a set, where the set
 	// contains potentially unconfirmed transactions.

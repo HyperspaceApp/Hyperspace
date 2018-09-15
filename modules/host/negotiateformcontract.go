@@ -74,12 +74,22 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	// The renter has been given enough information in the host settings to
 	// understand that the connection is going to be closed.
 	h.mu.Lock()
+	blockHeight := h.blockHeight
 	settings := h.externalSettings()
 	h.mu.Unlock()
 	if !settings.AcceptingContracts {
 		h.log.Debugln("Turning down contract because the host is not accepting contracts.")
 		return nil
 	}
+	// build our joint key
+	jointPrivateKey, err := h.managedBuildJointKey(conn)
+	if err != nil {
+		return extendErr("failed BuildJointKey: ", err)
+	}
+	var jointPK crypto.PublicKey
+	var jointSK crypto.SecretKey
+	copy(jointPK[:], jointPrivateKey[32:])
+	copy(jointSK[:], jointPrivateKey[:])
 
 	// Extend the deadline to meet the rest of file contract negotiation.
 	conn.SetDeadline(time.Now().Add(modules.NegotiateFileContractTime))
@@ -96,19 +106,14 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	// renter's public key in the unlock conditions that protect the file
 	// contract from revision.
 	var txnSet []types.Transaction
-	var renterPK crypto.PublicKey
 	err = encoding.ReadObject(conn, &txnSet, modules.NegotiateMaxFileContractSetLen)
 	if err != nil {
 		return extendErr("could not read renter transaction set: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.ReadObject(conn, &renterPK, modules.NegotiateMaxSiaPubkeySize)
-	if err != nil {
-		return extendErr("could not read renter public key: ", ErrorConnection(err.Error()))
-	}
 
 	// The host verifies that the file contract coming over the wire is
 	// acceptable.
-	err = h.managedVerifyNewContract(txnSet, renterPK, settings)
+	err = h.managedVerifyNewContract(txnSet, jointPK, settings)
 	if err != nil {
 		// The incoming file contract is not acceptable to the host, indicate
 		// why to the renter.
@@ -145,14 +150,9 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 		return extendErr("renter did not accept updated transactions: ", ErrorCommunication(err.Error()))
 	}
 	var renterTxnSignatures []types.TransactionSignature
-	var renterRevisionSignature types.TransactionSignature
 	err = encoding.ReadObject(conn, &renterTxnSignatures, modules.NegotiateMaxTransactionSignaturesSize)
 	if err != nil {
 		return extendErr("could not read renter transaction signatures: ", ErrorConnection(err.Error()))
-	}
-	err = encoding.ReadObject(conn, &renterRevisionSignature, modules.NegotiateMaxTransactionSignatureSize)
-	if err != nil {
-		return extendErr("could not read renter revision signatures: ", ErrorConnection(err.Error()))
 	}
 
 	// The host adds the renter transaction signatures, then signs the
@@ -167,7 +167,24 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	h.mu.RLock()
 	hostCollateral := contractCollateral(settings, txnSet[len(txnSet)-1].FileContracts[0])
 	h.mu.RUnlock()
-	hostTxnSignatures, hostRevisionSignature, newSOID, err := h.managedFinalizeContract(txnBuilder, renterPK, renterTxnSignatures, renterRevisionSignature, nil, hostCollateral, types.ZeroCurrency, types.ZeroCurrency, settings)
+
+	for _, sig := range renterTxnSignatures {
+		txnBuilder.AddTransactionSignature(sig)
+	}
+	fullTxnSet, err := txnBuilder.Sign(true)
+	if err != nil {
+		txnBuilder.Drop()
+		return extendErr("unable to sign full contract transaction set: ", ErrorConnection(err.Error()))
+	}
+	// Verify that the signature for the revision from the renter is correct.
+	contractTxn := fullTxnSet[len(fullTxnSet)-1]
+	fc := contractTxn.FileContracts[0]
+	fcid := contractTxn.FileContractID(0)
+	revisionTransaction := modules.BuildInitialRevisionTransaction(fc, fcid, jointPK)
+
+	revisionTransaction, err = h.managedNegotiateRevisionSignature(conn, revisionTransaction, h.secretKey, jointSK, blockHeight)
+
+	hostTxnSignatures, newSOID, err := h.managedFinalizeContract(jointSK, fullTxnSet, revisionTransaction, txnBuilder, nil, hostCollateral, types.ZeroCurrency, types.ZeroCurrency, settings)
 	if err != nil {
 		// The incoming file contract is not acceptable to the host, indicate
 		// why to the renter.
@@ -185,7 +202,7 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	if err != nil {
 		return extendErr("failed to write host transaction signatures: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.WriteObject(conn, hostRevisionSignature)
+	err = encoding.WriteObject(conn, revisionTransaction.TransactionSignatures[0])
 	if err != nil {
 		return extendErr("failed to write host revision signatures: ", ErrorConnection(err.Error()))
 	}
@@ -195,7 +212,7 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 // managedVerifyNewContract checks that an incoming file contract matches the host's
 // expectations for a valid contract.
 // TODO joint signatures
-func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, renterPK crypto.PublicKey, eSettings modules.HostExternalSettings) error {
+func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, jointPK crypto.PublicKey, eSettings modules.HostExternalSettings) error {
 	// Check that the transaction set is not empty.
 	if len(txnSet) < 1 {
 		return extendErr("zero-length transaction set: ", errEmptyObject)
@@ -208,7 +225,6 @@ func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, renterPK cry
 	h.mu.RLock()
 	blockHeight := h.blockHeight
 	lockedStorageCollateral := h.financialMetrics.LockedStorageCollateral
-	publicKey := h.publicKey
 	iSettings := h.settings
 	unlockHash := h.unlockHash
 	h.mu.RUnlock()
@@ -277,8 +293,7 @@ func (h *Host) managedVerifyNewContract(txnSet []types.Transaction, renterPK cry
 	// the host knows how to spend.
 	expectedUH := types.UnlockConditions{
 		PublicKeys: []types.SiaPublicKey{
-			types.Ed25519PublicKey(renterPK),
-			publicKey,
+			types.Ed25519PublicKey(jointPK),
 		},
 	}.UnlockHash()
 	if fc.UnlockHash != expectedUH {

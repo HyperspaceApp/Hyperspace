@@ -149,14 +149,9 @@ func (h *Host) managedRevisionIteration(conn net.Conn, so *storageObligation, fi
 		return extendErr("could not accept revision modifications: ", ErrorConnection(err.Error()))
 	}
 
-	// Renter will send a transaction signature for the file contract revision.
-	var renterSig types.TransactionSignature
-	err = encoding.ReadObject(conn, &renterSig, modules.NegotiateMaxTransactionSignatureSize)
-	if err != nil {
-		return extendErr("could not read renter transaction signature: ", ErrorConnection(err.Error()))
-	}
 	// Verify that the signature is valid and get the host's signature.
-	txn, err := createRevisionSignature(revision, renterSig, secretKey, blockHeight)
+	revisionTransaction := modules.BuildRevisionTransaction(revision)
+	txn, err := h.managedNegotiateRevisionSignature(conn, revisionTransaction, secretKey, so.JointSecretKey, blockHeight)
 	if err != nil {
 		modules.WriteNegotiationRejection(conn, err) // Error is ignored so that the error type can be preserved in extendErr.
 		return extendErr("could not create revision signature: ", err)
@@ -186,7 +181,7 @@ func (h *Host) managedRevisionIteration(conn net.Conn, so *storageObligation, fi
 	if err != nil {
 		return extendErr("iteration signal failed to send: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.WriteObject(conn, txn.TransactionSignatures[1])
+	err = encoding.WriteObject(conn, txn.TransactionSignatures[0])
 	if err != nil {
 		return extendErr("failed to write revision signatures: ", ErrorConnection(err.Error()))
 	}

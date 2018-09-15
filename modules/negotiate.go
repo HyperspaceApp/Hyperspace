@@ -24,6 +24,13 @@ const (
 )
 
 const (
+	// NegotiateCurvePointTime defines the minimum amount of time that the
+	// connection deadline is expected to be set to when a curve point is being
+	// sent to a peer.
+	NegotiateCurvePointTime = 120 * time.Second
+
+	// NegotiateRecentRevisionTime establishes the minimum amount of time that
+	// the connection deadline is expected to be set to when a recent file
 	// NegotiateDownloadTime defines the amount of time that the renter and
 	// host have to negotiate a download request batch. The time is set high
 	// enough that two nodes behind Tor have a reasonable chance of completing
@@ -82,6 +89,11 @@ const (
 	// transaction signature slice is allowed to be when being sent over the
 	// wire during negotiation.
 	NegotiateMaxTransactionSignaturesSize = 5e3
+
+	// NegotiatePublicKeyTime defines the minimum amount of time that the
+	// connection deadline is expected to be set to when a public key is being
+	// sent to a peer.
+	NegotiatePublicKeyTime = 120 * time.Second
 
 	// NegotiateRecentRevisionTime establishes the minimum amount of time that
 	// the connection deadline is expected to be set to when a recent file
@@ -392,7 +404,7 @@ func DecodeAnnouncement(fullAnnouncement []byte) (na NetAddress, spk types.SiaPu
 // VerifyFileContractRevisionTransactionSignatures checks that the signatures
 // on a file contract revision are valid and cover the right fields.
 func VerifyFileContractRevisionTransactionSignatures(fcr types.FileContractRevision, tsigs []types.TransactionSignature, height types.BlockHeight) error {
-	if len(tsigs) != 2 {
+	if len(tsigs) != 1 {
 		return ErrRevisionSigCount
 	}
 	for _, tsig := range tsigs {
@@ -412,4 +424,41 @@ func VerifyFileContractRevisionTransactionSignatures(fcr types.FileContractRevis
 	// to elements that haven't been added to the transaction, verification
 	// will fail.
 	return txn.StandaloneValid(height)
+}
+
+func BuildRevisionTransaction(fcr types.FileContractRevision) types.Transaction {
+	sig := types.TransactionSignature{
+		ParentID:       crypto.Hash(fcr.ParentID),
+		PublicKeyIndex: 0,
+		CoveredFields: types.CoveredFields{
+			FileContractRevisions: []uint64{0},
+		},
+	}
+	txn := types.Transaction{
+		FileContractRevisions: []types.FileContractRevision{fcr},
+		TransactionSignatures: []types.TransactionSignature{sig},
+	}
+	return txn
+}
+
+func BuildInitialRevisionTransaction(fc types.FileContract, fcid types.FileContractID, jointPK crypto.PublicKey) types.Transaction {
+	fcr := types.FileContractRevision{
+		ParentID: fcid,
+		UnlockConditions: types.UnlockConditions{
+			PublicKeys: []types.SiaPublicKey{
+				types.Ed25519PublicKey(jointPK),
+			},
+		},
+		NewRevisionNumber: fc.RevisionNumber + 1,
+
+		NewFileSize:           fc.FileSize,
+		NewFileMerkleRoot:     fc.FileMerkleRoot,
+		NewWindowStart:        fc.WindowStart,
+		NewWindowEnd:          fc.WindowEnd,
+		NewValidProofOutputs:  fc.ValidProofOutputs,
+		NewMissedProofOutputs: fc.MissedProofOutputs,
+		NewUnlockHash:         fc.UnlockHash,
+	}
+	txn := BuildRevisionTransaction(fcr)
+	return txn
 }

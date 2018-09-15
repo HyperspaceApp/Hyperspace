@@ -8,6 +8,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
+	"github.com/HyperspaceApp/ed25519"
 	"github.com/HyperspaceApp/errors"
 )
 
@@ -19,13 +20,32 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	// Extract vars from params, for convenience.
 	host, funding, startHeight, endHeight, refundAddress := params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
 
-	// Create our key.
+	// Create our keys.
 	ourSK, ourPK := crypto.GenerateKeyPair()
+	var renterPK, hostPK ed25519.PublicKey
+	var privateKey ed25519.PrivateKey
+	copy(hostPK[:], host.PublicKey.Key[:])
+	copy(renterPK[:], ourPK[:])
+	copy(privateKey[:], ourSK[:])
+	publicKeys := []ed25519.PublicKey{hostPK, renterPK}
+	jointPrivateKey, err := ed25519.GenerateJointPrivateKey(publicKeys, privateKey, 1)
+	var jointPK crypto.PublicKey
+	copy(jointPK[:], jointPrivateKey[32:])
+	var ourJointSK crypto.SecretKey
+	copy(ourJointSK[:], jointPrivateKey[:])
+
 	// Create unlock conditions.
+	/*
 	uc := types.UnlockConditions{
 		PublicKeys: []types.SiaPublicKey{
 			types.Ed25519PublicKey(ourPK),
 			host.PublicKey,
+		},
+	}
+	*/
+	uc := types.UnlockConditions{
+		PublicKeys: []types.SiaPublicKey{
+			types.Ed25519PublicKey(jointPK),
 		},
 	}
 
@@ -131,6 +151,13 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 		return modules.RenterContract{}, errors.New("host is not accepting contracts")
 	}
 
+	// Send public key so the host can form their joint key
+	extendDeadline(conn, modules.NegotiatePublicKeyTime)
+	err = modules.WritePublicKey(conn, renterPK)
+	if err != nil {
+		return modules.RenterContract{}, err
+	}
+
 	// Allot time for negotiation.
 	extendDeadline(conn, modules.NegotiateFileContractTime)
 
@@ -140,9 +167,6 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 	if err = encoding.WriteObject(conn, txnSet); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send the contract signed by us: " + err.Error())
-	}
-	if err = encoding.WriteObject(conn, ourSK.PublicKey()); err != nil {
-		return modules.RenterContract{}, errors.New("couldn't send our public key: " + err.Error())
 	}
 
 	// Read acceptance and txn signed by host.
@@ -180,32 +204,23 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 
 	// create initial (no-op) revision, transaction, and signature
-	initRevision := types.FileContractRevision{
-		ParentID:          signedTxnSet[len(signedTxnSet)-1].FileContractID(0),
-		UnlockConditions:  uc,
-		NewRevisionNumber: 1,
+	fcid := signedTxnSet[len(signedTxnSet)-1].FileContractID(0)
+	revisionTxn := modules.BuildInitialRevisionTransaction(fc, fcid, jointPK)
+	msg := revisionTxn.SigHash(0)
+	renterNoncePoint := ed25519.GenerateNoncePoint(privateKey, msg[:])
 
-		NewFileSize:           fc.FileSize,
-		NewFileMerkleRoot:     fc.FileMerkleRoot,
-		NewWindowStart:        fc.WindowStart,
-		NewWindowEnd:          fc.WindowEnd,
-		NewValidProofOutputs:  fc.ValidProofOutputs,
-		NewMissedProofOutputs: fc.MissedProofOutputs,
-		NewUnlockHash:         fc.UnlockHash,
+	// Allot time for negotiation.
+	extendDeadline(conn, modules.NegotiateCurvePointTime)
+	// Send our contract revision tx nonce point to the host
+	if err = modules.WriteCurvePoint(conn, renterNoncePoint); err != nil {
+		return modules.RenterContract{}, errors.New("couldn't send our contract transaction nonce point: " + err.Error())
 	}
-	renterRevisionSig := types.TransactionSignature{
-		ParentID:       crypto.Hash(initRevision.ParentID),
-		PublicKeyIndex: 0,
-		CoveredFields: types.CoveredFields{
-			FileContractRevisions: []uint64{0},
-		},
+	var hostNoncePoint ed25519.CurvePoint
+	if err = modules.ReadCurvePoint(conn, &hostNoncePoint); err != nil {
+		return modules.RenterContract{}, errors.New("couldn't read the host's contract transaction nonce point: " + err.Error())
 	}
-	revisionTxn := types.Transaction{
-		FileContractRevisions: []types.FileContractRevision{initRevision},
-		TransactionSignatures: []types.TransactionSignature{renterRevisionSig},
-	}
-	encodedSig := crypto.SignHash(revisionTxn.SigHash(0), ourSK)
-	revisionTxn.TransactionSignatures[0].Signature = encodedSig[:]
+	noncePoints := []ed25519.CurvePoint{hostNoncePoint, renterNoncePoint}
+	renterRevisionSignature := ed25519.JointSign(privateKey, jointPrivateKey, noncePoints, msg[:])
 
 	// Send acceptance and signatures.
 	if err = modules.WriteNegotiationAcceptance(conn); err != nil {
@@ -214,7 +229,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	if err = encoding.WriteObject(conn, addedSignatures); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send added signatures: " + err.Error())
 	}
-	if err = encoding.WriteObject(conn, revisionTxn.TransactionSignatures[0]); err != nil {
+	if err = modules.WriteSignature(conn, renterRevisionSignature); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send revision signature: " + err.Error())
 	}
 
@@ -252,12 +267,13 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 
 	// Construct contract header.
 	header := contractHeader{
-		Transaction: revisionTxn,
-		SecretKey:   ourSK,
-		StartHeight: startHeight,
-		TotalCost:   funding,
-		ContractFee: host.ContractPrice,
-		TxnFee:      txnFee,
+		Transaction:    revisionTxn,
+		SecretKey:      ourSK,
+		JointSecretKey: ourJointSK,
+		StartHeight:    startHeight,
+		TotalCost:      funding,
+		ContractFee:    host.ContractPrice,
+		TxnFee:         txnFee,
 		Utility: modules.ContractUtility{
 			GoodForUpload: true,
 			GoodForRenew:  true,

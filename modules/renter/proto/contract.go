@@ -50,6 +50,7 @@ type contractHeader struct {
 	// secretKey is the key used by the renter to sign the file contract
 	// transaction.
 	SecretKey crypto.SecretKey
+	JointSecretKey crypto.SecretKey
 
 	// Same as modules.RenterContract.
 	StartHeight      types.BlockHeight

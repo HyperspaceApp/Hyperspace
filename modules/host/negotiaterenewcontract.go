@@ -108,22 +108,26 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 	// renter's public key in the unlock conditions that protect the file
 	// contract from revision.
 	var txnSet []types.Transaction
-	var renterPK crypto.PublicKey
 	err = encoding.ReadObject(conn, &txnSet, modules.NegotiateMaxFileContractSetLen)
 	if err != nil {
 		return extendErr("unable to read transaction set: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.ReadObject(conn, &renterPK, modules.NegotiateMaxSiaPubkeySize)
+	// build our joint key
+	jointPrivateKey, err := h.managedBuildJointKey(conn)
 	if err != nil {
-		return extendErr("unable to read renter public key: ", ErrorConnection(err.Error()))
+		return extendErr("failed BuildJointKey: ", err)
 	}
+	var jointPK crypto.PublicKey
+	var jointSK crypto.SecretKey
+	copy(jointPK[:], jointPrivateKey[32:])
+	copy(jointSK[:], jointPrivateKey[:])
 
 	h.mu.Lock()
 	settings := h.externalSettings()
 	h.mu.Unlock()
 
 	// Verify that the transaction coming over the wire is a proper renewal.
-	err = h.managedVerifyRenewedContract(so, txnSet, renterPK)
+	err = h.managedVerifyRenewedContract(so, txnSet, jointPK)
 	if err != nil {
 		modules.WriteNegotiationRejection(conn, err) // Error is ignored to preserve type for extendErr
 		return extendErr("verification of renewal failed: ", err)
@@ -177,12 +181,19 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 	//
 	// During finalization the signatures sent by the renter are all checked.
 	h.mu.RLock()
-	fc := txnSet[len(txnSet)-1].FileContracts[0]
+	blockHeight := h.blockHeight
+	contractTxn := txnSet[len(txnSet)-1]
+	fc := contractTxn.FileContracts[0]
 	renewCollateral := renewContractCollateral(so, settings, fc)
 	renewRevenue := renewBasePrice(so, settings, fc)
 	renewRisk := renewBaseCollateral(so, settings, fc)
 	h.mu.RUnlock()
-	hostTxnSignatures, hostRevisionSignature, newSOID, err := h.managedFinalizeContract(txnBuilder, renterPK, renterTxnSignatures, renterRevisionSignature, so.SectorRoots, renewCollateral, renewRevenue, renewRisk, settings)
+
+	fcid := contractTxn.FileContractID(0)
+	revisionTransaction := modules.BuildInitialRevisionTransaction(fc, fcid, jointPK)
+	revisionTransaction, err = h.managedNegotiateRevisionSignature(conn, revisionTransaction, h.secretKey, jointSK, blockHeight)
+
+	hostTxnSignatures, newSOID, err := h.managedFinalizeContract(jointSK, txnSet, revisionTransaction, txnBuilder, so.SectorRoots, renewCollateral, renewRevenue, renewRisk, settings)
 	if err != nil {
 		modules.WriteNegotiationRejection(conn, err) // Error is ignored to preserve type for extendErr
 		return extendErr("failed to finalize contract: ", err)
@@ -198,7 +209,7 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 	if err != nil {
 		return extendErr("failed to write transaction signatures: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.WriteObject(conn, hostRevisionSignature)
+	err = encoding.WriteObject(conn, revisionTransaction.TransactionSignatures[0])
 	if err != nil {
 		return extendErr("failed to write revision signature: ", ErrorConnection(err.Error()))
 	}
@@ -207,8 +218,7 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 
 // managedVerifyRenewedContract checks that the contract renewal matches the
 // previous contract and makes all of the appropriate payments.
-// TODO joint signatures
-func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types.Transaction, renterPK crypto.PublicKey) error {
+func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types.Transaction, jointPK crypto.PublicKey) error {
 	// Check that the transaction set is not empty.
 	if len(txnSet) < 1 {
 		return extendErr("zero-length transaction set: ", errEmptyObject)
@@ -223,7 +233,6 @@ func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types
 	externalSettings := h.externalSettings()
 	internalSettings := h.settings
 	lockedStorageCollateral := h.financialMetrics.LockedStorageCollateral
-	publicKey := h.publicKey
 	unlockHash := h.unlockHash
 	h.mu.Unlock()
 	fc := txnSet[len(txnSet)-1].FileContracts[0]
@@ -295,8 +304,7 @@ func (h *Host) managedVerifyRenewedContract(so storageObligation, txnSet []types
 	// the host knows how to spend.
 	expectedUH := types.UnlockConditions{
 		PublicKeys: []types.SiaPublicKey{
-			types.Ed25519PublicKey(renterPK),
-			publicKey,
+			types.Ed25519PublicKey(jointPK),
 		},
 	}.UnlockHash()
 	if fc.UnlockHash != expectedUH {

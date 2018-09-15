@@ -8,6 +8,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
+	"github.com/HyperspaceApp/ed25519"
 	"github.com/HyperspaceApp/errors"
 )
 
@@ -21,6 +22,17 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	// Extract vars from params, for convenience.
 	host, funding, startHeight, endHeight, refundAddress := params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
 	ourSK := contract.SecretKey
+	ourPK := ourSK.PublicKey()
+        var renterPK, hostPK ed25519.PublicKey
+        copy(hostPK[:], host.PublicKey.Key[:])
+        copy(renterPK[:], ourPK[:])
+        publicKeys := []ed25519.PublicKey{hostPK, renterPK}
+        jointPublicKey, _, err := ed25519.GenerateJointKey(publicKeys)
+	if err != nil {
+		return modules.RenterContract{}, errors.New("unable to build joint public key during contract renewal")
+	}
+	var jointPK crypto.PublicKey
+	copy(jointPK[:], jointPublicKey[:])
 	lastRev := contract.LastRevision()
 
 	// Calculate additional basePrice and baseCollateral. If the contract height
@@ -158,7 +170,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	if err = encoding.WriteObject(conn, txnSet); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send the contract signed by us: " + err.Error())
 	}
-	if err = encoding.WriteObject(conn, ourSK.PublicKey()); err != nil {
+	if err = encoding.WriteObject(conn, ourPK); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send our public key: " + err.Error())
 	}
 
@@ -196,33 +208,13 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 		addedSignatures = append(addedSignatures, signedTxnSet[len(signedTxnSet)-1].TransactionSignatures[i])
 	}
 
+	fcid := signedTxnSet[len(signedTxnSet)-1].FileContractID(0)
 	// create initial (no-op) revision, transaction, and signature
-	initRevision := types.FileContractRevision{
-		ParentID:          signedTxnSet[len(signedTxnSet)-1].FileContractID(0),
-		UnlockConditions:  lastRev.UnlockConditions,
-		NewRevisionNumber: 1,
-
-		NewFileSize:           fc.FileSize,
-		NewFileMerkleRoot:     fc.FileMerkleRoot,
-		NewWindowStart:        fc.WindowStart,
-		NewWindowEnd:          fc.WindowEnd,
-		NewValidProofOutputs:  fc.ValidProofOutputs,
-		NewMissedProofOutputs: fc.MissedProofOutputs,
-		NewUnlockHash:         fc.UnlockHash,
+	revisionTxn := modules.BuildInitialRevisionTransaction(fc, fcid, jointPK)
+	revisionTxn, err = negotiateRevision(conn, revisionTxn.FileContractRevisions[0], ourSK, contract.JointSecretKey)
+	if err != nil {
+		return modules.RenterContract{}, errors.New("couldn't negotiate transaction revision: " + err.Error())
 	}
-	renterRevisionSig := types.TransactionSignature{
-		ParentID:       crypto.Hash(initRevision.ParentID),
-		PublicKeyIndex: 0,
-		CoveredFields: types.CoveredFields{
-			FileContractRevisions: []uint64{0},
-		},
-	}
-	revisionTxn := types.Transaction{
-		FileContractRevisions: []types.FileContractRevision{initRevision},
-		TransactionSignatures: []types.TransactionSignature{renterRevisionSig},
-	}
-	encodedSig := crypto.SignHash(revisionTxn.SigHash(0), ourSK)
-	revisionTxn.TransactionSignatures[0].Signature = encodedSig[:]
 
 	// Send acceptance and signatures
 	if err = modules.WriteNegotiationAcceptance(conn); err != nil {
@@ -230,9 +222,6 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	}
 	if err = encoding.WriteObject(conn, addedSignatures); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't send added signatures: " + err.Error())
-	}
-	if err = encoding.WriteObject(conn, revisionTxn.TransactionSignatures[0]); err != nil {
-		return modules.RenterContract{}, errors.New("couldn't send revision signature: " + err.Error())
 	}
 
 	// Read the host acceptance and signatures.

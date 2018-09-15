@@ -44,7 +44,7 @@ type transactionBuilder struct {
 	wallet *Wallet
 }
 
-// addSignatures will sign a transaction using a spendable key, with support
+// addSignaturesV0 will sign a transaction using a spendable key, with support
 // for multisig spendable keys. Because of the restricted input, the function
 // is compatible with space cash inputs.
 func addSignaturesV0(txn *types.TransactionV0, cf types.CoveredFields, uc types.UnlockConditionsV0, parentID crypto.Hash, spendKey spendableKey) (newSigIndices []int) {

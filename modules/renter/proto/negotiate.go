@@ -10,6 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/ed25519"
 )
 
 // extendDeadline is a helper function for extending the connection timeout.
@@ -115,7 +116,7 @@ func verifyRecentRevision(conn net.Conn, contract contractHeader, hostVersion st
 
 // negotiateRevision sends a revision and actions to the host for approval,
 // completing one iteration of the revision loop.
-func negotiateRevision(conn net.Conn, rev types.FileContractRevision, secretKey crypto.SecretKey) (types.Transaction, error) {
+func negotiateRevision(conn net.Conn, rev types.FileContractRevision, secretKey crypto.SecretKey, jointSecretKey crypto.SecretKey) (types.Transaction, error) {
 	// create transaction containing the revision
 	signedTxn := types.Transaction{
 		FileContractRevisions: []types.FileContractRevision{rev},
@@ -126,20 +127,41 @@ func negotiateRevision(conn net.Conn, rev types.FileContractRevision, secretKey 
 		}},
 	}
 	// sign the transaction
-	encodedSig := crypto.SignHash(signedTxn.SigHash(0), secretKey)
-	signedTxn.TransactionSignatures[0].Signature = encodedSig[:]
+	// encodedSig := crypto.SignHash(signedTxn.SigHash(0), secretKey)
+	// signedTxn.TransactionSignatures[0].Signature = encodedSig[:]
 
 	// send the revision
 	if err := encoding.WriteObject(conn, rev); err != nil {
 		return types.Transaction{}, errors.New("couldn't send revision: " + err.Error())
 	}
+	// send the nonce
+	msg := signedTxn.SigHash(0)
+	var hostNoncePoint ed25519.CurvePoint
+	var privateKey, jointPrivateKey ed25519.PrivateKey
+	copy(privateKey[:], secretKey[:])
+	copy(jointPrivateKey[:], jointSecretKey[:])
+	renterNoncePoint := ed25519.GenerateNoncePoint(privateKey, msg[:])
+	if err := modules.WriteCurvePoint(conn, renterNoncePoint); err != nil {
+		return types.Transaction{}, errors.New("couldn't send revision: " + err.Error())
+	}
+	var err error
+	err = modules.ReadCurvePoint(conn, &hostNoncePoint)
+	if err != nil {
+		return types.Transaction{}, errors.New("could not read host nonce point: " + err.Error())
+	}
+	noncePoints := []ed25519.CurvePoint{hostNoncePoint, renterNoncePoint}
+	renterRevisionSignature := ed25519.JointSign(privateKey, jointPrivateKey, noncePoints, msg[:])
+	if err = modules.WriteSignature(conn, renterRevisionSignature); err != nil {
+		return types.Transaction{}, errors.New("couldn't send revision signature: " + err.Error())
+	}
+
 	// read acceptance
 	if err := modules.ReadNegotiationAcceptance(conn); err != nil {
 		return types.Transaction{}, errors.New("host did not accept revision: " + err.Error())
 	}
 
 	// send the new transaction signature
-	if err := encoding.WriteObject(conn, signedTxn.TransactionSignatures[0]); err != nil {
+	if err := modules.WriteSignature(conn, renterRevisionSignature); err != nil {
 		return types.Transaction{}, errors.New("couldn't send transaction signature: " + err.Error())
 	}
 	// read the host's acceptance and transaction signature

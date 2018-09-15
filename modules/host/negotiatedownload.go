@@ -9,6 +9,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/ed25519"
 )
 
 var (
@@ -45,7 +46,6 @@ func (h *Host) managedDownloadIteration(conn net.Conn, so *storageObligation) er
 	// Grab a set of variables that will be useful later in the function.
 	h.mu.Lock()
 	blockHeight := h.blockHeight
-	secretKey := h.secretKey
 	settings := h.externalSettings()
 	h.mu.Unlock()
 
@@ -60,6 +60,30 @@ func (h *Host) managedDownloadIteration(conn net.Conn, so *storageObligation) er
 	err = encoding.ReadObject(conn, &paymentRevision, modules.NegotiateMaxFileContractRevisionSize)
 	if err != nil {
 		return extendErr("failed to read payment revision:", ErrorConnection(err.Error()))
+	}
+
+	revisionTransaction := modules.BuildRevisionTransaction(paymentRevision)
+	// Extend the deadline to meet the nonce point negotiation.
+	conn.SetDeadline(time.Now().Add(modules.NegotiateCurvePointTime))
+	// Grab the renter's nonce point of the contract transaction so that we can make a joint
+	// signature
+	var renterNoncePoint ed25519.CurvePoint
+	err = modules.ReadCurvePoint(conn, &renterNoncePoint)
+	if err != nil {
+		return extendErr("could not read renter nonce point: ", ErrorConnection(err.Error()))
+	}
+	msg := revisionTransaction.SigHash(0)
+	var privateKey ed25519.PrivateKey
+	copy(privateKey[:], h.secretKey[:])
+	hostNoncePoint := ed25519.GenerateNoncePoint(privateKey, msg[:])
+	err = modules.WriteCurvePoint(conn, hostNoncePoint)
+	if err != nil {
+		return extendErr("could not write host nonce point: ", ErrorConnection(err.Error()))
+	}
+	renterRevisionSignature := make([]byte, ed25519.SignatureSize)
+	err = modules.ReadSignature(conn, renterRevisionSignature)
+	if err != nil {
+		return extendErr("could not read renter revision signatures: ", ErrorConnection(err.Error()))
 	}
 
 	// Verify that the request is acceptable, and then fetch all of the data
@@ -108,21 +132,23 @@ func (h *Host) managedDownloadIteration(conn net.Conn, so *storageObligation) er
 		return extendErr("failed to write acceptance for renter revision: ", ErrorConnection(err.Error()))
 	}
 
-	// Renter will send a transaction signature for the file contract revision.
-	var renterSignature types.TransactionSignature
-	err = encoding.ReadObject(conn, &renterSignature, modules.NegotiateMaxTransactionSignatureSize)
+	// Create an aggregate signature
+	var jointPrivateKey ed25519.PrivateKey
+	noncePoints := []ed25519.CurvePoint{hostNoncePoint, renterNoncePoint}
+	copy(jointPrivateKey[:], so.JointSecretKey[:])
+	hostRevisionSignature := ed25519.JointSign(privateKey, jointPrivateKey, noncePoints, msg[:])
+	aggregateSignature := ed25519.AddSignature(hostRevisionSignature, renterRevisionSignature)
+        revisionTransaction.TransactionSignatures[0].Signature = aggregateSignature
+
+	err = modules.VerifyFileContractRevisionTransactionSignatures(paymentRevision, revisionTransaction.TransactionSignatures, blockHeight)
 	if err != nil {
-		return extendErr("failed to read renter signature: ", ErrorConnection(err.Error()))
+		return extendErr("failed to verify contract revision signature: ", ErrorInternal(err.Error()))
 	}
-	txn, err := createRevisionSignature(paymentRevision, renterSignature, secretKey, blockHeight)
 
 	// Update the storage obligation.
 	paymentTransfer := existingRevision.NewValidProofOutputs[0].Value.Sub(paymentRevision.NewValidProofOutputs[0].Value)
 	so.PotentialDownloadRevenue = so.PotentialDownloadRevenue.Add(paymentTransfer)
-	so.RevisionTransactionSet = []types.Transaction{{
-		FileContractRevisions: []types.FileContractRevision{paymentRevision},
-		TransactionSignatures: []types.TransactionSignature{renterSignature, txn.TransactionSignatures[1]},
-	}}
+	so.RevisionTransactionSet = []types.Transaction{revisionTransaction}
 	h.mu.Lock()
 	err = h.modifyStorageObligation(*so, nil, nil, nil)
 	h.mu.Unlock()
@@ -137,7 +163,7 @@ func (h *Host) managedDownloadIteration(conn net.Conn, so *storageObligation) er
 	if err != nil {
 		return extendErr("failed to write acceptance following obligation modification: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.WriteObject(conn, txn.TransactionSignatures[1])
+	err = encoding.WriteObject(conn, revisionTransaction.TransactionSignatures[0])
 	if err != nil {
 		return extendErr("failed to write signature: ", ErrorConnection(err.Error()))
 	}
