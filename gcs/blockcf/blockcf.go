@@ -31,8 +31,8 @@ const P = 20
 // provides methods for appending data structures found in blocks.
 type Entries [][]byte
 
-// AddUnlockhash adds a unlock hash to the entries
-func (e *Entries) AddUnlockhash(unlockhash types.UnlockHash) {
+// AddUnlockHash adds a unlock hash to the entries
+func (e *Entries) AddUnlockHash(unlockhash types.UnlockHash) {
 	*e = append(*e, unlockhash[:])
 }
 
@@ -48,18 +48,36 @@ func Key(hash *types.BlockID) [gcs.KeySize]byte {
 // contain all the previous output unlockhash spent within a block, as well as
 // the data pushes within all the outputs unlockhash created within a block
 // which can be spent by regular transactions.
-func BuildFilter(block *types.Block) (*types.GCSFilter, error) {
+//
+// unlockHashes is a list of unlock hashes to be added to this filter, in addition
+// to those directly visible form this block. These are expected to be hashes
+// from file contracts that are associated with storage proofs in this block.
+// TODO please see the note by FileContractUnlockHashMap
+func BuildFilter(block *types.Block, unlockHashes []types.UnlockHash) (*types.GCSFilter, error) {
 	var data Entries
 	for _, t := range block.Transactions {
 		for _, sco := range t.SiacoinOutputs {
-			data.AddUnlockhash(sco.UnlockHash)
+			data.AddUnlockHash(sco.UnlockHash)
 		}
 		for _, sci := range t.SiacoinInputs {
-			data.AddUnlockhash(sci.UnlockConditions.UnlockHash())
+			data.AddUnlockHash(sci.UnlockConditions.UnlockHash())
+		}
+		for _, fc := range t.FileContracts {
+			for _, hash := range fc.OutputUnlockHashes() {
+				data.AddUnlockHash(hash)
+			}
+		}
+		for _, fcr := range t.FileContractRevisions {
+			for _, hash := range fcr.OutputUnlockHashes() {
+				data.AddUnlockHash(hash)
+			}
 		}
 	}
 	for _, minerPayout := range block.MinerPayouts {
-		data.AddUnlockhash(minerPayout.UnlockHash)
+		data.AddUnlockHash(minerPayout.UnlockHash)
+	}
+	for _, unlockHash := range unlockHashes {
+		data.AddUnlockHash(unlockHash)
 	}
 
 	// Create the key by truncating the block hash.

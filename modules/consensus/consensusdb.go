@@ -61,6 +61,18 @@ var (
 	// inconsistencies within the database have been detected.
 	Consistency = []byte("Consistency")
 
+	// FileContractUnlockHashMap is a database bucket that contains a mapping
+	// from all contract ids to a map of blockheights with relevant unlock
+	// hashes as values. This is used by full nodes when building filters for
+	// SPV clients. When a storage proof or file contract revision is posted,
+	// the host needs to specify the filter to include all previously related
+	// UnlockHashes (which can change between revisions, but probably in
+	// practice don't).
+	//
+	// TODO: this is currently unimplemented and so light nodes would break
+	// under this weird case.
+	FileContractUnlockHashMap = []byte("FileContractUnlockHashMap")
+
 	// FileContracts is a database bucket that contains all of the open file
 	// contracts.
 	FileContracts = []byte("FileContracts")
@@ -95,7 +107,8 @@ func (cs *ConsensusSet) createHeaderConsensusDB(tx *bolt.Tx) error {
 		}
 	}
 
-	filter, err := blockcf.BuildFilter(&cs.blockRoot.Block)
+	var unlockHashes []types.UnlockHash
+	filter, err := blockcf.BuildFilter(&cs.blockRoot.Block, unlockHashes)
 	if err != nil {
 		return err
 	}
@@ -529,4 +542,20 @@ func deleteDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
+}
+
+// getRelatedFileContracts finds contracts related to the storage proofs in a block
+// TODO: this is currently used in lieu of a fuller-featured FileContractUnlockHashMap
+func getRelatedFileContracts(tx *bolt.Tx, block *types.Block) []types.FileContract {
+	var fileContracts []types.FileContract
+	for _, txn := range block.Transactions {
+		for _, proof := range txn.StorageProofs {
+			fc, err := getFileContract(tx, proof.ParentID)
+			if build.DEBUG && err != nil {
+				panic(err)
+			}
+			fileContracts = append(fileContracts, fc)
+		}
+	}
+	return fileContracts
 }
