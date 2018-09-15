@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"log"
 	"path/filepath"
 	"testing"
 	"time"
@@ -644,14 +645,14 @@ func TestDistantWallets(t *testing.T) {
 }
 
 // createWalletTester takes a testing.T and creates a WalletTester.
-func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTester, error) {
+func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*walletTester, error) {
 	// Create the modules
 	testdir := build.TempDir(modules.WalletDir, name)
 	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), true)
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), spv)
 	if err != nil {
 		return nil, err
 	}
@@ -663,6 +664,7 @@ func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTeste
 	if err != nil {
 		return nil, err
 	}
+	w.defragDisabled = true
 	var masterKey crypto.TwofishKey
 	fastrand.Read(masterKey[:])
 	_, err = w.Encrypt(masterKey)
@@ -692,9 +694,15 @@ func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTeste
 	}
 
 	// Mine blocks until there is money in the wallet.
+	b, _ := wt.miner.FindBlock()
+	log.Printf("new first block id: %s\n", b.ID().String())
+	err = wt.cs.AcceptBlock(b)
+	if err != nil {
+		return nil, err
+	}
+
 	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
-		b, _ := wt.miner.FindBlock()
-		err := wt.cs.AcceptBlock(b)
+		_, err := wt.miner.AddBlockWithAddress(types.UnlockHash{})
 		if err != nil {
 			return nil, err
 		}

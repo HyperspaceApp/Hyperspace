@@ -68,6 +68,8 @@ type TestMiner interface {
 	// primarily used for testing.
 	SolveBlock(types.Block, types.Target) (types.Block, bool)
 
+	AddBlockWithAddress(types.UnlockHash) (types.Block, error)
+
 	// Needs to have all other miner functions in addition to shortcuts for
 	// mining blocks.
 	Miner

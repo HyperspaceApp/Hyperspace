@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -120,6 +121,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		siacoinOutputDiffs := pbh.SiacoinOutputDiffs
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
+			// log.Printf("found in block apply %s, \n", blockID.String())
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID)
 			if err != nil {
@@ -130,6 +132,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		for _, diff := range siacoinOutputDiffs {
 			if diff.Direction == modules.DiffApply {
 				if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
+					// log.Printf("siacoinOutput apply  %s, \n", diff.SiacoinOutput.UnlockHash.String())
 					s.siacoinOutputs[diff.ID] = scannedOutput{
 						id:        types.OutputID(diff.ID),
 						value:     diff.SiacoinOutput.Value,
@@ -137,6 +140,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 					}
 				}
 			} else if diff.Direction == modules.DiffRevert {
+				// log.Printf("siacoinOutput revert %s, \n", diff.SiacoinOutput.UnlockHash.String())
 				// NOTE: DiffRevert means the output was either spent or was in a
 				// block that was reverted.
 				if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
@@ -149,6 +153,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		siacoinOutputDiffs := pbh.SiacoinOutputDiffs
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
+			log.Printf("found in %s, \n", blockID.String())
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID)
 			if err != nil {
 				panic(err)

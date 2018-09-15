@@ -1,7 +1,9 @@
 package wallet
 
 import (
+	"log"
 	"testing"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -143,24 +145,75 @@ func TestScanLoop(t *testing.T) {
 	}
 }
 
-// func TestSPVScan(t *testing.T) {
-// 	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer wt.closeWt()
+func TestSPVScan(t *testing.T) {
+	runWithFlag(t, false)
+	runWithFlag(t, true)
+}
 
-// 	for i := 0; i <= 10000; i++ {
-// 		// insert some tx
-// 		if i%100 == 0 {
-// 			wt.wallet.SendSiacoins(types.NewCurrency(1), types.UnlockHash{})
-// 		}
+func runWithFlag(t *testing.T, spv bool) {
+	log.Printf("run with spv: %v", spv)
+	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies, spv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wt.closeWt()
 
-// 		b, _ := wt.miner.FindBlock()
-// 		err := wt.cs.AcceptBlock(b)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 	}
+	startTime := time.Now()
+	for i := 0; i <= 100; i++ {
+		// insert some tx
+		if i%50 == 0 {
+			uc, err := wt.wallet.nextPrimarySeedAddress(wt.wallet.dbTx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
+			if err != nil {
+				t.Fatal(err)
+			}
+			log.Printf("send 1 to %s, tx id: %s\n", uc.UnlockHash().String(), txns[0].ID().String())
+		}
+		if i%100 == 0 {
+			txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), types.UnlockHash{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
+		}
+		_, err := wt.miner.AddBlockWithAddress(types.UnlockHash{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// log.Printf("new block %d id: %s\n", i, newBlock.ID().String())
+	}
+	balance, err := wt.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Printf("balance: %s", balance.String())
 
-// }
+	log.Printf("time spent 0: %f", time.Now().Sub(startTime).Seconds())
+	startTime = time.Now()
+
+	for j := 0; j <= 0; j++ {
+		// create seed scanner and scan the block
+		seed, _, _ := wt.wallet.PrimarySeed()
+		ss := newSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
+		err = ss.scan(wt.cs, wt.wallet.tg.StopChan())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		dustThreshold, err := wt.wallet.DustThreshold()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var scanBalance types.Currency
+		for _, scannedOutput := range ss.siacoinOutputs {
+			if scannedOutput.value.Cmp(dustThreshold) > 0 {
+				scanBalance = scanBalance.Add(scannedOutput.value)
+			}
+		}
+		log.Printf("scan balance: %s", scanBalance.String())
+	}
+	log.Printf("time spent 1: %f", time.Now().Sub(startTime).Seconds())
+}
