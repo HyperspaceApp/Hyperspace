@@ -76,7 +76,8 @@ func (cs *ConsensusSet) revertToBlock(tx *bolt.Tx, pb *processedBlock) (reverted
 
 // applyUntilBlock will successively apply the blocks between the consensus
 // set's current path and 'pb'.
-func (cs *ConsensusSet) applyUntilBlock(tx *bolt.Tx, pb *processedBlock) (appliedBlocks []*processedBlock, err error) {
+func (cs *ConsensusSet) applyUntilBlock(tx *bolt.Tx, pb *processedBlock,
+	newBlockHeader *modules.ProcessedBlockHeader) (appliedBlocks []*processedBlock, err error) {
 	// Backtrack to the common parent of 'bn' and current path and then apply the new blocks.
 	newPath := backtrackToCurrentPath(tx, pb)
 	for _, block := range newPath[1:] {
@@ -85,7 +86,7 @@ func (cs *ConsensusSet) applyUntilBlock(tx *bolt.Tx, pb *processedBlock) (applie
 		if block.DiffsGenerated {
 			commitDiffSet(tx, block, modules.DiffApply)
 		} else {
-			err := generateAndApplyDiff(tx, block)
+			err := generateAndApplyDiff(tx, block, newBlockHeader)
 			if err != nil {
 				// Mark the block as invalid.
 				cs.dosBlocks[block.Block.ID()] = struct{}{}
@@ -109,10 +110,11 @@ func (cs *ConsensusSet) applyUntilBlock(tx *bolt.Tx, pb *processedBlock) (applie
 // error will be returned if any of the blocks applied in the transition are
 // found to be invalid. forkBlockchain is atomic; the ConsensusSet is only
 // updated if the function returns nil.
-func (cs *ConsensusSet) forkBlockchain(tx *bolt.Tx, newBlock *processedBlock) (revertedBlocks, appliedBlocks []*processedBlock, err error) {
+func (cs *ConsensusSet) forkBlockchain(tx *bolt.Tx, newBlock *processedBlock,
+	newBlockHeader *modules.ProcessedBlockHeader) (revertedBlocks, appliedBlocks []*processedBlock, err error) {
 	commonParent := backtrackToCurrentPath(tx, newBlock)[0]
 	revertedBlocks = cs.revertToBlock(tx, commonParent)
-	appliedBlocks, err = cs.applyUntilBlock(tx, newBlock)
+	appliedBlocks, err = cs.applyUntilBlock(tx, newBlock, newBlockHeader)
 	if err != nil {
 		return nil, nil, err
 	}

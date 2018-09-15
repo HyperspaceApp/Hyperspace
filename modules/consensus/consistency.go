@@ -253,14 +253,14 @@ func (cs *ConsensusSet) checkRevertApply(tx *bolt.Tx) {
 	if current.Height != parent.Height+1 {
 		manageErr(tx, errors.New("parent structure of a block is incorrect"))
 	}
-	_, _, err = cs.forkBlockchain(tx, parent)
+	_, _, err = cs.forkBlockchain(tx, parent, nil)
 	if err != nil {
 		manageErr(tx, err)
 	}
 	if consensusChecksum(tx) != parent.ConsensusChecksum {
 		manageErr(tx, errors.New("consensus checksum mismatch after reverting"))
 	}
-	_, _, err = cs.forkBlockchain(tx, current)
+	_, _, err = cs.forkBlockchain(tx, current, nil)
 	if err != nil {
 		manageErr(tx, err)
 	}
