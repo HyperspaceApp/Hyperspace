@@ -142,3 +142,25 @@ func TestScanLoop(t *testing.T) {
 		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.largestIndexSeen)
 	}
 }
+
+// func TestSPVScan(t *testing.T) {
+// 	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer wt.closeWt()
+
+// 	for i := 0; i <= 10000; i++ {
+// 		// insert some tx
+// 		if i%100 == 0 {
+// 			wt.wallet.SendSiacoins(types.NewCurrency(1), types.UnlockHash{})
+// 		}
+
+// 		b, _ := wt.miner.FindBlock()
+// 		err := wt.cs.AcceptBlock(b)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// }

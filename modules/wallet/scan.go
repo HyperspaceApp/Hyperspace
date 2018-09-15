@@ -114,41 +114,61 @@ func (s *seedScanner) ProcessConsensusChange(cc modules.ConsensusChange) {
 }
 
 // ProcessHeaderConsensusChange match consensus change headers with generated seeds
-func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
+func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange,
+	getSiacoinOutputDiff func(types.BlockID) ([]modules.SiacoinOutputDiff, error)) {
 	for _, pbh := range hcc.AppliedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
-		// check with gcs
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// read the block, process the output
-			block, _, exist := s.cs.BlockByID(blockID)
-			if exist {
-				for _, t := range block.Transactions {
-					// apply output
-					for i, sco := range t.SiacoinOutputs {
-						scoid := t.SiacoinOutputID(uint64(i))
-						if index, exists := s.keys[sco.UnlockHash]; exists && sco.Value.Cmp(s.dustThreshold) > 0 {
-							s.siacoinOutputs[scoid] = scannedOutput{
-								id:        types.OutputID(scoid),
-								value:     sco.Value,
-								seedIndex: index,
-							}
+			siacoinOutputDiffs, err := getSiacoinOutputDiff(blockID)
+			if err != nil {
+				panic(err)
+			}
+			for _, diff := range siacoinOutputDiffs {
+				if diff.Direction == modules.DiffApply {
+					if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
+						s.siacoinOutputs[diff.ID] = scannedOutput{
+							id:        types.OutputID(diff.ID),
+							value:     diff.SiacoinOutput.Value,
+							seedIndex: index,
 						}
 					}
-					// revert output
-					for _, sci := range t.SiacoinInputs {
-						// NOTE: DiffRevert means the output was either spent or was in a
-						// block that was reverted.
-						if _, exists := s.keys[sci.UnlockConditions.UnlockHash()]; exists {
-							delete(s.siacoinOutputs, sci.ParentID)
-						}
+				} else if diff.Direction == modules.DiffRevert {
+					// NOTE: DiffRevert means the output was either spent or was in a
+					// block that was reverted.
+					if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+						delete(s.siacoinOutputs, diff.ID)
 					}
 				}
 			}
 		}
-
-		// fetch full block from
 	}
-
+	for _, pbh := range hcc.RevertedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
+			siacoinOutputDiffs, err := getSiacoinOutputDiff(blockID)
+			if err != nil {
+				panic(err)
+			}
+			for _, diff := range siacoinOutputDiffs {
+				if diff.Direction == modules.DiffApply {
+					if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
+						s.siacoinOutputs[diff.ID] = scannedOutput{
+							id:        types.OutputID(diff.ID),
+							value:     diff.SiacoinOutput.Value,
+							seedIndex: index,
+						}
+					}
+				} else if diff.Direction == modules.DiffRevert {
+					// NOTE: DiffRevert means the output was either spent or was in a
+					// block that was reverted.
+					if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+						delete(s.siacoinOutputs, diff.ID)
+					}
+				}
+			}
+		}
+	}
 }
 
 // scan subscribes s to cs and scans the blockchain for addresses that belong

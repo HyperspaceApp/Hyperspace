@@ -642,3 +642,62 @@ func TestDistantWallets(t *testing.T) {
 		t.Fatal("wallet should not recognize coins sent to very high seed index")
 	}
 }
+
+// createWalletTester takes a testing.T and creates a WalletTester.
+func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTester, error) {
+	// Create the modules
+	testdir := build.TempDir(modules.WalletDir, name)
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	if err != nil {
+		return nil, err
+	}
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), true)
+	if err != nil {
+		return nil, err
+	}
+	tp, err := transactionpool.New(cs, g, filepath.Join(testdir, modules.TransactionPoolDir))
+	if err != nil {
+		return nil, err
+	}
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), deps)
+	if err != nil {
+		return nil, err
+	}
+	var masterKey crypto.TwofishKey
+	fastrand.Read(masterKey[:])
+	_, err = w.Encrypt(masterKey)
+	if err != nil {
+		return nil, err
+	}
+	err = w.Unlock(masterKey)
+	if err != nil {
+		return nil, err
+	}
+	m, err := miner.New(cs, tp, w, filepath.Join(testdir, modules.WalletDir))
+	if err != nil {
+		return nil, err
+	}
+
+	// Assemble all components into a wallet tester.
+	wt := &walletTester{
+		cs:      cs,
+		gateway: g,
+		tpool:   tp,
+		miner:   m,
+		wallet:  w,
+
+		walletMasterKey: masterKey,
+
+		persistDir: testdir,
+	}
+
+	// Mine blocks until there is money in the wallet.
+	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
+		b, _ := wt.miner.FindBlock()
+		err := wt.cs.AcceptBlock(b)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return wt, nil
+}

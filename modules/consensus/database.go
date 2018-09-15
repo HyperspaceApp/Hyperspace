@@ -93,12 +93,6 @@ func (cs *ConsensusSet) initDB(tx *bolt.Tx) error {
 				return err
 			}
 		}
-		// if tx.Bucket(HeaderChangeLog) == nil {
-		// 	err := cs.createHeaderChangeLog(tx)
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// }
 	}
 
 	// If the database has already been initialized, there is nothing to do.

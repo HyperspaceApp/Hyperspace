@@ -44,15 +44,6 @@ type (
 		MerkleRoot crypto.Hash `json:"merkleroot"`
 	}
 
-	// ProcessedBlockHeader is a header with more info
-	ProcessedBlockHeader struct {
-		BlockHeader BlockHeader
-		Height      BlockHeight
-		Depth       Target
-		ChildTarget Target
-		GCSFilter   GCSFilter
-	}
-
 	// BlockHeight is the number of blocks that exist after the genesis block.
 	BlockHeight uint64
 	// A BlockID is the hash of a BlockHeader. A BlockID uniquely

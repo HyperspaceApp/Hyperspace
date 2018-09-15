@@ -151,7 +151,7 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 		if build.DEBUG && err != nil {
 			panic(err)
 		}
-		childHeader := &types.ProcessedBlockHeader{
+		childHeader := &modules.ProcessedBlockHeader{
 			BlockHeader: b.Header(),
 			Height:      child.Height,
 			Depth:       child.Depth,

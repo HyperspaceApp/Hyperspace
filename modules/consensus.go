@@ -76,7 +76,7 @@ type (
 
 	// HeaderConsensusSetSubscriber sends a consensus update to subscriber
 	HeaderConsensusSetSubscriber interface {
-		ProcessHeaderConsensusChange(HeaderConsensusChange)
+		ProcessHeaderConsensusChange(HeaderConsensusChange, func(types.BlockID) ([]SiacoinOutputDiff, error))
 	}
 
 	// HeaderConsensusChange is the header consensus change
@@ -86,10 +86,10 @@ type (
 		ID ConsensusChangeID
 
 		// RevertedBlockHeaders
-		RevertedBlockHeaders []types.ProcessedBlockHeader
+		RevertedBlockHeaders []ProcessedBlockHeader
 
 		// AppliedBlockHeaders
-		AppliedBlockHeaders []types.ProcessedBlockHeader
+		AppliedBlockHeaders []ProcessedBlockHeader
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
@@ -168,6 +168,16 @@ type (
 		ID             types.SiacoinOutputID `json:"id"`
 		SiacoinOutput  types.SiacoinOutput   `json:"sco"`
 		MaturityHeight types.BlockHeight     `json:"mh"`
+	}
+
+	// ProcessedBlockHeader is a header with more info
+	ProcessedBlockHeader struct {
+		BlockHeader        types.BlockHeader
+		Height             types.BlockHeight
+		Depth              types.Target
+		ChildTarget        types.Target
+		GCSFilter          types.GCSFilter
+		SiacoinOutputDiffs SiacoinOutputDiff
 	}
 
 	// A ConsensusSet accepts blocks and builds an understanding of network

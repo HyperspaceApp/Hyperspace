@@ -99,7 +99,7 @@ type ConsensusSet struct {
 
 	// If using Simplified Payment Verification mode
 	spv                   bool
-	processedBlockHeaders map[types.BlockID]*types.ProcessedBlockHeader
+	processedBlockHeaders map[types.BlockID]*modules.ProcessedBlockHeader
 }
 
 // New returns a new ConsensusSet, containing at least the genesis block. If
@@ -139,7 +139,7 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		staticDeps: deps,
 		persistDir: persistDir,
 		spv:        spv,
-		processedBlockHeaders: make(map[types.BlockID]*types.ProcessedBlockHeader),
+		processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 	}
 
 	// Create the diffs for the genesis siacoin outputs.
@@ -400,11 +400,4 @@ func (cs *ConsensusSet) Db() *persist.BoltDatabase {
 // SpvMode return true if in spv mode
 func (cs *ConsensusSet) SpvMode() bool {
 	return cs.spv
-}
-
-// ProcessedBlockHeaderByID return processed block header if exist
-func (cs *ConsensusSet) ProcessedBlockHeaderByID(id types.BlockID) (pbh *types.ProcessedBlockHeader, exists bool) {
-	// get processed block header by id from mem
-	pbh, exists = cs.processedBlockHeaders[id]
-	return
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/coreos/bbolt"
@@ -440,7 +441,18 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				if err != nil {
 					return err
 				}
-				subscriber.ProcessHeaderConsensusChange(hcc)
+				subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID) (scods []modules.SiacoinOutputDiff,
+					err error) {
+					err = cs.db.View(func(tx *bolt.Tx) error {
+						pb, err := getBlockMap(tx, id)
+						if err != nil {
+							return err
+						}
+						scods = pb.SiacoinOutputDiffs
+						return nil
+					})
+					return
+				})
 				entry, exists = entry.NextEntry(tx)
 			}
 			return nil

@@ -186,12 +186,6 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	if err != nil {
 		return changeEntry{}, err
 	}
-	// if cs.spv {
-	// 	err = appendHeaderChangeLog(tx, ce)
-	// 	if err != nil {
-	// 		return changeEntry{}, err
-	// 	}
-	// }
 
 	return ce, nil
 }

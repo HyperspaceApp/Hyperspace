@@ -97,46 +97,6 @@ func appendChangeLog(tx *bolt.Tx, ce changeEntry) error {
 	return nil
 }
 
-// appendHeaderChangeLog adds a new change entry to the change log.
-// func appendHeaderChangeLog(tx *bolt.Tx, ce changeEntry) error {
-// 	// Insert the header change entry.
-// 	cl := tx.Bucket(HeaderChangeLog)
-// 	ceid := ce.ID()
-// 	cn := changeNode{Entry: ce, Next: modules.ConsensusChangeID{}}
-// 	err := cl.Put(ceid[:], encoding.Marshal(cn))
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Update the tail node to point to the new change entry as the next entry.
-// 	var tailID modules.ConsensusChangeID
-// 	copy(tailID[:], cl.Get(ChangeLogTailID))
-// 	if tailID != (modules.ConsensusChangeID{}) {
-// 		// Get the old tail node.
-// 		var tailCN changeNode
-// 		tailCNBytes := cl.Get(tailID[:])
-// 		err = encoding.Unmarshal(tailCNBytes, &tailCN)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		// Point the 'next' of the old tail node to the new tail node and
-// 		// insert.
-// 		tailCN.Next = ceid
-// 		err = cl.Put(tailID[:], encoding.Marshal(tailCN))
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-
-// 	// Update the tail id.
-// 	err = cl.Put(ChangeLogTailID, ceid[:])
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 // getEntry returns the change entry with a given id, using a bool to indicate
 // existence.
 func getEntry(tx *bolt.Tx, id modules.ConsensusChangeID) (ce changeEntry, exists bool) {
@@ -172,32 +132,6 @@ func (ce *changeEntry) NextEntry(tx *bolt.Tx) (nextEntry changeEntry, exists boo
 
 	return getEntry(tx, cn.Next)
 }
-
-// createChangeLog assumes that no change log exists and creates a new one.
-// func (cs *ConsensusSet) createHeaderChangeLog(tx *bolt.Tx) error {
-// 	// Create the changelog bucket.
-// 	cl, err := tx.CreateBucket(HeaderChangeLog)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Add the genesis block as the first entry of the change log.
-// 	ge := cs.genesisEntry()
-// 	geid := ge.ID()
-// 	cn := changeNode{
-// 		Entry: ge,
-// 		Next:  modules.ConsensusChangeID{},
-// 	}
-// 	err = cl.Put(geid[:], encoding.Marshal(cn))
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = cl.Put(ChangeLogTailID, geid[:])
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
 
 // createChangeLog assumes that no change log exists and creates a new one.
 func (cs *ConsensusSet) createChangeLog(tx *bolt.Tx) error {

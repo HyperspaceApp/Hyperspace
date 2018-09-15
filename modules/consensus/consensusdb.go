@@ -100,7 +100,7 @@ func (cs *ConsensusSet) createHeaderConsensusDB(tx *bolt.Tx) error {
 		return err
 	}
 
-	addBlockHeaderMap(tx, &types.ProcessedBlockHeader{
+	addBlockHeaderMap(tx, &modules.ProcessedBlockHeader{
 		BlockHeader: cs.blockRoot.Block.Header(),
 		Height:      types.BlockHeight(0),
 		Depth:       types.RootDepth,
@@ -204,7 +204,7 @@ func currentProcessedBlock(tx *bolt.Tx) *processedBlock {
 }
 
 // getBlockHeaderMap returns a processed block header with the input id.
-func getBlockHeaderMap(tx *bolt.Tx, id types.BlockID) (*types.ProcessedBlockHeader, error) {
+func getBlockHeaderMap(tx *bolt.Tx, id types.BlockID) (*modules.ProcessedBlockHeader, error) {
 	// Look up the encoded block.
 	bucket := tx.Bucket(BlockHeaderMap)
 	if bucket == nil {
@@ -216,7 +216,7 @@ func getBlockHeaderMap(tx *bolt.Tx, id types.BlockID) (*types.ProcessedBlockHead
 	}
 
 	// Decode the block - should never fail.
-	var pbh types.ProcessedBlockHeader
+	var pbh modules.ProcessedBlockHeader
 	err := encoding.Unmarshal(pbhBytes, &pbh)
 	if build.DEBUG && err != nil {
 		panic(err)
@@ -242,7 +242,7 @@ func getBlockMap(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
 }
 
 // addBlockHeaderMap adds a processed block header to the block map.
-func addBlockHeaderMap(tx *bolt.Tx, pbh *types.ProcessedBlockHeader) {
+func addBlockHeaderMap(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
 	id := pbh.BlockHeader.ID()
 	err := tx.Bucket(BlockHeaderMap).Put(id[:], encoding.Marshal(*pbh))
 	if build.DEBUG && err != nil {
