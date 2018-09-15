@@ -28,7 +28,7 @@ func (cs *ConsensusSet) dbRevertToNode(pb *processedBlock) (pbs []*processedBloc
 // bolt.Tx.
 func (cs *ConsensusSet) dbForkBlockchain(pb *processedBlock) (revertedBlocks, appliedBlocks []*processedBlock, err error) {
 	updateErr := cs.db.Update(func(tx *bolt.Tx) error {
-		revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, pb)
+		revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, pb, nil)
 		return nil
 	})
 	if updateErr != nil {
