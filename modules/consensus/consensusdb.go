@@ -105,7 +105,7 @@ func (cs *ConsensusSet) createHeaderConsensusDB(tx *bolt.Tx) error {
 		Height:      types.BlockHeight(0),
 		Depth:       types.RootDepth,
 		ChildTarget: types.RootTarget,
-		GCSFilter:   filter,
+		GCSFilter:   *filter,
 	})
 	return nil
 }

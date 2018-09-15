@@ -61,7 +61,6 @@ func (cs *ConsensusSet) loadDB() error {
 		if err != nil {
 			return err
 		}
-
 		return nil
 	})
 }

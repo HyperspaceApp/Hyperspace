@@ -29,7 +29,7 @@ func BenchmarkAcceptEmptyBlocks(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func BenchmarkAcceptSmallBlocks(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		b.Fatal("Error creating consensus: " + err.Error())
 	}

@@ -51,7 +51,7 @@ type (
 		Height      BlockHeight
 		Depth       Target
 		ChildTarget Target
-		GCSFilter   *gcs.Filter
+		GCSFilter   gcs.Filter
 	}
 
 	// BlockHeight is the number of blocks that exist after the genesis block.

@@ -19,8 +19,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceApp/Hyperspace/types"
 	modWallet "github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/fastrand"
 )
 
@@ -121,7 +121,7 @@ func newTestingTrio(name string) (modules.Host, *Contractor, modules.TestMiner, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, nil, nil, err
 	}

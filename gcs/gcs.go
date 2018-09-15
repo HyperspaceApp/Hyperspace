@@ -10,11 +10,12 @@ package gcs
 import (
 	"encoding/binary"
 	"errors"
+	"io"
 	"math"
 	"sort"
 	"sync"
 
-	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 
 	"github.com/dchest/siphash"
 )
@@ -138,6 +139,27 @@ func NewFilter(P uint8, key [KeySize]byte, data [][]byte) (*Filter, error) {
 	return &f, nil
 }
 
+// MarshalSia marshal filter to bytes
+func (f Filter) MarshalSia(w io.Writer) error {
+	e := encoding.NewEncoder(w)
+	e.WritePrefixedBytes(f.NPBytes())
+	return nil
+}
+
+// UnmarshalSia unmarshal filter from bytes
+func (f *Filter) UnmarshalSia(r io.Reader) error {
+	d := encoding.NewDecoder(r)
+	newFilter, err := FromNPBytes(d.ReadPrefixedBytes())
+	if err != nil {
+		return err
+	}
+	f.n = newFilter.n
+	f.p = newFilter.p
+	f.modulusNP = newFilter.modulusNP
+	f.filterNData = newFilter.filterNData
+	return nil
+}
+
 // FromBytes deserializes a GCS filter from a known N, P, and serialized filter
 // as returned by Bytes().
 func FromBytes(N uint32, P uint8, d []byte) (*Filter, error) {
@@ -232,8 +254,8 @@ func (f *Filter) P() uint8 {
 	return f.p
 }
 
-// N returns the size of the data set used to build the filter.
-func (f *Filter) N() uint32 {
+// N returns the length of the data to build the filter
+func (f Filter) N() uint32 {
 	return f.n
 }
 
@@ -354,30 +376,8 @@ func (f *Filter) readFullUint64(b *bitReader) (uint64, error) {
 	return v<<f.p + rem, nil
 }
 
-// Hash returns the BLAKE2b hash of the filter.
-func (f *Filter) Hash() crypto.Hash {
-	hash := crypto.HashBytes(f.filterNData)
-	return hash
-}
-
-// MakeHeaderForFilter makes a filter chain header for a filter, given the
-// filter and the previous filter chain header.
-func MakeHeaderForFilter(filter *Filter, prevHeader *crypto.Hash) crypto.Hash {
-	filterTip := make([]byte, 2*crypto.HashSize)
-	filterHash := filter.Hash()
-
-	// In the buffer we created above we'll compute hash || prevHash as an
-	// intermediate value.
-	copy(filterTip, filterHash[:])
-	copy(filterTip[crypto.HashSize:], prevHeader[:])
-
-	// The final filter hash is the blake2b of the hash computed above.
-	hash := crypto.HashBytes(filterTip)
-	return hash
-}
-
 // MatchUnlockHash checks whether an unlockhash in a processed block
-func (f *Filter) MatchUnlockHash(id []byte, data [][]byte) bool {
+func (f Filter) MatchUnlockHash(id []byte, data [][]byte) bool {
 	var key [KeySize]byte
 	copy(key[:], id)
 

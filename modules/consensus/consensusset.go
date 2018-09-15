@@ -139,6 +139,7 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		staticDeps: deps,
 		persistDir: persistDir,
 		spv:        spv,
+		processedBlockHeaders: make(map[types.BlockID]*types.ProcessedBlockHeader),
 	}
 
 	// Create the diffs for the genesis siacoin outputs.

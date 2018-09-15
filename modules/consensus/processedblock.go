@@ -156,7 +156,7 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 			Height:      child.Height,
 			Depth:       child.Depth,
 			ChildTarget: child.ChildTarget,
-			GCSFilter:   filter,
+			GCSFilter:   *filter,
 		}
 
 		blockHeaderMap := tx.Bucket(BlockHeaderMap)
