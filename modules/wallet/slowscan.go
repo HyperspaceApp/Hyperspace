@@ -195,3 +195,15 @@ func (s *slowSeedScanner) scan(cs modules.ConsensusSet, cancel <-chan struct{}) 
 	}
 	return errMaxKeys
 }
+
+// newSlowSeedScanner returns a new slowSeedScanner.
+func newSlowSeedScanner(seed modules.Seed, cs modules.ConsensusSet, log *persist.Logger) *slowSeedScanner {
+	return &slowSeedScanner{
+		seed:           seed,
+		keys:           make(map[types.UnlockHash]uint64, numInitialKeys),
+		siacoinOutputs: make(map[types.SiacoinOutputID]scannedOutput),
+		cs:             cs,
+
+		log: log,
+	}
+}
