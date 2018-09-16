@@ -441,14 +441,23 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				if err != nil {
 					return err
 				}
-				subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID) (scods []modules.SiacoinOutputDiff,
+				subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
 					err error) {
 					err = cs.db.View(func(tx *bolt.Tx) error {
 						pb, err := getBlockMap(tx, id)
 						if err != nil {
 							return err
 						}
-						scods = pb.SiacoinOutputDiffs
+						pbScods := pb.SiacoinOutputDiffs
+						if direction == modules.DiffRevert {
+							for i := len(pbScods) - 1; i >= 0; i-- {
+								pbScod := pbScods[i]
+								pbScod.Direction = !pbScod.Direction
+								scods = append(scods, pbScod)
+							}
+						} else {
+							scods = pbScods
+						}
 						return nil
 					})
 					return
@@ -476,6 +485,11 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 		} else {
 			return modules.HeaderConsensusChange{}, fmt.Errorf("revert block head not exist: %s", revertedBlockID.String())
 		}
+		for i := len(revertedBlockHeader.SiacoinOutputDiffs) - 1; i >= 0; i-- {
+			scod := revertedBlockHeader.SiacoinOutputDiffs[i]
+			scod.Direction = !scod.Direction
+			hcc.MaturedSiacoinOutputDiffs = append(hcc.MaturedSiacoinOutputDiffs, scod)
+		}
 	}
 	for _, appliedBlockID := range ce.AppliedBlocks {
 		appliedBlockHeader, exist := cs.processedBlockHeaders[appliedBlockID]
@@ -483,6 +497,9 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 			hcc.AppliedBlockHeaders = append(hcc.AppliedBlockHeaders, *appliedBlockHeader)
 		} else {
 			return modules.HeaderConsensusChange{}, fmt.Errorf("apply block head not exist: %s", appliedBlockID.String())
+		}
+		for _, scod := range appliedBlockHeader.SiacoinOutputDiffs {
+			hcc.MaturedSiacoinOutputDiffs = append(hcc.MaturedSiacoinOutputDiffs, scod)
 		}
 	}
 

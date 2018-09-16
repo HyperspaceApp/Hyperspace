@@ -93,66 +93,77 @@ func (s *slowSeedScanner) ProcessConsensusChange(cc modules.ConsensusChange) {
 }
 
 // ProcessHeaderConsensusChange match consensus change headers with generated seeds
+// It needs to look for two types new outputs:
+//
+// 1) Delayed outputs that have matured during this block. These outputs come
+// attached to the HeaderConsensusChange via the output diff.
+//
+// 2) Fresh outputs that were created and activated during this block. If the
+// current block contains these outputs, the header filter will match the wallet's
+// keys.
+//
+// In a full node, we read the block directly from the consensus db and grab the
+// outputs from the block output diff.
 func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange,
-	getSiacoinOutputDiff func(types.BlockID) ([]modules.SiacoinOutputDiff, error)) {
+	getSiacoinOutputDiff func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error)) {
+
+	var siacoinOutputDiffs []modules.SiacoinOutputDiff
+
+	// grab matured outputs
+	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
+
+	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
-		siacoinOutputDiffs := pbh.SiacoinOutputDiffs
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
-			// log.Printf("found in block apply %s, \n", blockID.String())
 			// read the block, process the output
-			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID)
+			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffApply)
 			if err != nil {
 				panic(err)
 			}
 			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
 		}
-		for _, diff := range siacoinOutputDiffs {
-			if diff.Direction == modules.DiffApply {
-				if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-					// log.Printf("siacoinOutput apply  %s, \n", diff.SiacoinOutput.UnlockHash.String())
-					s.siacoinOutputs[diff.ID] = scannedOutput{
-						id:        types.OutputID(diff.ID),
-						value:     diff.SiacoinOutput.Value,
-						seedIndex: index,
-					}
-				}
-			} else if diff.Direction == modules.DiffRevert {
-				// log.Printf("siacoinOutput revert %s, \n", diff.SiacoinOutput.UnlockHash.String())
-				// NOTE: DiffRevert means the output was either spent or was in a
-				// block that was reverted.
-				if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-					delete(s.siacoinOutputs, diff.ID)
-				}
-			}
-		}
 	}
+
+	// grab reverted active outputs from full blocks
 	for _, pbh := range hcc.RevertedBlockHeaders {
-		siacoinOutputDiffs := pbh.SiacoinOutputDiffs
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			log.Printf("found in %s, \n", blockID.String())
-			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID)
+			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
 			}
 			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
 		}
-		for _, diff := range siacoinOutputDiffs {
-			if diff.Direction == modules.DiffApply {
-				if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-					s.siacoinOutputs[diff.ID] = scannedOutput{
-						id:        types.OutputID(diff.ID),
-						value:     diff.SiacoinOutput.Value,
-						seedIndex: index,
-					}
+	}
+
+	// apply the aggregated output diffs
+	for _, diff := range siacoinOutputDiffs {
+		if diff.Direction == modules.DiffApply {
+			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
+				s.siacoinOutputs[diff.ID] = scannedOutput{
+					id:        types.OutputID(diff.ID),
+					value:     diff.SiacoinOutput.Value,
+					seedIndex: index,
 				}
-			} else if diff.Direction == modules.DiffRevert {
-				// NOTE: DiffRevert means the output was either spent or was in a
-				// block that was reverted.
-				if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-					delete(s.siacoinOutputs, diff.ID)
-				}
+			}
+		} else if diff.Direction == modules.DiffRevert {
+			// NOTE: DiffRevert means the output was either spent or was in a
+			// block that was reverted.
+			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+				delete(s.siacoinOutputs, diff.ID)
+			}
+		}
+	}
+
+	// update s.largestIndexSeen
+	for _, diff := range siacoinOutputDiffs {
+		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
+		if exists {
+			s.log.Debugln("Seed scanner found a key used at index", index)
+			if index > s.largestIndexSeen {
+				s.largestIndexSeen = index
 			}
 		}
 	}
