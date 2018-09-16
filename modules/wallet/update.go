@@ -14,33 +14,14 @@ type (
 	spentSiacoinOutputSet map[types.SiacoinOutputID]types.SiacoinOutput
 )
 
-// threadedResetSubscriptions unsubscribes the wallet from the consensus set and transaction pool
-// and subscribes again.
-func (w *Wallet) threadedResetSubscriptions() error {
-	if !w.scanLock.TryLock() {
-		return errScanInProgress
-	}
-	defer w.scanLock.Unlock()
-
-	w.cs.Unsubscribe(w)
-	w.tpool.Unsubscribe(w)
-
-	err := w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
-	if err != nil {
-		return err
-	}
-	w.tpool.TransactionPoolSubscribe(w)
-	return nil
-}
-
 // advanceSeedLookahead generates all keys from the current primary seed progress up to index
 // and adds them to the set of spendable keys.  Therefore the new primary seed progress will
 // be index+1 and new lookahead keys will be generated starting from index+1
 // Returns true if a blockchain rescan is required
-func (w *Wallet) advanceSeedLookahead(index uint64) (bool, error) {
+func (w *Wallet) advanceSeedLookahead(index uint64) error {
 	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
 	if err != nil {
-		return false, err
+		return err
 	}
 	newInternalIndex := index + 1
 
@@ -54,19 +35,13 @@ func (w *Wallet) advanceSeedLookahead(index uint64) (bool, error) {
 	// Update the primarySeedProgress
 	err = dbPutPrimarySeedMaximumInternalIndex(w.dbTx, newInternalIndex)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	// Regenerate lookahead
 	w.regenerateLookahead()
 
-	// If more than lookaheadRescanThreshold keys were generated
-	// also initialize a rescan just to be safe.
-	if uint64(len(spendableKeys)) > lookaheadRescanThreshold {
-		return true, nil
-	}
-
-	return false, nil
+	return nil
 }
 
 // isWalletAddress is a helper function that checks if an UnlockHash is
@@ -79,7 +54,7 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 
 // updateLookahead uses a consensus change to update the seed progress if one of the outputs
 // contains an unlock hash of the lookahead set. Returns true if a blockchain rescan is required
-func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) (bool, error) {
+func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error {
 	var largestIndex uint64
 	for _, diff := range cc.SiacoinOutputDiffs {
 		if index, ok := w.lookahead[diff.SiacoinOutput.UnlockHash]; ok {
@@ -92,7 +67,7 @@ func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) (bool,
 		return w.advanceSeedLookahead(largestIndex)
 	}
 
-	return false, nil
+	return nil
 }
 
 // updateConfirmedSet uses a consensus change to update the confirmed set of
@@ -332,11 +307,9 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if needRescan, err := w.updateLookahead(w.dbTx, cc); err != nil {
+	if err := w.updateLookahead(w.dbTx, cc); err != nil {
 		w.log.Severe("ERROR: failed to update lookahead:", err)
 		w.dbRollback = true
-	} else if needRescan {
-		go w.threadedResetSubscriptions()
 	}
 	if err := w.updateConfirmedSet(w.dbTx, cc); err != nil {
 		w.log.Severe("ERROR: failed to update confirmed set:", err)
