@@ -56,15 +56,18 @@ var (
 	errNoKey = errors.New("key does not exist")
 
 	// these keys are used in bucketWallet
-	keyAuxiliarySeedFiles     = []byte("keyAuxiliarySeedFiles")
-	keyConsensusChange        = []byte("keyConsensusChange")
-	keyConsensusHeight        = []byte("keyConsensusHeight")
-	keyEncryptionVerification = []byte("keyEncryptionVerification")
-	keyPrimarySeedFile        = []byte("keyPrimarySeedFile")
-	keyPrimarySeedProgress    = []byte("keyPrimarySeedProgress")
-	keySpendableKeyFiles      = []byte("keySpendableKeyFiles")
-	keyUID                    = []byte("keyUID")
-	keyWatchedAddrs           = []byte("keyWatchedAddrs")
+	keyAuxiliarySeedFiles        = []byte("keyAuxiliarySeedFiles")
+	keyConsensusChange           = []byte("keyConsensusChange")
+	keyConsensusHeight           = []byte("keyConsensusHeight")
+	keyEncryptionVerification    = []byte("keyEncryptionVerification")
+	keyPrimarySeedFile           = []byte("keyPrimarySeedFile")
+	keyPrimarySeedProgress       = []byte("keyPrimarySeedProgress")
+	keySpendableKeyFiles         = []byte("keySpendableKeyFiles")
+	keyUID                       = []byte("keyUID")
+	keyWatchedAddrs              = []byte("keyWatchedAddrs")
+	keySeedsMinimumIndex         = []byte("keySeedsMinimumIndex")
+	keySeedsMaximumInternalIndex = []byte("keySeedsMaximumInternalIndex")
+	keySeedsMaximumExternalIndex = []byte("keySeedsMaximumExternalIndex")
 )
 
 // threadedDBUpdate commits the active database transaction and starts a new
@@ -142,6 +145,9 @@ func dbReset(tx *bolt.Tx) error {
 	wb.Put(keyAuxiliarySeedFiles, encoding.Marshal([]seedFile{}))
 	wb.Put(keySpendableKeyFiles, encoding.Marshal([]spendableKeyFile{}))
 	wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
+	wb.Put(keySeedsMinimumIndex, encoding.Marshal([]uint64{}))
+	wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{}))
+	wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{}))
 	dbPutConsensusHeight(tx, 0)
 	dbPutConsensusChangeID(tx, modules.ConsensusChangeBeginning)
 
@@ -452,4 +458,151 @@ func dbGetConsensusHeight(tx *bolt.Tx) (height types.BlockHeight, err error) {
 // dbPutConsensusHeight stores the height that the wallet has scanned to.
 func dbPutConsensusHeight(tx *bolt.Tx, height types.BlockHeight) error {
 	return tx.Bucket(bucketWallet).Put(keyConsensusHeight, encoding.Marshal(height))
+}
+
+// dbGetSeedsMinimumIndex returns the minimum address indices for all seeds.
+func dbGetSeedsMinimumIndex(tx *bolt.Tx) (indices []uint64, err error) {
+	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keySeedsMinimumIndex), &indices)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// dbPutSeedsMinimumIndex sets the minimum address indices for all seeds.
+func dbPutSeedsMinimumIndex(tx *bolt.Tx, indices []uint64) (err error) {
+	return tx.Bucket(bucketWallet).Put(keySeedsMinimumIndex, encoding.Marshal(indices))
+}
+
+// dbGetSeedsMinimumIndexForSeed returns the minimum address indices for a given seed number.
+func dbGetSeedsMinimumIndexForSeed(tx *bolt.Tx, seedIndex uint64) (index uint64, err error) {
+	indices, err := dbGetSeedsMinimumIndex(tx)
+	if err != nil {
+		return
+	}
+	index = indices[seedIndex]
+	return
+}
+
+// dbPutSeedsMinimumIndexForSeed sets the minimum address index for a given seed number.
+func dbPutSeedsMinimumIndexForSeed(tx *bolt.Tx, seedIndex, index uint64) (err error) {
+	indices, err := dbGetSeedsMinimumIndex(tx)
+	if err != nil {
+		return
+	}
+	indices[seedIndex] = index
+	err = dbPutSeedsMinimumIndex(tx, indices)
+	return
+}
+
+// dbGetPrimarySeedMinimumIndex returns the minimum address index for the primary seed.
+func dbGetPrimarySeedMinimumIndex(tx *bolt.Tx) (index uint64, err error) {
+	index, err = dbGetSeedsMinimumIndexForSeed(tx, 0)
+	return
+}
+
+// dbPutPrimarySeedMinimumIndex sets the minimum address index for the primary seed.
+func dbPutPrimarySeedMinimumIndex(tx *bolt.Tx, index uint64) error {
+	return dbPutSeedsMinimumIndexForSeed(tx, 0, index)
+}
+
+
+// dbGetSeedsMaximumInternalIndex returns the maximum internal address indices for all seeds.
+func dbGetSeedsMaximumInternalIndex(tx *bolt.Tx) (indices []uint64, err error) {
+	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keySeedsMaximumInternalIndex), &indices)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// dbPutSeedsMaximumInternalIndex sets the maximum internal address address indices for all seeds.
+func dbPutSeedsMaximumInternalIndex(tx *bolt.Tx, indices []uint64) (err error) {
+	return tx.Bucket(bucketWallet).Put(keySeedsMaximumInternalIndex, encoding.Marshal(indices))
+}
+
+// dbGetSeedsMaximumInternalIndexForSeed returns the maximum internal address indices for a given
+// seed number.
+func dbGetSeedsMaximumInternalIndexForSeed(tx *bolt.Tx, seedIndex uint64) (index uint64, err error) {
+	indices, err := dbGetSeedsMaximumInternalIndex(tx)
+	if err != nil {
+		return
+	}
+	index = indices[seedIndex]
+	return
+}
+
+// dbPutSeedsMaximumInternalIndexForSeed sets the maximum internal address index for a given seed
+// number.
+func dbPutSeedsMaximumInternalIndexForSeed(tx *bolt.Tx, seedIndex, index uint64) (err error) {
+	indices, err := dbGetSeedsMaximumInternalIndex(tx)
+	if err != nil {
+		return
+	}
+	indices[seedIndex] = index
+	err = dbPutSeedsMaximumInternalIndex(tx, indices)
+	return
+}
+
+// dbGetPrimarySeedMaximumInternalIndex returns the maximum internal address index for the primary
+// seed.
+func dbGetPrimarySeedMaximumInternalIndex(tx *bolt.Tx) (index uint64, err error) {
+	index, err = dbGetSeedsMaximumInternalIndexForSeed(tx, 0)
+	return
+}
+
+// dbPutPrimarySeedMaximumInternalIndex sets the maximum internal address index for the primary
+// seed.
+func dbPutPrimarySeedMaximumInternalIndex(tx *bolt.Tx, index uint64) error {
+	return dbPutSeedsMaximumInternalIndexForSeed(tx, 0, index)
+}
+
+// dbGetSeedsMaximumExternalIndex returns the maximum external address indices for all seeds.
+func dbGetSeedsMaximumExternalIndex(tx *bolt.Tx) (indices []uint64, err error) {
+	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keySeedsMaximumExternalIndex), &indices)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// dbPutSeedsMaximumExternalIndex sets the maximum external address address indices for all seeds.
+func dbPutSeedsMaximumExternalIndex(tx *bolt.Tx, indices []uint64) (err error) {
+	return tx.Bucket(bucketWallet).Put(keySeedsMaximumExternalIndex, encoding.Marshal(indices))
+}
+
+// dbGetSeedsMaximumExternalIndexForSeed returns the maximum external address indices for a given
+// seed number.
+func dbGetSeedsMaximumExternalIndexForSeed(tx *bolt.Tx, seedIndex uint64) (index uint64, err error) {
+	indices, err := dbGetSeedsMaximumExternalIndex(tx)
+	if err != nil {
+		return
+	}
+	index = indices[seedIndex]
+	return
+}
+
+// dbPutSeedsMaximumExternalIndexForSeed sets the maximum external address index for a given seed
+// number.
+func dbPutSeedsMaximumExternalIndexForSeed(tx *bolt.Tx, seedIndex, index uint64) (err error) {
+	indices, err := dbGetSeedsMaximumExternalIndex(tx)
+	if err != nil {
+		return
+	}
+	indices[seedIndex] = index
+	err = dbPutSeedsMaximumExternalIndex(tx, indices)
+	return
+}
+
+// dbGetPrimarySeedMaximumExternalIndex returns the maximum external address index for the primary
+// seed.
+func dbGetPrimarySeedMaximumExternalIndex(tx *bolt.Tx) (index uint64, err error) {
+	index, err = dbGetSeedsMaximumExternalIndexForSeed(tx, 0)
+	return
+}
+
+// dbPutPrimarySeedMaximumExternalIndex sets the maximum external address index for the primary
+// seed.
+func dbPutPrimarySeedMaximumExternalIndex(tx *bolt.Tx, index uint64) error {
+	return dbPutSeedsMaximumExternalIndexForSeed(tx, 0, index)
 }

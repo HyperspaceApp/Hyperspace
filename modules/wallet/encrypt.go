@@ -364,7 +364,7 @@ func (w *Wallet) Reset() error {
 	return nil
 }
 
-// InitFromSeed functions like Init, but using a specified seed. Unlike Init,
+// InitFromSeed functions like Encrypt, but using a specified seed. Unlike Encrypt,
 // the blockchain will be scanned to determine the seed's progress. For this
 // reason, InitFromSeed should not be called until the blockchain is fully
 // synced.

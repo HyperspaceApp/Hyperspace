@@ -28,6 +28,15 @@ const (
 	// transaction spending the output has not made it to the transaction pool
 	// after the limit, the assumption is that it never will.
 	RespendTimeout = 40
+
+	// AddressGapLimit is currently set to 20. If the software hits 20 unused
+	// addresses in a row, it expects there are no used addresses beyond this
+	// point and stops searching the address chain. We scan just the external
+	// chains, because internal chains receive only coins that come from the
+	// associated external chains.
+	//
+	// For further information, read BIP 44.
+	AddressGapLimit = 20
 )
 
 var (
@@ -75,6 +84,20 @@ type Wallet struct {
 	keys         map[types.UnlockHash]spendableKey
 	lookahead    map[types.UnlockHash]uint64
 	watchedAddrs map[types.UnlockHash]struct{}
+	// The minimum index should typically be zero, seeds that came over from
+	// the Sia airdrop may have started with very high indices. So when we
+	// import old seeds, we scan the airdrop blocks first and set a minimum
+	// with the first value we find, or 0 if we don't find any matches.
+	seedsMinimumIndex []uint64
+	// The maximum internal index is the highest address index we're tracking
+	// locally for a seed. Once the external blockchain has been scanned,
+	// this value should be greater or equal to the maximum external index
+	// that we've seen. If we are enforcing AddressGapLimit, this value
+	// should not exceed the maximum external index + AddressGapLimit.
+	seedsMaximumInternalIndex []uint64
+	// The maximum external address is the highest address we've seen on the
+	// external blockchain.
+	seedsMaximumExternalIndex []uint64
 
 	// unconfirmedProcessedTransactions tracks unconfirmed transactions.
 	//
