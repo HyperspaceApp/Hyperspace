@@ -107,7 +107,7 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 	// Load db objects into memory.
 	var lastChange modules.ConsensusChangeID
 	var primarySeedFile seedFile
-	var internalIndex uint64
+	var externalIndex, internalIndex uint64
 	var auxiliarySeedFiles []seedFile
 	var unseededKeyFiles []spendableKeyFile
 	var watchedAddrs []types.UnlockHash
@@ -127,6 +127,11 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		// primarySeedFile + internalIndex
 		wb := w.dbTx.Bucket(bucketWallet)
 		err = encoding.Unmarshal(wb.Get(keyPrimarySeedFile), &primarySeedFile)
+		if err != nil {
+			return err
+		}
+
+		externalIndex, err = dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
 		if err != nil {
 			return err
 		}
@@ -172,7 +177,7 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		}
 		w.integrateSeed(primarySeed, internalIndex)
 		w.primarySeed = primarySeed
-		w.regenerateLookahead()
+		w.regenerateLookahead(externalIndex, internalIndex)
 
 		// auxiliarySeedFiles
 		for _, sf := range auxiliarySeedFiles {

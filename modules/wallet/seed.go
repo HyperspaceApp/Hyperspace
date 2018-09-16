@@ -94,10 +94,13 @@ func decryptSeedFile(masterKey crypto.TwofishKey, sf seedFile) (seed modules.See
 }
 
 // regenerateLookahead creates future keys up to a maximum of maxKeys keys
-func (w *Wallet) regenerateLookahead() {
+func (w *Wallet) regenerateLookahead(externalIndex, internalIndex uint64) {
 	existingKeys := uint64(len(w.lookahead))
+	lookaheadIndex := internalIndex + existingKeys
+	internalBufferSize := lookaheadIndex - externalIndex
+	newKeys := uint64(AddressGapLimit) - internalBufferSize
 
-	for i, k := range generateKeys(w.primarySeed, existingKeys, existingKeys+uint64(AddressGapLimit)) {
+	for i, k := range generateKeys(w.primarySeed, lookaheadIndex, newKeys) {
 		w.lookahead[k.UnlockConditions.UnlockHash()] = existingKeys + uint64(i)
 	}
 }
@@ -140,11 +143,11 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 		delete(w.lookahead, spendableKey.UnlockConditions.UnlockHash())
 		ucs = append(ucs, spendableKey.UnlockConditions)
 	}
-	w.regenerateLookahead()
 	err = dbPutPrimarySeedMaximumInternalIndex(tx, newInternalIndex)
 	if err != nil {
 		return []types.UnlockConditions{}, err
 	}
+	w.regenerateLookahead(externalIndex, newInternalIndex)
 
 	return ucs, nil
 }

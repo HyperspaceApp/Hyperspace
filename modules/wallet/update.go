@@ -32,14 +32,19 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 		delete(w.lookahead, key.UnlockConditions.UnlockHash())
 	}
 
-	// Update the primarySeedProgress
+	// Update the internalIndex
 	err = dbPutPrimarySeedMaximumInternalIndex(w.dbTx, newInternalIndex)
+	if err != nil {
+		return err
+	}
+	// Update the externalIndex
+	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, newInternalIndex)
 	if err != nil {
 		return err
 	}
 
 	// Regenerate lookahead
-	w.regenerateLookahead()
+	w.regenerateLookahead(newInternalIndex, newInternalIndex)
 
 	return nil
 }
