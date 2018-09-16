@@ -399,7 +399,7 @@ func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) er
 	// initialize the wallet with the appropriate seed progress
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, err := w.initEncryption(masterKey, seed, uint64(s.maximumInternalIndex))
+	_, err := w.initEncryption(masterKey, seed, s.maximumInternalIndex)
 	return err
 }
 
