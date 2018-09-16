@@ -17,16 +17,6 @@ const (
 	defragThreshold = 50
 )
 
-var (
-	// lookaheadRescanThreshold is the number of keys in the lookahead that will be
-	// generated before a complete wallet rescan is initialized.
-	lookaheadRescanThreshold = build.Select(build.Var{
-		Dev:      uint64(100),
-		Standard: uint64(1000),
-		Testing:  uint64(10),
-	}).(uint64)
-)
-
 func init() {
 	// Sanity check - the defrag threshold needs to be higher than the batch
 	// size plus the start index.
