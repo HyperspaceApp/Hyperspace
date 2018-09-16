@@ -45,6 +45,10 @@ var (
 	// ErrWalletShutdown is returned when a method can't continue execution due
 	// to the wallet shutting down.
 	ErrWalletShutdown = errors.New("wallet is shutting down")
+
+	// ErrAddressGapLimit is return when a user tries to create a new address
+	// that does not respect the address gap limit as specified in BIP 44
+	ErrAddressGapLimit = errors.New("cannot create new address beyond address gap limit")
 )
 
 type (

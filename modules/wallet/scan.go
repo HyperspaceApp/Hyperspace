@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -38,15 +37,16 @@ type scannedOutput struct {
 // A seedScanner scans the blockchain for addresses that belong to a given
 // seed.
 type seedScanner struct {
-	dustThreshold    types.Currency              // minimum value of outputs to be included
-	keys             map[types.UnlockHash]uint64 // map address to seed index
-	keysArray        [][]byte
-	largestIndexSeen uint64 // largest index that has appeared in the blockchain
-	seed             modules.Seed
-	siacoinOutputs   map[types.SiacoinOutputID]scannedOutput
-	cs               modules.ConsensusSet
-
-	log *persist.Logger
+	dustThreshold        types.Currency              // minimum value of outputs to be included
+	keys                 map[types.UnlockHash]uint64 // map address to seed index
+	keysArray            [][]byte
+	minimumIndex         uint64
+	maximumInternalIndex uint64
+	maximumExternalIndex uint64
+	seed                 modules.Seed
+	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
+	cs                   modules.ConsensusSet
+	log                  *persist.Logger
 }
 
 func (s *seedScanner) numKeys() uint64 {
@@ -61,40 +61,7 @@ func (s *seedScanner) generateKeys(n uint64) {
 		u := k.UnlockConditions.UnlockHash()
 		s.keysArray = append(s.keysArray, u[:])
 	}
-}
-
-// ProcessConsensusChange scans the blockchain for information relevant to the
-// seedScanner.
-func (s *seedScanner) ProcessConsensusChange(cc modules.ConsensusChange) {
-	// update outputs
-	for _, diff := range cc.SiacoinOutputDiffs {
-		if diff.Direction == modules.DiffApply {
-			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-				s.siacoinOutputs[diff.ID] = scannedOutput{
-					id:        types.OutputID(diff.ID),
-					value:     diff.SiacoinOutput.Value,
-					seedIndex: index,
-				}
-			}
-		} else if diff.Direction == modules.DiffRevert {
-			// NOTE: DiffRevert means the output was either spent or was in a
-			// block that was reverted.
-			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-				delete(s.siacoinOutputs, diff.ID)
-			}
-		}
-	}
-
-	// update s.largestIndexSeen
-	for _, diff := range cc.SiacoinOutputDiffs {
-		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
-		if exists {
-			s.log.Debugln("Seed scanner found a key used at index", index)
-			if index > s.largestIndexSeen {
-				s.largestIndexSeen = index
-			}
-		}
-	}
+	s.maximumInternalIndex += n
 }
 
 // ProcessHeaderConsensusChange match consensus change headers with generated seeds
@@ -134,7 +101,6 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	for _, pbh := range hcc.RevertedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
-			log.Printf("found in %s, \n", blockID.String())
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
@@ -162,15 +128,19 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		}
 	}
 
-	// update s.largestIndexSeen
 	for _, diff := range siacoinOutputDiffs {
 		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
 		if exists {
 			s.log.Debugln("Seed scanner found a key used at index", index)
-			if index > s.largestIndexSeen {
-				s.largestIndexSeen = index
+			if index > s.maximumExternalIndex {
+				s.maximumExternalIndex = index
 			}
 		}
+	}
+	gap := s.maximumInternalIndex - s.maximumExternalIndex
+	if gap > 0 {
+		toGrow := AddressGapLimit - gap
+		s.generateKeys(uint64(toGrow))
 	}
 }
 
@@ -184,10 +154,6 @@ func (s *seedScanner) scan(cs modules.ConsensusSet, cancel <-chan struct{}) erro
 		return err
 	}
 	cs.HeaderUnsubscribe(s)
-	if s.largestIndexSeen < s.numKeys()/2 {
-		return nil
-	}
-	numKeys *= scanMultiplier
 	if numKeys > maxScanKeys-s.numKeys() {
 		numKeys = maxScanKeys - s.numKeys()
 	}
@@ -197,11 +163,13 @@ func (s *seedScanner) scan(cs modules.ConsensusSet, cancel <-chan struct{}) erro
 // newSeedScanner returns a new seedScanner.
 func newSeedScanner(seed modules.Seed, cs modules.ConsensusSet, log *persist.Logger) *seedScanner {
 	return &seedScanner{
-		seed:           seed,
-		keys:           make(map[types.UnlockHash]uint64, numInitialKeys),
-		siacoinOutputs: make(map[types.SiacoinOutputID]scannedOutput),
-		cs:             cs,
-
-		log: log,
+		seed:                 seed,
+		minimumIndex:         0,
+		maximumInternalIndex: 0,
+		maximumExternalIndex: 0,
+		keys:                 make(map[types.UnlockHash]uint64, numInitialKeys),
+		siacoinOutputs:       make(map[types.SiacoinOutputID]scannedOutput),
+		cs:                   cs,
+		log:                  log,
 	}
 }

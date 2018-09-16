@@ -38,27 +38,27 @@ func (w *Wallet) threadedResetSubscriptions() error {
 // be index+1 and new lookahead keys will be generated starting from index+1
 // Returns true if a blockchain rescan is required
 func (w *Wallet) advanceSeedLookahead(index uint64) (bool, error) {
-	progress, err := dbGetPrimarySeedProgress(w.dbTx)
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
 	if err != nil {
 		return false, err
 	}
-	newProgress := index + 1
+	newInternalIndex := index + 1
 
 	// Add spendable keys and remove them from lookahead
-	spendableKeys := generateKeys(w.primarySeed, progress, newProgress-progress)
+	spendableKeys := generateKeys(w.primarySeed, internalIndex, newInternalIndex-internalIndex)
 	for _, key := range spendableKeys {
 		w.keys[key.UnlockConditions.UnlockHash()] = key
 		delete(w.lookahead, key.UnlockConditions.UnlockHash())
 	}
 
 	// Update the primarySeedProgress
-	dbPutPrimarySeedProgress(w.dbTx, newProgress)
+	err = dbPutPrimarySeedMaximumInternalIndex(w.dbTx, newInternalIndex)
 	if err != nil {
 		return false, err
 	}
 
 	// Regenerate lookahead
-	w.regenerateLookahead(newProgress)
+	w.regenerateLookahead()
 
 	// If more than lookaheadRescanThreshold keys were generated
 	// also initialize a rescan just to be safe.

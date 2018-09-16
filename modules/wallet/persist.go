@@ -110,17 +110,12 @@ func (w *Wallet) initPersist() error {
 	}
 
 	// Open the database.
-	dbFilename := filepath.Join(w.persistDir, dbFile)
-	compatFilename := filepath.Join(w.persistDir, compatFile)
-	_, dbErr := os.Stat(dbFilename)
-	_, compatErr := os.Stat(compatFilename)
-	if dbErr != nil && compatErr == nil {
-		// database does not exist, but old persist does; convert it
-		err = w.convertPersistFrom112To120(dbFilename, compatFilename)
-	} else {
-		// either database exists or neither exists; open/create the database
-		err = w.openDB(filepath.Join(w.persistDir, dbFile))
-	}
+	//dbFilename := filepath.Join(w.persistDir, dbFile)
+	//compatFilename := filepath.Join(w.persistDir, compatFile)
+	//_, dbErr := os.Stat(dbFilename)
+	//_, compatErr := os.Stat(compatFilename)
+	// either database exists or neither exists; open/create the database
+	err = w.openDB(filepath.Join(w.persistDir, dbFile))
 	if err != nil {
 		return err
 	}
@@ -208,45 +203,6 @@ var compat112Meta = persist.Metadata{
 	Version: "0.4.0",
 }
 
-// convertPersistFrom112To120 converts an old (pre-v1.2.0) wallet.json file to
-// a wallet.db database.
-func (w *Wallet) convertPersistFrom112To120(dbFilename, compatFilename string) error {
-	var data compat112Persist
-	err := persist.LoadJSON(compat112Meta, &data, compatFilename)
-	if err != nil {
-		return err
-	}
-
-	w.db, err = persist.OpenDatabase(dbMetadata, dbFilename)
-	if err != nil {
-		return err
-	}
-	// initialize the database
-	err = w.db.Update(func(tx *bolt.Tx) error {
-		for _, b := range dbBuckets {
-			_, err := tx.CreateBucket(b)
-			if err != nil {
-				return fmt.Errorf("could not create bucket %v: %v", string(b), err)
-			}
-		}
-		// set UID, verification, seeds, and seed progress
-		tx.Bucket(bucketWallet).Put(keyUID, data.UID[:])
-		tx.Bucket(bucketWallet).Put(keyEncryptionVerification, data.EncryptionVerification)
-		tx.Bucket(bucketWallet).Put(keyPrimarySeedFile, encoding.Marshal(data.PrimarySeedFile))
-		tx.Bucket(bucketWallet).Put(keyAuxiliarySeedFiles, encoding.Marshal(data.AuxiliarySeedFiles))
-		tx.Bucket(bucketWallet).Put(keySpendableKeyFiles, encoding.Marshal(data.UnseededKeys))
-		// old wallets had a "preload depth" of 25
-		dbPutPrimarySeedProgress(tx, data.PrimarySeedProgress+25)
-
-		// set consensus height and CCID to zero so that a full rescan is
-		// triggered
-		dbPutConsensusHeight(tx, 0)
-		dbPutConsensusChangeID(tx, modules.ConsensusChangeBeginning)
-		return nil
-	})
-	w.encrypted = true
-	return err
-}
 
 /*
 // LoadBackup loads a backup file from the provided filepath. The backup file

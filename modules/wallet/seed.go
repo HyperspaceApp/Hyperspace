@@ -94,13 +94,11 @@ func decryptSeedFile(masterKey crypto.TwofishKey, sf seedFile) (seed modules.See
 }
 
 // regenerateLookahead creates future keys up to a maximum of maxKeys keys
-func (w *Wallet) regenerateLookahead(start uint64) {
-	// Check how many keys need to be generated
-	maxKeys := maxLookahead(start)
+func (w *Wallet) regenerateLookahead() {
 	existingKeys := uint64(len(w.lookahead))
 
-	for i, k := range generateKeys(w.primarySeed, start+existingKeys, maxKeys-existingKeys) {
-		w.lookahead[k.UnlockConditions.UnlockHash()] = start + existingKeys + uint64(i)
+	for i, k := range generateKeys(w.primarySeed, existingKeys, existingKeys+uint64(AddressGapLimit)) {
+		w.lookahead[k.UnlockConditions.UnlockHash()] = existingKeys + uint64(i)
 	}
 }
 
@@ -120,24 +118,33 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 	}
 
 	// Fetch and increment the seed progress.
-	progress, err := dbGetPrimarySeedProgress(tx)
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(tx)
 	if err != nil {
 		return []types.UnlockConditions{}, err
 	}
-	if err = dbPutPrimarySeedProgress(tx, progress+n); err != nil {
+	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(tx)
+	if err != nil {
 		return []types.UnlockConditions{}, err
+	}
+	newInternalIndex := internalIndex + n
+	if (newInternalIndex - externalIndex) >= uint64(AddressGapLimit) {
+		return []types.UnlockConditions{}, modules.ErrAddressGapLimit
 	}
 	// Integrate the next keys into the wallet, and return the unlock
 	// conditions. Also remove new keys from the future keys and update them
 	// according to new progress
-	spendableKeys := generateKeys(w.primarySeed, progress, n)
+	spendableKeys := generateKeys(w.primarySeed, internalIndex, n)
 	ucs := make([]types.UnlockConditions, 0, len(spendableKeys))
 	for _, spendableKey := range spendableKeys {
 		w.keys[spendableKey.UnlockConditions.UnlockHash()] = spendableKey
 		delete(w.lookahead, spendableKey.UnlockConditions.UnlockHash())
 		ucs = append(ucs, spendableKey.UnlockConditions)
 	}
-	w.regenerateLookahead(progress + n)
+	w.regenerateLookahead()
+	err = dbPutPrimarySeedMaximumInternalIndex(tx, newInternalIndex)
+	if err != nil {
+		return []types.UnlockConditions{}, err
+	}
 
 	return ucs, nil
 }
@@ -169,7 +176,11 @@ func (w *Wallet) PrimarySeed() (modules.Seed, uint64, error) {
 	if !w.unlocked {
 		return modules.Seed{}, 0, modules.ErrLockedWallet
 	}
-	progress, err := dbGetPrimarySeedProgress(w.dbTx)
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
+	if err != nil {
+		return modules.Seed{}, 0, err
+	}
+	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
 	if err != nil {
 		return modules.Seed{}, 0, err
 	}
@@ -177,8 +188,8 @@ func (w *Wallet) PrimarySeed() (modules.Seed, uint64, error) {
 	// addresses remaining is maxScanKeys-progress; generating more keys than
 	// that risks not being able to recover them when using SweepSeed or
 	// InitFromSeed.
-	remaining := maxScanKeys - progress
-	if progress > maxScanKeys {
+	remaining := AddressGapLimit - (internalIndex - externalIndex)
+	if remaining < 0  {
 		remaining = 0
 	}
 	return w.primarySeed, remaining, nil
@@ -196,8 +207,6 @@ func (w *Wallet) NextAddresses(n uint64) ([]types.UnlockConditions, error) {
 	}
 	defer w.tg.Done()
 
-	// TODO: going to the db is slow; consider creating 100 addresses at a
-	// time.
 	w.mu.Lock()
 	ucs, err := w.nextPrimarySeedAddresses(w.dbTx, n)
 	err = errors.Compose(err, w.syncDB())
@@ -259,11 +268,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 	if err := s.scan(w.cs, w.tg.StopChan()); err != nil {
 		return err
 	}
-	// Add 4% as a buffer because the seed may have addresses in the wild
-	// that have not appeared in the blockchain yet.
-	seedProgress := s.largestIndexSeen + 500
-	seedProgress += seedProgress / 25
-	w.log.Printf("INFO: found key index %v in blockchain. Setting auxiliary seed progress to %v", s.largestIndexSeen, seedProgress)
+	w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.maximumExternalIndex, s.maximumInternalIndex)
 
 	err := func() error {
 		w.mu.Lock()
@@ -289,7 +294,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 		}
 
 		// load the seed's keys
-		w.integrateSeed(seed, seedProgress)
+		w.integrateSeed(seed, uint64(s.maximumInternalIndex))
 		w.seeds = append(w.seeds, seed)
 
 		// delete the set of processed transactions; they will be recreated
