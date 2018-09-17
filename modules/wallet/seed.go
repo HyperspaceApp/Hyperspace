@@ -112,7 +112,11 @@ func (w *Wallet) GetAddress() (types.UnlockConditions, error) {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	key := w.lookahead.GetNextKey()
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
+	if err != nil {
+		return types.UnlockConditions{}, err
+	}
+	key := w.lookahead.GetKeyByIndex(internalIndex)
 	return key.UnlockConditions, nil
 }
 

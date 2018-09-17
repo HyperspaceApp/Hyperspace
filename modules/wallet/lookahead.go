@@ -26,8 +26,8 @@ func (la *lookahead) AppendKey(key spendableKey) {
 	la.hashIndexMap[uh] = index
 }
 
-func (la *lookahead) GetNextKey() spendableKey {
-	return la.keys[0]
+func (la *lookahead) GetKeyByIndex(index uint64) spendableKey {
+	return la.keys[index - la.startingIndex]
 }
 
 func (la *lookahead) PopNextKey() spendableKey {
