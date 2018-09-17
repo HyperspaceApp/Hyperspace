@@ -84,6 +84,8 @@ func (w *Wallet) initEncryption(masterKey crypto.TwofishKey, seed modules.Seed, 
 		return modules.Seed{}, err
 	}
 
+	w.lookahead.Initialize(seed, 0)
+
 	// on future startups, this field will be set by w.initPersist
 	w.encrypted = true
 
@@ -177,7 +179,7 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		}
 		w.integrateSeed(primarySeed, internalIndex)
 		w.primarySeed = primarySeed
-		w.regenerateLookahead(externalIndex, internalIndex)
+		w.lookahead.Initialize(primarySeed, externalIndex)
 
 		// auxiliarySeedFiles
 		for _, sf := range auxiliarySeedFiles {
@@ -360,7 +362,7 @@ func (w *Wallet) Reset() error {
 	}
 	w.wipeSecrets()
 	w.keys = make(map[types.UnlockHash]spendableKey)
-	w.lookahead = make(map[types.UnlockHash]uint64)
+	w.lookahead = newLookahead()
 	w.seeds = []modules.Seed{}
 	w.unconfirmedProcessedTransactions = []modules.ProcessedTransaction{}
 	w.unlocked = false

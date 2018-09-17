@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 
@@ -93,24 +94,26 @@ func decryptSeedFile(masterKey crypto.TwofishKey, sf seedFile) (seed modules.See
 	return seed, nil
 }
 
-// regenerateLookahead creates future keys up to a maximum of maxKeys keys
-func (w *Wallet) regenerateLookahead(externalIndex, internalIndex uint64) {
-	existingKeys := uint64(len(w.lookahead))
-	lookaheadIndex := internalIndex + existingKeys
-	internalBufferSize := lookaheadIndex - externalIndex
-	newKeys := uint64(AddressGapLimit) - internalBufferSize
-
-	for i, k := range generateKeys(w.primarySeed, lookaheadIndex, newKeys) {
-		w.lookahead[k.UnlockConditions.UnlockHash()] = existingKeys + uint64(i)
-	}
-}
-
 // integrateSeed generates n spendableKeys from the seed and loads them into
 // the wallet.
 func (w *Wallet) integrateSeed(seed modules.Seed, n uint64) {
 	for _, sk := range generateKeys(seed, 0, n) {
 		w.keys[sk.UnlockConditions.UnlockHash()] = sk
 	}
+}
+
+// GetAddress returns the first unspent key following the one that we've seen
+// on the blockchain.
+func (w *Wallet) GetAddress() (types.UnlockConditions, error) {
+	if err := w.tg.Add(); err != nil {
+		return types.UnlockConditions{}, err
+	}
+	defer w.tg.Done()
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	key := w.lookahead.GetNextKey()
+	return key.UnlockConditions, nil
 }
 
 // nextPrimarySeedAddress fetches the next n addresses from the primary seed.
@@ -130,24 +133,23 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 		return []types.UnlockConditions{}, err
 	}
 	newInternalIndex := internalIndex + n
+	fmt.Printf("external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 	if (newInternalIndex - externalIndex) >= uint64(AddressGapLimit) {
+		fmt.Printf("ERROR: external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 		return []types.UnlockConditions{}, modules.ErrAddressGapLimit
 	}
 	// Integrate the next keys into the wallet, and return the unlock
 	// conditions. Also remove new keys from the future keys and update them
 	// according to new progress
-	spendableKeys := generateKeys(w.primarySeed, internalIndex, n)
-	ucs := make([]types.UnlockConditions, 0, len(spendableKeys))
-	for _, spendableKey := range spendableKeys {
+	ucs := make([]types.UnlockConditions, 0, n)
+	for _, spendableKey := range w.lookahead.Advance(n) {
 		w.keys[spendableKey.UnlockConditions.UnlockHash()] = spendableKey
-		delete(w.lookahead, spendableKey.UnlockConditions.UnlockHash())
 		ucs = append(ucs, spendableKey.UnlockConditions)
 	}
 	err = dbPutPrimarySeedMaximumInternalIndex(tx, newInternalIndex)
 	if err != nil {
 		return []types.UnlockConditions{}, err
 	}
-	w.regenerateLookahead(externalIndex, newInternalIndex)
 
 	return ucs, nil
 }

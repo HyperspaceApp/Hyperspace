@@ -24,12 +24,12 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 		return err
 	}
 	newInternalIndex := index + 1
+	numKeys := newInternalIndex - internalIndex
 
-	// Add spendable keys and remove them from lookahead
-	spendableKeys := generateKeys(w.primarySeed, internalIndex, newInternalIndex-internalIndex)
+	// Retrieve numKeys from the lookup buffer while replenishing it
+	spendableKeys := w.lookahead.Advance(numKeys)
 	for _, key := range spendableKeys {
 		w.keys[key.UnlockConditions.UnlockHash()] = key
-		delete(w.lookahead, key.UnlockConditions.UnlockHash())
 	}
 
 	// Update the internalIndex
@@ -43,9 +43,6 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 		return err
 	}
 
-	// Regenerate lookahead
-	w.regenerateLookahead(newInternalIndex, newInternalIndex)
-
 	return nil
 }
 
@@ -53,8 +50,9 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 // derived from one of the wallet's spendable keys or is being explicitly watched.
 func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 	_, spendable := w.keys[uh]
+	_, lookahead := w.lookahead.GetIndex(uh)
 	_, watchonly := w.watchedAddrs[uh]
-	return spendable || watchonly
+	return spendable || lookahead || watchonly
 }
 
 // updateLookahead uses a consensus change to update the seed progress if one of the outputs
@@ -62,7 +60,7 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error {
 	var largestIndex uint64
 	for _, diff := range cc.SiacoinOutputDiffs {
-		if index, ok := w.lookahead[diff.SiacoinOutput.UnlockHash]; ok {
+		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
 			if index > largestIndex {
 				largestIndex = index
 			}

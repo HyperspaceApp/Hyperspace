@@ -159,27 +159,29 @@ func runWithFlag(t *testing.T, spv bool) {
 	defer wt.closeWt()
 
 	startTime := time.Now()
-	for i := 0; i <= 100; i++ {
+	_, availableAddressCount, _ := wt.wallet.PrimarySeed()
+	log.Printf("availableAddressCount: %v\n", availableAddressCount)
+	for i := 0; i < int(availableAddressCount) ; i++ {
 		// insert some tx
-		if i%50 == 0 {
-			uc, err := wt.wallet.nextPrimarySeedAddress(wt.wallet.dbTx)
-			if err != nil {
-				t.Fatal(err)
-			}
-			txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
-			if err != nil {
-				t.Fatal(err)
-			}
-			log.Printf("send 1 to %s, tx id: %s\n", uc.UnlockHash().String(), txns[0].ID().String())
+		uc, err := wt.wallet.nextPrimarySeedAddress(wt.wallet.dbTx)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if i%100 == 0 {
+		log.Printf("generated address %v\n", i)
+		txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
+		if err != nil {
+			t.Fatal(err)
+		}
+		log.Printf("send 1 to %s, tx id: %s\n", uc.UnlockHash().String(), txns[0].ID().String())
+		if i%6 == 0 {
 			txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), types.UnlockHash{})
 			if err != nil {
 				t.Fatal(err)
 			}
 			log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
 		}
-		_, err := wt.miner.AddBlockWithAddress(types.UnlockHash{})
+		_, err = wt.miner.AddBlockWithAddress(types.UnlockHash{})
+		log.Printf("added block\n")
 		if err != nil {
 			t.Fatal(err)
 		}

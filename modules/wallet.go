@@ -292,6 +292,10 @@ type (
 		// filepath. The backup will have all seeds and keys.
 		CreateBackup(string) error
 
+		// GetAddress returns an existing coin address. This address is at an
+		// index of 1 greater than the highest index seen on the blockchain.
+		GetAddress() (types.UnlockConditions, error)
+
 		// LoadBackup will load a backup of the wallet from the provided
 		// address. The backup wallet will be added as an auxiliary seed, not
 		// as a primary seed.

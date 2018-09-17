@@ -82,7 +82,7 @@ type Wallet struct {
 	// may access them.
 	seeds        []modules.Seed
 	keys         map[types.UnlockHash]spendableKey
-	lookahead    map[types.UnlockHash]uint64
+	lookahead    lookahead
 	watchedAddrs map[types.UnlockHash]struct{}
 	// The minimum index should typically be zero, seeds that came over from
 	// the Sia airdrop may have started with very high indices. So when we
@@ -175,6 +175,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 	if tpool == nil {
 		return nil, errNilTpool
 	}
+	lookahead := newLookahead()
 
 	// Initialize the data structure.
 	w := &Wallet{
@@ -182,7 +183,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		tpool: tpool,
 
 		keys:         make(map[types.UnlockHash]spendableKey),
-		lookahead:    make(map[types.UnlockHash]uint64),
+		lookahead:    lookahead,
 		watchedAddrs: make(map[types.UnlockHash]struct{}),
 
 		unconfirmedSets: make(map[modules.TransactionSetID][]types.TransactionID),

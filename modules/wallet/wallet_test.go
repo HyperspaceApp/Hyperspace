@@ -663,12 +663,10 @@ func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*w
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("built wallet\n")
 	w.defragDisabled = true
 	var masterKey crypto.TwofishKey
 	fastrand.Read(masterKey[:])
 	_, err = w.Encrypt(masterKey)
-	log.Printf("encrypted wallet\n")
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +674,6 @@ func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*w
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("unlocked wallet\n")
 	m, err := miner.New(cs, tp, w, filepath.Join(testdir, modules.WalletDir))
 	if err != nil {
 		return nil, err
