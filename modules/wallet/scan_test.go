@@ -187,6 +187,7 @@ func runWithFlag(t *testing.T, spv bool) {
 		}
 		// log.Printf("new block %d id: %s\n", i, newBlock.ID().String())
 	}
+	log.Println("done building blocks")
 	balance, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)

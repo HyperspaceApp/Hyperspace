@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"fmt"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -8,6 +9,7 @@ import (
 // lookahead keeps the unlock conditions organized in a way such that it's easy to
 // query their position.
 type lookahead struct {
+	initialized bool
 	seed modules.Seed
 	startingIndex uint64
 	hashIndexMap map[types.UnlockHash]uint64
@@ -64,13 +66,19 @@ func (la *lookahead) Advance(numKeys uint64) []spendableKey {
 	return retKeys
 }
 
+func (la *lookahead) Initialized() bool {
+	return la.initialized
+}
+
 func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
+	fmt.Println("Initialize called on lookahead")
 	la.seed = seed
 	la.startingIndex = startingIndex
 	// do the initial growing of the buffer
 	for _, k := range generateKeys(la.seed, startingIndex, AddressGapLimit) {
 		la.AppendKey(k)
 	}
+	la.initialized = true
 }
 
 func newLookahead() lookahead {

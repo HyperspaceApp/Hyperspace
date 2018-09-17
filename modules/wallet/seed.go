@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"fmt"
+	//"fmt"
 	"runtime"
 	"sync"
 
@@ -118,6 +118,7 @@ func (w *Wallet) GetAddress() (types.UnlockConditions, error) {
 
 // nextPrimarySeedAddress fetches the next n addresses from the primary seed.
 func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.UnlockConditions, error) {
+	//fmt.Println("nextPrimarySeedAddresses called")
 	// Check that the wallet has been unlocked.
 	if !w.unlocked {
 		return []types.UnlockConditions{}, modules.ErrLockedWallet
@@ -133,16 +134,17 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 		return []types.UnlockConditions{}, err
 	}
 	newInternalIndex := internalIndex + n
-	fmt.Printf("external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
+	//fmt.Printf("external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 	if (newInternalIndex - externalIndex) >= uint64(AddressGapLimit) {
-		fmt.Printf("ERROR: external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
+		//fmt.Printf("ERROR: external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 		return []types.UnlockConditions{}, modules.ErrAddressGapLimit
 	}
 	// Integrate the next keys into the wallet, and return the unlock
 	// conditions. Also remove new keys from the future keys and update them
 	// according to new progress
 	ucs := make([]types.UnlockConditions, 0, n)
-	for _, spendableKey := range w.lookahead.Advance(n) {
+	for i := internalIndex; i < newInternalIndex; i++ {
+		spendableKey := w.lookahead.GetKeyByIndex(i)
 		w.keys[spendableKey.UnlockConditions.UnlockHash()] = spendableKey
 		ucs = append(ucs, spendableKey.UnlockConditions)
 	}
@@ -160,6 +162,7 @@ func (w *Wallet) nextPrimarySeedAddress(tx *bolt.Tx) (types.UnlockConditions, er
 	if err != nil {
 		return types.UnlockConditions{}, err
 	}
+	//fmt.Printf("Built a new address: %v\n", ucs[0].UnlockHash())
 	return ucs[0], nil
 }
 

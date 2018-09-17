@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	//"fmt"
 	"math"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -50,9 +51,8 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 // derived from one of the wallet's spendable keys or is being explicitly watched.
 func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 	_, spendable := w.keys[uh]
-	_, lookahead := w.lookahead.GetIndex(uh)
 	_, watchonly := w.watchedAddrs[uh]
-	return spendable || lookahead || watchonly
+	return spendable || watchonly
 }
 
 // updateLookahead uses a consensus change to update the seed progress if one of the outputs
@@ -60,6 +60,7 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error {
 	var largestIndex uint64
 	for _, diff := range cc.SiacoinOutputDiffs {
+		//fmt.Printf("scanning %v\n", diff.SiacoinOutput.UnlockHash)
 		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
 			if index > largestIndex {
 				largestIndex = index
@@ -67,7 +68,16 @@ func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error 
 		}
 	}
 	if largestIndex > 0 {
+		//fmt.Printf("found index %v, advancing seed look ahead\n", largestIndex)
 		return w.advanceSeedLookahead(largestIndex)
+	} else {
+		/*
+		fmt.Printf("nothing found in our lookahead of size %v\n", w.lookahead.Length())
+		fmt.Println("here are the values we searched: ")
+		for _, key := range(w.lookahead.keys) {
+			fmt.Println(key.UnlockConditions.UnlockHash().String())
+		}
+		*/
 	}
 
 	return nil

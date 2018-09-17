@@ -179,7 +179,12 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		}
 		w.integrateSeed(primarySeed, internalIndex)
 		w.primarySeed = primarySeed
-		w.lookahead.Initialize(primarySeed, externalIndex)
+		// Sometimes the lookahead has already been initialized before we
+		// unlock - this is the case when we just created or loaded a new
+		// seed. If it is not, we need to initialize it
+		if !w.lookahead.Initialized() {
+			w.lookahead.Initialize(primarySeed, externalIndex)
+		}
 
 		// auxiliarySeedFiles
 		for _, sf := range auxiliarySeedFiles {
