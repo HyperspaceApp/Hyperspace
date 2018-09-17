@@ -75,13 +75,13 @@ func (w *Wallet) openDB(filename string) (err error) {
 			wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
 		}
 		if wb.Get(keySeedsMinimumIndex) == nil {
-			wb.Put(keySeedsMinimumIndex, encoding.Marshal([]uint64{}))
+			wb.Put(keySeedsMinimumIndex, encoding.Marshal([]uint64{0}))
 		}
 		if wb.Get(keySeedsMaximumInternalIndex) == nil {
-			wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{}))
+			wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{0}))
 		}
 		if wb.Get(keySeedsMaximumExternalIndex) == nil {
-			wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{}))
+			wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{0}))
 		}
 
 		// build the bucketAddrTransactions bucket if necessary
