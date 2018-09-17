@@ -67,7 +67,10 @@ func (la *lookahead) Advance(numKeys uint64) []spendableKey {
 func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
 	la.seed = seed
 	la.startingIndex = startingIndex
-	la.Advance(AddressGapLimit)
+	// do the initial growing of the buffer
+	for _, k := range generateKeys(la.seed, startingIndex, AddressGapLimit) {
+		la.AppendKey(k)
+	}
 }
 
 func newLookahead() lookahead {
