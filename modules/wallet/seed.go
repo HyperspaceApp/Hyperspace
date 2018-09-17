@@ -135,7 +135,7 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 	}
 	newInternalIndex := internalIndex + n
 	//fmt.Printf("external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
-	if (newInternalIndex - externalIndex) >= uint64(AddressGapLimit) {
+	if (newInternalIndex - externalIndex) > uint64(AddressGapLimit) {
 		//fmt.Printf("ERROR: external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 		return []types.UnlockConditions{}, modules.ErrAddressGapLimit
 	}

@@ -161,7 +161,8 @@ func runWithFlag(t *testing.T, spv bool) {
 	startTime := time.Now()
 	_, availableAddressCount, _ := wt.wallet.PrimarySeed()
 	log.Printf("availableAddressCount: %v\n", availableAddressCount)
-	for i := 0; i < int(availableAddressCount) ; i++ {
+	//for i := 0; i < int(availableAddressCount) ; i++ {
+	for i := 0; i < int(5) ; i++ {
 		// insert some tx
 		uc, err := wt.wallet.nextPrimarySeedAddress(wt.wallet.dbTx)
 		if err != nil {
@@ -180,6 +181,7 @@ func runWithFlag(t *testing.T, spv bool) {
 			}
 			log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
 		}
+		log.Printf("adding block\n")
 		_, err = wt.miner.AddBlockWithAddress(types.UnlockHash{})
 		log.Printf("added block\n")
 		if err != nil {
