@@ -37,7 +37,7 @@ func TestScanLargeIndex(t *testing.T) {
 
 	// set the wallet's seed progress to a high number and then mine some coins.
 	wt.wallet.mu.Lock()
-	dbPutPrimarySeedProgress(wt.wallet.dbTx, numInitialKeys+1)
+	dbPutPrimarySeedMaximumInternalIndex(wt.wallet.dbTx, 10000)
 	wt.wallet.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
@@ -80,8 +80,8 @@ func TestScanLargeIndex(t *testing.T) {
 			t.Log(o.seedIndex, o.value)
 		}
 	}
-	if ss.largestIndexSeen != 0 {
-		t.Error("expected no index to be seen, got", ss.largestIndexSeen)
+	if ss.maximumExternalIndex != 0 {
+		t.Error("expected no index to be seen, got", ss.maximumExternalIndex)
 	}
 }
 
@@ -104,7 +104,7 @@ func TestScanLoop(t *testing.T) {
 	indices := []uint64{500, 2500, 8000, 100000}
 	for _, index := range indices {
 		wt.wallet.mu.Lock()
-		dbPutPrimarySeedProgress(wt.wallet.dbTx, index)
+		dbPutPrimarySeedMaximumInternalIndex(wt.wallet.dbTx, index)
 		wt.wallet.mu.Unlock()
 		if err != nil {
 			t.Fatal(err)
@@ -140,8 +140,8 @@ func TestScanLoop(t *testing.T) {
 	// the largest index seen should be the penultimate element (+2, since 2
 	// addresses are generated when sending coins). The last element should
 	// not be seen, because it was outside the scanning range.
-	if ss.largestIndexSeen != indices[len(indices)-2]+2 {
-		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.largestIndexSeen)
+	if ss.maximumExternalIndex != indices[len(indices)-2]+2 {
+		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.maximumExternalIndex)
 	}
 }
 
@@ -216,4 +216,25 @@ func runWithFlag(t *testing.T, spv bool) {
 		log.Printf("scan balance: %s", scanBalance.String())
 	}
 	log.Printf("time spent 1: %f", time.Now().Sub(startTime).Seconds())
+}
+
+func TestScannerGenerateKeys(t *testing.T) {
+	wt, err := createWalletTester("TestScannerGenerateKeys", modules.ProdDependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wt.closeWt()
+	seed, _, _ := wt.wallet.PrimarySeed()
+	ss := newSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
+	numKeys := uint64(100)
+	ss.generateKeys(numKeys)
+	if ss.minimumIndex != 0 {
+		t.Fatalf("Minimum index should be 0 but is %v\n", ss.minimumIndex)
+	}
+	if ss.maximumExternalIndex != 0 {
+		t.Fatalf("Maximum external index should be 0 but is %v\n", ss.maximumExternalIndex)
+	}
+	if ss.maximumInternalIndex != numKeys {
+		t.Fatalf("Maximum internal index should be %v but is %v\n", numKeys, ss.maximumInternalIndex)
+	}
 }

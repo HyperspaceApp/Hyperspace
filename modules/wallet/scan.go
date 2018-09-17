@@ -40,9 +40,9 @@ type seedScanner struct {
 	dustThreshold        types.Currency              // minimum value of outputs to be included
 	keys                 map[types.UnlockHash]uint64 // map address to seed index
 	keysArray            [][]byte
-	minimumIndex         uint64
-	maximumInternalIndex uint64
-	maximumExternalIndex uint64
+	minimumIndex         uint64                      // minimum index from which keys should start
+	maximumInternalIndex uint64                      // the next internal index we can use
+	maximumExternalIndex uint64                      // the next external address we look for
 	seed                 modules.Seed
 	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
 	cs                   modules.ConsensusSet

@@ -74,6 +74,15 @@ func (w *Wallet) openDB(filename string) (err error) {
 		if wb.Get(keyWatchedAddrs) == nil {
 			wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
 		}
+		if wb.Get(keySeedsMinimumIndex) == nil {
+			wb.Put(keySeedsMinimumIndex, encoding.Marshal([]uint64{}))
+		}
+		if wb.Get(keySeedsMaximumInternalIndex) == nil {
+			wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{}))
+		}
+		if wb.Get(keySeedsMaximumExternalIndex) == nil {
+			wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{}))
+		}
 
 		// build the bucketAddrTransactions bucket if necessary
 		if buildAddrTxns {
@@ -109,12 +118,7 @@ func (w *Wallet) initPersist() error {
 		return err
 	}
 
-	// Open the database.
-	//dbFilename := filepath.Join(w.persistDir, dbFile)
-	//compatFilename := filepath.Join(w.persistDir, compatFile)
-	//_, dbErr := os.Stat(dbFilename)
-	//_, compatErr := os.Stat(compatFilename)
-	// either database exists or neither exists; open/create the database
+	// open/create the database
 	err = w.openDB(filepath.Join(w.persistDir, dbFile))
 	if err != nil {
 		return err
@@ -124,19 +128,6 @@ func (w *Wallet) initPersist() error {
 	w.dbTx, err = w.db.Begin(true)
 	if err != nil {
 		w.log.Critical("ERROR: failed to start database update:", err)
-	}
-
-	// COMPATv131 we need to create the bucketProcessedTxnIndex if it doesn't exist
-	if w.dbTx.Bucket(bucketProcessedTransactions).Stats().KeyN > 0 &&
-		w.dbTx.Bucket(bucketProcessedTxnIndex).Stats().KeyN == 0 {
-		err = initProcessedTxnIndex(w.dbTx)
-		if err != nil {
-			return err
-		}
-		// Save changes to disk
-		if err = w.syncDB(); err != nil {
-			return err
-		}
 	}
 
 	// ensure that the final db transaction is committed when the wallet closes
@@ -186,23 +177,6 @@ func (w *Wallet) CreateBackup(backupFilepath string) error {
 	defer f.Close()
 	return w.createBackup(f)
 }
-
-// compat112Persist is the structure of the wallet.json file used in v1.1.2
-type compat112Persist struct {
-	UID                    uniqueID
-	EncryptionVerification crypto.Ciphertext
-	PrimarySeedFile        seedFile
-	PrimarySeedProgress    uint64
-	AuxiliarySeedFiles     []seedFile
-	UnseededKeys           []spendableKeyFile
-}
-
-// compat112Meta is the metadata of the wallet.json file used in v1.1.2
-var compat112Meta = persist.Metadata{
-	Header:  "Wallet Settings",
-	Version: "0.4.0",
-}
-
 
 /*
 // LoadBackup loads a backup file from the provided filepath. The backup file
