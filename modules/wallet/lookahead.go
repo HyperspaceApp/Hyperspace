@@ -30,6 +30,10 @@ func (la *lookahead) GetKeyByIndex(index uint64) spendableKey {
 	return la.keys[index - la.startingIndex]
 }
 
+func (la *lookahead) GetNextKey() spendableKey {
+	return la.keys[0]
+}
+
 func (la *lookahead) PopNextKey() spendableKey {
 	keys := la.PopNextKeys(1)
 	return keys[0]
