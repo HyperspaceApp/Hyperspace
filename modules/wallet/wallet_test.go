@@ -312,7 +312,7 @@ func TestLookaheadGeneration(t *testing.T) {
 		t.Fatal("Couldn't fetch primary seed from db")
 	}
 
-	actualKeys := uint64(len(wt.wallet.lookahead))
+	actualKeys := wt.wallet.lookahead.Length()
 	lookaheadBufferSize := AddressGapLimit - (internalIndex - externalIndex)
 	expectedKeys := lookaheadBufferSize
 	if actualKeys != expectedKeys {
@@ -335,7 +335,7 @@ func TestLookaheadGeneration(t *testing.T) {
 		t.Fatal("Couldn't fetch primary seed from db")
 	}
 
-	actualKeys = uint64(len(wt.wallet.lookahead))
+	actualKeys = wt.wallet.lookahead.Length()
 	lookaheadBufferSize = AddressGapLimit - (internalIndex - externalIndex)
 	expectedKeys = lookaheadBufferSize
 	if actualKeys != expectedKeys {
@@ -344,8 +344,8 @@ func TestLookaheadGeneration(t *testing.T) {
 
 	wt.wallet.mu.RLock()
 	defer wt.wallet.mu.RUnlock()
-	for i := range wt.wallet.keys {
-		_, exists := wt.wallet.lookahead[i]
+	for _, key := range wt.wallet.keys {
+		_, exists := wt.wallet.lookahead.GetIndex(key.UnlockConditions.UnlockHash())
 		if exists {
 			t.Fatal("wallet keys contained a key which is also present in lookahead")
 		}
@@ -415,7 +415,7 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 	wt.wallet.mu.RLock()
 	defer wt.wallet.mu.RUnlock()
 	for _, uh := range receivingAddresses {
-		_, exists := wt.wallet.lookahead[uh]
+		_, exists := wt.wallet.lookahead.GetIndex(uh)
 		if exists {
 			t.Fatal("UnlockHash still exists in wallet lookahead")
 		}
@@ -459,7 +459,7 @@ func TestFarOutputs(t *testing.T) {
 
 	// Send coins to an address with a high seed index, just outside the
 	// lookahead range. It should not be detected
-	highIndex := internalIndex + uint64(len(wt.wallet.lookahead)) + 1
+	highIndex := internalIndex + wt.wallet.lookahead.Length() + 1
 	farAddr := generateSpendableKey(wt.wallet.primarySeed, highIndex).UnlockConditions.UnlockHash()
 	farPayout := types.SiacoinPrecision.Mul64(8888)
 
@@ -502,7 +502,8 @@ func TestFarOutputs(t *testing.T) {
 
 	// choose 10 keys in the lookahead and remember them
 	var receivingAddresses []types.UnlockHash
-	for uh, _ := range wt.wallet.lookahead {
+	for _, key := range wt.wallet.lookahead.Advance(10) {
+		uh := key.UnlockConditions.UnlockHash()
 		sco := types.SiacoinOutput{
 			UnlockHash: uh,
 			Value:      types.SiacoinPrecision.Mul64(1000),
@@ -548,7 +549,7 @@ func TestFarOutputs(t *testing.T) {
 	wt.wallet.mu.RLock()
 	defer wt.wallet.mu.RUnlock()
 	for _, uh := range receivingAddresses {
-		_, exists := wt.wallet.lookahead[uh]
+		_, exists := wt.wallet.lookahead.GetIndex(uh)
 		if exists {
 			t.Fatal("UnlockHash still exists in wallet lookahead")
 		}
