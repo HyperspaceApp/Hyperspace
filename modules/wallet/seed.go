@@ -197,7 +197,7 @@ func (w *Wallet) PrimarySeed() (modules.Seed, uint64, error) {
 	// that risks not being able to recover them when using SweepSeed or
 	// InitFromSeed.
 	remaining := AddressGapLimit - (internalIndex - externalIndex)
-	if remaining < 0  {
+	if remaining < 0 {
 		remaining = 0
 	}
 	return w.primarySeed, remaining, nil
@@ -273,7 +273,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 
 	// scan blockchain to determine how many keys to generate for the seed
 	s := newSeedScanner(seed, w.cs, w.log)
-	if err := s.scan(w.cs, w.tg.StopChan()); err != nil {
+	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
 	w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.maximumExternalIndex, s.maximumInternalIndex)
@@ -382,7 +382,7 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 	const outputSize = 350 // approx. size in bytes of an output and accompanying signature
 	const maxOutputs = 50  // approx. number of outputs that a transaction can handle
 	s.dustThreshold = maxFee.Mul64(outputSize)
-	if err = s.scan(w.cs, w.tg.StopChan()); err != nil {
+	if err = s.scan(w.tg.StopChan()); err != nil {
 		return
 	}
 

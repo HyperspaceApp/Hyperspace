@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
-	"sync"
 
 	"github.com/coreos/bbolt"
+	deadlock "github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -122,7 +122,7 @@ type Wallet struct {
 
 	persistDir string
 	log        *persist.Logger
-	mu         sync.RWMutex
+	mu         deadlock.RWMutex
 
 	// A separate TryMutex is used to protect against concurrent unlocking or
 	// initialization.

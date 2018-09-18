@@ -86,12 +86,10 @@ func (cs *ConsensusSet) openDB(filename string) (err error) {
 // initDB is run if there is no existing consensus database, creating a
 // database with all the required buckets and sane initial values.
 func (cs *ConsensusSet) initDB(tx *bolt.Tx) error {
-	if cs.spv {
-		if tx.Bucket(BlockHeaderMap) == nil {
-			err := cs.createHeaderConsensusDB(tx)
-			if err != nil {
-				return err
-			}
+	if tx.Bucket(BlockHeaderMap) == nil {
+		err := cs.createHeaderConsensusDB(tx)
+		if err != nil {
+			return err
 		}
 	}
 

@@ -61,16 +61,16 @@ func (cs *ConsensusSet) loadDB() error {
 	if err != nil {
 		return err
 	}
-	if cs.spv {
-		return cs.db.Update(func(tx *bolt.Tx) error {
-			// load processed block headers
-			err = cs.loadProcessedBlockHeader(tx)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-	}
+
+	return cs.db.Update(func(tx *bolt.Tx) error {
+		// load processed block headers
+		err = cs.loadProcessedBlockHeader(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	return nil
 }
 

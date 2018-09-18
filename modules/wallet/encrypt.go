@@ -403,7 +403,7 @@ func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) er
 
 	// estimate the primarySeedProgress by scanning the blockchain
 	s := newSeedScanner(seed, w.cs, w.log)
-	if err := s.scan(w.cs, w.tg.StopChan()); err != nil {
+	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
 	w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.maximumExternalIndex, s.maximumInternalIndex)
