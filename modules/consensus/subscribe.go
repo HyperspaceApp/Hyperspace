@@ -483,7 +483,7 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 		if exist {
 			hcc.RevertedBlockHeaders = append(hcc.RevertedBlockHeaders, *revertedBlockHeader)
 		} else {
-			return modules.HeaderConsensusChange{}, fmt.Errorf("revert block head not exist: %s", revertedBlockID.String())
+			return modules.HeaderConsensusChange{}, fmt.Errorf("reverted block header does not exist in the consensus set processed block header: %s", revertedBlockID.String())
 		}
 		for i := len(revertedBlockHeader.SiacoinOutputDiffs) - 1; i >= 0; i-- {
 			scod := revertedBlockHeader.SiacoinOutputDiffs[i]
@@ -496,7 +496,7 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 		if exist {
 			hcc.AppliedBlockHeaders = append(hcc.AppliedBlockHeaders, *appliedBlockHeader)
 		} else {
-			return modules.HeaderConsensusChange{}, fmt.Errorf("apply block head not exist: %s", appliedBlockID.String())
+			return modules.HeaderConsensusChange{}, fmt.Errorf("applied block header does not exist in the consensus set processed block headers: %s", appliedBlockID.String())
 		}
 		for _, scod := range appliedBlockHeader.SiacoinOutputDiffs {
 			hcc.MaturedSiacoinOutputDiffs = append(hcc.MaturedSiacoinOutputDiffs, scod)
