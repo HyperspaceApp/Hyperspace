@@ -24,8 +24,15 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 	if err != nil {
 		return err
 	}
-	newInternalIndex := index + 1
-	numKeys := newInternalIndex - internalIndex
+	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
+	numKeys := index - externalIndex
+	var newInternalIndex uint64
+	if index > internalIndex {
+		newInternalIndex = index
+	} else {
+		newInternalIndex = internalIndex
+	}
+	//fmt.Printf("old internal index %v, new internal index: %v, advanceSeedLookahead to index %v\n", internalIndex, newInternalIndex, index)
 
 	// Retrieve numKeys from the lookup buffer while replenishing it
 	spendableKeys := w.lookahead.Advance(numKeys)
@@ -39,7 +46,7 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 		return err
 	}
 	// Update the externalIndex
-	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, newInternalIndex)
+	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, index)
 	if err != nil {
 		return err
 	}
@@ -58,18 +65,17 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 // updateLookahead uses a consensus change to update the seed progress if one of the outputs
 // contains an unlock hash of the lookahead set. Returns true if a blockchain rescan is required
 func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error {
-	var largestIndex uint64
+	var largestExternalIndex uint64
 	for _, diff := range cc.SiacoinOutputDiffs {
 		//fmt.Printf("scanning %v\n", diff.SiacoinOutput.UnlockHash)
 		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
-			if index > largestIndex {
-				largestIndex = index
+			if index > largestExternalIndex {
+				largestExternalIndex = index
 			}
 		}
 	}
-	if largestIndex > 0 {
-		//fmt.Printf("found index %v, advancing seed look ahead\n", largestIndex)
-		return w.advanceSeedLookahead(largestIndex)
+	if largestExternalIndex > 0 {
+		return w.advanceSeedLookahead(largestExternalIndex+1)
 	} else {
 		/*
 		fmt.Printf("nothing found in our lookahead of size %v\n", w.lookahead.Length())

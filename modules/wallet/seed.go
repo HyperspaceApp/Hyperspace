@@ -134,14 +134,13 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 		return []types.UnlockConditions{}, err
 	}
 	newInternalIndex := internalIndex + n
-	//fmt.Printf("external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
+	//fmt.Printf("nextPrimarySeedAddresses(%v): external index: %v, old internal index: %v, new internal index: %v\n", n, externalIndex, internalIndex, newInternalIndex)
 	if (newInternalIndex - externalIndex) > uint64(AddressGapLimit) {
 		//fmt.Printf("ERROR: external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 		return []types.UnlockConditions{}, modules.ErrAddressGapLimit
 	}
 	// Integrate the next keys into the wallet, and return the unlock
-	// conditions. Also remove new keys from the future keys and update them
-	// according to new progress
+	// conditions.
 	ucs := make([]types.UnlockConditions, 0, n)
 	for i := internalIndex; i < newInternalIndex; i++ {
 		spendableKey := w.lookahead.GetKeyByIndex(i)

@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"fmt"
+	//"fmt"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -29,6 +29,10 @@ func (la *lookahead) AppendKey(key spendableKey) {
 }
 
 func (la *lookahead) GetKeyByIndex(index uint64) spendableKey {
+	//fmt.Printf("GetKeyByIndex(%v): startingIndex: %v\n", index, la.startingIndex)
+	if (index - la.startingIndex) > uint64(len(la.keys)) {
+		panic("GetKeyByIndex out of bounds")
+	}
 	return la.keys[index - la.startingIndex]
 }
 
@@ -42,7 +46,7 @@ func (la *lookahead) PopNextKey() spendableKey {
 }
 
 func (la *lookahead) PopNextKeys(n uint64) []spendableKey {
-	keys, remaining := la.keys[0:n], la.keys[n:]
+	keys, remaining := la.keys[:n], la.keys[n:]
 	la.keys = remaining
 	for _, key := range keys {
 		delete(la.hashIndexMap, key.UnlockConditions.UnlockHash())
@@ -56,6 +60,7 @@ func (la *lookahead) Length() uint64 {
 }
 
 func (la *lookahead) Advance(numKeys uint64) []spendableKey {
+	//fmt.Printf("Advanced %v keys\n", numKeys)
 	newIndex := la.startingIndex + uint64(len(la.keys))
 	retKeys := []spendableKey{}
 
@@ -71,7 +76,7 @@ func (la *lookahead) Initialized() bool {
 }
 
 func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
-	fmt.Println("Initialize called on lookahead")
+	//fmt.Println("Initialize called on lookahead")
 	la.seed = seed
 	la.startingIndex = startingIndex
 	// do the initial growing of the buffer
