@@ -3,7 +3,6 @@ package wallet
 import (
 	"log"
 	"testing"
-	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -68,7 +67,7 @@ func TestScanLargeIndex(t *testing.T) {
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
 	ss := newSeedScanner(seed, wt.cs, wt.wallet.log)
-	err = ss.scan(wt.cs, wt.wallet.tg.StopChan())
+	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +126,7 @@ func TestScanLoop(t *testing.T) {
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
 	ss := newSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
-	err = ss.scan(wt.cs, wt.wallet.tg.StopChan())
+	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,14 +144,9 @@ func TestScanLoop(t *testing.T) {
 	}
 }
 
-func TestSPVScan(t *testing.T) {
-	runWithFlag(t, false)
-	runWithFlag(t, true)
-}
+func TestSlowScan(t *testing.T) {
 
-func runWithFlag(t *testing.T, spv bool) {
-	log.Printf("run with spv: %v", spv)
-	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies, spv)
+	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,54 +166,81 @@ func runWithFlag(t *testing.T, spv bool) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		log.Printf("send 1 to %s, tx id: %s\n", uc.UnlockHash().String(), txns[0].ID().String())
-		if i%6 == 0 {
-			txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), types.UnlockHash{})
+		if i%5 == 0 {
+			_, err := wt.wallet.SendSiacoins(types.NewCurrency64(5000), types.UnlockHash{})
 			if err != nil {
 				t.Fatal(err)
 			}
-			log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
+			// log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
 		}
-		log.Printf("adding block\n")
-		_, err = wt.miner.AddBlockWithAddress(types.UnlockHash{})
-		log.Printf("added block\n")
+		_, err := wt.miner.AddBlockWithAddress(types.UnlockHash{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		// log.Printf("new block %d id: %s\n", i, newBlock.ID().String())
 	}
-	log.Println("done building blocks")
+
 	balance, err := wt.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
 	}
-	log.Printf("balance: %s", balance.String())
 
-	log.Printf("time spent 0: %f", time.Now().Sub(startTime).Seconds())
-	startTime = time.Now()
+	// log.Printf("time spent 0: %f", time.Now().Sub(startTime).Seconds())
+	// startTime := time.Now()
+	var scanBalance types.Currency
+	var newScanBalance types.Currency
 
 	for j := 0; j <= 0; j++ {
+		scanBalance = types.NewCurrency64(0)
+		newScanBalance = types.NewCurrency64(0)
 		// create seed scanner and scan the block
 		seed, _, _ := wt.wallet.PrimarySeed()
-		ss := newSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
-		err = ss.scan(wt.cs, wt.wallet.tg.StopChan())
+		dustThreshold, err := wt.wallet.DustThreshold()
+
+		ss := newSlowSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
+		err = ss.scan(wt.wallet.tg.StopChan())
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		dustThreshold, err := wt.wallet.DustThreshold()
 		if err != nil {
 			t.Fatal(err)
 		}
-		var scanBalance types.Currency
 		for _, scannedOutput := range ss.siacoinOutputs {
 			if scannedOutput.value.Cmp(dustThreshold) > 0 {
 				scanBalance = scanBalance.Add(scannedOutput.value)
 			}
 		}
-		log.Printf("scan balance: %s", scanBalance.String())
+
+		nss := newSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
+		err = nss.scan(wt.wallet.tg.StopChan())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		dustThreshold, err = wt.wallet.DustThreshold()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, scannedOutput := range nss.siacoinOutputs {
+			if scannedOutput.value.Cmp(dustThreshold) > 0 {
+				newScanBalance = newScanBalance.Add(scannedOutput.value)
+			}
+		}
 	}
-	log.Printf("time spent 1: %f", time.Now().Sub(startTime).Seconds())
+
+	log.Printf("balance          : %s", balance.String())
+	log.Printf("slow scan balance: %s", scanBalance.String())
+	log.Printf("scan balance     : %s", newScanBalance.String())
+
+	if !balance.Equals(scanBalance) {
+		t.Fatal("wrong slow scan")
+	}
+
+	if !balance.Equals(newScanBalance) {
+		t.Fatal("wrong new scan")
+	}
+	// log.Printf("time spent 1: %f", time.Now().Sub(startTime).Seconds())
 }
 
 func TestScannerGenerateKeys(t *testing.T) {

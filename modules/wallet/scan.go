@@ -40,9 +40,9 @@ type seedScanner struct {
 	dustThreshold        types.Currency              // minimum value of outputs to be included
 	keys                 map[types.UnlockHash]uint64 // map address to seed index
 	keysArray            [][]byte
-	minimumIndex         uint64                      // minimum index from which keys should start
-	maximumInternalIndex uint64                      // the next internal index we can use
-	maximumExternalIndex uint64                      // the next external address we look for
+	minimumIndex         uint64 // minimum index from which keys should start
+	maximumInternalIndex uint64 // the next internal index we can use
+	maximumExternalIndex uint64 // the next external address we look for
 	seed                 modules.Seed
 	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
 	cs                   modules.ConsensusSet
@@ -56,10 +56,11 @@ func (s *seedScanner) numKeys() uint64 {
 // generateKeys generates n additional keys from the seedScanner's seed.
 func (s *seedScanner) generateKeys(n uint64) {
 	initialProgress := s.numKeys()
-	for i, k := range generateKeys(s.seed, initialProgress, n) {
-		s.keys[k.UnlockConditions.UnlockHash()] = initialProgress + uint64(i)
+	for i, k := range generateKeys(s.seed, initialProgress+s.minimumIndex, n) {
+		s.keys[k.UnlockConditions.UnlockHash()] = initialProgress + s.minimumIndex + uint64(i)
 		u := k.UnlockConditions.UnlockHash()
 		s.keysArray = append(s.keysArray, u[:])
+		// log.Printf("index:  %d\n", s.keys[k.UnlockConditions.UnlockHash()])
 	}
 	s.maximumInternalIndex += n
 }
@@ -113,6 +114,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	for _, diff := range siacoinOutputDiffs {
 		if diff.Direction == modules.DiffApply {
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
+				// log.Printf("DiffApply %d: %s\n", index, diff.SiacoinOutput.Value.String())
 				s.siacoinOutputs[diff.ID] = scannedOutput{
 					id:        types.OutputID(diff.ID),
 					value:     diff.SiacoinOutput.Value,
@@ -123,6 +125,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 			// NOTE: DiffRevert means the output was either spent or was in a
 			// block that was reverted.
 			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+				// log.Printf("DiffRevert %d: %s\n", index, diff.SiacoinOutput.Value.String())
 				delete(s.siacoinOutputs, diff.ID)
 			}
 		}
@@ -147,17 +150,21 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 // scan subscribes s to cs and scans the blockchain for addresses that belong
 // to s's seed. If scan returns errMaxKeys, additional keys may need to be
 // generated to find all the addresses.
-func (s *seedScanner) scan(cs modules.ConsensusSet, cancel <-chan struct{}) error {
+func (s *seedScanner) scan(cancel <-chan struct{}) error {
 	numKeys := uint64(AddressGapLimit)
 	s.generateKeys(numKeys)
-	if err := cs.HeaderConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, cancel); err != nil {
+	if err := s.cs.HeaderConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, cancel); err != nil {
 		return err
 	}
-	cs.HeaderUnsubscribe(s)
-	if numKeys > maxScanKeys-s.numKeys() {
-		numKeys = maxScanKeys - s.numKeys()
-	}
-	return errMaxKeys
+	s.cs.HeaderUnsubscribe(s)
+
+	// log.Printf("scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
+	// for id, sco := range s.siacoinOutputs {
+	// 	log.Printf("scan siacoinOutputs: %d %s", sco.seedIndex, sco.value.String())
+	// 	s.siacoinOutputs[id] = sco
+	// }
+
+	return nil
 }
 
 // newSeedScanner returns a new seedScanner.

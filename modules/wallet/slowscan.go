@@ -1,12 +1,12 @@
 package wallet
 
 import (
-	"log"
-
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
+
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 )
 
 const scanMultiplier = 4 // how many more keys to generate after each scan iteration
@@ -22,9 +22,9 @@ var numInitialKeys = func() uint64 {
 	case "dev":
 		return 10e3
 	case "standard":
-		return 1e6
+		return 10e6
 	case "testing":
-		return 1e3
+		return 10e3
 	default:
 		panic("unrecognized build.Release")
 	}
@@ -33,13 +33,16 @@ var numInitialKeys = func() uint64 {
 // A slowSeedScanner scans the blockchain for addresses that belong to a given
 // seed. This is for legacy scanning.
 type slowSeedScanner struct {
-	dustThreshold    types.Currency              // minimum value of outputs to be included
-	keys             map[types.UnlockHash]uint64 // map address to seed index
-	keysArray        [][]byte
-	largestIndexSeen uint64 // largest index that has appeared in the blockchain
-	seed             modules.Seed
-	siacoinOutputs   map[types.SiacoinOutputID]scannedOutput
-	cs               modules.ConsensusSet
+	dustThreshold        types.Currency              // minimum value of outputs to be included
+	keys                 map[types.UnlockHash]uint64 // map address to seed index
+	keysArray            [][]byte
+	maximumExternalIndex uint64
+	seed                 modules.Seed
+	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
+	cs                   modules.ConsensusSet
+	gapScanner           *seedScanner
+	lastConsensusChange  modules.ConsensusChangeID
+	cancel               chan struct{}
 
 	log *persist.Logger
 }
@@ -58,35 +61,17 @@ func (s *slowSeedScanner) generateKeys(n uint64) {
 	}
 }
 
-// ProcessConsensusChange scans the blockchain for information relevant to the
-// slowSeedScanner.
-func (s *slowSeedScanner) ProcessConsensusChange(cc modules.ConsensusChange) {
-	// update outputs
-	for _, diff := range cc.SiacoinOutputDiffs {
-		if diff.Direction == modules.DiffApply {
-			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-				s.siacoinOutputs[diff.ID] = scannedOutput{
-					id:        types.OutputID(diff.ID),
-					value:     diff.SiacoinOutput.Value,
-					seedIndex: index,
-				}
-			}
-		} else if diff.Direction == modules.DiffRevert {
-			// NOTE: DiffRevert means the output was either spent or was in a
-			// block that was reverted.
-			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-				delete(s.siacoinOutputs, diff.ID)
-			}
-		}
-	}
+func isAirdrop(h types.BlockHeight) bool {
+	return h <= 7
+}
 
-	// update s.largestIndexSeen
-	for _, diff := range cc.SiacoinOutputDiffs {
+func (s *slowSeedScanner) adjustMinimumIndex(siacoinOutputDiffs []modules.SiacoinOutputDiff) {
+	for _, diff := range siacoinOutputDiffs {
 		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
 		if exists {
-			s.log.Debugln("Seed scanner found a key used at index", index)
-			if index > s.largestIndexSeen {
-				s.largestIndexSeen = index
+			s.log.Debugln("Seed scanner adjustMinimumIndex at index", index)
+			if index > s.maximumExternalIndex {
+				s.maximumExternalIndex = index
 			}
 		}
 	}
@@ -106,21 +91,27 @@ func (s *slowSeedScanner) ProcessConsensusChange(cc modules.ConsensusChange) {
 // outputs from the block output diff.
 func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange,
 	getSiacoinOutputDiff func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error)) {
-
 	var siacoinOutputDiffs []modules.SiacoinOutputDiff
+	s.lastConsensusChange = hcc.ID
 
 	// grab matured outputs
 	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
 
 	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
+		if !isAirdrop(pbh.Height) {
+			close(s.cancel)
+			return
+		}
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
+			// log.Printf("applied block match num %d", int(pbh.Height))
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffApply)
 			if err != nil {
 				panic(err)
 			}
+			s.adjustMinimumIndex(blockSiacoinOutputDiffs)
 			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
 		}
 	}
@@ -128,12 +119,13 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 	// grab reverted active outputs from full blocks
 	for _, pbh := range hcc.RevertedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
-			log.Printf("found in %s, \n", blockID.String())
+		if (isAirdrop(pbh.Height) && pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray)) ||
+			pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
 			}
+			s.adjustMinimumIndex(blockSiacoinOutputDiffs)
 			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
 		}
 	}
@@ -142,6 +134,7 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 	for _, diff := range siacoinOutputDiffs {
 		if diff.Direction == modules.DiffApply {
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
+				// log.Printf("slow DiffApply %d: %s\n", index, diff.SiacoinOutput.Value.String())
 				s.siacoinOutputs[diff.ID] = scannedOutput{
 					id:        types.OutputID(diff.ID),
 					value:     diff.SiacoinOutput.Value,
@@ -152,18 +145,8 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 			// NOTE: DiffRevert means the output was either spent or was in a
 			// block that was reverted.
 			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+				// log.Printf("slow DiffRevert %d: %s\n", index, diff.SiacoinOutput.Value.String())
 				delete(s.siacoinOutputs, diff.ID)
-			}
-		}
-	}
-
-	// update s.largestIndexSeen
-	for _, diff := range siacoinOutputDiffs {
-		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
-		if exists {
-			s.log.Debugln("Seed scanner found a key used at index", index)
-			if index > s.largestIndexSeen {
-				s.largestIndexSeen = index
 			}
 		}
 	}
@@ -172,7 +155,7 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 // scan subscribes s to cs and scans the blockchain for addresses that belong
 // to s's seed. If scan returns errMaxKeys, additional keys may need to be
 // generated to find all the addresses.
-func (s *slowSeedScanner) scan(cs modules.ConsensusSet, cancel <-chan struct{}) error {
+func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	// generate a bunch of keys and scan the blockchain looking for them. If
 	// none of the 'upper' half of the generated keys are found, we are done;
 	// otherwise, generate more keys and try again (bounded by a sane
@@ -180,41 +163,46 @@ func (s *slowSeedScanner) scan(cs modules.ConsensusSet, cancel <-chan struct{}) 
 	//
 	// NOTE: since scanning is very slow, we aim to only scan once, which
 	// means generating many keys.
-	numKeys := numInitialKeys
-	for s.numKeys() < maxScanKeys {
-		s.generateKeys(numKeys)
-		if cs.SpvMode() {
-			if err := cs.HeaderConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, cancel); err != nil {
-				return err
-			}
-			cs.HeaderUnsubscribe(s)
-		} else {
-			if err := cs.ConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, cancel); err != nil {
-				return err
-			}
-			cs.Unsubscribe(s)
-		}
-		if s.largestIndexSeen < s.numKeys()/2 {
-			return nil
-		}
-		// increase number of keys generated each iteration, capping so that
-		// we do not exceed maxScanKeys
-		numKeys *= scanMultiplier
-		if numKeys > maxScanKeys-s.numKeys() {
-			numKeys = maxScanKeys - s.numKeys()
-		}
+
+	s.generateKeys(numInitialKeys)
+	s.cancel = make(chan struct{}) // this will disturbe thread stop to stop scan
+	err := s.cs.HeaderConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, s.cancel)
+	if err != siasync.ErrStopped {
+		return err
 	}
-	return errMaxKeys
+	s.cs.HeaderUnsubscribe(s)
+
+	s.gapScanner = newSeedScanner(s.seed, s.cs, s.log)
+	// log.Printf("end fist part slow scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
+	s.gapScanner.minimumIndex = s.maximumExternalIndex
+	s.gapScanner.maximumInternalIndex = s.maximumExternalIndex
+	s.gapScanner.maximumExternalIndex = s.maximumExternalIndex
+	s.gapScanner.siacoinOutputs = s.siacoinOutputs
+	s.gapScanner.generateKeys(AddressGapLimit)
+
+	if err := s.gapScanner.cs.HeaderConsensusSetSubscribe(s.gapScanner, s.lastConsensusChange, cancel); err != nil {
+		return err
+	}
+	s.gapScanner.cs.HeaderUnsubscribe(s.gapScanner)
+
+	s.maximumExternalIndex = s.gapScanner.maximumExternalIndex
+	// log.Printf("slow scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
+	// for id, sco := range s.gapScanner.siacoinOutputs {
+	// 	log.Printf("siacoinOutputs: %d %s", sco.seedIndex, sco.value.String())
+	// 	s.siacoinOutputs[id] = sco
+	// }
+
+	return nil
 }
 
 // newSlowSeedScanner returns a new slowSeedScanner.
 func newSlowSeedScanner(seed modules.Seed, cs modules.ConsensusSet, log *persist.Logger) *slowSeedScanner {
 	return &slowSeedScanner{
-		seed:           seed,
-		keys:           make(map[types.UnlockHash]uint64, numInitialKeys),
-		siacoinOutputs: make(map[types.SiacoinOutputID]scannedOutput),
-		cs:             cs,
-
-		log: log,
+		seed:                 seed,
+		maximumExternalIndex: 0,
+		keys:                 make(map[types.UnlockHash]uint64, numInitialKeys),
+		siacoinOutputs:       make(map[types.SiacoinOutputID]scannedOutput),
+		cs:                   cs,
+		log:                  log,
 	}
 }
