@@ -129,7 +129,7 @@ returns the set of constants in use.
   "maxtargetadjustmentup":   "5/2",
   "maxtargetadjustmentdown": "2/5",
 
-  "siacoinprecision": "1000000000000000000000000" // hastings per SPACE
+  "spacecashprecision": "1000000000000000000000000" // hastings per SPACE
 }
 ```
 
@@ -219,7 +219,7 @@ The JSON formatted block or a standard error response.
             "filecontracts": [],
             "id": "3c98ec79b990461f353c22bb06bcfb10e702f529ad7d27a43c4448273553d90a",
             "minerfees": [],
-            "siacoininputs": [
+            "spacecashinputs": [
                 {
                     "parentid": "24cbeb9df7eb2d81d0025168fc94bd179909d834f49576e65b51feceaf957a64",
                     "unlockconditions": {
@@ -234,7 +234,7 @@ The JSON formatted block or a standard error response.
                     }
                 }
             ],
-            "siacoinoutputs": [
+            "spacecashoutputs": [
                 {
                     "id": "1f9da81e23522f79590ac67ac0b668828c52b341cbf04df4959bb7040c072f29",
                     "unlockhash": "d54f500f6c1774d518538dbe87114fe6f7e6c76b5bc8373a890b12ce4b8909a336106a4cd6db",
@@ -254,8 +254,8 @@ The JSON formatted block or a standard error response.
                         "filecontractrevisions": [],
                         "filecontracts": [],
                         "minerfees": [],
-                        "siacoininputs": [],
-                        "siacoinoutputs": [],
+                        "spacecashinputs": [],
+                        "spacecashoutputs": [],
                         "storageproofs": [],
                         "transactionsignatures": [],
                         "wholetransaction": true
@@ -1309,7 +1309,7 @@ locked or unlocked.
   "unconfirmedoutgoingspacecash": "0",      // hastings, big int
   "unconfirmedincomingspacecash": "789",    // hastings, big int
 
-  "siacoinclaimbalance": "9001", // hastings, big int
+  "spacecashclaimbalance": "9001", // hastings, big int
 
   "dustthreshold": "1234", // hastings / byte, big int
 }
@@ -1572,7 +1572,7 @@ gets the transaction associated with a specific transaction id.
     "inputs": [
       {
         "parentid":       "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        "fundtype":       "siacoin input",
+        "fundtype":       "spacecash input",
         "walletaddress":  false,
         "relatedaddress": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
         "value":          "1234", // hastings, big int
@@ -1581,7 +1581,7 @@ gets the transaction associated with a specific transaction id.
     "outputs": [
       {
         "id":             "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        "fundtype":       "siacoin output",
+        "fundtype":       "spacecash output",
         "maturityheight": 50000,
         "walletaddress":  false,
         "relatedaddress": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -1680,7 +1680,7 @@ returns a list of outputs that the wallet can spend.
   "outputs": [
     {
       "id": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      "fundtype": "siacoin output",
+      "fundtype": "spacecash output",
       "confirmationheight": 50000,
       "unlockhash": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
       "value": "1234" // big int
