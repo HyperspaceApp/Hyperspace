@@ -70,8 +70,6 @@ func (cs *ConsensusSet) loadDB() error {
 		}
 		return nil
 	})
-
-	return nil
 }
 
 // initPersist initializes the persistence structures of the consensus set, in
