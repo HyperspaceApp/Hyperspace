@@ -124,6 +124,7 @@ func (m *Miner) SolveBlock(b types.Block, target types.Target) (types.Block, boo
 	return solveBlock(b, target)
 }
 
+// AddBlockWithAddress mine a block to specified unlockhash
 func (m *Miner) AddBlockWithAddress(addr types.UnlockHash) (types.Block, error) {
 	block, err := m.findBlockWithAddress(addr)
 	if err != nil {
