@@ -55,7 +55,7 @@ func newRenterTester(name string) (*renterTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}

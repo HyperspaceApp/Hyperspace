@@ -135,6 +135,9 @@ type Wallet struct {
 	//
 	// For further information, read BIP 44.
 	addressGapLimit uint64
+	// scanAirdrop specifies whether or not we do a robust scan on legacy Sia
+	// seeds against the initial 7 airdrop blocks
+	scanAirdrop bool
 }
 
 // Height return the internal processed consensus height of the wallet
@@ -162,12 +165,12 @@ func (w *Wallet) Height() (types.BlockHeight, error) {
 // name and then using the file to save in the future. Keys and addresses are
 // not loaded into the wallet during the call to 'new', but rather during the
 // call to 'Unlock'.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int) (*Wallet, error) {
-	return NewCustomWallet(cs, tpool, persistDir, addressGapLimit, modules.ProdDependencies)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, scanAirdrop bool) (*Wallet, error) {
+	return NewCustomWallet(cs, tpool, persistDir, addressGapLimit, scanAirdrop, modules.ProdDependencies)
 }
 
 // NewCustomWallet creates a new wallet using custom dependencies.
-func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, deps modules.Dependencies) (*Wallet, error) {
+func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, scanAirdrop bool, deps modules.Dependencies) (*Wallet, error) {
 	// Check for nil dependencies.
 	if cs == nil {
 		return nil, errNilConsensusSet
@@ -191,6 +194,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		persistDir: persistDir,
 
 		addressGapLimit: uint64(addressGapLimit),
+		scanAirdrop: scanAirdrop,
 
 		deps: deps,
 	}

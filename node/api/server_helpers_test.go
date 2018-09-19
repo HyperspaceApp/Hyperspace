@@ -170,7 +170,7 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func assembleAuthenticatedServerTester(requiredPassword string, key crypto.Twofi
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}

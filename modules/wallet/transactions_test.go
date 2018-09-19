@@ -237,7 +237,7 @@ func TestProcessedTxnIndexCompatCode(t *testing.T) {
 	}
 
 	// Restart wallet
-	wallet, err := New(wt.cs, wt.tpool, filepath.Join(wt.persistDir, modules.WalletDir), modules.DefaultAddressGapLimit)
+	wallet, err := New(wt.cs, wt.tpool, filepath.Join(wt.persistDir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatalf("Failed to restart wallet: %v", err)
 	}

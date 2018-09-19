@@ -47,7 +47,7 @@ func createWalletTester(name string, deps modules.Dependencies) (*walletTester, 
 	if err != nil {
 		return nil, err
 	}
-	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, deps)
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false, deps)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func createBlankWalletTester(name string) (*walletTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
+	w, err := New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -161,15 +161,15 @@ func TestNilInputs(t *testing.T) {
 	}
 
 	wdir := filepath.Join(testdir, modules.WalletDir)
-	_, err = New(cs, nil, wdir, modules.DefaultAddressGapLimit)
+	_, err = New(cs, nil, wdir, modules.DefaultAddressGapLimit, false)
 	if err != errNilTpool {
 		t.Error(err)
 	}
-	_, err = New(nil, tp, wdir, modules.DefaultAddressGapLimit)
+	_, err = New(nil, tp, wdir, modules.DefaultAddressGapLimit, false)
 	if err != errNilConsensusSet {
 		t.Error(err)
 	}
-	_, err = New(nil, nil, wdir, modules.DefaultAddressGapLimit)
+	_, err = New(nil, nil, wdir, modules.DefaultAddressGapLimit, false)
 	if err != errNilConsensusSet {
 		t.Error(err)
 	}
@@ -223,7 +223,7 @@ func TestCloseWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 	wdir := filepath.Join(testdir, modules.WalletDir)
-	w, err := New(cs, tp, wdir, modules.DefaultAddressGapLimit)
+	w, err := New(cs, tp, wdir, modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -574,7 +574,7 @@ func TestDistantWallets(t *testing.T) {
 	defer wt.closeWt()
 
 	// Create another wallet with the same seed.
-	w2, err := New(wt.cs, wt.tpool, build.TempDir(modules.WalletDir, t.Name()+"2", modules.WalletDir), modules.DefaultAddressGapLimit)
+	w2, err := New(wt.cs, wt.tpool, build.TempDir(modules.WalletDir, t.Name()+"2", modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -660,7 +660,7 @@ func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*w
 	if err != nil {
 		return nil, err
 	}
-	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, deps)
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false, deps)
 	if err != nil {
 		return nil, err
 	}

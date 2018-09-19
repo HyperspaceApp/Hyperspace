@@ -111,7 +111,7 @@ func TestLoadSeed(t *testing.T) {
 	wt.wallet.Close()
 
 	dir := filepath.Join(build.TempDir(modules.WalletDir, t.Name()+"1"), modules.WalletDir)
-	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit)
+	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestSweepSeedCoins(t *testing.T) {
 
 	// create a blank wallet
 	dir := filepath.Join(build.TempDir(modules.WalletDir, "TestSweepSeedCoins1"), modules.WalletDir)
-	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit)
+	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}

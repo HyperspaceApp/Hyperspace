@@ -65,7 +65,7 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
