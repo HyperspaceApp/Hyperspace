@@ -3,6 +3,7 @@ package wallet
 import (
 	"log"
 	"testing"
+	//"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -152,7 +153,7 @@ func TestSlowScan(t *testing.T) {
 	}
 	defer wt.closeWt()
 
-	startTime := time.Now()
+	//startTime := time.Now()
 	_, availableAddressCount, _ := wt.wallet.PrimarySeed()
 	log.Printf("availableAddressCount: %v\n", availableAddressCount)
 	for i := 0; i < int(availableAddressCount) ; i++ {
@@ -162,7 +163,7 @@ func TestSlowScan(t *testing.T) {
 			t.Fatal(err)
 		}
 		log.Printf("generated address %v\n", i)
-		txns, err := wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
+		_, err = wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -173,7 +174,7 @@ func TestSlowScan(t *testing.T) {
 			}
 			// log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
 		}
-		_, err := wt.miner.AddBlockWithAddress(types.UnlockHash{})
+		_, err = wt.miner.AddBlockWithAddress(types.UnlockHash{})
 		if err != nil {
 			t.Fatal(err)
 		}
