@@ -111,7 +111,7 @@ func TestLoadSeed(t *testing.T) {
 	wt.wallet.Close()
 
 	dir := filepath.Join(build.TempDir(modules.WalletDir, t.Name()+"1"), modules.WalletDir)
-	w, err := New(wt.cs, wt.tpool, dir)
+	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,7 +205,7 @@ func TestSweepSeedCoins(t *testing.T) {
 
 	// create a blank wallet
 	dir := filepath.Join(build.TempDir(modules.WalletDir, "TestSweepSeedCoins1"), modules.WalletDir)
-	w, err := New(wt.cs, wt.tpool, dir)
+	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,6 +248,58 @@ func TestGenerateKeys(t *testing.T) {
 	for i, k := range generateKeys(modules.Seed{}, 1000, 4000) {
 		if len(k.UnlockConditions.PublicKeys) == 0 {
 			t.Errorf("index %v was skipped", i)
+		}
+	}
+}
+
+// TestNextAddress verifies that the remaining keys count returned by PrimarySeed()
+// is correct. We should be able to create that many more new addresses. Attempts
+// to create addresses beyond that point should fail.
+func TestNextAddress(t *testing.T) {
+	// create a wallet with some money
+	wt, err := createWalletTester("TestNextAddress", modules.ProdDependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wt.closeWt()
+	_, remaining, err := wt.wallet.PrimarySeed()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < int(remaining); i++ {
+		_, err := wt.wallet.NextAddress()
+		if err != nil {
+			t.Errorf("There were %v remaining but we failed creating address %v: %v", remaining, i, err)
+		}
+	}
+	for i := 0; i < 100; i++ {
+		_, err = wt.wallet.NextAddress()
+		if err == nil {
+			t.Errorf("There were %v remaining but we succeeded creating address %v", remaining, remaining+1)
+		}
+	}
+}
+
+// TestGetAddress ensures that GetAddress() returns the same address consistently.
+func TestGetAddress(t *testing.T) {
+	// create a wallet with some money
+	wt, err := createWalletTester("TestNextAddress", modules.ProdDependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wt.closeWt()
+	uc, err := wt.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	uh := uc.UnlockHash()
+	for i := 0; i < 100; i++ {
+		_, err := wt.wallet.GetAddress()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if uh != uc.UnlockHash() {
+			t.Fatal("GetAddress should return the same address consistently if we have not created a new address")
 		}
 	}
 }

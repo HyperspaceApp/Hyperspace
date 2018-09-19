@@ -3,8 +3,8 @@ package transactionpool
 import (
 	"errors"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/demotemutex"
+	"github.com/coreos/bbolt"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"

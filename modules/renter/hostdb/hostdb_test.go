@@ -77,7 +77,7 @@ func newHDBTesterDeps(name string, deps modules.Dependencies) (*hdbTester, error
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testDir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testDir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func newHDBTesterDeps(name string, deps modules.Dependencies) (*hdbTester, error
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testDir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testDir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testDir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testDir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -57,6 +57,9 @@ type (
 	// ConsensusChangeID is the id of a consensus change.
 	ConsensusChangeID crypto.Hash
 
+	// HeaderConsensusChangeID is the id of a header consensus change.
+	// HeaderConsensusChangeID crypto.Hash
+
 	// A DiffDirection indicates the "direction" of a diff, either applied or
 	// reverted. A bool is used to restrict the value to these two possibilities.
 	DiffDirection bool
@@ -69,6 +72,32 @@ type (
 		// There may not be any reverted blocks, but there will always be
 		// applied blocks.
 		ProcessConsensusChange(ConsensusChange)
+	}
+
+	// HeaderConsensusSetSubscriber sends a consensus update to subscriber
+	HeaderConsensusSetSubscriber interface {
+		// In addition to a HeaderConsensusChange, returns a callback where a
+		// user can retrieve a set of SiacoinOutputDiffs - reverted or
+		// otherwise
+		ProcessHeaderConsensusChange(HeaderConsensusChange, func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error))
+	}
+
+	// HeaderConsensusChange is the header consensus change
+	HeaderConsensusChange struct {
+		// ID is a unique id for the consensus change derived from the reverted
+		// and applied blocks.
+		ID ConsensusChangeID
+
+		// RevertedBlockHeaders
+		RevertedBlockHeaders []ProcessedBlockHeader
+
+		// AppliedBlockHeaders
+		AppliedBlockHeaders []ProcessedBlockHeader
+
+		// MaturedSiacoinOutputDiffs contains the set of siacoin diffs that were applied
+		// to the consensus set via maturation in the recent change. The direction for
+		// the set of diffs is 'DiffApply'.
+		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
@@ -149,6 +178,16 @@ type (
 		MaturityHeight types.BlockHeight     `json:"mh"`
 	}
 
+	// ProcessedBlockHeader is a header with more info
+	ProcessedBlockHeader struct {
+		BlockHeader        types.BlockHeader
+		Height             types.BlockHeight
+		Depth              types.Target
+		ChildTarget        types.Target
+		GCSFilter          types.GCSFilter
+		SiacoinOutputDiffs []SiacoinOutputDiff
+	}
+
 	// A ConsensusSet accepts blocks and builds an understanding of network
 	// consensus.
 	ConsensusSet interface {
@@ -183,6 +222,10 @@ type (
 		// described by the ConsensusChangeX variables in this package.
 		// A channel can be provided to abort the subscription process.
 		ConsensusSetSubscribe(ConsensusSetSubscriber, ConsensusChangeID, <-chan struct{}) error
+
+		// HeaderConsensusSetSubscribe adds a subscriber to the list of subscribers
+		// and gives them every consensus change
+		HeaderConsensusSetSubscribe(HeaderConsensusSetSubscriber, ConsensusChangeID, <-chan struct{}) error
 
 		// CurrentBlock returns the latest block in the heaviest known
 		// blockchain.
@@ -223,7 +266,13 @@ type (
 		// not found in the subscriber database, no action is taken.
 		Unsubscribe(ConsensusSetSubscriber)
 
+		// HeaderUnsubscribe unsubscribe header change
+		HeaderUnsubscribe(HeaderConsensusSetSubscriber)
+
 		Db() *persist.BoltDatabase
+
+		// SpvMode return true if the consensus set is in spv mode
+		SpvMode() bool
 	}
 )
 

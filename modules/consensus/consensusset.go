@@ -15,8 +15,8 @@ import (
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/demotemutex"
+	"github.com/coreos/bbolt"
 )
 
 var (
@@ -45,6 +45,9 @@ type ConsensusSet struct {
 
 	// The block root contains the genesis block.
 	blockRoot processedBlock
+
+	// headerSubscribers subscribe header change
+	headerSubscribers []modules.HeaderConsensusSetSubscriber
 
 	// Subscribers to the consensus set will receive a changelog every time
 	// there is an update to the consensus set. At initialization, they receive
@@ -93,19 +96,23 @@ type ConsensusSet struct {
 	mu         demotemutex.DemoteMutex
 	persistDir string
 	tg         siasync.ThreadGroup
+
+	// If using Simplified Payment Verification mode
+	spv                   bool
+	processedBlockHeaders map[types.BlockID]*modules.ProcessedBlockHeader
 }
 
 // New returns a new ConsensusSet, containing at least the genesis block. If
 // there is an existing block database present in the persist directory, it
 // will be loaded.
-func New(gateway modules.Gateway, bootstrap bool, persistDir string) (*ConsensusSet, error) {
-	return NewCustomConsensusSet(gateway, bootstrap, persistDir, modules.ProdDependencies)
+func New(gateway modules.Gateway, bootstrap bool, persistDir string, spv bool) (*ConsensusSet, error) {
+	return NewCustomConsensusSet(gateway, bootstrap, persistDir, modules.ProdDependencies, spv)
 }
 
 // NewCustomConsensusSet returns a new ConsensusSet, containing at least the genesis block. If
 // there is an existing block database present in the persist directory, it
 // will be loaded.
-func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir string, deps modules.Dependencies) (*ConsensusSet, error) {
+func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir string, deps modules.Dependencies, spv bool) (*ConsensusSet, error) {
 	// Check for nil dependencies.
 	if gateway == nil {
 		return nil, errNilGateway
@@ -129,8 +136,10 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		blockRuleHelper: stdBlockRuleHelper{},
 		blockValidator:  NewBlockValidator(),
 
-		staticDeps: deps,
-		persistDir: persistDir,
+		staticDeps:            deps,
+		persistDir:            persistDir,
+		spv:                   spv,
+		processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 	}
 
 	// Create the diffs for the genesis siacoin outputs.
@@ -386,4 +395,9 @@ func (cs *ConsensusSet) StorageProofSegment(fcid types.FileContractID) (index ui
 // Db returns the database associated with the ConsensusSet
 func (cs *ConsensusSet) Db() *persist.BoltDatabase {
 	return cs.db
+}
+
+// SpvMode return true if in spv mode
+func (cs *ConsensusSet) SpvMode() bool {
+	return cs.spv
 }

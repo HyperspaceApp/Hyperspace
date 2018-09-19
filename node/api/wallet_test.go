@@ -35,7 +35,7 @@ func TestWalletGETEncrypted(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create gateway:", err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal("Failed to create consensus set:", err)
 	}
@@ -43,7 +43,7 @@ func TestWalletGETEncrypted(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create tpool:", err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal("Failed to create wallet:", err)
 	}
@@ -174,7 +174,7 @@ func TestWalletBlankEncrypt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestWalletBlankEncrypt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,6 +314,47 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	}
 	if !unlocked {
 		t.Error("wallet is not unlocked")
+	}
+}
+
+func TestWalletGETAndPOST(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	st, err := createServerTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.server.panicClose()
+	// Send coins to a wallet address through the api.
+	var wag WalletAddressGET
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr := wag.Address.String()
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr2 := wag.Address.String()
+	if gAddr != gAddr2 {
+		t.Error("Called GET /wallet/address twice and got different results")
+	}
+	var wap WalletAddressPOST
+	qs := url.Values{}
+	err = st.postAPI("/wallet/address", qs, &wap)
+	pAddr := wap.Address.String()
+	if pAddr != gAddr {
+		t.Error("First GET /wallet/address and first POST /wallet/address should be the same")
+	}
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr3 := wag.Address.String()
+	if gAddr != gAddr3 {
+		t.Error("GET /wallet/address response should not change after POST /wallet/address is called")
 	}
 }
 
@@ -426,7 +467,7 @@ func TestIntegrationWalletSweepSeedPOST(t *testing.T) {
 
 	// send coins to a new wallet, then sweep them back
 	key := crypto.GenerateTwofishKey()
-	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"))
+	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -506,7 +547,7 @@ func TestIntegrationWalletLoadSeedPOST(t *testing.T) {
 
 	// Create a wallet to load coins from.
 	key2 := crypto.GenerateTwofishKey()
-	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"))
+	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}

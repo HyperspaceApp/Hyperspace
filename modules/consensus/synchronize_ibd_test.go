@@ -226,7 +226,7 @@ func TestInitialBlockchainDownloadDisconnects(t *testing.T) {
 		Gateway: g,
 		rpcErrs: make(map[modules.NetAddress]error),
 	}
-	localCS, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir))
+	localCS, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 		Gateway: g,
 		rpcErrs: make(map[modules.NetAddress]error),
 	}
-	cs, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir))
+	cs, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}

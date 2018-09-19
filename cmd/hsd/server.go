@@ -500,7 +500,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "c") {
 		i++
 		fmt.Printf("(%d/%d) Loading consensus...\n", i, len(srv.config.Siad.Modules))
-		cs, err = consensus.New(g, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.ConsensusDir))
+		cs, err = consensus.New(g, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.ConsensusDir), srv.config.Siad.Spv)
 		if err != nil {
 			return err
 		}
@@ -530,7 +530,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "w") {
 		i++
 		fmt.Printf("(%d/%d) Loading wallet...\n", i, len(srv.config.Siad.Modules))
-		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir))
+		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir), srv.config.Siad.AddressGapLimit, srv.config.Siad.ScanAirdrop)
 		if err != nil {
 			return err
 		}

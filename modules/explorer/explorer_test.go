@@ -44,7 +44,7 @@ func createExplorerTester(name string) (*explorerTester, error) {
 		log.Printf("Failed to open gateway: %s", err)
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		log.Printf("Failed to open consensus: %s", err)
 		return nil, err
@@ -54,7 +54,7 @@ func createExplorerTester(name string) (*explorerTester, error) {
 		log.Printf("Failed to open tpool: %s", err)
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		log.Printf("Failed to open wallet: %s", err)
 		return nil, err
@@ -119,7 +119,7 @@ func (et *explorerTester) reorgToBlank() error {
 	if err != nil {
 		return err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir), false)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (et *explorerTester) reorgToBlank() error {
 	if err != nil {
 		return err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func TestExplorerGenesisHeight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}

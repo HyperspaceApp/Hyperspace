@@ -37,7 +37,7 @@ func blankTpoolTester(name string) (*tpoolTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func blankTpoolTester(name string) (*tpoolTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func TestIntegrationNewNilInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}

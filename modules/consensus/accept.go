@@ -159,7 +159,7 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) error {
 // unneeded.
 func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *processedBlock) (ce changeEntry, err error) {
 	// Prepare the child processed block associated with the parent block.
-	newNode := cs.newChild(tx, parent, b)
+	newNode, newNodeHeader := cs.newChild(tx, parent, b)
 
 	// Check whether the new node is part of a chain that is heavier than the
 	// current node. If not, return ErrNonExtending and don't fork the
@@ -172,7 +172,7 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
 	var revertedBlocks, appliedBlocks []*processedBlock
-	revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode)
+	revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
 	if err != nil {
 		return changeEntry{}, err
 	}
@@ -186,6 +186,7 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	if err != nil {
 		return changeEntry{}, err
 	}
+
 	return ce, nil
 }
 

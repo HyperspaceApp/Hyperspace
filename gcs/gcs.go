@@ -14,8 +14,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/HyperspaceApp/Hyperspace/crypto"
-
 	"github.com/dchest/siphash"
 )
 
@@ -232,7 +230,7 @@ func (f *Filter) P() uint8 {
 	return f.p
 }
 
-// N returns the size of the data set used to build the filter.
+// N returns the length of the data to build the filter
 func (f *Filter) N() uint32 {
 	return f.n
 }
@@ -352,26 +350,4 @@ func (f *Filter) readFullUint64(b *bitReader) (uint64, error) {
 
 	// Add the multiple and the remainder.
 	return v<<f.p + rem, nil
-}
-
-// Hash returns the BLAKE2b hash of the filter.
-func (f *Filter) Hash() crypto.Hash {
-	hash := crypto.HashBytes(f.filterNData)
-	return hash
-}
-
-// MakeHeaderForFilter makes a filter chain header for a filter, given the
-// filter and the previous filter chain header.
-func MakeHeaderForFilter(filter *Filter, prevHeader *crypto.Hash) crypto.Hash {
-	filterTip := make([]byte, 2*crypto.HashSize)
-	filterHash := filter.Hash()
-
-	// In the buffer we created above we'll compute hash || prevHash as an
-	// intermediate value.
-	copy(filterTip, filterHash[:])
-	copy(filterTip[crypto.HashSize:], prevHeader[:])
-
-	// The final filter hash is the blake2b of the hash computed above.
-	hash := crypto.HashBytes(filterTip)
-	return hash
 }

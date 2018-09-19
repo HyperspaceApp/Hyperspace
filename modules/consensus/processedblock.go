@@ -6,6 +6,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
@@ -119,7 +120,7 @@ func (cs *ConsensusSet) setChildTarget(blockMap *bolt.Bucket, pb *processedBlock
 
 // newChild creates a blockNode from a block and adds it to the parent's set of
 // children. The new node is also returned. It necessarily modifies the database
-func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block) *processedBlock {
+func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
 	// Create the child node.
 	childID := b.ID()
 	child := &processedBlock{
@@ -144,5 +145,31 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
-	return child
+
+	var hashes []types.UnlockHash
+	fileContracts := getRelatedFileContracts(tx, &b)
+	for _, fc := range fileContracts {
+		contractHashes := fc.OutputUnlockHashes()
+		hashes = append(hashes, contractHashes...)
+	}
+	filter, err := blockcf.BuildFilter(&b, hashes)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	childHeader := &modules.ProcessedBlockHeader{
+		BlockHeader: b.Header(),
+		Height:      child.Height,
+		Depth:       child.Depth,
+		ChildTarget: child.ChildTarget,
+		GCSFilter:   *filter,
+	}
+
+	blockHeaderMap := tx.Bucket(BlockHeaderMap)
+	err = blockHeaderMap.Put(childID[:], encoding.Marshal(*childHeader))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	cs.processedBlockHeaders[childID] = childHeader
+	return child, childHeader
+
 }

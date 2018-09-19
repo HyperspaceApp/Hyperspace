@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"log"
 	"path/filepath"
 	"testing"
 	"time"
@@ -38,7 +39,7 @@ func createWalletTester(name string, deps modules.Dependencies) (*walletTester, 
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +47,7 @@ func createWalletTester(name string, deps modules.Dependencies) (*walletTester, 
 	if err != nil {
 		return nil, err
 	}
-	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), deps)
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false, deps)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func createBlankWalletTester(name string) (*walletTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +107,7 @@ func createBlankWalletTester(name string) (*walletTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +151,7 @@ func TestNilInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,15 +161,15 @@ func TestNilInputs(t *testing.T) {
 	}
 
 	wdir := filepath.Join(testdir, modules.WalletDir)
-	_, err = New(cs, nil, wdir)
+	_, err = New(cs, nil, wdir, modules.DefaultAddressGapLimit, false)
 	if err != errNilTpool {
 		t.Error(err)
 	}
-	_, err = New(nil, tp, wdir)
+	_, err = New(nil, tp, wdir, modules.DefaultAddressGapLimit, false)
 	if err != errNilConsensusSet {
 		t.Error(err)
 	}
-	_, err = New(nil, nil, wdir)
+	_, err = New(nil, nil, wdir, modules.DefaultAddressGapLimit, false)
 	if err != errNilConsensusSet {
 		t.Error(err)
 	}
@@ -213,7 +214,7 @@ func TestCloseWallet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +223,7 @@ func TestCloseWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 	wdir := filepath.Join(testdir, modules.WalletDir)
-	w, err := New(cs, tp, wdir)
+	w, err := New(cs, tp, wdir, modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,14 +305,16 @@ func TestLookaheadGeneration(t *testing.T) {
 
 	// Check if number of future keys is correct
 	wt.wallet.mu.RLock()
-	progress, err := dbGetPrimarySeedProgress(wt.wallet.dbTx)
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(wt.wallet.dbTx)
+	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(wt.wallet.dbTx)
 	wt.wallet.mu.RUnlock()
 	if err != nil {
 		t.Fatal("Couldn't fetch primary seed from db")
 	}
 
-	actualKeys := uint64(len(wt.wallet.lookahead))
-	expectedKeys := maxLookahead(progress)
+	actualKeys := wt.wallet.lookahead.Length()
+	lookaheadBufferSize := wt.wallet.addressGapLimit - (internalIndex - externalIndex)
+	expectedKeys := lookaheadBufferSize
 	if actualKeys != expectedKeys {
 		t.Errorf("expected len(lookahead) == %d but was %d", actualKeys, expectedKeys)
 	}
@@ -326,22 +329,23 @@ func TestLookaheadGeneration(t *testing.T) {
 	wt.wallet.Unlock(wt.walletMasterKey)
 
 	wt.wallet.mu.RLock()
-	progress, err = dbGetPrimarySeedProgress(wt.wallet.dbTx)
+	internalIndex, err = dbGetPrimarySeedMaximumInternalIndex(wt.wallet.dbTx)
 	wt.wallet.mu.RUnlock()
 	if err != nil {
 		t.Fatal("Couldn't fetch primary seed from db")
 	}
 
-	actualKeys = uint64(len(wt.wallet.lookahead))
-	expectedKeys = maxLookahead(progress)
+	actualKeys = wt.wallet.lookahead.Length()
+	lookaheadBufferSize = wt.wallet.addressGapLimit - (internalIndex - externalIndex)
+	expectedKeys = lookaheadBufferSize
 	if actualKeys != expectedKeys {
 		t.Errorf("expected len(lookahead) == %d but was %d", actualKeys, expectedKeys)
 	}
 
 	wt.wallet.mu.RLock()
 	defer wt.wallet.mu.RUnlock()
-	for i := range wt.wallet.keys {
-		_, exists := wt.wallet.lookahead[i]
+	for _, key := range wt.wallet.keys {
+		_, exists := wt.wallet.lookahead.GetIndex(key.UnlockConditions.UnlockHash())
 		if exists {
 			t.Fatal("wallet keys contained a key which is also present in lookahead")
 		}
@@ -368,7 +372,7 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 
 	// Get the current progress
 	wt.wallet.mu.RLock()
-	progress, err := dbGetPrimarySeedProgress(wt.wallet.dbTx)
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(wt.wallet.dbTx)
 	wt.wallet.mu.RUnlock()
 	if err != nil {
 		t.Fatal("Couldn't fetch primary seed from db")
@@ -376,7 +380,7 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 
 	// choose 10 keys in the lookahead and remember them
 	var receivingAddresses []types.UnlockHash
-	for _, sk := range generateKeys(wt.wallet.primarySeed, progress, 10) {
+	for _, sk := range generateKeys(wt.wallet.primarySeed, internalIndex, 10) {
 		sco := types.SiacoinOutput{
 			UnlockHash: sk.UnlockConditions.UnlockHash(),
 			Value:      types.NewCurrency64(1e3),
@@ -411,7 +415,7 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 	wt.wallet.mu.RLock()
 	defer wt.wallet.mu.RUnlock()
 	for _, uh := range receivingAddresses {
-		_, exists := wt.wallet.lookahead[uh]
+		_, exists := wt.wallet.lookahead.GetIndex(uh)
 		if exists {
 			t.Fatal("UnlockHash still exists in wallet lookahead")
 		}
@@ -423,9 +427,10 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 	}
 }
 
-// TestAdvanceLookaheadNoRescan tests if a transaction to multiple lookahead addresses
-// is handled correctly forcing a wallet rescan.
-func TestAdvanceLookaheadForceRescan(t *testing.T) {
+// TestFarOutputs tests if a transaction to a lookahead addresses
+// outside our AddressGapLimit is eventually made visible if we close
+// the gap
+func TestFarOutputs(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -442,7 +447,7 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 
 	// Get the current progress and balance
 	wt.wallet.mu.RLock()
-	progress, err := dbGetPrimarySeedProgress(wt.wallet.dbTx)
+	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(wt.wallet.dbTx)
 	wt.wallet.mu.RUnlock()
 	if err != nil {
 		t.Fatal("Couldn't fetch primary seed from db")
@@ -453,9 +458,8 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 	}
 
 	// Send coins to an address with a high seed index, just outside the
-	// lookahead range. It will not be initially detected, but later the
-	// rescan should find it.
-	highIndex := progress + uint64(len(wt.wallet.lookahead)) + 5
+	// lookahead range. It should not be detected
+	highIndex := internalIndex + wt.wallet.lookahead.Length() + 1
 	farAddr := generateSpendableKey(wt.wallet.primarySeed, highIndex).UnlockConditions.UnlockHash()
 	farPayout := types.SiacoinPrecision.Mul64(8888)
 
@@ -498,11 +502,8 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 
 	// choose 10 keys in the lookahead and remember them
 	var receivingAddresses []types.UnlockHash
-	for uh, index := range wt.wallet.lookahead {
-		// Only choose keys that force a rescan
-		if index < progress+lookaheadRescanThreshold {
-			continue
-		}
+	for _, key := range wt.wallet.lookahead.Advance(10) {
+		uh := key.UnlockConditions.UnlockHash()
 		sco := types.SiacoinOutput{
 			UnlockHash: uh,
 			Value:      types.SiacoinPrecision.Mul64(1000),
@@ -532,7 +533,7 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 	}
 	wt.addBlockNoPayout()
 
-	// Allow the wallet rescan to finish
+	// Allow the wallet scan to finish
 	time.Sleep(time.Second * 2)
 
 	// Check that high seed index txn was discovered in the rescan
@@ -548,7 +549,7 @@ func TestAdvanceLookaheadForceRescan(t *testing.T) {
 	wt.wallet.mu.RLock()
 	defer wt.wallet.mu.RUnlock()
 	for _, uh := range receivingAddresses {
-		_, exists := wt.wallet.lookahead[uh]
+		_, exists := wt.wallet.lookahead.GetIndex(uh)
 		if exists {
 			t.Fatal("UnlockHash still exists in wallet lookahead")
 		}
@@ -573,7 +574,7 @@ func TestDistantWallets(t *testing.T) {
 	defer wt.closeWt()
 
 	// Create another wallet with the same seed.
-	w2, err := New(wt.cs, wt.tpool, build.TempDir(modules.WalletDir, t.Name()+"2", modules.WalletDir))
+	w2, err := New(wt.cs, wt.tpool, build.TempDir(modules.WalletDir, t.Name()+"2", modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +588,7 @@ func TestDistantWallets(t *testing.T) {
 	}
 
 	// Use the first wallet.
-	for i := uint64(0); i < lookaheadBuffer/2; i++ {
+	for i := uint64(0); i < wt.wallet.addressGapLimit/2; i++ {
 		_, err = wt.wallet.SendSiacoins(types.SiacoinPrecision, types.UnlockHash{})
 		if err != nil {
 			t.Fatal(err)
@@ -615,7 +616,7 @@ func TestDistantWallets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	farAddr := generateSpendableKey(wt.wallet.primarySeed, lookaheadBuffer*10).UnlockConditions.UnlockHash()
+	farAddr := generateSpendableKey(wt.wallet.primarySeed, wt.wallet.addressGapLimit*10).UnlockConditions.UnlockHash()
 	value := types.SiacoinPrecision.Mul64(1e3)
 	tbuilder.AddSiacoinOutput(types.SiacoinOutput{
 		UnlockHash: farAddr,
@@ -641,4 +642,70 @@ func TestDistantWallets(t *testing.T) {
 		}
 		t.Fatal("wallet should not recognize coins sent to very high seed index")
 	}
+}
+
+// createWalletTester takes a testing.T and creates a WalletTester.
+func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*walletTester, error) {
+	// Create the modules
+	testdir := build.TempDir(modules.WalletDir, name)
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	if err != nil {
+		return nil, err
+	}
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), spv)
+	if err != nil {
+		return nil, err
+	}
+	tp, err := transactionpool.New(cs, g, filepath.Join(testdir, modules.TransactionPoolDir))
+	if err != nil {
+		return nil, err
+	}
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false, deps)
+	if err != nil {
+		return nil, err
+	}
+	w.defragDisabled = true
+	var masterKey crypto.TwofishKey
+	fastrand.Read(masterKey[:])
+	_, err = w.Encrypt(masterKey)
+	if err != nil {
+		return nil, err
+	}
+	err = w.Unlock(masterKey)
+	if err != nil {
+		return nil, err
+	}
+	m, err := miner.New(cs, tp, w, filepath.Join(testdir, modules.WalletDir))
+	if err != nil {
+		return nil, err
+	}
+
+	// Assemble all components into a wallet tester.
+	wt := &walletTester{
+		cs:      cs,
+		gateway: g,
+		tpool:   tp,
+		miner:   m,
+		wallet:  w,
+
+		walletMasterKey: masterKey,
+
+		persistDir: testdir,
+	}
+
+	// Mine blocks until there is money in the wallet.
+	b, _ := wt.miner.FindBlock()
+	log.Printf("new first block payout addr: %s\n", b.MinerPayouts[0].UnlockHash.String())
+	err = wt.cs.AcceptBlock(b)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
+		_, err := wt.miner.AddBlockWithAddress(types.UnlockHash{})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return wt, nil
 }

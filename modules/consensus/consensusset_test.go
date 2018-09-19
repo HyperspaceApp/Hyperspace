@@ -57,7 +57,7 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	if err != nil {
 		return nil, err
 	}
-	cs, err := NewCustomConsensusSet(g, false, filepath.Join(testdir, modules.ConsensusDir), deps)
+	cs, err := NewCustomConsensusSet(g, false, filepath.Join(testdir, modules.ConsensusDir), deps, false)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func TestNilInputs(t *testing.T) {
 	}
 	t.Parallel()
 	testdir := build.TempDir(modules.ConsensusDir, t.Name())
-	_, err := New(nil, false, testdir)
+	_, err := New(nil, false, testdir, false)
 	if err != errNilGateway {
 		t.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func TestDatabaseClosing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := New(g, false, testdir)
+	cs, err := New(g, false, testdir, false)
 	if err != nil {
 		t.Fatal(err)
 	}

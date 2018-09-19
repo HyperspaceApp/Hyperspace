@@ -86,6 +86,13 @@ func (cs *ConsensusSet) openDB(filename string) (err error) {
 // initDB is run if there is no existing consensus database, creating a
 // database with all the required buckets and sane initial values.
 func (cs *ConsensusSet) initDB(tx *bolt.Tx) error {
+	if tx.Bucket(BlockHeaderMap) == nil {
+		err := cs.createHeaderConsensusDB(tx)
+		if err != nil {
+			return err
+		}
+	}
+
 	// If the database has already been initialized, there is nothing to do.
 	// Initialization can be detected by looking for the presence of the file
 	// contracts bucket. (legacy design chioce - ultimately probably not the
@@ -123,4 +130,21 @@ func markInconsistency(tx *bolt.Tx) {
 		panic(err)
 	}
 
+}
+
+// loadBlockHeader load processed block header from bolt db
+func (cs *ConsensusSet) loadProcessedBlockHeader(tx *bolt.Tx) error {
+	entry := cs.genesisEntry()
+	exists := true
+	for exists {
+		for _, blockID := range entry.AppliedBlocks {
+			processedBlock, err := getBlockHeaderMap(tx, blockID)
+			if err != nil {
+				return err
+			}
+			cs.processedBlockHeaders[processedBlock.BlockHeader.ID()] = processedBlock
+		}
+		entry, exists = entry.NextEntry(tx)
+	}
+	return nil
 }

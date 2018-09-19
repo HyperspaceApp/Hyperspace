@@ -203,7 +203,7 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateConsensusSet {
 			return nil, nil
 		}
-		return consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir))
+		return consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir), false)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create consensus set"))
@@ -241,7 +241,7 @@ func New(params NodeParams) (*Node, error) {
 		if walletDeps == nil {
 			walletDeps = modules.ProdDependencies
 		}
-		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), walletDeps)
+		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), modules.DefaultAddressGapLimit, false, walletDeps)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create wallet"))

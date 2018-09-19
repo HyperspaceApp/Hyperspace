@@ -2,8 +2,8 @@ package crypto
 
 import (
 	"bytes"
-	"errors"
 	"encoding/hex"
+	"errors"
 	"io"
 
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -126,18 +126,19 @@ func WriteSignedObject(w io.Writer, obj interface{}, sk SecretKey) error {
 }
 
 func (cp *CurvePoint) String() string {
-        return hex.EncodeToString(cp[:])
+	return hex.EncodeToString(cp[:])
 }
 
+// LoadString unmarshal CurvePoint from string
 func (cp *CurvePoint) LoadString(s string) error {
-        // *2 because there are 2 hex characters per byte.
-        if len(s) != CurvePointSize*2 {
-                return ErrCurvePointWrongLen
-        }
-        cpBytes, err := hex.DecodeString(s)
-        if err != nil {
-                return errors.New("could not unmarshal curve point: " + err.Error())
-        }
+	// *2 because there are 2 hex characters per byte.
+	if len(s) != CurvePointSize*2 {
+		return ErrCurvePointWrongLen
+	}
+	cpBytes, err := hex.DecodeString(s)
+	if err != nil {
+		return errors.New("could not unmarshal curve point: " + err.Error())
+	}
 	copy(cp[:], cpBytes)
 	return nil
 }

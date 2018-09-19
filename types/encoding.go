@@ -587,7 +587,7 @@ func (s Specifier) MarshalJSON() ([]byte, error) {
 	// TODO: We need to separate the specifier raw representation
 	// from the string representation. Need a review of the code
 	// to avoid breaking the blockchain.
-	if (s == SpecifierSiacoinOutput) {
+	if s == SpecifierSiacoinOutput {
 		return json.Marshal(s.String() + "t")
 	}
 
@@ -613,7 +613,7 @@ func (s *Specifier) UnmarshalJSON(b []byte) error {
 	}
 	// read comment in MarshalJSON.
 	// this method only trim the suffix if it's found.
-	if (*s == SpecifierSiacoinOutput) {
+	if *s == SpecifierSiacoinOutput {
 		strings.TrimSuffix(str, "t")
 	}
 	copy(s[:], str)
@@ -938,4 +938,21 @@ func (uh *UnlockHash) Scan(s fmt.ScanState, ch rune) error {
 		return err
 	}
 	return uh.LoadString(string(tok))
+}
+
+// MarshalSia marshal filter to bytes
+func (f GCSFilter) MarshalSia(w io.Writer) error {
+	e := encoding.NewEncoder(w)
+	e.WritePrefixedBytes(f.filter.NPBytes())
+	return nil
+}
+
+// UnmarshalSia unmarshal filter from bytes
+func (f *GCSFilter) UnmarshalSia(r io.Reader) error {
+	d := encoding.NewDecoder(r)
+	err := f.LoadBytes(d.ReadPrefixedBytes())
+	if err != nil {
+		return err
+	}
+	return nil
 }

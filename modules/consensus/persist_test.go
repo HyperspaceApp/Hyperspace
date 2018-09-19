@@ -32,7 +32,7 @@ func TestSaveLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 	d := filepath.Join(build.SiaTestingDir, modules.ConsensusDir, t.Name(), modules.ConsensusDir)
-	cst.cs, err = New(g, false, d)
+	cst.cs, err = New(g, false, d, false)
 	if err != nil {
 		t.Fatal(err)
 	}

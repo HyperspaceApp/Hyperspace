@@ -9,6 +9,7 @@ package consensus
 import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
@@ -38,6 +39,12 @@ var (
 	// consensus set, and blocks that may not have been fully validated yet.
 	BlockMap = []byte("BlockMap")
 
+	// BlockHeaderMap is a database bucket containing all of the processed
+	// block headers, keyed by their id. This includes block headers that are
+	// not currently in the consensus set, and blocks that may not have been
+	// fully validated yet.
+	BlockHeaderMap = []byte("BlockHeaderMap")
+
 	// BlockPath is a database bucket containing a mapping from the height of a
 	// block to the id of the block at that height. BlockPath only includes
 	// blocks in the current path.
@@ -53,6 +60,18 @@ var (
 	// Consistency is a database bucket with a flag indicating whether
 	// inconsistencies within the database have been detected.
 	Consistency = []byte("Consistency")
+
+	// FileContractUnlockHashMap is a database bucket that contains a mapping
+	// from all contract ids to a map of blockheights with relevant unlock
+	// hashes as values. This is used by full nodes when building filters for
+	// SPV clients. When a storage proof or file contract revision is posted,
+	// the host needs to specify the filter to include all previously related
+	// UnlockHashes (which can change between revisions, but probably in
+	// practice don't).
+	//
+	// TODO: this is currently unimplemented and so light nodes would break
+	// under this weird case.
+	FileContractUnlockHashMap = []byte("FileContractUnlockHashMap")
 
 	// FileContracts is a database bucket that contains all of the open file
 	// contracts.
@@ -74,6 +93,35 @@ var (
 	// difficulty adjustment fields have been correctly intialized.
 	ValueOakInit = []byte("true")
 )
+
+// createConsensusObjects initialzes the consensus portions of the database.
+func (cs *ConsensusSet) createHeaderConsensusDB(tx *bolt.Tx) error {
+	// Enumerate and create the database buckets.
+	buckets := [][]byte{
+		BlockHeaderMap,
+	}
+	for _, bucket := range buckets {
+		_, err := tx.CreateBucket(bucket)
+		if err != nil {
+			return err
+		}
+	}
+
+	var unlockHashes []types.UnlockHash
+	filter, err := blockcf.BuildFilter(&cs.blockRoot.Block, unlockHashes)
+	if err != nil {
+		return err
+	}
+
+	addBlockHeaderMap(tx, &modules.ProcessedBlockHeader{
+		BlockHeader: cs.blockRoot.Block.Header(),
+		Height:      types.BlockHeight(0),
+		Depth:       types.RootDepth,
+		ChildTarget: types.RootTarget,
+		GCSFilter:   *filter,
+	})
+	return nil
+}
 
 // createConsensusObjects initialzes the consensus portions of the database.
 func (cs *ConsensusSet) createConsensusDB(tx *bolt.Tx) error {
@@ -168,6 +216,27 @@ func currentProcessedBlock(tx *bolt.Tx) *processedBlock {
 	return pb
 }
 
+// getBlockHeaderMap returns a processed block header with the input id.
+func getBlockHeaderMap(tx *bolt.Tx, id types.BlockID) (*modules.ProcessedBlockHeader, error) {
+	// Look up the encoded block.
+	bucket := tx.Bucket(BlockHeaderMap)
+	if bucket == nil {
+		return nil, errNilItem
+	}
+	pbhBytes := bucket.Get(id[:])
+	if pbhBytes == nil {
+		return nil, errNilItem
+	}
+
+	// Decode the block - should never fail.
+	var pbh modules.ProcessedBlockHeader
+	err := encoding.Unmarshal(pbhBytes, &pbh)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	return &pbh, nil
+}
+
 // getBlockMap returns a processed block with the input id.
 func getBlockMap(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
 	// Look up the encoded block.
@@ -183,6 +252,15 @@ func getBlockMap(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
 		panic(err)
 	}
 	return &pb, nil
+}
+
+// addBlockHeaderMap adds a processed block header to the block map.
+func addBlockHeaderMap(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
+	id := pbh.BlockHeader.ID()
+	err := tx.Bucket(BlockHeaderMap).Put(id[:], encoding.Marshal(*pbh))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
 }
 
 // addBlockMap adds a processed block to the block map.
@@ -459,4 +537,20 @@ func deleteDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
+}
+
+// getRelatedFileContracts finds contracts related to the storage proofs in a block
+// TODO: this is currently used in lieu of a fuller-featured FileContractUnlockHashMap
+func getRelatedFileContracts(tx *bolt.Tx, block *types.Block) []types.FileContract {
+	var fileContracts []types.FileContract
+	for _, txn := range block.Transactions {
+		for _, proof := range txn.StorageProofs {
+			fc, err := getFileContract(tx, proof.ParentID)
+			if build.DEBUG && err != nil {
+				panic(err)
+			}
+			fileContracts = append(fileContracts, fc)
+		}
+	}
+	return fileContracts
 }

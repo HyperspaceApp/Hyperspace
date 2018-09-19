@@ -32,6 +32,11 @@ var (
 	// change they have seen.
 	ChangeLog = []byte("ChangeLog")
 
+	// HeaderChangeLog contains a list of atomic changes that have happened to the
+	// headers so that subscribers can subscribe from the most recent
+	// change they have seen.
+	HeaderChangeLog = []byte("HeaderChangeLog")
+
 	// ChangeLogTailID is a key that points to the id of the current changelog
 	// tail.
 	ChangeLogTailID = []byte("ChangeLogTailID")
