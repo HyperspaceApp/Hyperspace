@@ -13,8 +13,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/renter"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/julienschmidt/httprouter"
 	"regexp"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 var (
@@ -708,9 +709,8 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 		if err != nil {
 			WriteError(w, Error{"unable to parse 'overwrite' parameter: " + err.Error()}, http.StatusBadRequest)
 			return
-		} else {
-			overwrite = b
 		}
+		overwrite = b
 	}
 
 	// Check whether the erasure coding parameters have been supplied.

@@ -295,6 +295,7 @@ func (cs *ConsensusSet) Unsubscribe(subscriber modules.ConsensusSetSubscriber) {
 	}
 }
 
+// HeaderConsensusSetSubscribe will send change to subscriber from start
 func (cs *ConsensusSet) HeaderConsensusSetSubscribe(subscriber modules.HeaderConsensusSetSubscriber, start modules.ConsensusChangeID,
 	cancel <-chan struct{}) error {
 
