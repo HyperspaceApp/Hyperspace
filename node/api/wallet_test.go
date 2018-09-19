@@ -332,14 +332,29 @@ func TestWalletGETAndPOST(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr := wag.Address.String()
+	gAddr := wag.Address.String()
 	err = st.getAPI("/wallet/address", &wag)
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr2 := wag.Address.String()
-	if addr != addr2 {
+	gAddr2 := wag.Address.String()
+	if gAddr != gAddr2 {
 		t.Error("Called GET /wallet/address twice and got different results")
+	}
+	var wap WalletAddressPOST
+	qs := url.Values{}
+	err = st.postAPI("/wallet/address", qs, &wap)
+	pAddr := wap.Address.String()
+	if pAddr != gAddr {
+		t.Error("First GET /wallet/address and first POST /wallet/address should be the same")
+	}
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr3 := wag.Address.String()
+	if gAddr != gAddr3 {
+		t.Error("GET /wallet/address response should not change after POST /wallet/address is called")
 	}
 }
 
