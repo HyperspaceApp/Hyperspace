@@ -80,14 +80,6 @@ func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error 
 	}
 	if externalIndex > 0 {
 		return w.advanceSeedLookahead(externalIndex)
-	} else {
-		/*
-			fmt.Printf("nothing found in our lookahead of size %v\n", w.lookahead.Length())
-			fmt.Println("here are the values we searched: ")
-			for _, key := range(w.lookahead.keys) {
-				fmt.Println(key.UnlockConditions.UnlockHash().String())
-			}
-		*/
 	}
 
 	return nil

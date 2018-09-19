@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	//"fmt"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -77,7 +76,6 @@ func (la *lookahead) Initialized() bool {
 }
 
 func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
-	//fmt.Println("Initialize called on lookahead")
 	la.seed = seed
 	la.startingIndex = startingIndex
 	// do the initial growing of the buffer

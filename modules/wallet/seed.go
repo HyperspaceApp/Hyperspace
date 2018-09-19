@@ -112,6 +112,9 @@ func (w *Wallet) GetAddress() (types.UnlockConditions, error) {
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	if !w.unlocked {
+		return types.UnlockConditions{}, modules.ErrLockedWallet
+	}
 	key := w.lookahead.GetNextKey()
 	return key.UnlockConditions, nil
 }
