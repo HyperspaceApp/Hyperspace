@@ -67,7 +67,7 @@ func TestScanLargeIndex(t *testing.T) {
 
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newSeedScanner(seed, wt.wallet.addressGapLimit, wt.cs, wt.wallet.log)
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.cs, wt.wallet.log)
 	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
@@ -80,8 +80,8 @@ func TestScanLargeIndex(t *testing.T) {
 			t.Log(o.seedIndex, o.value)
 		}
 	}
-	if ss.maximumExternalIndex != 0 {
-		t.Error("expected no index to be seen, got", ss.maximumExternalIndex)
+	if ss.getMaximumExternalIndex() != 0 {
+		t.Error("expected no index to be seen, got", ss.getMaximumExternalIndex())
 	}
 }
 
@@ -126,7 +126,7 @@ func TestScanLoop(t *testing.T) {
 
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
 	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
@@ -140,8 +140,8 @@ func TestScanLoop(t *testing.T) {
 	// the largest index seen should be the penultimate element (+2, since 2
 	// addresses are generated when sending coins). The last element should
 	// not be seen, because it was outside the scanning range.
-	if ss.maximumExternalIndex != indices[len(indices)-2]+2 {
-		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.maximumExternalIndex)
+	if ss.getMaximumExternalIndex() != indices[len(indices)-2]+2 {
+		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.getMaximumExternalIndex())
 	}
 }
 
@@ -213,7 +213,7 @@ func TestSlowScan(t *testing.T) {
 			}
 		}
 
-		nss := newSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+		nss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
 		err = nss.scan(wt.wallet.tg.StopChan())
 		if err != nil {
 			t.Fatal(err)
@@ -251,14 +251,14 @@ func TestScannerGenerateKeys(t *testing.T) {
 	}
 	defer wt.closeWt()
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
 	numKeys := uint64(100)
 	ss.generateKeys(numKeys)
 	if ss.minimumIndex != 0 {
 		t.Fatalf("Minimum index should be 0 but is %v\n", ss.minimumIndex)
 	}
-	if ss.maximumExternalIndex != 0 {
-		t.Fatalf("Maximum external index should be 0 but is %v\n", ss.maximumExternalIndex)
+	if ss.getMaximumExternalIndex() != 0 {
+		t.Fatalf("Maximum external index should be 0 but is %v\n", ss.getMaximumExternalIndex())
 	}
 	if ss.maximumInternalIndex != numKeys {
 		t.Fatalf("Maximum internal index should be %v but is %v\n", numKeys, ss.maximumInternalIndex)

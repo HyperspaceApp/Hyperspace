@@ -402,16 +402,16 @@ func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) er
 	defer w.scanLock.Unlock()
 
 	// estimate the primarySeedProgress by scanning the blockchain
-	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
-	w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.maximumExternalIndex, s.maximumInternalIndex)
+	// w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.getMaximumExternalIndex(), s.maximumInternalIndex)
 
 	// initialize the wallet with the appropriate seed progress
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, err := w.initEncryption(masterKey, seed, s.maximumInternalIndex)
+	_, err := w.initEncryption(masterKey, seed, s.getMaximumInternalIndex())
 	return err
 }
 

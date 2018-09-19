@@ -48,7 +48,24 @@ type slowSeedScanner struct {
 	log *persist.Logger
 }
 
-func (s *slowSeedScanner) numKeys() uint64 {
+func (s slowSeedScanner) getMaximumExternalIndex() uint64 {
+	return s.maximumExternalIndex
+}
+
+func (s slowSeedScanner) getMaximumInternalIndex() uint64 {
+	return s.gapScanner.maximumInternalIndex
+}
+
+func (s *slowSeedScanner) setDustThreshold(d types.Currency) {
+	s.dustThreshold = d
+	s.gapScanner.dustThreshold = d
+}
+
+func (s slowSeedScanner) getSiacoinOutputs() map[types.SiacoinOutputID]scannedOutput {
+	return s.siacoinOutputs
+}
+
+func (s slowSeedScanner) numKeys() uint64 {
 	return uint64(len(s.keys))
 }
 
@@ -165,6 +182,7 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	//
 	// NOTE: since scanning is very slow, we aim to only scan once, which
 	// means generating many keys.
+	s.gapScanner = newFastSeedScanner(s.seed, s.addressGapLimit, s.cs, s.log)
 
 	s.generateKeys(numInitialKeys)
 	s.cancel = make(chan struct{}) // this will disturbe thread stop to stop scan
@@ -174,7 +192,6 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	}
 	s.cs.HeaderUnsubscribe(s)
 
-	s.gapScanner = newSeedScanner(s.seed, s.addressGapLimit, s.cs, s.log)
 	// log.Printf("end fist part slow scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
 	s.gapScanner.minimumIndex = s.maximumExternalIndex
 	s.gapScanner.maximumInternalIndex = s.maximumExternalIndex
@@ -198,7 +215,8 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 }
 
 // newSlowSeedScanner returns a new slowSeedScanner.
-func newSlowSeedScanner(seed modules.Seed, addressGapLimit uint64, cs modules.ConsensusSet, log *persist.Logger) *slowSeedScanner {
+func newSlowSeedScanner(seed modules.Seed, addressGapLimit uint64,
+	cs modules.ConsensusSet, log *persist.Logger) *slowSeedScanner {
 	return &slowSeedScanner{
 		seed:                 seed,
 		addressGapLimit:      addressGapLimit,

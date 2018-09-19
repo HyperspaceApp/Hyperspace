@@ -274,11 +274,12 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 	w.mu.RUnlock()
 
 	// scan blockchain to determine how many keys to generate for the seed
-	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log)
+
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
-	w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.maximumExternalIndex, s.maximumInternalIndex)
+	// w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.getMaximumExternalIndex(), s.maximumInternalIndex)
 
 	err := func() error {
 		w.mu.Lock()
@@ -304,7 +305,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 		}
 
 		// load the seed's keys
-		w.integrateSeed(seed, uint64(s.maximumInternalIndex))
+		w.integrateSeed(seed, uint64(s.getMaximumInternalIndex()))
 		w.seeds = append(w.seeds, seed)
 
 		// delete the set of processed transactions; they will be recreated
@@ -379,16 +380,16 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 
 	// scan blockchain for outputs, filtering out 'dust' (outputs that cost
 	// more in fees than they are worth)
-	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
 	_, maxFee := w.tpool.FeeEstimation()
 	const outputSize = 350 // approx. size in bytes of an output and accompanying signature
 	const maxOutputs = 50  // approx. number of outputs that a transaction can handle
-	s.dustThreshold = maxFee.Mul64(outputSize)
+	s.setDustThreshold(maxFee.Mul64(outputSize))
 	if err = s.scan(w.tg.StopChan()); err != nil {
 		return
 	}
 
-	if len(s.siacoinOutputs) == 0 {
+	if len(s.getSiacoinOutputs()) == 0 {
 		// if we aren't sweeping any coins, then just return an
 		// error; no reason to proceed
 		return types.Currency{}, types.Currency{}, errors.New("nothing to sweep")
@@ -396,7 +397,7 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 
 	// Flatten map to slice
 	var siacoinOutputs []scannedOutput
-	for _, sco := range s.siacoinOutputs {
+	for _, sco := range s.getSiacoinOutputs() {
 		siacoinOutputs = append(siacoinOutputs, sco)
 	}
 
