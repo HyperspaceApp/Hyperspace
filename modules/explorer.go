@@ -8,20 +8,20 @@ import (
 const (
 	// ExplorerDir is the name of the directory that is typically used for the
 	// explorer.
-	ExplorerDir             = "explorer"
+	ExplorerDir = "explorer"
 	// BlockHashType is a label indicating that a hash is that of a block
-	BlockHashType           = "Blk"
+	BlockHashType = "Blk"
 	// TransactionHashType is a label indicating that a hash is that of a tx
-	TransactionHashType     = "Tx"
+	TransactionHashType = "Tx"
 	// SiacoinOutputIdHashType is a label indicating that a hash is that of a
 	// siacoin output id
 	SiacoinOutputIdHashType = "Scoid"
 	// FileContractIdHashType is a label indicating that a hash is that of a
 	// file contract id
-	FileContractIdHashType  = "Fcid"
+	FileContractIdHashType = "Fcid"
 	// UnlockHashType is a label indicating that a hash is that of an unlock
 	// hash
-	UnlockHashType          = "Uh"
+	UnlockHashType = "Uh"
 )
 
 type (

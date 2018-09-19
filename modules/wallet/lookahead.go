@@ -9,11 +9,11 @@ import (
 // lookahead keeps the unlock conditions organized in a way such that it's easy to
 // query their position.
 type lookahead struct {
-	initialized bool
-	seed modules.Seed
+	initialized   bool
+	seed          modules.Seed
 	startingIndex uint64
-	hashIndexMap map[types.UnlockHash]uint64
-	keys []spendableKey
+	hashIndexMap  map[types.UnlockHash]uint64
+	keys          []spendableKey
 }
 
 func (la *lookahead) GetIndex(uh types.UnlockHash) (uint64, bool) {
@@ -33,7 +33,7 @@ func (la *lookahead) GetKeyByIndex(index uint64) spendableKey {
 	if (index - la.startingIndex) > uint64(len(la.keys)) {
 		panic("GetKeyByIndex out of bounds")
 	}
-	return la.keys[index - la.startingIndex]
+	return la.keys[index-la.startingIndex]
 }
 
 func (la *lookahead) GetNextKey() spendableKey {
@@ -89,6 +89,6 @@ func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
 func newLookahead() lookahead {
 	return lookahead{
 		hashIndexMap: make(map[types.UnlockHash]uint64),
-		keys: make([]spendableKey, 0, AddressGapLimit),
+		keys:         make([]spendableKey, 0, AddressGapLimit),
 	}
 }

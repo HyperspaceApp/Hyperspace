@@ -156,7 +156,7 @@ func TestSlowScan(t *testing.T) {
 	//startTime := time.Now()
 	_, availableAddressCount, _ := wt.wallet.PrimarySeed()
 	log.Printf("availableAddressCount: %v\n", availableAddressCount)
-	for i := 0; i < int(availableAddressCount) ; i++ {
+	for i := 0; i < int(availableAddressCount); i++ {
 		// insert some tx
 		uc, err := wt.wallet.nextPrimarySeedAddress(wt.wallet.dbTx)
 		if err != nil {

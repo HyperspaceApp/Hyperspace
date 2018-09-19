@@ -8,8 +8,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/errors"
+	"github.com/coreos/bbolt"
 )
 
 // database.go contains objects related to the layout of the transaction pool's

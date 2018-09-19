@@ -136,9 +136,9 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		blockRuleHelper: stdBlockRuleHelper{},
 		blockValidator:  NewBlockValidator(),
 
-		staticDeps: deps,
-		persistDir: persistDir,
-		spv:        spv,
+		staticDeps:            deps,
+		persistDir:            persistDir,
+		spv:                   spv,
 		processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 	}
 

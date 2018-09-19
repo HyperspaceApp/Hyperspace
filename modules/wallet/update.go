@@ -75,14 +75,14 @@ func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error 
 		}
 	}
 	if largestExternalIndex > 0 {
-		return w.advanceSeedLookahead(largestExternalIndex+1)
+		return w.advanceSeedLookahead(largestExternalIndex + 1)
 	} else {
 		/*
-		fmt.Printf("nothing found in our lookahead of size %v\n", w.lookahead.Length())
-		fmt.Println("here are the values we searched: ")
-		for _, key := range(w.lookahead.keys) {
-			fmt.Println(key.UnlockConditions.UnlockHash().String())
-		}
+			fmt.Printf("nothing found in our lookahead of size %v\n", w.lookahead.Length())
+			fmt.Println("here are the values we searched: ")
+			for _, key := range(w.lookahead.keys) {
+				fmt.Println(key.UnlockConditions.UnlockHash().String())
+			}
 		*/
 	}
 

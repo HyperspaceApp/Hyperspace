@@ -493,7 +493,6 @@ func dbPutPrimarySeedMinimumIndex(tx *bolt.Tx, index uint64) error {
 	return dbPutSeedsMinimumIndexForSeed(tx, 0, index)
 }
 
-
 // dbGetSeedsMaximumInternalIndex returns the maximum internal address indices for all seeds.
 func dbGetSeedsMaximumInternalIndex(tx *bolt.Tx) (indices []uint64, err error) {
 	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keySeedsMaximumInternalIndex), &indices)
