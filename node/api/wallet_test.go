@@ -317,6 +317,32 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	}
 }
 
+func TestWalletGETAndPOST(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	st, err := createServerTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.server.panicClose()
+	// Send coins to a wallet address through the api.
+	var wag WalletAddressGET
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr := wag.Address.String()
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addr2 := wag.Address.String()
+	if addr != addr2 {
+		t.Error("Called GET /wallet/address twice and got different results")
+	}
+}
+
 // TestWalletGETSiacoins probes the GET call to /wallet when the
 // siacoin balance is being manipulated.
 func TestWalletGETSiacoins(t *testing.T) {

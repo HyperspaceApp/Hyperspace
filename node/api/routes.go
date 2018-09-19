@@ -159,7 +159,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 	// Wallet API Calls
 	if api.wallet != nil {
 		router.GET("/wallet", api.walletHandler)
-		router.GET("/wallet/address", RequirePassword(api.walletAddressHandler, requiredPassword))
+		router.GET("/wallet/address", RequirePassword(api.walletGetAddressHandler, requiredPassword))
+		router.POST("/wallet/address", RequirePassword(api.walletCreateAddressHandler, requiredPassword))
 		router.GET("/wallet/addresses", api.walletAddressesHandler)
 		router.GET("/wallet/backup", RequirePassword(api.walletBackupHandler, requiredPassword))
 		router.GET("/wallet/build/transaction", api.walletBuildTransactionHandler)
