@@ -194,7 +194,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		persistDir: persistDir,
 
 		addressGapLimit: uint64(addressGapLimit),
-		scanAirdrop: scanAirdrop,
+		scanAirdrop:     scanAirdrop,
 
 		deps: deps,
 	}
