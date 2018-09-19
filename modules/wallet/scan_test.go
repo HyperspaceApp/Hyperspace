@@ -162,7 +162,7 @@ func TestSlowScan(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		log.Printf("generated address %v\n", i)
+		// log.Printf("generated address %v\n", i)
 		_, err = wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
 		if err != nil {
 			t.Fatal(err)

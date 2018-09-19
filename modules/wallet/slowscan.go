@@ -93,7 +93,6 @@ func (s *slowSeedScanner) adjustMinimumIndex(siacoinOutputDiffs []modules.Siacoi
 func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange,
 	getSiacoinOutputDiff func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error)) {
 	var siacoinOutputDiffs []modules.SiacoinOutputDiff
-	s.lastConsensusChange = hcc.ID
 
 	// grab matured outputs
 	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
@@ -106,7 +105,7 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 		}
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
-			// log.Printf("applied block match num %d", int(pbh.Height))
+			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffApply)
 			if err != nil {
@@ -120,8 +119,8 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 	// grab reverted active outputs from full blocks
 	for _, pbh := range hcc.RevertedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
-		if (isAirdrop(pbh.Height) && pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray)) ||
-			pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
+			// log.Printf("revert block: %d", pbh.Height)
 			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
@@ -151,6 +150,8 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 			}
 		}
 	}
+
+	s.lastConsensusChange = hcc.ID
 }
 
 // scan subscribes s to cs and scans the blockchain for addresses that belong
