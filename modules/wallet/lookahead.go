@@ -10,11 +10,11 @@ import (
 // query their position.
 type lookahead struct {
 	addressGapLimit uint64
-	initialized   bool
-	seed          modules.Seed
-	startingIndex uint64
-	hashIndexMap  map[types.UnlockHash]uint64
-	keys          []spendableKey
+	initialized     bool
+	seed            modules.Seed
+	startingIndex   uint64
+	hashIndexMap    map[types.UnlockHash]uint64
+	keys            []spendableKey
 }
 
 func (la *lookahead) GetIndex(uh types.UnlockHash) (uint64, bool) {
@@ -90,7 +90,7 @@ func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
 func newLookahead(addressGapLimit uint64) lookahead {
 	return lookahead{
 		addressGapLimit: addressGapLimit,
-		hashIndexMap: make(map[types.UnlockHash]uint64),
-		keys:         make([]spendableKey, 0, addressGapLimit),
+		hashIndexMap:    make(map[types.UnlockHash]uint64),
+		keys:            make([]spendableKey, 0, addressGapLimit),
 	}
 }
