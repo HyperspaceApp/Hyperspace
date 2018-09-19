@@ -85,7 +85,7 @@ func newHDBTesterDeps(name string, deps modules.Dependencies) (*hdbTester, error
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testDir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testDir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		return nil, err
 	}

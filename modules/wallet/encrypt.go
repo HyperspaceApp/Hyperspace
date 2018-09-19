@@ -367,7 +367,7 @@ func (w *Wallet) Reset() error {
 	}
 	w.wipeSecrets()
 	w.keys = make(map[types.UnlockHash]spendableKey)
-	w.lookahead = newLookahead()
+	w.lookahead = newLookahead(w.addressGapLimit)
 	w.seeds = []modules.Seed{}
 	w.unconfirmedProcessedTransactions = []modules.ProcessedTransaction{}
 	w.unlocked = false
@@ -402,7 +402,7 @@ func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) er
 	defer w.scanLock.Unlock()
 
 	// estimate the primarySeedProgress by scanning the blockchain
-	s := newSeedScanner(seed, w.cs, w.log)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}

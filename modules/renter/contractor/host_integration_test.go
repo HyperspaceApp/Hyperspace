@@ -27,7 +27,7 @@ import (
 // newTestingWallet is a helper function that creates a ready-to-use wallet
 // and mines some coins into it.
 func newTestingWallet(testdir string, cs modules.ConsensusSet, tp modules.TransactionPool) (modules.Wallet, error) {
-	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func newTestingTrio(name string) (modules.Host, *Contractor, modules.TestMiner, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		return nil, nil, nil, err
 	}

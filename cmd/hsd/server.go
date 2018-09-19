@@ -530,7 +530,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "w") {
 		i++
 		fmt.Printf("(%d/%d) Loading wallet...\n", i, len(srv.config.Siad.Modules))
-		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir))
+		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir), srv.config.Siad.AddressGapLimit)
 		if err != nil {
 			return err
 		}

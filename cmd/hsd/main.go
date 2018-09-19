@@ -42,6 +42,7 @@ type Config struct {
 		NoBootstrap       bool
 		RequiredUserAgent string
 		AuthenticateAPI   bool
+		AddressGapLimit int
 
 		Profile    string
 		ProfileDir string
@@ -183,6 +184,7 @@ func main() {
 	root.Flags().StringVarP(&globalConfig.Siad.Profile, "profile", "", "", "enable profiling with flags 'cmt' for CPU, memory, trace")
 	root.Flags().StringVarP(&globalConfig.Siad.RPCaddr, "rpc-addr", "", ":5581", "which port the gateway listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.Modules, "modules", "M", "cghrtw", "enabled modules, see 'hsd modules' for more info")
+	root.Flags().IntVarP(&globalConfig.Siad.AddressGapLimit, "address-gap-limit", "", 20, "address gap limit for wallet scanning")
 	root.Flags().BoolVarP(&globalConfig.Siad.AuthenticateAPI, "authenticate-api", "", false, "enable API password protection")
 	root.Flags().BoolVarP(&globalConfig.Siad.AllowAPIBind, "disable-api-security", "", false, "allow hsd to listen on a non-localhost address (DANGEROUS)")
 	root.Flags().BoolVarP(&globalConfig.Siad.Spv, "spv", "", false, "enable SPV mode")

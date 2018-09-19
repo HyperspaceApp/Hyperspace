@@ -134,7 +134,7 @@ func TestIntegrationPreEncryption(t *testing.T) {
 
 	// Create a second wallet using the same directory - make sure that if any
 	// files have been created, the wallet is still being treated as new.
-	w1, err := New(wt.cs, wt.tpool, filepath.Join(wt.persistDir, modules.WalletDir))
+	w1, err := New(wt.cs, wt.tpool, filepath.Join(wt.persistDir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestInitFromSeedConcurrentUnlock(t *testing.T) {
 
 	// create a blank wallet
 	dir := filepath.Join(build.TempDir(modules.WalletDir, t.Name()+"-new"), modules.WalletDir)
-	w, err := New(wt.cs, wt.tpool, dir)
+	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -407,7 +407,7 @@ func TestInitFromSeed(t *testing.T) {
 
 	// create a blank wallet
 	dir := filepath.Join(build.TempDir(modules.WalletDir, "TestInitFromSeed1"), modules.WalletDir)
-	w, err := New(wt.cs, wt.tpool, dir)
+	w, err := New(wt.cs, wt.tpool, dir, modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}

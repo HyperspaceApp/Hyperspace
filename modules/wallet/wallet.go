@@ -28,15 +28,6 @@ const (
 	// transaction spending the output has not made it to the transaction pool
 	// after the limit, the assumption is that it never will.
 	RespendTimeout = 40
-
-	// AddressGapLimit is currently set to 20. If the software hits 20 unused
-	// addresses in a row, it expects there are no used addresses beyond this
-	// point and stops searching the address chain. We scan just the external
-	// chains, because internal chains receive only coins that come from the
-	// associated external chains.
-	//
-	// For further information, read BIP 44.
-	AddressGapLimit = 20
 )
 
 var (
@@ -92,8 +83,8 @@ type Wallet struct {
 	// The maximum internal index is the highest address index we're tracking
 	// locally for a seed. Once the external blockchain has been scanned,
 	// this value should be greater or equal to the maximum external index
-	// that we've seen. If we are enforcing AddressGapLimit, this value
-	// should not exceed the maximum external index + AddressGapLimit.
+	// that we've seen. If we are enforcing addressGapLimit, this value
+	// should not exceed the maximum external index + addressGapLimit.
 	seedsMaximumInternalIndex []uint64
 	// The maximum external address is the highest address we've seen on the
 	// external blockchain.
@@ -135,6 +126,15 @@ type Wallet struct {
 	// defragDisabled determines if the wallet is set to defrag outputs once it
 	// reaches a certain threshold
 	defragDisabled bool
+
+	// addressGapLimit is by default set to 20. If the software hits 20 unused
+	// addresses in a row, it expects there are no used addresses beyond this
+	// point and stops searching the address chain. We scan just the external
+	// chains, because internal chains receive only coins that come from the
+	// associated external chains.
+	//
+	// For further information, read BIP 44.
+	addressGapLimit uint64
 }
 
 // Height return the internal processed consensus height of the wallet
@@ -162,12 +162,12 @@ func (w *Wallet) Height() (types.BlockHeight, error) {
 // name and then using the file to save in the future. Keys and addresses are
 // not loaded into the wallet during the call to 'new', but rather during the
 // call to 'Unlock'.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string) (*Wallet, error) {
-	return NewCustomWallet(cs, tpool, persistDir, modules.ProdDependencies)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int) (*Wallet, error) {
+	return NewCustomWallet(cs, tpool, persistDir, addressGapLimit, modules.ProdDependencies)
 }
 
 // NewCustomWallet creates a new wallet using custom dependencies.
-func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, deps modules.Dependencies) (*Wallet, error) {
+func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, deps modules.Dependencies) (*Wallet, error) {
 	// Check for nil dependencies.
 	if cs == nil {
 		return nil, errNilConsensusSet
@@ -175,7 +175,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 	if tpool == nil {
 		return nil, errNilTpool
 	}
-	lookahead := newLookahead()
+	lookahead := newLookahead(uint64(addressGapLimit))
 
 	// Initialize the data structure.
 	w := &Wallet{
@@ -189,6 +189,8 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		unconfirmedSets: make(map[modules.TransactionSetID][]types.TransactionID),
 
 		persistDir: persistDir,
+
+		addressGapLimit: uint64(addressGapLimit),
 
 		deps: deps,
 	}

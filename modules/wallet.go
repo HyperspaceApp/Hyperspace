@@ -21,6 +21,10 @@ const (
 
 	// WalletDir is the directory that contains the wallet persistence.
 	WalletDir = "wallet"
+
+	// DefaultAddressGapLimit is the default address gap limit as specified in
+	// BIP 44.
+	DefaultAddressGapLimit = 20
 )
 
 var (

@@ -46,7 +46,7 @@ func createWalletTester(name string, deps modules.Dependencies) (*walletTester, 
 	if err != nil {
 		return nil, err
 	}
-	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), deps)
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, deps)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func createBlankWalletTester(name string) (*walletTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -160,15 +160,15 @@ func TestNilInputs(t *testing.T) {
 	}
 
 	wdir := filepath.Join(testdir, modules.WalletDir)
-	_, err = New(cs, nil, wdir)
+	_, err = New(cs, nil, wdir, modules.DefaultAddressGapLimit)
 	if err != errNilTpool {
 		t.Error(err)
 	}
-	_, err = New(nil, tp, wdir)
+	_, err = New(nil, tp, wdir, modules.DefaultAddressGapLimit)
 	if err != errNilConsensusSet {
 		t.Error(err)
 	}
-	_, err = New(nil, nil, wdir)
+	_, err = New(nil, nil, wdir, modules.DefaultAddressGapLimit)
 	if err != errNilConsensusSet {
 		t.Error(err)
 	}
@@ -222,7 +222,7 @@ func TestCloseWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 	wdir := filepath.Join(testdir, modules.WalletDir)
-	w, err := New(cs, tp, wdir)
+	w, err := New(cs, tp, wdir, modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,7 +312,7 @@ func TestLookaheadGeneration(t *testing.T) {
 	}
 
 	actualKeys := wt.wallet.lookahead.Length()
-	lookaheadBufferSize := AddressGapLimit - (internalIndex - externalIndex)
+	lookaheadBufferSize := wt.wallet.addressGapLimit - (internalIndex - externalIndex)
 	expectedKeys := lookaheadBufferSize
 	if actualKeys != expectedKeys {
 		t.Errorf("expected len(lookahead) == %d but was %d", actualKeys, expectedKeys)
@@ -335,7 +335,7 @@ func TestLookaheadGeneration(t *testing.T) {
 	}
 
 	actualKeys = wt.wallet.lookahead.Length()
-	lookaheadBufferSize = AddressGapLimit - (internalIndex - externalIndex)
+	lookaheadBufferSize = wt.wallet.addressGapLimit - (internalIndex - externalIndex)
 	expectedKeys = lookaheadBufferSize
 	if actualKeys != expectedKeys {
 		t.Errorf("expected len(lookahead) == %d but was %d", actualKeys, expectedKeys)
@@ -573,7 +573,7 @@ func TestDistantWallets(t *testing.T) {
 	defer wt.closeWt()
 
 	// Create another wallet with the same seed.
-	w2, err := New(wt.cs, wt.tpool, build.TempDir(modules.WalletDir, t.Name()+"2", modules.WalletDir))
+	w2, err := New(wt.cs, wt.tpool, build.TempDir(modules.WalletDir, t.Name()+"2", modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -587,7 +587,7 @@ func TestDistantWallets(t *testing.T) {
 	}
 
 	// Use the first wallet.
-	for i := uint64(0); i < AddressGapLimit/2; i++ {
+	for i := uint64(0); i < wt.wallet.addressGapLimit/2; i++ {
 		_, err = wt.wallet.SendSiacoins(types.SiacoinPrecision, types.UnlockHash{})
 		if err != nil {
 			t.Fatal(err)
@@ -615,7 +615,7 @@ func TestDistantWallets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	farAddr := generateSpendableKey(wt.wallet.primarySeed, AddressGapLimit*10).UnlockConditions.UnlockHash()
+	farAddr := generateSpendableKey(wt.wallet.primarySeed, wt.wallet.addressGapLimit*10).UnlockConditions.UnlockHash()
 	value := types.SiacoinPrecision.Mul64(1e3)
 	tbuilder.AddSiacoinOutput(types.SiacoinOutput{
 		UnlockHash: farAddr,
@@ -659,7 +659,7 @@ func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*w
 	if err != nil {
 		return nil, err
 	}
-	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), deps)
+	w, err := NewCustomWallet(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, deps)
 	if err != nil {
 		return nil, err
 	}

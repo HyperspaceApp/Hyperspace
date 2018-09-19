@@ -38,7 +38,7 @@ func loadExistingHostWithNewDeps(modulesDir, hostDir string) (modules.Host, erro
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		return nil, err
 	}

@@ -43,7 +43,7 @@ func TestWalletGETEncrypted(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create tpool:", err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal("Failed to create wallet:", err)
 	}
@@ -182,7 +182,7 @@ func TestWalletBlankEncrypt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -467,7 +467,7 @@ func TestIntegrationWalletSweepSeedPOST(t *testing.T) {
 
 	// send coins to a new wallet, then sweep them back
 	key := crypto.GenerateTwofishKey()
-	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"))
+	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -547,7 +547,7 @@ func TestIntegrationWalletLoadSeedPOST(t *testing.T) {
 
 	// Create a wallet to load coins from.
 	key2 := crypto.GenerateTwofishKey()
-	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"))
+	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit)
 	if err != nil {
 		t.Fatal(err)
 	}

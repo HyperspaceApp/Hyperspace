@@ -9,6 +9,7 @@ import (
 // lookahead keeps the unlock conditions organized in a way such that it's easy to
 // query their position.
 type lookahead struct {
+	addressGapLimit uint64
 	initialized   bool
 	seed          modules.Seed
 	startingIndex uint64
@@ -80,15 +81,16 @@ func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
 	la.seed = seed
 	la.startingIndex = startingIndex
 	// do the initial growing of the buffer
-	for _, k := range generateKeys(la.seed, startingIndex, AddressGapLimit) {
+	for _, k := range generateKeys(la.seed, startingIndex, la.addressGapLimit) {
 		la.AppendKey(k)
 	}
 	la.initialized = true
 }
 
-func newLookahead() lookahead {
+func newLookahead(addressGapLimit uint64) lookahead {
 	return lookahead{
+		addressGapLimit: addressGapLimit,
 		hashIndexMap: make(map[types.UnlockHash]uint64),
-		keys:         make([]spendableKey, 0, AddressGapLimit),
+		keys:         make([]spendableKey, 0, addressGapLimit),
 	}
 }

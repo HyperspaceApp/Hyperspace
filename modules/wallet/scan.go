@@ -44,6 +44,7 @@ type seedScanner struct {
 	maximumInternalIndex uint64 // the next internal index we can use
 	maximumExternalIndex uint64 // the next external address we look for
 	seed                 modules.Seed
+	addressGapLimit      uint64
 	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
 	cs                   modules.ConsensusSet
 	log                  *persist.Logger
@@ -142,7 +143,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	}
 	gap := s.maximumInternalIndex - s.maximumExternalIndex
 	if gap > 0 {
-		toGrow := AddressGapLimit - gap
+		toGrow := s.addressGapLimit - gap
 		s.generateKeys(uint64(toGrow))
 	}
 }
@@ -151,7 +152,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 // to s's seed. If scan returns errMaxKeys, additional keys may need to be
 // generated to find all the addresses.
 func (s *seedScanner) scan(cancel <-chan struct{}) error {
-	numKeys := uint64(AddressGapLimit)
+	numKeys := uint64(s.addressGapLimit)
 	s.generateKeys(numKeys)
 	if err := s.cs.HeaderConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, cancel); err != nil {
 		return err
@@ -168,9 +169,10 @@ func (s *seedScanner) scan(cancel <-chan struct{}) error {
 }
 
 // newSeedScanner returns a new seedScanner.
-func newSeedScanner(seed modules.Seed, cs modules.ConsensusSet, log *persist.Logger) *seedScanner {
+func newSeedScanner(seed modules.Seed, addressGapLimit uint64, cs modules.ConsensusSet, log *persist.Logger) *seedScanner {
 	return &seedScanner{
 		seed:                 seed,
+		addressGapLimit:      addressGapLimit,
 		minimumIndex:         0,
 		maximumInternalIndex: 0,
 		maximumExternalIndex: 0,

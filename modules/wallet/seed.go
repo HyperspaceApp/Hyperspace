@@ -135,7 +135,7 @@ func (w *Wallet) nextPrimarySeedAddresses(tx *bolt.Tx, n uint64) ([]types.Unlock
 	}
 	newInternalIndex := internalIndex + n
 	//fmt.Printf("nextPrimarySeedAddresses(%v): external index: %v, old internal index: %v, new internal index: %v\n", n, externalIndex, internalIndex, newInternalIndex)
-	if (newInternalIndex - externalIndex) > uint64(AddressGapLimit) {
+	if (newInternalIndex - externalIndex) > uint64(w.addressGapLimit) {
 		//fmt.Printf("ERROR: external index: %v, old internal index: %v, new internal index: %v\n", externalIndex, internalIndex, newInternalIndex)
 		return []types.UnlockConditions{}, modules.ErrAddressGapLimit
 	}
@@ -195,7 +195,7 @@ func (w *Wallet) PrimarySeed() (modules.Seed, uint64, error) {
 	// addresses remaining is maxScanKeys-progress; generating more keys than
 	// that risks not being able to recover them when using SweepSeed or
 	// InitFromSeed.
-	remaining := AddressGapLimit - (internalIndex - externalIndex)
+	remaining := uint64(w.addressGapLimit) - (internalIndex - externalIndex)
 	if remaining < 0 {
 		remaining = 0
 	}
@@ -271,7 +271,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.TwofishKey, seed modules.Seed) error 
 	w.mu.RUnlock()
 
 	// scan blockchain to determine how many keys to generate for the seed
-	s := newSeedScanner(seed, w.cs, w.log)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
@@ -376,7 +376,7 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 
 	// scan blockchain for outputs, filtering out 'dust' (outputs that cost
 	// more in fees than they are worth)
-	s := newSeedScanner(seed, w.cs, w.log)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log)
 	_, maxFee := w.tpool.FeeEstimation()
 	const outputSize = 350 // approx. size in bytes of an output and accompanying signature
 	const maxOutputs = 50  // approx. number of outputs that a transaction can handle
