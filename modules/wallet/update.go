@@ -15,20 +15,21 @@ type (
 	spentSiacoinOutputSet map[types.SiacoinOutputID]types.SiacoinOutput
 )
 
-// advanceSeedLookahead generates all keys from the current primary seed progress up to index
-// and adds them to the set of spendable keys.  Therefore the new primary seed progress will
-// be index+1 and new lookahead keys will be generated starting from index+1
-// Returns true if a blockchain rescan is required
-func (w *Wallet) advanceSeedLookahead(index uint64) error {
+// advanceSeedLookahead advances the lookahead to start with a new external
+// index
+func (w *Wallet) advanceSeedLookahead(newExternalIndex uint64) error {
 	internalIndex, err := dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
 	if err != nil {
 		return err
 	}
 	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
-	numKeys := index - externalIndex
+	if err != nil {
+		return err
+	}
+	numKeys := newExternalIndex - externalIndex
 	var newInternalIndex uint64
-	if index > internalIndex {
-		newInternalIndex = index
+	if newExternalIndex > internalIndex {
+		newInternalIndex = newExternalIndex
 	} else {
 		newInternalIndex = internalIndex
 	}
@@ -46,7 +47,7 @@ func (w *Wallet) advanceSeedLookahead(index uint64) error {
 		return err
 	}
 	// Update the externalIndex
-	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, index)
+	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, newExternalIndex)
 	if err != nil {
 		return err
 	}
@@ -65,25 +66,29 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 // updateLookahead uses a consensus change to update the seed progress if one of the outputs
 // contains an unlock hash of the lookahead set. Returns true if a blockchain rescan is required
 func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error {
-	var largestExternalIndex uint64
+	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
+	if err != nil {
+		return err
+	}
 	for _, diff := range cc.SiacoinOutputDiffs {
 		//fmt.Printf("scanning %v\n", diff.SiacoinOutput.UnlockHash)
 		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
-			if index > largestExternalIndex {
-				largestExternalIndex = index
+			if index >= externalIndex {
+				externalIndex = index + 1
 			}
 		}
 	}
-	if largestExternalIndex > 0 {
-		return w.advanceSeedLookahead(largestExternalIndex + 1)
-	}
-	/*
+	if externalIndex > 0 {
+		return w.advanceSeedLookahead(externalIndex)
+	} else {
+		/*
 		fmt.Printf("nothing found in our lookahead of size %v\n", w.lookahead.Length())
 		fmt.Println("here are the values we searched: ")
 		for _, key := range(w.lookahead.keys) {
 			fmt.Println(key.UnlockConditions.UnlockHash().String())
 		}
-	*/
+		*/
+	}
 
 	return nil
 }

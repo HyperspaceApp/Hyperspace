@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"log"
 	"path/filepath"
 	"testing"
 	"time"
@@ -694,7 +695,7 @@ func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*w
 
 	// Mine blocks until there is money in the wallet.
 	b, _ := wt.miner.FindBlock()
-	// log.Printf("new first block id: %s\n", b.ID().String())
+	log.Printf("new first block payout addr: %s\n", b.MinerPayouts[0].UnlockHash.String())
 	err = wt.cs.AcceptBlock(b)
 	if err != nil {
 		return nil, err
