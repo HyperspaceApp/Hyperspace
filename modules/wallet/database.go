@@ -64,7 +64,6 @@ var (
 	keySpendableKeyFiles         = []byte("keySpendableKeyFiles")
 	keyUID                       = []byte("keyUID")
 	keyWatchedAddrs              = []byte("keyWatchedAddrs")
-	keySeedsMinimumIndex         = []byte("keySeedsMinimumIndex")
 	keySeedsMaximumInternalIndex = []byte("keySeedsMaximumInternalIndex")
 	keySeedsMaximumExternalIndex = []byte("keySeedsMaximumExternalIndex")
 )
@@ -144,7 +143,6 @@ func dbReset(tx *bolt.Tx) error {
 	wb.Put(keyAuxiliarySeedFiles, encoding.Marshal([]seedFile{}))
 	wb.Put(keySpendableKeyFiles, encoding.Marshal([]spendableKeyFile{}))
 	wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
-	wb.Put(keySeedsMinimumIndex, encoding.Marshal([]uint64{}))
 	wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{}))
 	wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{}))
 	dbPutConsensusHeight(tx, 0)
@@ -445,52 +443,6 @@ func dbGetConsensusHeight(tx *bolt.Tx) (height types.BlockHeight, err error) {
 // dbPutConsensusHeight stores the height that the wallet has scanned to.
 func dbPutConsensusHeight(tx *bolt.Tx, height types.BlockHeight) error {
 	return tx.Bucket(bucketWallet).Put(keyConsensusHeight, encoding.Marshal(height))
-}
-
-// dbGetSeedsMinimumIndex returns the minimum address indices for all seeds.
-func dbGetSeedsMinimumIndex(tx *bolt.Tx) (indices []uint64, err error) {
-	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keySeedsMinimumIndex), &indices)
-	if err != nil {
-		return
-	}
-	return
-}
-
-// dbPutSeedsMinimumIndex sets the minimum address indices for all seeds.
-func dbPutSeedsMinimumIndex(tx *bolt.Tx, indices []uint64) (err error) {
-	return tx.Bucket(bucketWallet).Put(keySeedsMinimumIndex, encoding.Marshal(indices))
-}
-
-// dbGetSeedsMinimumIndexForSeed returns the minimum address indices for a given seed number.
-func dbGetSeedsMinimumIndexForSeed(tx *bolt.Tx, seedIndex uint64) (index uint64, err error) {
-	indices, err := dbGetSeedsMinimumIndex(tx)
-	if err != nil {
-		return
-	}
-	index = indices[seedIndex]
-	return
-}
-
-// dbPutSeedsMinimumIndexForSeed sets the minimum address index for a given seed number.
-func dbPutSeedsMinimumIndexForSeed(tx *bolt.Tx, seedIndex, index uint64) (err error) {
-	indices, err := dbGetSeedsMinimumIndex(tx)
-	if err != nil {
-		return
-	}
-	indices[seedIndex] = index
-	err = dbPutSeedsMinimumIndex(tx, indices)
-	return
-}
-
-// dbGetPrimarySeedMinimumIndex returns the minimum address index for the primary seed.
-func dbGetPrimarySeedMinimumIndex(tx *bolt.Tx) (index uint64, err error) {
-	index, err = dbGetSeedsMinimumIndexForSeed(tx, 0)
-	return
-}
-
-// dbPutPrimarySeedMinimumIndex sets the minimum address index for the primary seed.
-func dbPutPrimarySeedMinimumIndex(tx *bolt.Tx, index uint64) error {
-	return dbPutSeedsMinimumIndexForSeed(tx, 0, index)
 }
 
 // dbGetSeedsMaximumInternalIndex returns the maximum internal address indices for all seeds.

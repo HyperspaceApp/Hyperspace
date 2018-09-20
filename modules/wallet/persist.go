@@ -74,9 +74,6 @@ func (w *Wallet) openDB(filename string) (err error) {
 		if wb.Get(keyWatchedAddrs) == nil {
 			wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
 		}
-		if wb.Get(keySeedsMinimumIndex) == nil {
-			wb.Put(keySeedsMinimumIndex, encoding.Marshal([]uint64{0}))
-		}
 		if wb.Get(keySeedsMaximumInternalIndex) == nil {
 			wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{0}))
 		}
