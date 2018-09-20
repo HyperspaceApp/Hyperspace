@@ -26,7 +26,7 @@ const (
 var (
 	dbMetadata = persist.Metadata{
 		Header:  "Wallet Database",
-		Version: "0.2.0",
+		Version: "1.1.0",
 	}
 )
 
