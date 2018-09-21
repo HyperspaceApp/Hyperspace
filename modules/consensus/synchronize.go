@@ -767,6 +767,55 @@ func (cs *ConsensusSet) rpcSendBlk(conn modules.PeerConn) error {
 	return nil
 }
 
+// rpcSendBlk is an RPC that sends a single requested header to the requesting peer.
+func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
+	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
+	if err != nil {
+		return err
+	}
+	finishedChan := make(chan struct{})
+	defer close(finishedChan)
+	go func() {
+		select {
+		case <-cs.tg.StopChan():
+		case <-finishedChan:
+		}
+		conn.Close()
+	}()
+	err = cs.tg.Add()
+	if err != nil {
+		return err
+	}
+	defer cs.tg.Done()
+	// Decode the requested header id from the connection.
+	var id types.BlockID
+	err = encoding.ReadObject(conn, &id, crypto.HashSize)
+	if err != nil {
+		return err
+	}
+	// Lookup the corresponding block.
+	var bh types.BlockHeader
+	cs.mu.RLock()
+	err = cs.db.View(func(tx *bolt.Tx) error {
+		ph, err := getBlockHeaderMap(tx, id)
+		if err != nil {
+			return err
+		}
+		bh = ph.BlockHeader
+		return nil
+	})
+	cs.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	// Encode and send the header to the caller.
+	err = encoding.WriteObject(conn, bh)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // managedReceiveBlock takes a block id and returns an RPCFunc that requests that
 // block and then calls AcceptBlock on it. The returned function should be used
 // as the calling end of the SendBlk RPC.
