@@ -19,6 +19,10 @@ const (
 	SendBlocksCmd = "SendBlocks"
 	// SendBlockCmd requests that a node send us a specific consensus block
 	SendBlockCmd = "SendBlk"
+	// SendHeadersCmd requests that a node send us a list of headers
+	SendHeadersCmd = "SendHdrs"
+	// SendHeaderCmd requests that a node send us a specific header
+	SendHeaderCmd  = "SndHdr"
 	// RelayHeaderCmd sends a block header to a peer with the expectation
 	// that the peer will pass on the header to other nodes
 	RelayHeaderCmd = "RelayHeader"

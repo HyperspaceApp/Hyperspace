@@ -25,6 +25,7 @@ var (
 	errEarlyStop         = errors.New("initial blockchain download did not complete by the time shutdown was issued")
 	errNilProcBlock      = errors.New("nil processed block was fetched from the database")
 	errSendBlocksStalled = errors.New("SendBlocks RPC timed and never received any blocks")
+	errSendHeadersStalled = errors.New("SendHeaders RPC timed and never received any blocks")
 
 	// ibdLoopDelay is the time that threadedInitialBlockchainDownload waits
 	// between attempts to synchronize with the network if the last attempt
@@ -72,6 +73,13 @@ var (
 	// sendBlocksTimeout is the timeout for the SendBlocks RPC.
 	sendBlocksTimeout = build.Select(build.Var{
 		Standard: 180 * time.Second,
+		Dev:      40 * time.Second,
+		Testing:  5 * time.Second,
+	}).(time.Duration)
+
+	// sendHeaders is the timeout for the SendHeaders RPC.
+	sendHeadersTimeout = build.Select(build.Var{
+		Standard: 5 * time.Minute,
 		Dev:      40 * time.Second,
 		Testing:  5 * time.Second,
 	}).(time.Duration)
@@ -235,6 +243,106 @@ func (cs *ConsensusSet) managedReceiveBlocks(conn modules.PeerConn) (returnErr e
 	return nil
 }
 
+// managedReceiveHeaders is the calling end of the SendHeaders RPC, without the
+// threadgroup wrapping.
+// This method will only be used by SPV clients.  It should not have any dependency on the
+// BlockMap DB bucket
+func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr error) {
+	// Set a deadline after which SendHeaders will timeout. During IBD, esepcially,
+	// SendHeaders will timeout. This is by design so that IBD switches peers to
+	// prevent any one peer from stalling IBD.
+	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
+	if err != nil {
+		return err
+	}
+	finishedChan := make(chan struct{})
+	defer close(finishedChan)
+	go func() {
+		select {
+		case <-cs.tg.StopChan():
+		case <-finishedChan:
+		}
+		conn.Close()
+	}()
+	// Check whether this RPC has timed out with the remote peer at the end of
+	// the fuction, and if so, return a custom error to signal that a new peer
+	// needs to be chosen.
+	stalled := true
+	defer func() {
+		// TODO: Timeout errors returned by muxado do not conform to the net.Error
+		// interface and therefore we cannot check if the error is a timeout using
+		// the Timeout() method. Once muxado issue #14 is resolved change the below
+		// condition to:
+		//     if netErr, ok := returnErr.(net.Error); ok && netErr.Timeout() && stalled { ... }
+		if stalled && returnErr != nil && (returnErr.Error() == "Read timeout" || returnErr.Error() == "Write timeout") {
+			returnErr = errSendHeadersStalled
+		}
+	}()
+	// Get blockIDs to send.
+	var history [32]types.BlockID
+	cs.mu.RLock()
+	err = cs.db.View(func(tx *bolt.Tx) error {
+		history = blockHistory(tx)
+		return nil
+	})
+	cs.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	// Send the block ids.
+	if err := encoding.WriteObject(conn, history); err != nil {
+		return err
+	}
+	// Broadcast the last BlockID accepted. This functionality is in a defer to
+	// ensure that a block is always broadcast if any blocks are accepted. This
+	// is to stop an attacker from preventing block broadcasts.
+	var initialBlock types.BlockID
+	if build.DEBUG {
+		// Prepare for a sanity check on 'chainExtended' - chain extended should
+		// be set to true if an ony if the result of calling dbCurrentBlockID
+		// changes.
+		initialBlock = cs.dbCurrentBlockID()
+	}
+	chainExtended := false
+	defer func() {
+		cs.mu.RLock()
+		synced := cs.synced
+		cs.mu.RUnlock()
+		if synced && chainExtended {
+			if build.DEBUG && initialBlock == cs.dbCurrentBlockID() {
+				panic("blockchain extension reporting is incorrect")
+			}
+			header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
+			go cs.gateway.Broadcast("RelayHeader", header, cs.gateway.Peers())
+		}
+	}()
+	// Read headers off of the wire and add them to the consensus set until
+	// there are no more blocks available.
+	moreAvailable := true
+	for moreAvailable {
+		//Read a slice of headers from the wire.
+		var newHeaders []types.BlockHeader
+		if err := encoding.ReadObject(conn, &newHeaders, uint64(MaxCatchUpBlocks)*types.BlockSizeLimit); err != nil {
+			return err
+		}
+		if err := encoding.ReadObject(conn, &moreAvailable, 1); err != nil {
+			return err
+		}
+		if len(newHeaders) == 0 {
+			continue
+		}
+		stalled = false
+		extended, acceptErr := cs.managedAcceptHeaders(newHeaders)
+		if extended {
+			chainExtended = true
+		}
+		if acceptErr != nil && acceptErr != modules.ErrNonExtendingBlock && acceptErr != modules.ErrBlockKnown {
+			return acceptErr
+		}
+	}
+	return nil
+}
+
 // threadedReceiveBlocks is the calling end of the SendBlocks RPC.
 func (cs *ConsensusSet) threadedReceiveBlocks(conn modules.PeerConn) error {
 	err := conn.SetDeadline(time.Now().Add(sendBlocksTimeout))
@@ -256,6 +364,29 @@ func (cs *ConsensusSet) threadedReceiveBlocks(conn modules.PeerConn) error {
 	}
 	defer cs.tg.Done()
 	return cs.managedReceiveBlocks(conn)
+}
+
+// threadedReceiveHeaders is the calling end of the SendHeaders RPC.
+func (cs *ConsensusSet) threadedReceiveHeaders(conn modules.PeerConn) error {
+	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
+	if err != nil {
+		return err
+	}
+	finishedChan := make(chan struct{})
+	defer close(finishedChan)
+	go func() {
+		select {
+		case <-cs.tg.StopChan():
+		case <-finishedChan:
+		}
+		conn.Close()
+	}()
+	err = cs.tg.Add()
+	if err != nil {
+		return err
+	}
+	defer cs.tg.Done()
+	return cs.managedReceiveHeaders(conn)
 }
 
 // rpcSendBlocks is the receiving end of the SendBlocks RPC. It returns a
@@ -381,6 +512,128 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 		}
 	}
 
+	return nil
+}
+
+// rpcSendHeaders is the receiving end of the SendHeaders RPC. It returns a
+// sequential set of block headers based on the 32 input block IDs. The most recent
+// known ID is used as the starting point, and up to 'MaxCatchUpBlocks' from
+// that BlockHeight onwards are returned. It also sends a boolean indicating
+// whether more blocks are available.
+// This should only be registered on full nodes.  SPV nodes will not have the full
+// blockchain available to calculate this response.
+func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
+	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
+	if err != nil {
+		return err
+	}
+	finishedChan := make(chan struct{})
+	defer close(finishedChan)
+	go func() {
+		select {
+		case <-cs.tg.StopChan():
+		case <-finishedChan:
+		}
+		conn.Close()
+	}()
+	err = cs.tg.Add()
+	if err != nil {
+		return err
+	}
+	defer cs.tg.Done()
+	// Read a list of blocks known to the requester and find the most recent
+	// block from the current path.
+	var knownBlocks [32]types.BlockID
+	err = encoding.ReadObject(conn, &knownBlocks, 32*crypto.HashSize)
+	if err != nil {
+		return err
+	}
+	// Find the most recent block from knownBlocks in the current path.
+	found := false
+	var start types.BlockHeight
+	var csHeight types.BlockHeight
+	cs.mu.RLock()
+	err = cs.db.View(func(tx *bolt.Tx) error {
+		csHeight = blockHeight(tx)
+		for _, id := range knownBlocks {
+			pb, err := getBlockMap(tx, id)
+			if err != nil {
+				continue
+			}
+			pathID, err := getPath(tx, pb.Height)
+			if err != nil {
+				continue
+			}
+			if pathID != pb.Block.ID() {
+				continue
+			}
+			if pb.Height == csHeight {
+				break
+			}
+			found = true
+			// Start from the child of the common block.
+			start = pb.Height + 1
+			break
+		}
+		return nil
+	})
+	cs.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	// If no matching block headers are found, or if the caller has all known block headers,
+	// don't send anything.
+	if !found {
+		// Send 0 headers.
+		err = encoding.WriteObject(conn, []types.BlockHeader{})
+		if err != nil {
+			return err
+		}
+		// Indicate that no more headers are available.
+		return encoding.WriteObject(conn, false)
+	}
+	// Send the caller all of the headers that they are missing.
+	moreAvailable := true
+	for moreAvailable {
+		// Get the set of block headers to send
+		var blockHeaders []types.BlockHeader
+		cs.mu.RLock()
+		err = cs.db.View(func(tx *bolt.Tx) error {
+			height := blockHeight(tx)
+			for i := start; i <= height && i < start+MaxCatchUpBlocks; i++ {
+				id, err := getPath(tx, i)
+				if err != nil {
+					cs.log.Critical("Unable to get path: height", height, ":: request", i)
+					return err
+				}
+				pb, err := getBlockMap(tx, id)
+				if err != nil {
+					cs.log.Critical("Unable to get block from block map: height", height, ":: request", i, ":: id", id)
+					return err
+				}
+				if pb == nil {
+					cs.log.Critical("getBlockMap yielded 'nil' block:", height, ":: request", i, ":: id", id)
+					return errNilProcBlock
+				}
+				blockHeaders = append(blockHeaders, pb.Block.Header())
+			}
+			moreAvailable = start+MaxCatchUpBlocks <= height
+			start += MaxCatchUpBlocks
+			return nil
+		})
+		cs.mu.RUnlock()
+		if err != nil {
+			return err
+		}
+		// Send a set of blocks to the caller + a flag indicating whether more
+		// are available.
+		if err = encoding.WriteObject(conn, blockHeaders); err != nil {
+			return err
+		}
+		if err = encoding.WriteObject(conn, moreAvailable); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
