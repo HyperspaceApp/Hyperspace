@@ -839,6 +839,29 @@ func (cs *ConsensusSet) managedReceiveBlock(id types.BlockID) modules.RPCFunc {
 	}
 }
 
+// managedReceiveHeader takes an and returns an RPCFunc that requests that
+// header and then calls managedAcceptHeaders on it. The returned function should be used
+// as the calling end of the SndHdr RPC.
+func (cs *ConsensusSet) managedReceiveHeader(id types.BlockID) modules.RPCFunc {
+	return func(conn modules.PeerConn) error {
+		if err := encoding.WriteObject(conn, id); err != nil {
+			return err
+		}
+		var header types.BlockHeader
+		if err := encoding.ReadObject(conn, &header, types.BlockHeaderSize); err != nil {
+			return err
+		}
+		chainExtended, err := cs.managedAcceptHeaders([]types.BlockHeader{header})
+		if chainExtended {
+			cs.managedBroadcastBlock(header)
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+ }
+
 // threadedInitialBlockchainDownload performs the IBD on outbound peers. Blocks
 // are downloaded from one peer at a time in 5 minute intervals, so as to
 // prevent any one peer from significantly slowing down IBD.
