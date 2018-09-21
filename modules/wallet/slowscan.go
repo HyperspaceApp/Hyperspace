@@ -9,8 +9,6 @@ import (
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 )
 
-const scanMultiplier = 4 // how many more keys to generate after each scan iteration
-
 // This is legacy code from the bad old days of terrible seed scanning and improper
 // management of pubkey generation. It will be useful for grabbing addresses made by
 // wallets not behaving in accordance with the addressGapLimit specified by BIP 44.
