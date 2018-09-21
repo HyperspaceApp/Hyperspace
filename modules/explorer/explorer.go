@@ -9,8 +9,8 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
-	"github.com/HyperspaceApp/Hyperspace/types"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 const (

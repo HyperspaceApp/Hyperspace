@@ -233,16 +233,16 @@ func versionAdjustments(entry modules.HostDBEntry) float64 {
 	// once we actually have enough code variation between versions that
 	// it makes sense to penalize old hosts.
 	/*
-	if build.VersionCmp(entry.Version, "1.4.0") < 0 {
-		base = base * 0.99999 // Safety value to make sure we update the version penalties every time we update the host.
-	}
-	if build.VersionCmp(entry.Version, "1.3.2") < 0 {
-		base = base * 0.9
-	}
-	// we shouldn't use pre hardfork hosts
-	if build.VersionCmp(entry.Version, "1.3.1") < 0 {
-		base = math.SmallestNonzeroFloat64
-	}
+		if build.VersionCmp(entry.Version, "1.4.0") < 0 {
+			base = base * 0.99999 // Safety value to make sure we update the version penalties every time we update the host.
+		}
+		if build.VersionCmp(entry.Version, "1.3.2") < 0 {
+			base = base * 0.9
+		}
+		// we shouldn't use pre hardfork hosts
+		if build.VersionCmp(entry.Version, "1.3.1") < 0 {
+			base = math.SmallestNonzeroFloat64
+		}
 	*/
 	return base
 }

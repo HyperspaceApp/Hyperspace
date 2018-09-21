@@ -274,6 +274,18 @@ func (cs *ConsensusSet) managedCurrentBlock() (block types.Block) {
 	return block
 }
 
+// managedCurrentHeader returns the latest header in the heaviest known blockchain.
+func (cs *ConsensusSet) managedCurrentHeader() (header types.BlockHeader) {
+	cs.mu.RLock()
+	defer cs.mu.RUnlock()
+	_ = cs.db.View(func(tx *bolt.Tx) error {
+		ph := currentProcessedHeader(tx)
+		header = ph.BlockHeader
+		return nil
+	})
+	return header
+}
+
 // CurrentBlock returns the latest block in the heaviest known blockchain.
 func (cs *ConsensusSet) CurrentBlock() (block types.Block) {
 	// A call to a closed database can cause undefined behavior.

@@ -222,7 +222,7 @@ func updateToRelease(release githubRelease) error {
 	}
 
 	// construct release filename
-	releaseName := fmt.Sprintf("Sia-%s-%s-%s.zip", release.TagName, runtime.GOOS, runtime.GOARCH)
+	releaseName := fmt.Sprintf("Hyperspace-%s-%s-%s.zip", release.TagName, runtime.GOOS, runtime.GOARCH)
 
 	// find release
 	var downloadURL string
@@ -530,7 +530,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "w") {
 		i++
 		fmt.Printf("(%d/%d) Loading wallet...\n", i, len(srv.config.Siad.Modules))
-		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir))
+		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir), srv.config.Siad.AddressGapLimit, srv.config.Siad.ScanAirdrop)
 		if err != nil {
 			return err
 		}

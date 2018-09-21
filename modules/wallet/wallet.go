@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
-	"sync"
 
 	"github.com/coreos/bbolt"
+	deadlock "github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -73,8 +73,22 @@ type Wallet struct {
 	// may access them.
 	seeds        []modules.Seed
 	keys         map[types.UnlockHash]spendableKey
-	lookahead    map[types.UnlockHash]uint64
+	lookahead    lookahead
 	watchedAddrs map[types.UnlockHash]struct{}
+	// The minimum index should typically be zero, seeds that came over from
+	// the Sia airdrop may have started with very high indices. So when we
+	// import old seeds, we scan the airdrop blocks first and set a minimum
+	// with the first value we find, or 0 if we don't find any matches.
+	seedsMinimumIndex []uint64
+	// The maximum internal index is the highest address index we're tracking
+	// locally for a seed. Once the external blockchain has been scanned,
+	// this value should be greater or equal to the maximum external index
+	// that we've seen. If we are enforcing addressGapLimit, this value
+	// should not exceed the maximum external index + addressGapLimit.
+	seedsMaximumInternalIndex []uint64
+	// The maximum external address is the highest address we've seen on the
+	// external blockchain.
+	seedsMaximumExternalIndex []uint64
 
 	// unconfirmedProcessedTransactions tracks unconfirmed transactions.
 	//
@@ -99,7 +113,7 @@ type Wallet struct {
 
 	persistDir string
 	log        *persist.Logger
-	mu         sync.RWMutex
+	mu         deadlock.RWMutex
 
 	// A separate TryMutex is used to protect against concurrent unlocking or
 	// initialization.
@@ -112,6 +126,18 @@ type Wallet struct {
 	// defragDisabled determines if the wallet is set to defrag outputs once it
 	// reaches a certain threshold
 	defragDisabled bool
+
+	// addressGapLimit is by default set to 20. If the software hits 20 unused
+	// addresses in a row, it expects there are no used addresses beyond this
+	// point and stops searching the address chain. We scan just the external
+	// chains, because internal chains receive only coins that come from the
+	// associated external chains.
+	//
+	// For further information, read BIP 44.
+	addressGapLimit uint64
+	// scanAirdrop specifies whether or not we do a robust scan on legacy Sia
+	// seeds against the initial 7 airdrop blocks
+	scanAirdrop bool
 }
 
 // Height return the internal processed consensus height of the wallet
@@ -139,12 +165,12 @@ func (w *Wallet) Height() (types.BlockHeight, error) {
 // name and then using the file to save in the future. Keys and addresses are
 // not loaded into the wallet during the call to 'new', but rather during the
 // call to 'Unlock'.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string) (*Wallet, error) {
-	return NewCustomWallet(cs, tpool, persistDir, modules.ProdDependencies)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, scanAirdrop bool) (*Wallet, error) {
+	return NewCustomWallet(cs, tpool, persistDir, addressGapLimit, scanAirdrop, modules.ProdDependencies)
 }
 
 // NewCustomWallet creates a new wallet using custom dependencies.
-func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, deps modules.Dependencies) (*Wallet, error) {
+func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, scanAirdrop bool, deps modules.Dependencies) (*Wallet, error) {
 	// Check for nil dependencies.
 	if cs == nil {
 		return nil, errNilConsensusSet
@@ -152,6 +178,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 	if tpool == nil {
 		return nil, errNilTpool
 	}
+	lookahead := newLookahead(uint64(addressGapLimit))
 
 	// Initialize the data structure.
 	w := &Wallet{
@@ -159,12 +186,15 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		tpool: tpool,
 
 		keys:         make(map[types.UnlockHash]spendableKey),
-		lookahead:    make(map[types.UnlockHash]uint64),
+		lookahead:    lookahead,
 		watchedAddrs: make(map[types.UnlockHash]struct{}),
 
 		unconfirmedSets: make(map[modules.TransactionSetID][]types.TransactionID),
 
 		persistDir: persistDir,
+
+		addressGapLimit: uint64(addressGapLimit),
+		scanAirdrop:     scanAirdrop,
 
 		deps: deps,
 	}

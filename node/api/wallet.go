@@ -13,8 +13,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/HyperspaceApp/entropy-mnemonics"
+	"github.com/julienschmidt/httprouter"
 )
 
 type (
@@ -37,6 +37,12 @@ type (
 	// WalletAddressGET contains an address returned by a GET call to
 	// /wallet/address.
 	WalletAddressGET struct {
+		Address types.UnlockHash `json:"address"`
+	}
+
+	// WalletAddressPOST contains an address returned by a POST call to
+	// /wallet/address.
+	WalletAddressPOST struct {
 		Address types.UnlockHash `json:"address"`
 	}
 
@@ -206,14 +212,26 @@ func (api *API) walletHandler(w http.ResponseWriter, req *http.Request, _ httpro
 	})
 }
 
-// walletAddressHandler handles API calls to /wallet/address.
-func (api *API) walletAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	unlockConditions, err := api.wallet.NextAddress()
+// walletGetAddressHandler handles GET API calls to /wallet/address.
+func (api *API) walletGetAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	unlockConditions, err := api.wallet.GetAddress()
 	if err != nil {
 		WriteError(w, Error{"error when calling /wallet/addresses: " + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	WriteJSON(w, WalletAddressGET{
+		Address: unlockConditions.UnlockHash(),
+	})
+}
+
+// walletCreateAddressHandler handles POST API calls to /wallet/address.
+func (api *API) walletCreateAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	unlockConditions, err := api.wallet.NextAddress()
+	if err != nil {
+		WriteError(w, Error{"error when calling /wallet/addresses: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, WalletAddressPOST{
 		Address: unlockConditions.UnlockHash(),
 	})
 }

@@ -74,6 +74,12 @@ func (w *Wallet) openDB(filename string) (err error) {
 		if wb.Get(keyWatchedAddrs) == nil {
 			wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
 		}
+		if wb.Get(keySeedsMaximumInternalIndex) == nil {
+			wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{0}))
+		}
+		if wb.Get(keySeedsMaximumExternalIndex) == nil {
+			wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{0}))
+		}
 
 		// build the bucketAddrTransactions bucket if necessary
 		if buildAddrTxns {
@@ -109,18 +115,8 @@ func (w *Wallet) initPersist() error {
 		return err
 	}
 
-	// Open the database.
-	dbFilename := filepath.Join(w.persistDir, dbFile)
-	compatFilename := filepath.Join(w.persistDir, compatFile)
-	_, dbErr := os.Stat(dbFilename)
-	_, compatErr := os.Stat(compatFilename)
-	if dbErr != nil && compatErr == nil {
-		// database does not exist, but old persist does; convert it
-		err = w.convertPersistFrom112To120(dbFilename, compatFilename)
-	} else {
-		// either database exists or neither exists; open/create the database
-		err = w.openDB(filepath.Join(w.persistDir, dbFile))
-	}
+	// open/create the database
+	err = w.openDB(filepath.Join(w.persistDir, dbFile))
 	if err != nil {
 		return err
 	}
@@ -129,19 +125,6 @@ func (w *Wallet) initPersist() error {
 	w.dbTx, err = w.db.Begin(true)
 	if err != nil {
 		w.log.Critical("ERROR: failed to start database update:", err)
-	}
-
-	// COMPATv131 we need to create the bucketProcessedTxnIndex if it doesn't exist
-	if w.dbTx.Bucket(bucketProcessedTransactions).Stats().KeyN > 0 &&
-		w.dbTx.Bucket(bucketProcessedTxnIndex).Stats().KeyN == 0 {
-		err = initProcessedTxnIndex(w.dbTx)
-		if err != nil {
-			return err
-		}
-		// Save changes to disk
-		if err = w.syncDB(); err != nil {
-			return err
-		}
 	}
 
 	// ensure that the final db transaction is committed when the wallet closes
@@ -190,62 +173,6 @@ func (w *Wallet) CreateBackup(backupFilepath string) error {
 	}
 	defer f.Close()
 	return w.createBackup(f)
-}
-
-// compat112Persist is the structure of the wallet.json file used in v1.1.2
-type compat112Persist struct {
-	UID                    uniqueID
-	EncryptionVerification crypto.Ciphertext
-	PrimarySeedFile        seedFile
-	PrimarySeedProgress    uint64
-	AuxiliarySeedFiles     []seedFile
-	UnseededKeys           []spendableKeyFile
-}
-
-// compat112Meta is the metadata of the wallet.json file used in v1.1.2
-var compat112Meta = persist.Metadata{
-	Header:  "Wallet Settings",
-	Version: "0.4.0",
-}
-
-// convertPersistFrom112To120 converts an old (pre-v1.2.0) wallet.json file to
-// a wallet.db database.
-func (w *Wallet) convertPersistFrom112To120(dbFilename, compatFilename string) error {
-	var data compat112Persist
-	err := persist.LoadJSON(compat112Meta, &data, compatFilename)
-	if err != nil {
-		return err
-	}
-
-	w.db, err = persist.OpenDatabase(dbMetadata, dbFilename)
-	if err != nil {
-		return err
-	}
-	// initialize the database
-	err = w.db.Update(func(tx *bolt.Tx) error {
-		for _, b := range dbBuckets {
-			_, err := tx.CreateBucket(b)
-			if err != nil {
-				return fmt.Errorf("could not create bucket %v: %v", string(b), err)
-			}
-		}
-		// set UID, verification, seeds, and seed progress
-		tx.Bucket(bucketWallet).Put(keyUID, data.UID[:])
-		tx.Bucket(bucketWallet).Put(keyEncryptionVerification, data.EncryptionVerification)
-		tx.Bucket(bucketWallet).Put(keyPrimarySeedFile, encoding.Marshal(data.PrimarySeedFile))
-		tx.Bucket(bucketWallet).Put(keyAuxiliarySeedFiles, encoding.Marshal(data.AuxiliarySeedFiles))
-		tx.Bucket(bucketWallet).Put(keySpendableKeyFiles, encoding.Marshal(data.UnseededKeys))
-		// old wallets had a "preload depth" of 25
-		dbPutPrimarySeedProgress(tx, data.PrimarySeedProgress+25)
-
-		// set consensus height and CCID to zero so that a full rescan is
-		// triggered
-		dbPutConsensusHeight(tx, 0)
-		dbPutConsensusChangeID(tx, modules.ConsensusChangeBeginning)
-		return nil
-	})
-	w.encrypted = true
-	return err
 }
 
 /*

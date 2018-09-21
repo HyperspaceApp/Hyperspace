@@ -136,35 +136,31 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
-
-	if cs.spv {
-		var hashes []types.UnlockHash
-		fileContracts := getRelatedFileContracts(tx, &b)
-		for _, fc := range fileContracts {
-			contractHashes := fc.OutputUnlockHashes()
-			hashes = append(hashes, contractHashes...)
-		}
-		filter, err := blockcf.BuildFilter(&b, hashes)
-		if build.DEBUG && err != nil {
-			panic(err)
-		}
-		childHeader := &modules.ProcessedBlockHeader{
-			BlockHeader: b.Header(),
-			Height:      child.Height,
-			Depth:       child.Depth,
-			ChildTarget: child.ChildTarget,
-			GCSFilter:   *filter,
-		}
-
-		blockHeaderMap := tx.Bucket(BlockHeaderMap)
-		err = blockHeaderMap.Put(childID[:], encoding.Marshal(*childHeader))
-		if build.DEBUG && err != nil {
-			panic(err)
-		}
-		cs.processedBlockHeaders[childID] = childHeader
-		return child, childHeader
+	var hashes []types.UnlockHash
+	fileContracts := getRelatedFileContracts(tx, &b)
+	for _, fc := range fileContracts {
+		contractHashes := fc.OutputUnlockHashes()
+		hashes = append(hashes, contractHashes...)
 	}
-	return child, nil
+	filter, err := blockcf.BuildFilter(&b, hashes)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	childHeader := &modules.ProcessedBlockHeader{
+		BlockHeader: b.Header(),
+		Height:      child.Height,
+		Depth:       child.Depth,
+		ChildTarget: child.ChildTarget,
+		GCSFilter:   *filter,
+	}
+
+	blockHeaderMap := tx.Bucket(BlockHeaderMap)
+	err = blockHeaderMap.Put(childID[:], encoding.Marshal(*childHeader))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	cs.processedBlockHeaders[childID] = childHeader
+	return child, childHeader
 }
 
 // newHeaderChild creates a new child headerNode from a header and adds it to the parent's set of

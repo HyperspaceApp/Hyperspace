@@ -47,7 +47,7 @@ func (m *Miner) threadedMine() {
 		}
 
 		// Prepare the work and release the miner lock.
-		bfw := m.blockForWork()
+		bfw := m.blockForWork(true)
 		target := m.persist.Target
 		m.mu.Unlock()
 

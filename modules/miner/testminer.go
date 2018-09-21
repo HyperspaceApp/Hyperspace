@@ -64,7 +64,7 @@ func (m *Miner) BlockForWork() (b types.Block, t types.Target, err error) {
 		return
 	}
 
-	b = m.blockForWork()
+	b = m.blockForWork(true)
 	return b, m.persist.Target, nil
 }
 
@@ -102,7 +102,7 @@ func (m *Miner) FindBlock() (types.Block, error) {
 		}
 
 		// Get a block for work.
-		bfw = m.blockForWork()
+		bfw = m.blockForWork(false)
 		target = m.persist.Target
 		return nil
 	}()
@@ -122,4 +122,42 @@ func (m *Miner) FindBlock() (types.Block, error) {
 // solved.
 func (m *Miner) SolveBlock(b types.Block, target types.Target) (types.Block, bool) {
 	return solveBlock(b, target)
+}
+
+// AddBlockWithAddress mine a block to specified unlockhash
+func (m *Miner) AddBlockWithAddress(addr types.UnlockHash) (types.Block, error) {
+	block, err := m.findBlockWithAddress(addr)
+	if err != nil {
+		return types.Block{}, err
+	}
+	err = m.cs.AcceptBlock(block)
+	if err != nil {
+		return types.Block{}, err
+	}
+	return block, nil
+}
+
+func (m *Miner) findBlockWithAddress(addr types.UnlockHash) (types.Block, error) {
+	var bfw types.Block
+	var target types.Target
+	err := func() error {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+
+		m.persist.Address = addr
+
+		// Get a block for work.
+		bfw = m.blockForWork(false)
+		target = m.persist.Target
+		return nil
+	}()
+	if err != nil {
+		return types.Block{}, err
+	}
+
+	block, ok := m.SolveBlock(bfw, target)
+	if !ok {
+		return types.Block{}, errors.New("could not solve block using limited hashing power")
+	}
+	return block, nil
 }

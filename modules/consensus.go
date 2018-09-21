@@ -77,7 +77,10 @@ type (
 
 	// HeaderConsensusSetSubscriber sends a consensus update to subscriber
 	HeaderConsensusSetSubscriber interface {
-		ProcessHeaderConsensusChange(HeaderConsensusChange, func(types.BlockID) ([]SiacoinOutputDiff, error))
+		// In addition to a HeaderConsensusChange, returns a callback where a
+		// user can retrieve a set of SiacoinOutputDiffs - reverted or
+		// otherwise
+		ProcessHeaderConsensusChange(HeaderConsensusChange, func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error))
 	}
 
 	// HeaderConsensusChange is the header consensus change
@@ -91,6 +94,11 @@ type (
 
 		// AppliedBlockHeaders
 		AppliedBlockHeaders []ProcessedBlockHeader
+
+		// MaturedSiacoinOutputDiffs contains the set of siacoin diffs that were applied
+		// to the consensus set via maturation in the recent change. The direction for
+		// the set of diffs is 'DiffApply'.
+		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.

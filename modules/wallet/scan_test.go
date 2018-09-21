@@ -1,7 +1,9 @@
 package wallet
 
 import (
+	"log"
 	"testing"
+	//"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -35,7 +37,7 @@ func TestScanLargeIndex(t *testing.T) {
 
 	// set the wallet's seed progress to a high number and then mine some coins.
 	wt.wallet.mu.Lock()
-	dbPutPrimarySeedProgress(wt.wallet.dbTx, numInitialKeys+1)
+	dbPutPrimarySeedMaximumInternalIndex(wt.wallet.dbTx, 10000)
 	wt.wallet.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
@@ -65,8 +67,8 @@ func TestScanLargeIndex(t *testing.T) {
 
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newSeedScanner(seed, wt.cs, wt.wallet.log)
-	err = ss.scan(wt.cs, wt.wallet.tg.StopChan())
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.cs, wt.wallet.log)
+	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,8 +80,8 @@ func TestScanLargeIndex(t *testing.T) {
 			t.Log(o.seedIndex, o.value)
 		}
 	}
-	if ss.largestIndexSeen != 0 {
-		t.Error("expected no index to be seen, got", ss.largestIndexSeen)
+	if ss.getMaximumExternalIndex() != 0 {
+		t.Error("expected no index to be seen, got", ss.getMaximumExternalIndex())
 	}
 }
 
@@ -102,7 +104,7 @@ func TestScanLoop(t *testing.T) {
 	indices := []uint64{500, 2500, 8000, 100000}
 	for _, index := range indices {
 		wt.wallet.mu.Lock()
-		dbPutPrimarySeedProgress(wt.wallet.dbTx, index)
+		dbPutPrimarySeedMaximumInternalIndex(wt.wallet.dbTx, index)
 		wt.wallet.mu.Unlock()
 		if err != nil {
 			t.Fatal(err)
@@ -124,8 +126,8 @@ func TestScanLoop(t *testing.T) {
 
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newSeedScanner(seed, wt.wallet.cs, wt.wallet.log)
-	err = ss.scan(wt.cs, wt.wallet.tg.StopChan())
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,8 +140,128 @@ func TestScanLoop(t *testing.T) {
 	// the largest index seen should be the penultimate element (+2, since 2
 	// addresses are generated when sending coins). The last element should
 	// not be seen, because it was outside the scanning range.
-	if ss.largestIndexSeen != indices[len(indices)-2]+2 {
-		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.largestIndexSeen)
+	if ss.getMaximumExternalIndex() != indices[len(indices)-2]+2 {
+		t.Errorf("expected largest index to be %v, got %v", indices[len(indices)-2]+2, ss.getMaximumExternalIndex())
+	}
+}
+
+func TestSlowScan(t *testing.T) {
+
+	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wt.closeWt()
+
+	//startTime := time.Now()
+	_, availableAddressCount, _ := wt.wallet.PrimarySeed()
+	log.Printf("availableAddressCount: %v\n", availableAddressCount)
+	for i := 0; i < int(availableAddressCount); i++ {
+		// insert some tx
+		uc, err := wt.wallet.nextPrimarySeedAddress(wt.wallet.dbTx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// log.Printf("generated address %v\n", i)
+		_, err = wt.wallet.SendSiacoins(types.NewCurrency64(1), uc.UnlockHash())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if i%5 == 0 {
+			_, err := wt.wallet.SendSiacoins(types.NewCurrency64(5000), types.UnlockHash{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// log.Printf("send 1 to nil, tx id: %s\n", txns[0].ID().String())
+		}
+		_, err = wt.miner.AddBlockWithAddress(types.UnlockHash{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		// log.Printf("new block %d id: %s\n", i, newBlock.ID().String())
+	}
+
+	balance, err := wt.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// log.Printf("time spent 0: %f", time.Now().Sub(startTime).Seconds())
+	// startTime := time.Now()
+	var scanBalance types.Currency
+	var newScanBalance types.Currency
+
+	for j := 0; j <= 0; j++ {
+		scanBalance = types.NewCurrency64(0)
+		newScanBalance = types.NewCurrency64(0)
+		// create seed scanner and scan the block
+		seed, _, _ := wt.wallet.PrimarySeed()
+		dustThreshold, err := wt.wallet.DustThreshold()
+
+		ss := newSlowSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+		err = ss.scan(wt.wallet.tg.StopChan())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, scannedOutput := range ss.siacoinOutputs {
+			if scannedOutput.value.Cmp(dustThreshold) > 0 {
+				scanBalance = scanBalance.Add(scannedOutput.value)
+			}
+		}
+
+		nss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+		err = nss.scan(wt.wallet.tg.StopChan())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		dustThreshold, err = wt.wallet.DustThreshold()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, scannedOutput := range nss.siacoinOutputs {
+			if scannedOutput.value.Cmp(dustThreshold) > 0 {
+				newScanBalance = newScanBalance.Add(scannedOutput.value)
+			}
+		}
+	}
+
+	log.Printf("balance          : %s", balance.String())
+	log.Printf("slow scan balance: %s", scanBalance.String())
+	log.Printf("scan balance     : %s", newScanBalance.String())
+
+	if !balance.Equals(scanBalance) {
+		t.Fatal("wrong slow scan")
+	}
+
+	if !balance.Equals(newScanBalance) {
+		t.Fatal("wrong new scan")
+	}
+	// log.Printf("time spent 1: %f", time.Now().Sub(startTime).Seconds())
+}
+
+func TestScannerGenerateKeys(t *testing.T) {
+	wt, err := createWalletTester("TestScannerGenerateKeys", modules.ProdDependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer wt.closeWt()
+	seed, _, _ := wt.wallet.PrimarySeed()
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+	numKeys := uint64(100)
+	ss.generateKeys(numKeys)
+	if ss.minimumIndex != 0 {
+		t.Fatalf("Minimum index should be 0 but is %v\n", ss.minimumIndex)
+	}
+	if ss.getMaximumExternalIndex() != 0 {
+		t.Fatalf("Maximum external index should be 0 but is %v\n", ss.getMaximumExternalIndex())
+	}
+	if ss.maximumInternalIndex != numKeys {
+		t.Fatalf("Maximum internal index should be %v but is %v\n", numKeys, ss.maximumInternalIndex)
 	}
 }
 

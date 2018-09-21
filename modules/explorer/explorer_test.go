@@ -54,7 +54,7 @@ func createExplorerTester(name string) (*explorerTester, error) {
 		log.Printf("Failed to open tpool: %s", err)
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		log.Printf("Failed to open wallet: %s", err)
 		return nil, err
@@ -127,7 +127,7 @@ func (et *explorerTester) reorgToBlank() error {
 	if err != nil {
 		return err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return err
 	}

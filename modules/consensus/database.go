@@ -10,7 +10,10 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -86,12 +89,10 @@ func (cs *ConsensusSet) openDB(filename string) (err error) {
 // initDB is run if there is no existing consensus database, creating a
 // database with all the required buckets and sane initial values.
 func (cs *ConsensusSet) initDB(tx *bolt.Tx) error {
-	if cs.spv {
-		if tx.Bucket(BlockHeaderMap) == nil {
-			err := cs.createHeaderConsensusDB(tx)
-			if err != nil {
-				return err
-			}
+	if tx.Bucket(BlockHeaderMap) == nil {
+		err := cs.createHeaderConsensusDB(tx)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -140,11 +141,39 @@ func (cs *ConsensusSet) loadProcessedBlockHeader(tx *bolt.Tx) error {
 	exists := true
 	for exists {
 		for _, blockID := range entry.AppliedBlocks {
-			processedBlock, err := getBlockHeaderMap(tx, blockID)
-			if err != nil {
+			processedBlockHeader, err := getBlockHeaderMap(tx, blockID)
+			if err != nil && err != errNilItem {
 				return err
 			}
-			cs.processedBlockHeaders[processedBlock.BlockHeader.ID()] = processedBlock
+			if err == errNilItem {
+				pb, err := getBlockMap(tx, blockID)
+
+				var hashes []types.UnlockHash
+				fileContracts := getRelatedFileContracts(tx, &pb.Block)
+				for _, fc := range fileContracts {
+					contractHashes := fc.OutputUnlockHashes()
+					hashes = append(hashes, contractHashes...)
+				}
+				filter, err := blockcf.BuildFilter(&pb.Block, hashes)
+				processedBlockHeader = &modules.ProcessedBlockHeader{
+					BlockHeader: pb.Block.Header(),
+					Height:      pb.Height,
+					Depth:       pb.Depth,
+					ChildTarget: pb.ChildTarget,
+					GCSFilter:   *filter,
+				}
+				if err != nil {
+					panic(err)
+				}
+
+				blockHeaderMap := tx.Bucket(BlockHeaderMap)
+				err = blockHeaderMap.Put(blockID[:], encoding.Marshal(*processedBlockHeader))
+				if err != nil {
+					panic(err)
+				}
+			}
+
+			cs.processedBlockHeaders[processedBlockHeader.BlockHeader.ID()] = processedBlockHeader
 		}
 		entry, exists = entry.NextEntry(tx)
 	}

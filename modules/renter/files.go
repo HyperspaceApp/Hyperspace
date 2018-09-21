@@ -3,8 +3,8 @@ package renter
 import (
 	"os"
 	"path/filepath"
-	"sync"
 	"regexp"
+	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"

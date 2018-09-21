@@ -241,7 +241,7 @@ func New(params NodeParams) (*Node, error) {
 		if walletDeps == nil {
 			walletDeps = modules.ProdDependencies
 		}
-		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), walletDeps)
+		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), modules.DefaultAddressGapLimit, false, walletDeps)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create wallet"))

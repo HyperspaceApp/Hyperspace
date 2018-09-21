@@ -18,7 +18,7 @@ var (
 // correct miner payouts and a random transaction to prevent collisions and
 // overlapping work with other blocks being mined in parallel or for different
 // forks (during testing).
-func (m *Miner) blockForWork() types.Block {
+func (m *Miner) blockForWork(newAddr bool) types.Block {
 	b := m.persist.UnsolvedBlock
 
 	// Update the timestamp.
@@ -27,9 +27,11 @@ func (m *Miner) blockForWork() types.Block {
 	}
 
 	// Update the address + payouts.
-	err := m.checkAddress()
-	if err != nil {
-		m.log.Println(err)
+	if newAddr {
+		err := m.checkAddress()
+		if err != nil {
+			m.log.Println(err)
+		}
 	}
 	height := m.persist.Height + 1
 	minerPayoutVal, devPayoutVal := b.CalculateSubsidies(height)
@@ -73,7 +75,7 @@ func (m *Miner) newSourceBlock() {
 	}
 
 	// Update the source block.
-	block := m.blockForWork()
+	block := m.blockForWork(true)
 	m.sourceBlock = &block
 	m.sourceBlockTime = time.Now()
 }

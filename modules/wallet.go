@@ -21,6 +21,10 @@ const (
 
 	// WalletDir is the directory that contains the wallet persistence.
 	WalletDir = "wallet"
+
+	// DefaultAddressGapLimit is the default address gap limit as specified in
+	// BIP 44.
+	DefaultAddressGapLimit = 20
 )
 
 var (
@@ -45,6 +49,10 @@ var (
 	// ErrWalletShutdown is returned when a method can't continue execution due
 	// to the wallet shutting down.
 	ErrWalletShutdown = errors.New("wallet is shutting down")
+
+	// ErrAddressGapLimit is return when a user tries to create a new address
+	// that does not respect the address gap limit as specified in BIP 44
+	ErrAddressGapLimit = errors.New("cannot create new address beyond address gap limit")
 )
 
 type (
@@ -287,6 +295,10 @@ type (
 		// CreateBackup will create a backup of the wallet at the provided
 		// filepath. The backup will have all seeds and keys.
 		CreateBackup(string) error
+
+		// GetAddress returns an existing coin address. This address is at an
+		// index of 1 greater than the highest index seen on the blockchain.
+		GetAddress() (types.UnlockConditions, error)
 
 		// LoadBackup will load a backup of the wallet from the provided
 		// address. The backup wallet will be added as an auxiliary seed, not

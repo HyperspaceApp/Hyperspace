@@ -479,11 +479,6 @@ func removeFileContract(tx *bolt.Tx, id types.FileContractID) {
 	}
 }
 
-// The address of the devs.
-var devAddr = types.UnlockHash{243, 113, 199, 11, 206, 158, 184,
-	151, 156, 213, 9, 159, 89, 158, 196, 228, 252, 177, 78, 10,
-	252, 243, 31, 151, 145, 224, 62, 100, 150, 164, 192, 179}
-
 // addDSCO adds a delayed siacoin output to the consnesus set.
 func addDSCO(tx *bolt.Tx, bh types.BlockHeight, id types.SiacoinOutputID, sco types.SiacoinOutput) {
 	// Sanity check - dsco should never have a value of zero.
