@@ -222,7 +222,7 @@ func updateToRelease(release githubRelease) error {
 	}
 
 	// construct release filename
-	releaseName := fmt.Sprintf("Sia-%s-%s-%s.zip", release.TagName, runtime.GOOS, runtime.GOARCH)
+	releaseName := fmt.Sprintf("Hyperspace-%s-%s-%s.zip", release.TagName, runtime.GOOS, runtime.GOARCH)
 
 	// find release
 	var downloadURL string
