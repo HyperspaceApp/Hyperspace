@@ -187,6 +187,7 @@ type (
 		ChildTarget        types.Target
 		GCSFilter          types.GCSFilter
 		SiacoinOutputDiffs []SiacoinOutputDiff
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
 	}
 
 	// A ConsensusSet accepts blocks and builds an understanding of network

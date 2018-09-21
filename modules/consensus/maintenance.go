@@ -104,6 +104,73 @@ func applyMaturedSiacoinOutputs(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 	deleteDSCOBucket(tx, pb.Height)
 }
 
+// applyMaturedSiacoinOutputsForHeader goes through the list of siacoin outputs that
+// have matured and adds them to the consensus set. This also updates the block
+// node diff set.
+func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
+	// Skip this step if the blockchain is not old enough to have maturing
+	// outputs.
+	if pbh.Height < types.MaturityDelay {
+		return
+	}
+
+	// Iterate through the list of delayed siacoin outputs. Sometimes boltdb
+	// has trouble if you delete elements in a bucket while iterating through
+	// the bucket (and sometimes not - nondeterministic), so all of the
+	// elements are collected into an array and then deleted after the bucket
+	// scan is complete.
+	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
+	var scods []modules.SiacoinOutputDiff
+	var dscods []modules.DelayedSiacoinOutputDiff
+	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {
+		// Decode the key-value pair into an id and a siacoin output.
+		var id types.SiacoinOutputID
+		var sco types.SiacoinOutput
+		copy(id[:], idBytes)
+		encErr := encoding.Unmarshal(scoBytes, &sco)
+		if build.DEBUG && encErr != nil {
+			panic(encErr)
+		}
+
+		// Sanity check - the output should not already be in siacoinOuptuts.
+		if build.DEBUG && isSiacoinOutput(tx, id) {
+			panic(errOutputAlreadyMature)
+		}
+
+		// Add the output to the ConsensusSet and record the diff in the
+		// blockNode.
+		scod := modules.SiacoinOutputDiff{
+			Direction:     modules.DiffApply,
+			ID:            id,
+			SiacoinOutput: sco,
+		}
+		scods = append(scods, scod)
+
+		// Create the dscod and add it to the list of dscods that should be
+		// deleted.
+		dscod := modules.DelayedSiacoinOutputDiff{
+			Direction:      modules.DiffRevert,
+			ID:             id,
+			SiacoinOutput:  sco,
+			MaturityHeight: pbh.Height,
+		}
+		dscods = append(dscods, dscod)
+		return nil
+	})
+	if build.DEBUG && dbErr != nil {
+		panic(dbErr)
+	}
+	for _, scod := range scods {
+		pbh.SiacoinOutputDiffs = append(pbh.SiacoinOutputDiffs, scod)
+		commitSiacoinOutputDiff(tx, scod, modules.DiffApply)
+	}
+	for _, dscod := range dscods {
+		pbh.DelayedSiacoinOutputDiffs = append(pbh.DelayedSiacoinOutputDiffs, dscod)
+		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
+	}
+	deleteDSCOBucket(tx, pbh.Height)
+}
+
 // applyMissedStorageProof adds the outputs and diffs that result from a file
 // contract expiring.
 func applyMissedStorageProof(tx *bolt.Tx, pb *processedBlock, fcid types.FileContractID) (dscods []modules.DelayedSiacoinOutputDiff, fcd modules.FileContractDiff) {
