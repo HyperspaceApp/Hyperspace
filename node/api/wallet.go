@@ -543,7 +543,7 @@ func (api *API) walletTransactionsHandler(w http.ResponseWriter, req *http.Reque
 	countStr, watchOnlyStr, categoryStr := req.FormValue("count"), req.FormValue("watchonly"), req.FormValue("category")
 	var start, end, depth uint64
 	var watchOnly bool
-	var count int
+	var count uint64
 	var category string
 	var err error
 	var confirmedTxns, unconfirmedTxns []modules.ProcessedTransaction
@@ -608,10 +608,9 @@ func (api *API) walletTransactionsHandler(w http.ResponseWriter, req *http.Reque
 		}
 	// handle count, watchonly, category searches
 	} else {
-		count = -1
+		count = 10
 		if countStr != "" {
-			count64, err := strconv.ParseInt(countStr, 10, 64)
-			count = int(count64)
+			count, err = strconv.ParseUint(countStr, 10, 64)
 			if err != nil {
 				WriteError(w, Error{"parsing integer value for parameter `count` failed: " + err.Error()}, http.StatusBadRequest)
 				return

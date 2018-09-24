@@ -385,7 +385,7 @@ type (
 		// should be returned. A value of "send" indicates that transactions where coins
 		// were sent from this wallet should be returned. A value of "receive" indicates
 		// that transactions where coins were received by this wallet should be returned.
-		FilteredTransactions(count int, watchOnly bool, category string) ([]ProcessedTransaction, error)
+		FilteredTransactions(count uint64, watchOnly bool, category string) ([]ProcessedTransaction, error)
 
 		// FilteredUnconfirmedTransactions returns all transactions meeting watch-only and
 		// category criteria. If the watch-only filter is true, only transactions matching

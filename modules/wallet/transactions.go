@@ -104,7 +104,7 @@ func (w *Wallet) Transaction(txid types.TransactionID) (pt modules.ProcessedTran
 }
 
 // FilteredTransactions returns all transactions matching a set of criteria
-func (w *Wallet) FilteredTransactions(count int, watchOnly bool, category string) (pts []modules.ProcessedTransaction, err error) {
+func (w *Wallet) FilteredTransactions(count uint64, watchOnly bool, category string) (pts []modules.ProcessedTransaction, err error) {
 	if err := w.tg.Add(); err != nil {
 		return nil, err
 	}
@@ -139,9 +139,8 @@ txloop:
 		if key == nil {
 			return
 		}
-		// If count is -1, don't exit until we've exhausted our
-		// search
-		if count >= 0 && len(pts) >= count {
+		// Return once we've found enough results
+		if len(pts) >= int(count) {
 			return
 		}
 		// Decode the transaction
