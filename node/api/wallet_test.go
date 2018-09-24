@@ -1685,4 +1685,40 @@ func TestFilteredTransactionsGET(t *testing.T) {
 	if len(wtg.UnconfirmedTransactions) != 0 {
 		t.Fatal("expecting 0 unconfirmed transactions")
 	}
+
+	// Test that the receive filter works
+	err = st.getAPI("/wallet/transactions?category=receive", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+
+	// Test that the send filter works
+	err = st.getAPI("/wallet/transactions?category=send", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) != 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+
+	// Test that the watch-only filter works
+	err = st.getAPI("/wallet/transactions?watchonly=true", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) != 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
 }
