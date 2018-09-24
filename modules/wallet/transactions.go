@@ -103,6 +103,85 @@ func (w *Wallet) Transaction(txid types.TransactionID) (pt modules.ProcessedTran
 	return
 }
 
+// FilteredTransactions returns all transactions matching a set of criteria
+func (w *Wallet) FilteredTransactions(count int, watchOnly bool, category string) (pts []modules.ProcessedTransaction, err error) {
+	if err := w.tg.Add(); err != nil {
+		return nil, err
+	}
+	defer w.tg.Done()
+	// ensure durability of reported transactions
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err = w.syncDB(); err != nil {
+		return
+	}
+
+	// if we don't have any watched address but we were passed watchOnly,
+	// bail out with an empty list right away
+	if len(w.watchedAddrs) == 0 && watchOnly {
+		return
+	}
+
+	// Get the bucket, the largest key in it and the cursor
+	bucket := w.dbTx.Bucket(bucketProcessedTransactions)
+	cursor := bucket.Cursor()
+	var pt modules.ProcessedTransaction
+
+	// Database is empty
+	if bucket.Sequence() == 0 {
+		return
+	}
+txloop:
+	for {
+		// If count is -1, don't exit until we've exhausted our
+		// search
+		if count >= 0 && len(pts) >= count {
+			return
+		}
+		// Get next processed transaction
+		key, ptBytes := cursor.Prev()
+		if key == nil {
+			return
+		}
+		// Decode the transaction
+		if err = decodeProcessedTransaction(ptBytes, &pt); build.DEBUG && err != nil {
+			panic(err)
+		}
+		// handle the watchOnly filter, including category filters
+		// if necessary
+		if watchOnly {
+			for _, input := range pt.Inputs {
+				if _, ok := w.watchedAddrs[input.RelatedAddress]; ok {
+					if category == "" || category == "send" {
+						pts = append(pts, pt)
+						continue txloop
+					}
+				}
+			}
+			for _, output := range pt.Outputs {
+				if _, ok := w.watchedAddrs[output.RelatedAddress]; ok {
+					if category == "" || category == "receive" {
+						pts = append(pts, pt)
+						continue txloop
+					}
+				}
+			}
+		// handle no watch filter, including category filters if
+		// necessary
+		} else {
+			if len(pt.Inputs) > 0 && (category == "" || category == "send") {
+				pts = append(pts, pt)
+				continue
+			}
+			if len(pt.Outputs) > 0 && (category == "" || category == "receive") {
+				pts = append(pts, pt)
+				continue
+			}
+		}
+	}
+}
+
+
 // Transactions returns all transactions relevant to the wallet that were
 // confirmed in the range [startHeight, endHeight].
 func (w *Wallet) Transactions(startHeight, endHeight types.BlockHeight) (pts []modules.ProcessedTransaction, err error) {
@@ -209,6 +288,50 @@ func (w *Wallet) Transactions(startHeight, endHeight types.BlockHeight) (pts []m
 
 // UnconfirmedTransactions returns the set of unconfirmed transactions that are
 // relevant to the wallet.
+func (w *Wallet) FilteredUnconfirmedTransactions(watchOnly bool, category string) ([]modules.ProcessedTransaction, error) {
+	if err := w.tg.Add(); err != nil {
+		return nil, err
+	}
+	defer w.tg.Done()
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	var pts []modules.ProcessedTransaction
+txloop:
+	for _, txn := range w.unconfirmedProcessedTransactions {
+		if watchOnly {
+			for _, input := range txn.Inputs {
+				if _, ok := w.watchedAddrs[input.RelatedAddress]; ok {
+					if category == "" || category == "send" {
+						pts = append(pts, txn)
+						continue txloop
+					}
+				}
+			}
+			for _, output := range txn.Outputs {
+				if _, ok := w.watchedAddrs[output.RelatedAddress]; ok {
+					if category == "" || category == "receive" {
+						pts = append(pts, txn)
+						continue txloop
+					}
+				}
+			}
+		} else {
+			if len(txn.Inputs) > 0 && (category == "" || category == "send") {
+				pts = append(pts, txn)
+				continue
+			}
+			if len(txn.Outputs) > 0 && (category == "" || category == "receive") {
+				pts = append(pts, txn)
+				continue
+			}
+		}
+	}
+
+	return pts, nil
+}
+
+// FilteredUnconfirmedTransactions returns the set of unconfirmed transactions that are
+// relevant to the wallet and pass a certain set of criteria.
 func (w *Wallet) UnconfirmedTransactions() ([]modules.ProcessedTransaction, error) {
 	if err := w.tg.Add(); err != nil {
 		return nil, err

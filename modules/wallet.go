@@ -376,6 +376,25 @@ type (
 		// transactions related to a given address.
 		AddressUnconfirmedTransactions(types.UnlockHash) ([]ProcessedTransaction, error)
 
+		// FilteredTransactions returns all transactions meeting a variety of optional
+		// filter criteria. Count specifies how many matchin transactions should be
+		// returned. If count is -1, an unlimited amount of matching transactions are
+		// returned. watchOnly specifies that only transactions matching watched
+		// addresses should be returned. category has three possible values: "send",
+		// "receive", and "". A value of "" indicates that all matching transactions
+		// should be returned. A value of "send" indicates that transactions where coins
+		// were sent from this wallet should be returned. A value of "receive" indicates
+		// that transactions where coins were received by this wallet should be returned.
+		FilteredTransactions(count int, watchOnly bool, category string) ([]ProcessedTransaction, error)
+
+		// FilteredUnconfirmedTransactions returns all transactions meeting watch-only and
+		// category criteria. If the watch-only filter is true, only transactions matching
+		// watched addresses will be returned. If category is "", all transactions matching
+		// the watch-only filter criteria will be returned. If category is "receive", only
+		// transactions with a relevant output will be returned. If category is "send", only
+		// transactions with a relevant input will be returned.
+		FilteredUnconfirmedTransactions(watchOnly bool, category string) ([]ProcessedTransaction, error)
+
 		// Transaction returns the transaction with the given id. The bool
 		// indicates whether the transaction is in the wallet database. The
 		// wallet only stores transactions that are related to the wallet.
