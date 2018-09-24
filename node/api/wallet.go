@@ -540,7 +540,7 @@ func (api *API) walletTransactionHandler(w http.ResponseWriter, req *http.Reques
 // walletTransactionsHandler handles API calls to /wallet/transactions.
 func (api *API) walletTransactionsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	startheightStr, endheightStr, depthStr := req.FormValue("startheight"), req.FormValue("endheight"), req.FormValue("depth")
-	watchOnlyStr, countStr, categoryStr := req.FormValue("count"), req.FormValue("watchonly"), req.FormValue("category")
+	countStr, watchOnlyStr, categoryStr := req.FormValue("count"), req.FormValue("watchonly"), req.FormValue("category")
 	var start, end, depth uint64
 	var watchOnly bool
 	var count int

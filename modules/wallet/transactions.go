@@ -131,22 +131,25 @@ func (w *Wallet) FilteredTransactions(count int, watchOnly bool, category string
 	if bucket.Sequence() == 0 {
 		return
 	}
+	// Get last processed transaction
+	key, ptBytes := cursor.Last()
 txloop:
 	for {
+		// If the key is empty, we're at the end of the bucket
+		if key == nil {
+			return
+		}
 		// If count is -1, don't exit until we've exhausted our
 		// search
 		if count >= 0 && len(pts) >= count {
-			return
-		}
-		// Get next processed transaction
-		key, ptBytes := cursor.Prev()
-		if key == nil {
 			return
 		}
 		// Decode the transaction
 		if err = decodeProcessedTransaction(ptBytes, &pt); build.DEBUG && err != nil {
 			panic(err)
 		}
+		// Prepare the next iteration before we finish processing this one
+		key, ptBytes = cursor.Prev()
 		// handle the watchOnly filter, including category filters
 		// if necessary
 		if watchOnly {

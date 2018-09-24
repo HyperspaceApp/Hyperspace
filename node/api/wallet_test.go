@@ -1644,3 +1644,33 @@ func TestWalletUnspentOutputsGET(t *testing.T) {
 		t.Errorf("Coinbase of block 2 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(2), wug.Outputs[1].Value)
 	}
 }
+
+func TestFilteredTransactionsGET(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+	st, err := createServerTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Disable defrag for the wallet
+	st.wallet.SetSettings(modules.WalletSettings{
+		NoDefrag: true,
+	})
+
+	// Mining blocks should have created transactions for the wallet containing
+	// miner payouts. Get the list of transactions.
+	var wtg WalletTransactionsGET
+	err = st.getAPI("/wallet/transactions?count=1", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+}
