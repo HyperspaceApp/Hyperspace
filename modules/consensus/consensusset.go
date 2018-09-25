@@ -46,6 +46,9 @@ type ConsensusSet struct {
 	// The block root contains the genesis block.
 	blockRoot processedBlock
 
+	// isWalletAddressFunc will help check block addresses in wallet keys or not
+	isWalletAddressFunc func(types.UnlockHash) bool
+
 	// headerSubscribers subscribe header change
 	headerSubscribers []modules.HeaderConsensusSetSubscriber
 
@@ -182,15 +185,31 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		defer cs.tg.Done()
 
 		// Register RPCs
-		gateway.RegisterRPC(modules.SendBlocksCmd, cs.rpcSendBlocks)
+		if spv {
+			// If SPV mode, only register the header receiver RPC
+			gateway.RegisterConnectCall(modules.SendHeadersCmd, cs.threadedReceiveHeaders)
+		} else {
+			// If running a full node, register the full blockchain RPCs
+			gateway.RegisterRPC(modules.SendBlocksCmd, cs.rpcSendBlocks)
+			// send block to peer
+			gateway.RegisterRPC(modules.SendBlockCmd, cs.rpcSendBlk)
+			gateway.RegisterConnectCall(modules.SendBlocksCmd, cs.threadedReceiveBlocks)
+		}
+		// SPV nodes and full nodes will send headers and relay headers
+		gateway.RegisterRPC(modules.SendHeadersCmd, cs.rpcSendHeaders)
+		gateway.RegisterRPC(modules.SendHeaderCmd, cs.rpcSendHeader)
 		gateway.RegisterRPC(modules.RelayHeaderCmd, cs.threadedRPCRelayHeader)
-		gateway.RegisterRPC(modules.SendBlockCmd, cs.rpcSendBlk)
-		gateway.RegisterConnectCall(modules.SendBlocksCmd, cs.threadedReceiveBlocks)
 		cs.tg.OnStop(func() {
-			cs.gateway.UnregisterRPC(modules.SendBlocksCmd)
+			if spv {
+				cs.gateway.UnregisterConnectCall(modules.SendHeadersCmd)
+			} else {
+				cs.gateway.UnregisterRPC(modules.SendBlocksCmd)
+				cs.gateway.UnregisterRPC(modules.SendBlockCmd)
+				cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
+			}
+			cs.gateway.UnregisterRPC(modules.SendHeadersCmd)
+			cs.gateway.UnregisterRPC(modules.SendHeaderCmd)
 			cs.gateway.UnregisterRPC(modules.RelayHeaderCmd)
-			cs.gateway.UnregisterRPC(modules.SendBlockCmd)
-			cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
 		})
 
 		// Mark that we are synced with the network.
@@ -412,4 +431,9 @@ func (cs *ConsensusSet) Db() *persist.BoltDatabase {
 // SpvMode return true if in spv mode
 func (cs *ConsensusSet) SpvMode() bool {
 	return cs.spv
+}
+
+// SetIsWalletAddressFuc set the isWalletAddress callback
+func (cs *ConsensusSet) SetIsWalletAddressFuc(f func(types.UnlockHash) bool) {
+	cs.isWalletAddressFunc = f
 }

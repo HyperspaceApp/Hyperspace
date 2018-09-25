@@ -1,8 +1,8 @@
 package modules
 
 import (
-	"math/big"
 	"errors"
+	"math/big"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -181,13 +181,21 @@ type (
 
 	// ProcessedBlockHeader is a header with more info
 	ProcessedBlockHeader struct {
-		BlockHeader        types.BlockHeader
-		Height             types.BlockHeight
-		Depth              types.Target
-		ChildTarget        types.Target
-		GCSFilter          types.GCSFilter
-		SiacoinOutputDiffs []SiacoinOutputDiff
+		BlockHeader               types.BlockHeader
+		Height                    types.BlockHeight
+		Depth                     types.Target
+		ChildTarget               types.Target
+		GCSFilter                 types.GCSFilter
+		SiacoinOutputDiffs        []SiacoinOutputDiff
 		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+		// TODO: add announcements here
+	}
+
+	// ProcessedBlockHeaderForSend is a header to send to spv peers
+	ProcessedBlockHeaderForSend struct {
+		BlockHeader types.BlockHeader
+		GCSFilter   types.GCSFilter
+		// TODO: add announcements here
 	}
 
 	// A ConsensusSet accepts blocks and builds an understanding of network
@@ -275,6 +283,9 @@ type (
 
 		// SpvMode return true if the consensus set is in spv mode
 		SpvMode() bool
+
+		// SetIsWalletAddressFuc set the isWalletAddress callback
+		SetIsWalletAddressFuc(f func(types.UnlockHash) bool)
 	}
 )
 

@@ -22,9 +22,9 @@ const (
 )
 
 var (
-	errEarlyStop         = errors.New("initial blockchain download did not complete by the time shutdown was issued")
-	errNilProcBlock      = errors.New("nil processed block was fetched from the database")
-	errSendBlocksStalled = errors.New("SendBlocks RPC timed and never received any blocks")
+	errEarlyStop          = errors.New("initial blockchain download did not complete by the time shutdown was issued")
+	errNilProcBlock       = errors.New("nil processed block was fetched from the database")
+	errSendBlocksStalled  = errors.New("SendBlocks RPC timed and never received any blocks")
 	errSendHeadersStalled = errors.New("SendHeaders RPC timed and never received any blocks")
 
 	// ibdLoopDelay is the time that threadedInitialBlockchainDownload waits
@@ -801,7 +801,13 @@ func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
 		if err != nil {
 			return err
 		}
-		bh = ph.BlockHeader
+		// TODO: need to change this to send Header, GCSFilter, announcement
+		// bh = ph.BlockHeader
+		phfs := modules.ProcessedBlockHeaderForSend{
+			BlockHeader: ph.BlockHeader,
+			GCSFilter:   ph.GCSFilter,
+			// TODO: add announcements here
+		}
 		return nil
 	})
 	cs.mu.RUnlock()
@@ -860,7 +866,7 @@ func (cs *ConsensusSet) managedReceiveHeader(id types.BlockID) modules.RPCFunc {
 		}
 		return nil
 	}
- }
+}
 
 // threadedInitialBlockchainDownload performs the IBD on outbound peers. Blocks
 // are downloaded from one peer at a time in 5 minute intervals, so as to
