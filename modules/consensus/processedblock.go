@@ -147,11 +147,12 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 		panic(err)
 	}
 	childHeader := &modules.ProcessedBlockHeader{
-		BlockHeader: b.Header(),
-		Height:      child.Height,
-		Depth:       child.Depth,
-		ChildTarget: child.ChildTarget,
-		GCSFilter:   *filter,
+		BlockHeader:   b.Header(),
+		Height:        child.Height,
+		Depth:         child.Depth,
+		ChildTarget:   child.ChildTarget,
+		GCSFilter:     *filter,
+		Announcements: modules.FindHostAnnouncementsFromBlock(child.Block),
 	}
 
 	blockHeaderMap := tx.Bucket(BlockHeaderMap)

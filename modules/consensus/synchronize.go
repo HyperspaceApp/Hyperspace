@@ -794,19 +794,17 @@ func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
 		return err
 	}
 	// Lookup the corresponding block.
-	var bh types.BlockHeader
+	var phfs modules.ProcessedBlockHeaderForSend
 	cs.mu.RLock()
 	err = cs.db.View(func(tx *bolt.Tx) error {
 		ph, err := getBlockHeaderMap(tx, id)
 		if err != nil {
 			return err
 		}
-		// TODO: need to change this to send Header, GCSFilter, announcement
-		// bh = ph.BlockHeader
-		phfs := modules.ProcessedBlockHeaderForSend{
-			BlockHeader: ph.BlockHeader,
-			GCSFilter:   ph.GCSFilter,
-			// TODO: add announcements here
+		phfs = modules.ProcessedBlockHeaderForSend{
+			BlockHeader:   ph.BlockHeader,
+			GCSFilter:     ph.GCSFilter,
+			Announcements: ph.Announcements,
 		}
 		return nil
 	})
@@ -815,7 +813,7 @@ func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
 		return err
 	}
 	// Encode and send the header to the caller.
-	err = encoding.WriteObject(conn, bh)
+	err = encoding.WriteObject(conn, phfs)
 	if err != nil {
 		return err
 	}
