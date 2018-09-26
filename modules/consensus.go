@@ -286,8 +286,8 @@ type (
 		// SpvMode return true if the consensus set is in spv mode
 		SpvMode() bool
 
-		// SetIsWalletAddressFuc set the isWalletAddress callback
-		SetIsWalletAddressFuc(f func(types.UnlockHash) bool)
+		// SetGetWalletKeysFuc setup the function for consensus to fetch keys from wallet
+		SetGetWalletKeysFunc(func() [][]byte)
 	}
 )
 
@@ -326,6 +326,15 @@ func (pbh *ProcessedBlockHeader) HeavierThan(cmp *ProcessedBlockHeader) bool {
 // detailed information.
 func (pbh *ProcessedBlockHeader) ChildDepth() types.Target {
 	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
+}
+
+// ForSend will only reserve BlockHeader, GCSFilter, Announcements
+func (pbh ProcessedBlockHeader) ForSend() *ProcessedBlockHeaderForSend {
+	return &ProcessedBlockHeaderForSend{
+		BlockHeader:   pbh.BlockHeader,
+		GCSFilter:     pbh.GCSFilter,
+		Announcements: pbh.Announcements,
+	}
 }
 
 // FindHostAnnouncementsFromBlock extract announcements from block

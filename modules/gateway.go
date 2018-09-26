@@ -83,6 +83,7 @@ type (
 	PeerConn interface {
 		net.Conn
 		RPCAddr() NetAddress
+		Version() string
 	}
 
 	// RPCFunc is the type signature of functions that handle RPCs. It is used for

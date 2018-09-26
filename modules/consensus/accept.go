@@ -14,6 +14,10 @@ import (
 	"github.com/coreos/bbolt"
 )
 
+const (
+	minimumSendProcessedHeaderPeerVersion = "0.2.1"
+)
+
 var (
 	errDoSBlock        = errors.New("block is known to be invalid")
 	errInconsistentSet = errors.New("consensus set is not in a consistent state")
@@ -21,12 +25,37 @@ var (
 	errNonLinearChain  = errors.New("block set is not a contiguous chain")
 	errOrphan          = errors.New("block has no known parent")
 	errNoHeaderMap     = errors.New("header map is not in database")
+	errHeaderNotExist  = errors.New("header is not in database")
 )
+
+func remoteSupportSPVHeader(v string) bool {
+	return build.VersionCmp(v, minimumSendProcessedHeaderPeerVersion) < 0
+}
 
 // managedBroadcastBlock will broadcast a block to the consensus set's peers.
 func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 	// broadcast the block header to all peers
-	go cs.gateway.Broadcast("RelayHeader", bh, cs.gateway.Peers())
+	// broadcast header and processed header to different version
+	var bhPeers, pbhPeers []modules.Peer
+	for _, p := range cs.gateway.Peers() {
+		if remoteSupportSPVHeader(p.Version) {
+			// old version
+			bhPeers = append(bhPeers)
+		} else {
+
+		}
+	}
+	if len(bhPeers) > 0 {
+		go cs.gateway.Broadcast(modules.RelayHeaderCmd, bh, bhPeers)
+	}
+	if len(pbhPeers) > 0 {
+		pbh, exist := cs.processedBlockHeaders[bh.ID()]
+		if !exist {
+			panic("broadcast header don't have related processed header")
+		}
+
+		go cs.gateway.Broadcast(modules.RelayHeaderCmd, pbh.ForSend(), pbhPeers)
+	}
 }
 
 // validateHeaderAndBlock does some early, low computation verification on the
@@ -93,20 +122,20 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 	if headerMap == nil {
 		return nil, errNoHeaderMap
 	}
-	if headerMap.Get(id[:]) != nil {
+	// if headerMap.Get(id[:]) != nil {
+	// 	return nil, modules.ErrBlockKnown
+	// }
+
+	_, exists = cs.processedBlockHeaders[id]
+	if !exists {
 		return nil, modules.ErrBlockKnown
 	}
 
 	// Check for the parent.
 	parentID := h.ParentID
-	parentBytes := headerMap.Get(parentID[:])
-	if parentBytes == nil {
+	parentHeader, exists = cs.processedBlockHeaders[parentID]
+	if !exists {
 		return nil, errOrphan
-	}
-	parentHeader = new(modules.ProcessedBlockHeader)
-	err = cs.marshaler.Unmarshal(parentBytes, &parentHeader)
-	if err != nil {
-		return nil, err
 	}
 
 	// Check that the target of the new block is sufficient.
@@ -117,6 +146,7 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 	// TODO: check if the block is a non extending block once headers-first
 	// downloads are implemented.
 
+	// TODO: change header to use memory key map too, should be faster
 	// Check that the timestamp is not too far in the past to be acceptable.
 	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(headerMap, parentHeader.BlockHeader.ParentID, parentHeader.BlockHeader.Timestamp)
 	if minTimestamp > h.Timestamp {
@@ -278,6 +308,99 @@ func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh types.BlockHeader) {
 // consecutive calls to AcceptBlock with each successive call accepting the
 // child block of the previous call.
 func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExtended bool, err error) {
+	// Grab a lock on the consensus set.
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	// Make sure that blocks are consecutive. Though this isn't a strict
+	// requirement, if blocks are not consecutive then it becomes a lot harder
+	// to maintain correcetness when adding multiple blocks in a single tx.
+	//
+	// This is the first time that IDs on the blocks have been computed.
+	blockIDs := make([]types.BlockID, 0, len(blocks))
+	for i := 0; i < len(blocks); i++ {
+		blockIDs = append(blockIDs, blocks[i].ID())
+		if i > 0 && blocks[i].ParentID != blockIDs[i-1] {
+			return false, errNonLinearChain
+		}
+	}
+
+	// Verify the headers for every block, throw out known blocks, and the
+	// invalid blocks (which includes the children of invalid blocks).
+	chainExtended := false
+	changes := make([]changeEntry, 0, len(blocks))
+	setErr := cs.db.Update(func(tx *bolt.Tx) error {
+		for i := 0; i < len(blocks); i++ {
+			// Start by checking the header of the block.
+			parent, err := cs.validateHeaderAndBlock(boltTxWrapper{tx}, blocks[i], blockIDs[i])
+			if err == modules.ErrBlockKnown {
+				// Skip over known blocks.
+				continue
+			}
+			if err == errFutureTimestamp {
+				// Queue the block to be tried again if it is a future block.
+				go cs.threadedSleepOnFutureBlock(blocks[i])
+			}
+			if err != nil {
+				return err
+			}
+
+			// Try adding the block to consensus.
+			changeEntry, err := cs.addBlockToTree(tx, blocks[i], parent)
+			if err == nil {
+				changes = append(changes, changeEntry)
+				chainExtended = true
+				var applied, reverted []string
+				for _, b := range changeEntry.AppliedBlocks {
+					applied = append(applied, b.String()[:6])
+				}
+				for _, b := range changeEntry.RevertedBlocks {
+					reverted = append(reverted, b.String()[:6])
+				}
+			}
+			if err == modules.ErrNonExtendingBlock {
+				err = nil
+			}
+			if err != nil {
+				return err
+			}
+			// Sanity check - we should never apply fewer blocks than we revert.
+			if len(changeEntry.AppliedBlocks) < len(changeEntry.RevertedBlocks) {
+				err := errors.New("after adding a change entry, there are more reverted blocks than applied ones")
+				cs.log.Severe(err)
+				return err
+			}
+		}
+		return nil
+	})
+	if _, ok := setErr.(bolt.MmapError); ok {
+		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
+		fmt.Println("Blockchain database has run out of disk space!")
+		os.Exit(1)
+	}
+	if setErr != nil {
+		if len(changes) == 0 {
+			fmt.Println("Received an invalid block set.")
+			cs.log.Println("Consensus received an invalid block:", setErr)
+		} else {
+			fmt.Println("Received a partially valid block set.")
+			cs.log.Println("Consensus received a chain of blocks, where one was valid, but others were not:", setErr)
+		}
+		return false, setErr
+	}
+	// Stop here if the blocks did not extend the longest blockchain.
+	if !chainExtended {
+		return false, modules.ErrNonExtendingBlock
+	}
+	// Send any changes to subscribers.
+	for i := 0; i < len(changes); i++ {
+		cs.updateSubscribers(changes[i])
+	}
+	return chainExtended, nil
+}
+
+// managedAcceptBlocksForSPV deal with a new block for spv comes in
+func (cs *ConsensusSet) managedAcceptBlocksForSPV(blocks []types.Block) (blockchainExtended bool, err error) {
 	// Grab a lock on the consensus set.
 	cs.mu.Lock()
 	defer cs.mu.Unlock()

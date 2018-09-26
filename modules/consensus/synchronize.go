@@ -206,7 +206,7 @@ func (cs *ConsensusSet) managedReceiveBlocks(conn modules.PeerConn) (returnErr e
 				panic("blockchain extension reporting is incorrect")
 			}
 			fullBlock := cs.managedCurrentBlock() // TODO: Add cacheing, replace this line by looking at the cache.
-			go cs.gateway.Broadcast("RelayHeader", fullBlock.Header(), cs.gateway.Peers())
+			cs.managedBroadcastBlock(fullBlock.Header())
 		}
 	}()
 
@@ -430,23 +430,23 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	err = cs.db.View(func(tx *bolt.Tx) error {
 		csHeight = blockHeight(tx)
 		for _, id := range knownBlocks {
-			pb, err := getBlockMap(tx, id)
+			ph, exist := cs.processedBlockHeaders[id]
+			if !exist {
+				continue
+			}
+			pathID, err := getPath(tx, ph.Height)
 			if err != nil {
 				continue
 			}
-			pathID, err := getPath(tx, pb.Height)
-			if err != nil {
+			if pathID != ph.BlockHeader.ID() {
 				continue
 			}
-			if pathID != pb.Block.ID() {
-				continue
-			}
-			if pb.Height == csHeight {
+			if ph.Height == csHeight {
 				break
 			}
 			found = true
 			// Start from the child of the common block.
-			start = pb.Height + 1
+			start = ph.Height + 1
 			break
 		}
 		return nil
@@ -460,7 +460,12 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	// don't send any blocks.
 	if !found {
 		// Send 0 blocks.
-		err = encoding.WriteObject(conn, []types.Block{})
+		if remoteSupportSPVHeader(conn.Version()) {
+			// processed block header for send
+			err = encoding.WriteObject(conn, []modules.ProcessedBlockHeaderForSend{})
+		} else {
+			err = encoding.WriteObject(conn, []types.Block{})
+		}
 		if err != nil {
 			return err
 		}
@@ -472,7 +477,8 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	moreAvailable := true
 	for moreAvailable {
 		// Get the set of blocks to send.
-		var blocks []types.Block
+		var blockHeaders []types.BlockHeader
+		var blockHeadersForSend []modules.ProcessedBlockHeaderForSend
 		cs.mu.RLock()
 		err = cs.db.View(func(tx *bolt.Tx) error {
 			height := blockHeight(tx)
@@ -482,16 +488,20 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 					cs.log.Critical("Unable to get path: height", height, ":: request", i)
 					return err
 				}
-				pb, err := getBlockMap(tx, id)
-				if err != nil {
-					cs.log.Critical("Unable to get block from block map: height", height, ":: request", i, ":: id", id)
+				ph, exist := cs.processedBlockHeaders[id]
+				if !exist {
+					cs.log.Critical("Unable to get block header from headers: height", height, ":: request", i, ":: id", id)
 					return err
 				}
-				if pb == nil {
-					cs.log.Critical("getBlockMap yielded 'nil' block:", height, ":: request", i, ":: id", id)
+				if ph == nil {
+					cs.log.Critical("getBlock Header yielded 'nil' block header:", height, ":: request", i, ":: id", id)
 					return errNilProcBlock
 				}
-				blocks = append(blocks, pb.Block)
+				if remoteSupportSPVHeader(conn.Version()) {
+					blockHeadersForSend = append(blockHeadersForSend, *ph.ForSend())
+				} else {
+					blockHeaders = append(blockHeaders, ph.BlockHeader)
+				}
 			}
 			moreAvailable = start+MaxCatchUpBlocks <= height
 			start += MaxCatchUpBlocks
@@ -504,14 +514,18 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 
 		// Send a set of blocks to the caller + a flag indicating whether more
 		// are available.
-		if err = encoding.WriteObject(conn, blocks); err != nil {
+		if remoteSupportSPVHeader(conn.Version()) {
+			err = encoding.WriteObject(conn, blockHeadersForSend)
+		} else {
+			err = encoding.WriteObject(conn, blockHeaders)
+		}
+		if err != nil {
 			return err
 		}
 		if err = encoding.WriteObject(conn, moreAvailable); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -553,6 +567,8 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 	var start types.BlockHeight
 	var csHeight types.BlockHeight
 	cs.mu.RLock()
+	//
+
 	err = cs.db.View(func(tx *bolt.Tx) error {
 		csHeight = blockHeight(tx)
 		for _, id := range knownBlocks {
@@ -606,6 +622,7 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 					cs.log.Critical("Unable to get path: height", height, ":: request", i)
 					return err
 				}
+				// TODO: read from mem
 				pb, err := getBlockMap(tx, id)
 				if err != nil {
 					cs.log.Critical("Unable to get block from block map: height", height, ":: request", i, ":: id", id)
@@ -666,11 +683,13 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 
 	// Decode the block header from the connection.
 	var h types.BlockHeader
-	err = encoding.ReadObject(conn, &h, types.BlockHeaderSize)
+	var phfs modules.ProcessedBlockHeaderForSend
+	// TODO: processed header's size is not fixed,but should not larger than block limit
+	err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 	if err != nil {
 		return err
 	}
-
+	h = phfs.BlockHeader
 	// Start verification inside of a bolt View tx.
 	cs.mu.RLock()
 	err = cs.db.View(func(tx *bolt.Tx) error {
@@ -709,9 +728,19 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlock(h.ID()))
-		if err != nil {
-			cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+		if cs.spv {
+			id := h.ID()
+			if phfs.GCSFilter.MatchUnlockHash(id[:], cs.getWalletKeysFunc()) {
+				err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlockForSPV(h.ID()))
+				if err != nil {
+					cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+				}
+			}
+		} else {
+			err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlock(h.ID()))
+			if err != nil {
+				cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+			}
 		}
 	}()
 	return nil
@@ -767,7 +796,7 @@ func (cs *ConsensusSet) rpcSendBlk(conn modules.PeerConn) error {
 	return nil
 }
 
-// rpcSendBlk is an RPC that sends a single requested header to the requesting peer.
+// rpcSendHeader is an RPC that sends a single requested header to the requesting peer.
 func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
 	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
 	if err != nil {
@@ -793,27 +822,15 @@ func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
 	if err != nil {
 		return err
 	}
-	// Lookup the corresponding block.
-	var phfs modules.ProcessedBlockHeaderForSend
+	// Lookup the corresponding processed header
 	cs.mu.RLock()
-	err = cs.db.View(func(tx *bolt.Tx) error {
-		ph, err := getBlockHeaderMap(tx, id)
-		if err != nil {
-			return err
-		}
-		phfs = modules.ProcessedBlockHeaderForSend{
-			BlockHeader:   ph.BlockHeader,
-			GCSFilter:     ph.GCSFilter,
-			Announcements: ph.Announcements,
-		}
-		return nil
-	})
+	ph, exist := cs.processedBlockHeaders[id]
 	cs.mu.RUnlock()
-	if err != nil {
-		return err
+	if !exist {
+		return errHeaderNotExist
 	}
 	// Encode and send the header to the caller.
-	err = encoding.WriteObject(conn, phfs)
+	err = encoding.WriteObject(conn, ph.ForSend())
 	if err != nil {
 		return err
 	}
@@ -836,6 +853,26 @@ func (cs *ConsensusSet) managedReceiveBlock(id types.BlockID) modules.RPCFunc {
 		if chainExtended {
 			cs.managedBroadcastBlock(block.Header())
 		}
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+// managedReceiveBlockForSPV takes a block id and returns an RPCFunc that requests that
+// block and then calls AcceptBlockForSPV on it. The returned function should be used
+// as the calling end of the SendBlk RPC.
+func (cs *ConsensusSet) managedReceiveBlockForSPV(id types.BlockID) modules.RPCFunc {
+	return func(conn modules.PeerConn) error {
+		if err := encoding.WriteObject(conn, id); err != nil {
+			return err
+		}
+		var block types.Block
+		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
+			return err
+		}
+		_, err := cs.managedAcceptBlocksForSPV([]types.Block{block})
 		if err != nil {
 			return err
 		}
