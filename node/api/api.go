@@ -61,7 +61,7 @@ func HttpGETAuthenticated(url string, password string) (resp *http.Response, err
 	return http.DefaultClient.Do(req)
 }
 
-// HttpPOST is a utility function for making post requests to sia with a
+// HttpPOST is a utility function for making post requests to Hyperspace with a
 // whitelisted user-agent. A non-2xx response does not return an error.
 func HttpPOST(url string, data string) (resp *http.Response, err error) {
 	req, err := http.NewRequest("POST", url, strings.NewReader(data))
