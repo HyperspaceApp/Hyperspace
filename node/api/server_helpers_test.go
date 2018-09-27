@@ -635,6 +635,31 @@ func (st *serverTester) postAPI(call string, values url.Values, obj interface{})
 	return nil
 }
 
+// postAPIJSON makes a json-encoded API call and decodes the response.
+func (st *serverTester) postAPIJSON(call string, values url.Values, obj interface{}) error {
+	resp, err := HttpPOSTJSON("http://"+st.server.listener.Addr().String()+call, values.Encode())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if non2xx(resp.StatusCode) {
+		return decodeError(resp)
+	}
+
+	// Return early because there is no content to decode.
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+
+	// Decode the response into 'obj'.
+	err = json.NewDecoder(resp.Body).Decode(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // stdGetAPI makes an API call and discards the response.
 func (st *serverTester) stdGetAPI(call string) error {
 	resp, err := HttpGET("http://" + st.server.listener.Addr().String() + call)

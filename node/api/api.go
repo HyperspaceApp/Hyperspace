@@ -73,6 +73,19 @@ func HttpPOST(url string, data string) (resp *http.Response, err error) {
 	return http.DefaultClient.Do(req)
 }
 
+// HttpPOSTJSON is a utility function for making json-encoded post requests to
+// Hyperspace with a whitelisted user-agent. A non-2xx response does not return
+// an error.
+func HttpPOSTJSON(url string, data string) (resp *http.Response, err error) {
+	req, err := http.NewRequest("POST", url, strings.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Hyperspace-Agent")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	return http.DefaultClient.Do(req)
+}
+
 // HttpPOSTAuthenticated is a utility function for making authenticated http
 // post requests to sia with a whitelisted user-agent and the supplied
 // password. A non-2xx response does not return an error.
