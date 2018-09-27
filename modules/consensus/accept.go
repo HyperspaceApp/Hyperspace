@@ -122,12 +122,9 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 	if headerMap == nil {
 		return nil, errNoHeaderMap
 	}
-	// if headerMap.Get(id[:]) != nil {
-	// 	return nil, modules.ErrBlockKnown
-	// }
 
 	_, exists = cs.processedBlockHeaders[id]
-	if !exists {
+	if exists {
 		return nil, modules.ErrBlockKnown
 	}
 
@@ -212,7 +209,7 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 }
 
 // addHeaderToTree adds a headerNode to the tree by adding it to it's parents list of children.
-func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header types.BlockHeader) (ce changeEntry, err error) {
+func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) (ce changeEntry, err error) {
 	// Prepare the child header node associated with the parent header.
 	newNode := cs.newHeaderChild(tx, parentHeader, header)
 	// Check whether the new node is part of a chain that is heavier than the
@@ -276,7 +273,7 @@ func (cs *ConsensusSet) threadedSleepOnFutureBlock(b types.Block) {
 //
 // TODO: An attacker could produce a very large number of future blocks,
 // consuming memory. Need to prevent that.
-func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh types.BlockHeader) {
+func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh modules.ProcessedBlockHeaderForSend) {
 	// Add this thread to the threadgroup.
 	err := cs.tg.Add()
 	if err != nil {
@@ -287,12 +284,11 @@ func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh types.BlockHeader) {
 	select {
 	case <-cs.tg.StopChan():
 		return
-	case <-time.After(time.Duration(bh.Timestamp-(types.CurrentTimestamp()+types.FutureThreshold)) * time.Second):
-		_, err := cs.managedAcceptHeaders([]types.BlockHeader{bh})
+	case <-time.After(time.Duration(bh.BlockHeader.Timestamp-(types.CurrentTimestamp()+types.FutureThreshold)) * time.Second):
+		_, err := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{bh})
 		if err != nil {
 			cs.log.Debugln("WARN: failed to accept a future block header:", err)
 		}
-		cs.managedBroadcastBlock(bh)
 	}
 }
 
@@ -498,7 +494,7 @@ func (cs *ConsensusSet) managedAcceptBlocksForSPV(blocks []types.Block) (blockch
 // such that the fork becomes the longest currently known chain, the consensus
 // set will reorganize itself to recognize the new longest fork. Accepted
 // headers are not relayed.
-func (cs *ConsensusSet) managedAcceptHeaders(headers []types.BlockHeader) (blockchainExtended bool, err error) {
+func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHeaderForSend) (blockchainExtended bool, err error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 	// Make sure that headers are consecutive. Though this isn't a strict
@@ -507,8 +503,8 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []types.BlockHeader) (block
 	// This is the first time that IDs on the blocks have been computed.
 	headerIds := make([]types.BlockID, 0, len(headers))
 	for i := 0; i < len(headers); i++ {
-		headerIds = append(headerIds, headers[i].ID())
-		if i > 0 && headers[i].ParentID != headerIds[i-1] {
+		headerIds = append(headerIds, headers[i].BlockHeader.ID())
+		if i > 0 && headers[i].BlockHeader.ParentID != headerIds[i-1] {
 			return false, errNonLinearChain
 		}
 	}
@@ -516,14 +512,12 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []types.BlockHeader) (block
 	// invalid headers (which includes the children of invalid headers).
 	chainExtended := false
 	changes := make([]changeEntry, 0, len(headers))
-	validHeaders := make([]types.BlockHeader, 0, len(headers))
-	parents := make([]*modules.ProcessedBlockHeader, 0, len(headers))
 	setErr := cs.db.Update(func(tx *bolt.Tx) error {
 		for i := 0; i < len(headers); i++ {
 			//start by checking the header of the block
-			parentHeader, err := cs.validateHeader(boltTxWrapper{tx}, headers[i])
-			if err == modules.ErrBlockKnown {
-				// Skip over known blocks.
+			parentHeader, err := cs.validateHeader(boltTxWrapper{tx}, headers[i].BlockHeader)
+			if err == modules.ErrHeaderKnown {
+				// Skip over known headers.
 				continue
 			}
 			if err == errFutureTimestamp {
@@ -551,87 +545,32 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []types.BlockHeader) (block
 			}
 			// Append to the set of changes, and append the valid block.
 			changes = append(changes, changeEntry)
-			validHeaders = append(validHeaders, headers[i])
-			parents = append(parents, parentHeader)
 		}
 		return nil
 	})
+
+	if _, ok := setErr.(bolt.MmapError); ok {
+		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
+		fmt.Println("Blockchain database has run out of disk space!")
+		os.Exit(1)
+	}
 	if setErr != nil {
-		// Check if any blocks were valid.
-		if len(validHeaders) < 1 {
-			// Nothing more to do, the first block was invalid.
-			return false, setErr
+		if len(changes) == 0 {
+			fmt.Println("Received an invalid block header set.")
+			cs.log.Println("Consensus received an invalid block header:", setErr)
+		} else {
+			fmt.Println("Received a partially valid block header set.")
+			cs.log.Println("Consensus received a chain of block headers, where one was valid, but others were not:", setErr)
 		}
-		// At least some of the blocks were valid. Add the valid blocks before
-		// returning, since we've already done the downloading and header
-		// validation.
-		verifyExtended := false
-		err := cs.db.Update(func(tx *bolt.Tx) error {
-			for i := 0; i < len(validHeaders); i++ {
-				_, err := cs.addHeaderToTree(tx, parents[i], validHeaders[i])
-				if err == nil {
-					verifyExtended = true
-				}
-				if err != modules.ErrNonExtendingBlock && err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-		// Sanity check - verifyExtended should match chainExtended.
-		if build.DEBUG && verifyExtended != chainExtended {
-			panic("chain extension logic does not match up between first and last attempt")
-		}
-		// Something has gone wrong. Maybe the filesystem is having errors for
-		// example. But under normal conditions, this code should not be
-		// reached. If it is, return early because both attempts to add blocks
-		// have failed.
-		if err != nil {
-			return false, err
-		}
+		return false, setErr
 	}
 	// Stop here if the blocks did not extend the longest blockchain.
 	if !chainExtended {
 		return false, modules.ErrNonExtendingBlock
 	}
-	// Sanity check - if we get here, len(changes) should be non-zero.
-	if build.DEBUG && len(changes) == 0 || len(changes) != len(validHeaders) {
-		panic("changes is empty, but this code should not be reached if no blocks got added")
-	}
-	// Update the subscribers with all of the consensus changes. First combine
-	// the changes into a single set.
-	fullChange := changes[0]
-	for i := 1; i < len(changes); i++ {
-		// The consistency model of the modules will break if two different
-		// changes have reverted blocks in them, the modules strictly expect all
-		// the reverted blocks to be in order, followed by all of the applied
-		// blocks. This check ensures that rule is being followed.
-		if len(fullChange.RevertedBlocks) == 0 && len(fullChange.AppliedBlocks) == 0 {
-			// Only add reverted blocks if there have been no reverted blocks or
-			// applied blocks previously.
-			fullChange.RevertedBlocks = append(fullChange.RevertedBlocks, changes[i].RevertedBlocks...)
-		} else if build.DEBUG && len(changes[i].RevertedBlocks) != 0 {
-			// Sanity Check - if the aggregate change has reverted blocks, no
-			// more reverted blocks should appear in the set of changes. This is
-			// because the blocks are strictly children of eachother - the first
-			// one that extends the chain could cause reverted blocks, but the
-			// rest should not be able to.
-			panic("multi-block acceptance failed - reverted blocks on the final change?")
-		}
-		// Add all of the applied blocks.
-		fullChange.AppliedBlocks = append(fullChange.AppliedBlocks, changes[i].AppliedBlocks...)
-	}
-	// Sanity check - if we got here, the number of applied blocks should be
-	// non-zero.
-	if build.DEBUG && len(fullChange.AppliedBlocks) == 0 {
-		panic("should not be updating subscribers witha blank change")
-	}
-	cs.updateSubscribers(fullChange)
-	// If there were valid blocks and invalid blocks in the set that was
-	// provided, then the setErr is not going to be nil. Return the set error to
-	// the caller.
-	if setErr != nil {
-		return chainExtended, setErr
+	// Send any changes to subscribers.
+	for i := 0; i < len(changes); i++ {
+		cs.updateHeaderSubscribers(changes[i])
 	}
 	return chainExtended, nil
 }

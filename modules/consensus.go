@@ -39,6 +39,8 @@ var (
 	// database.
 	ErrBlockKnown = errors.New("block already present in database")
 
+	ErrHeaderKnown = errors.New("header already present in database")
+
 	// ErrBlockUnsolved indicates that a block did not meet the required POW
 	// target.
 	ErrBlockUnsolved = errors.New("block does not meet target")

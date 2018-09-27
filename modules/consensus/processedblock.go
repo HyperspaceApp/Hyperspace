@@ -167,16 +167,19 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 // newHeaderChild creates a new child headerNode from a header and adds it to the parent's set of
 // children. The new node is also returned. It necessarily modifies the BlockHeaderMap bucket
 // TODO we need to get the gcsfilter here somehow
-func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header types.BlockHeader) *modules.ProcessedBlockHeader {
+func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) *modules.ProcessedBlockHeader {
 	// Create the child node.
-	childID := header.ID()
+	childID := header.BlockHeader.ID()
 	child := &modules.ProcessedBlockHeader{
-		BlockHeader: header,
-		Height:      parentHeader.Height + 1,
-		Depth:       parentHeader.ChildDepth(),
+		BlockHeader:   header.BlockHeader,
+		Height:        parentHeader.Height + 1,
+		Depth:         parentHeader.ChildDepth(),
+		GCSFilter:     header.GCSFilter,
+		Announcements: header.Announcements,
 	}
-	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, header.ParentID)
-	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, parentHeader.BlockHeader.Timestamp, header.Timestamp, prevTotalTarget, parentHeader.ChildTarget)
+	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, header.BlockHeader.ParentID)
+	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, parentHeader.BlockHeader.Timestamp,
+		header.BlockHeader.Timestamp, prevTotalTarget, parentHeader.ChildTarget)
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
