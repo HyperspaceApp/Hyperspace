@@ -730,10 +730,13 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 		defer wg.Done()
 		if cs.spv {
 			id := h.ID()
-			if phfs.GCSFilter.MatchUnlockHash(id[:], cs.getWalletKeysFunc()) {
-				err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlockForSPV(h.ID()))
-				if err != nil {
-					cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+			keysArray := cs.getWalletKeysFunc()
+			if len(keysArray) > 0 { // unlocked
+				if phfs.GCSFilter.MatchUnlockHash(id[:], keysArray) {
+					err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlockForSPV(h.ID()))
+					if err != nil {
+						cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+					}
 				}
 			}
 		} else {
@@ -872,7 +875,7 @@ func (cs *ConsensusSet) managedReceiveBlockForSPV(id types.BlockID) modules.RPCF
 		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return err
 		}
-		_, err := cs.managedAcceptBlocksForSPV([]types.Block{block})
+		err := cs.managedAcceptSingleBlockForSPV(block)
 		if err != nil {
 			return err
 		}
@@ -971,7 +974,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 	return nil
 }
 
-func (cs *ConsensusSet) threadedHeadersDownload() error {
+func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 	// The consensus set will not recognize IBD as complete until it has enough
 	// peers. After the deadline though, it will recognize the blockchain
 	// download as complete even with only one peer. This deadline is helpful

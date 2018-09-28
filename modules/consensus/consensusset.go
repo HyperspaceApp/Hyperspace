@@ -170,7 +170,7 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 			// We are in a virgin goroutine right now, so calling the threaded
 			// function without a goroutine is okay.
 			if cs.spv {
-				err = cs.threadedHeadersDownload()
+				err = cs.threadedInitialHeadersDownload()
 			} else {
 				err = cs.threadedInitialBlockchainDownload()
 			}

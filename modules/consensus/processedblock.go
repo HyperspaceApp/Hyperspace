@@ -193,3 +193,56 @@ func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.Proces
 	}
 	return child
 }
+
+func (cs *ConsensusSet) newSingleChildForSPV(tx *bolt.Tx, pb *modules.ProcessedBlockHeader, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
+	// Create the child node.
+	childID := b.ID()
+	child := &processedBlock{
+		Block:  b,
+		Height: pb.Height + 1,
+		Depth:  pb.childDepth(),
+	}
+
+	// Push the total values for this block into the oak difficulty adjustment
+	// bucket. The previous totals are required to compute the new totals.
+	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, b.ParentID)
+	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, pb.Block.Timestamp, b.Timestamp, prevTotalTarget, pb.ChildTarget)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+
+	// Use the difficulty adjustment algorithm to set the target of the child
+	// block and put the new processed block into the database.
+	blockMap := tx.Bucket(BlockMap)
+	child.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, pb.ChildTarget, pb.Height, pb.Block.Timestamp)
+	err = blockMap.Put(childID[:], encoding.Marshal(*child))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	var hashes []types.UnlockHash
+	fileContracts := getRelatedFileContracts(tx, &b)
+	for _, fc := range fileContracts {
+		contractHashes := fc.OutputUnlockHashes()
+		hashes = append(hashes, contractHashes...)
+	}
+	filter, err := blockcf.BuildFilter(&b, hashes)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	childHeader := &modules.ProcessedBlockHeader{
+		BlockHeader:   b.Header(),
+		Height:        child.Height,
+		Depth:         child.Depth,
+		ChildTarget:   child.ChildTarget,
+		GCSFilter:     *filter,
+		Announcements: modules.FindHostAnnouncementsFromBlock(child.Block),
+	}
+
+	blockHeaderMap := tx.Bucket(BlockHeaderMap)
+	err = blockHeaderMap.Put(childID[:], encoding.Marshal(*childHeader))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	cs.processedBlockHeaders[childID] = childHeader
+	return child, childHeader
+}

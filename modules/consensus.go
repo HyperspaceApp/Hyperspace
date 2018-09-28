@@ -339,6 +339,10 @@ func (pbh ProcessedBlockHeader) ForSend() *ProcessedBlockHeaderForSend {
 	}
 }
 
+func (pbh *ProcessedBlockHeader) childDepth() types.Target {
+	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
+}
+
 // FindHostAnnouncementsFromBlock extract announcements from block
 func FindHostAnnouncementsFromBlock(b types.Block) (has []HostAnnouncement) {
 	for _, t := range b.Transactions {

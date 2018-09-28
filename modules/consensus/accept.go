@@ -99,6 +99,39 @@ func (cs *ConsensusSet) validateHeaderAndBlock(tx dbTx, b types.Block, id types.
 	return parent, nil
 }
 
+func (cs *ConsensusSet) validateSingleHeaderAndBlockForSPV(tx dbTx, b types.Block, id types.BlockID) (parentHeader *modules.ProcessedBlockHeader, err error) {
+	// Check if the block is a DoS block - a known invalid block that is expensive
+	// to validate.
+	_, exists := cs.dosBlocks[id]
+	if exists {
+		return nil, errDoSBlock
+	}
+
+	// Check if the block is already known.
+	blockMap := tx.Bucket(BlockMap)
+	if blockMap == nil {
+		return nil, errNoBlockMap
+	}
+	if blockMap.Get(id[:]) != nil {
+		return nil, modules.ErrBlockKnown
+	}
+
+	// Check for the parent.
+	parentID := b.ParentID
+	parentHeader, exists = cs.processedBlockHeaders[parentID]
+	if !exists {
+		return nil, errOrphan
+	}
+	// Check that the timestamp is not too far in the past to be acceptable.
+	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parentID, parentHeader.BlockHeader.Timestamp)
+
+	err = cs.blockValidator.ValidateBlock(b, id, minTimestamp, parentHeader.ChildTarget, parentHeader.Height+1, cs.log)
+	if err != nil {
+		return nil, err
+	}
+	return parentHeader, nil
+}
+
 // checkHeaderTarget returns true if the header's ID meets the given target.
 func checkHeaderTarget(h types.BlockHeader, target types.Target) bool {
 	blockHash := h.ID()
@@ -206,6 +239,19 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	}
 
 	return ce, nil
+}
+
+func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block, parentHeader *modules.ProcessedBlockHeader) (err error) {
+	// Prepare the child processed block associated with the parent block.
+	newNode := cs.newSingleChildForSPV(tx, parentHeader, b)
+
+	// Fork the blockchain and put the new heaviest block at the tip of the
+	// chain.
+	// revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
+	// TODO: generate diffs for current block
+	cs.applyUntilBlockForSPV(tx, newNode)
+
+	return nil
 }
 
 // addHeaderToTree adds a headerNode to the tree by adding it to it's parents list of children.
@@ -396,70 +442,28 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 }
 
 // managedAcceptBlocksForSPV deal with a new block for spv comes in
-func (cs *ConsensusSet) managedAcceptBlocksForSPV(blocks []types.Block) (blockchainExtended bool, err error) {
+func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block) error {
 	// Grab a lock on the consensus set.
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	// Make sure that blocks are consecutive. Though this isn't a strict
-	// requirement, if blocks are not consecutive then it becomes a lot harder
-	// to maintain correcetness when adding multiple blocks in a single tx.
-	//
-	// This is the first time that IDs on the blocks have been computed.
-	blockIDs := make([]types.BlockID, 0, len(blocks))
-	for i := 0; i < len(blocks); i++ {
-		blockIDs = append(blockIDs, blocks[i].ID())
-		if i > 0 && blocks[i].ParentID != blockIDs[i-1] {
-			return false, errNonLinearChain
-		}
-	}
-
-	// Verify the headers for every block, throw out known blocks, and the
-	// invalid blocks (which includes the children of invalid blocks).
-	chainExtended := false
-	changes := make([]changeEntry, 0, len(blocks))
 	setErr := cs.db.Update(func(tx *bolt.Tx) error {
-		for i := 0; i < len(blocks); i++ {
-			// Start by checking the header of the block.
-			parent, err := cs.validateHeaderAndBlock(boltTxWrapper{tx}, blocks[i], blockIDs[i])
-			if err == modules.ErrBlockKnown {
-				// Skip over known blocks.
-				continue
-			}
-			if err == errFutureTimestamp {
-				// Queue the block to be tried again if it is a future block.
-				go cs.threadedSleepOnFutureBlock(blocks[i])
-			}
-			if err != nil {
-				return err
-			}
-
-			// Try adding the block to consensus.
-			changeEntry, err := cs.addBlockToTree(tx, blocks[i], parent)
-			if err == nil {
-				changes = append(changes, changeEntry)
-				chainExtended = true
-				var applied, reverted []string
-				for _, b := range changeEntry.AppliedBlocks {
-					applied = append(applied, b.String()[:6])
-				}
-				for _, b := range changeEntry.RevertedBlocks {
-					reverted = append(reverted, b.String()[:6])
-				}
-			}
-			if err == modules.ErrNonExtendingBlock {
-				err = nil
-			}
-			if err != nil {
-				return err
-			}
-			// Sanity check - we should never apply fewer blocks than we revert.
-			if len(changeEntry.AppliedBlocks) < len(changeEntry.RevertedBlocks) {
-				err := errors.New("after adding a change entry, there are more reverted blocks than applied ones")
-				cs.log.Severe(err)
-				return err
-			}
+		parentHeader, err := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
+		if err == modules.ErrBlockKnown {
+			// Skip over known blocks.
+			return err
 		}
+		// if err == errFutureTimestamp {
+		// 	// Queue the block to be tried again if it is a future block.
+		// 	go cs.threadedSleepOnFutureBlock(block)
+		// }
+		if err != nil {
+			return err
+		}
+
+		// Try adding the block to consensus.
+		changeEntry, err := cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
+
 		return nil
 	})
 	if _, ok := setErr.(bolt.MmapError); ok {
@@ -468,24 +472,11 @@ func (cs *ConsensusSet) managedAcceptBlocksForSPV(blocks []types.Block) (blockch
 		os.Exit(1)
 	}
 	if setErr != nil {
-		if len(changes) == 0 {
-			fmt.Println("Received an invalid block set.")
-			cs.log.Println("Consensus received an invalid block:", setErr)
-		} else {
-			fmt.Println("Received a partially valid block set.")
-			cs.log.Println("Consensus received a chain of blocks, where one was valid, but others were not:", setErr)
-		}
-		return false, setErr
+		fmt.Println("Received an invalid single block.")
+		cs.log.Println("Consensus received an invalid single block:", setErr)
+		return setErr
 	}
-	// Stop here if the blocks did not extend the longest blockchain.
-	if !chainExtended {
-		return false, modules.ErrNonExtendingBlock
-	}
-	// Send any changes to subscribers.
-	for i := 0; i < len(changes); i++ {
-		cs.updateSubscribers(changes[i])
-	}
-	return chainExtended, nil
+	return nil
 }
 
 // managedAcceptHeaders will try to add headers to the consensus set. If the
