@@ -207,12 +207,13 @@ func generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock, pbh *modules.Processe
 		if err != nil {
 			return err
 		}
+		//TODO: need to update the cs.processedBlockHeaders
 	}
 
 	return blockMap.Put(bid[:], encoding.Marshal(*pb))
 }
 
-func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) error {
+func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// Sanity check - the block being applied should have the current block as
 	// a parent.
 	if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
@@ -239,7 +240,7 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 	// applied on the block. This includes adding any outputs that have reached
 	// maturity, applying any contracts with missed storage proofs, and adding
 	// the miner payouts to the list of delayed outputs.
-	applyMaintenance(tx, pb, pbh)
+	applyMaintenance(tx, pb, nil)
 
 	// DiffsGenerated are only set to true after the block has been fully
 	// validated and integrated. This is required to prevent later blocks from
@@ -261,14 +262,6 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 	// path.
 	if build.DEBUG {
 		pb.ConsensusChecksum = consensusChecksum(tx)
-	}
-
-	if pbh != nil {
-		blockHeaderMap := tx.Bucket(BlockHeaderMap)
-		err := blockHeaderMap.Put(bid[:], encoding.Marshal(*pbh))
-		if err != nil {
-			return err
-		}
 	}
 
 	return blockMap.Put(bid[:], encoding.Marshal(*pb))

@@ -167,14 +167,13 @@ func (cs *ConsensusSet) applyUntilBlockForSPV(tx *bolt.Tx, block *processedBlock
 	if block.DiffsGenerated {
 		commitDiffSet(tx, block, modules.DiffApply)
 	} else {
-		err := generateAndApplyDiffForSPV(tx, block, newBlockHeader)
+		err := generateAndApplyDiffForSPV(tx, block)
 		if err != nil {
 			// Mark the block as invalid.
 			cs.dosBlocks[block.Block.ID()] = struct{}{}
-			return nil, err
+			return err
 		}
 	}
-	appliedBlocks = append(appliedBlocks, block)
 
 	// Sanity check - after applying a block, check that the consensus set
 	// has maintained consistency.
@@ -184,7 +183,7 @@ func (cs *ConsensusSet) applyUntilBlockForSPV(tx *bolt.Tx, block *processedBlock
 		cs.maybeCheckConsistency(tx)
 	}
 
-	return appliedBlocks, nil
+	return nil
 }
 
 // applyUntilHeader will successively apply the headers between the consensus

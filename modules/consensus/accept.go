@@ -462,9 +462,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block) error 
 		}
 
 		// Try adding the block to consensus.
-		changeEntry, err := cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
-
-		return nil
+		return cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
 	})
 	if _, ok := setErr.(bolt.MmapError); ok {
 		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
