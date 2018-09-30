@@ -13,13 +13,8 @@ const (
 	// commit hash.
 	MaxEncodedVersionLength = 100
 
-<<<<<<< HEAD
 	// Version is the current version of hsd.
 	Version = "0.2.0"
-=======
-	// Version is the current version of siad.
-	Version = "1.3.5"
->>>>>>> nebulous-unstable
 )
 
 // IsVersion returns whether str is a valid version number.
