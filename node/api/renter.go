@@ -3,7 +3,9 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,8 +14,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter"
 	"github.com/HyperspaceApp/Hyperspace/types"
-
-	"regexp"
+	"github.com/HyperspaceApp/errors"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -277,6 +278,21 @@ func (api *API) renterHandlerPOST(w http.ResponseWriter, req *http.Request, _ ht
 	WriteSuccess(w)
 }
 
+// renterContractCancelHandler handles the API call to cancel a specific Renter contract.
+func (api *API) renterContractCancelHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var fcid types.FileContractID
+	if err := fcid.LoadString(req.FormValue("id")); err != nil {
+		WriteError(w, Error{"unable to parse id:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	err := api.renter.CancelContract(fcid)
+	if err != nil {
+		WriteError(w, Error{"unable to cancel contract:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteSuccess(w)
+}
+
 // renterContractsHandler handles the API call to request the Renter's
 // contracts.
 //
@@ -292,10 +308,12 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 	// Parse flags
 	inactive, err := scanBool(req.FormValue("inactive"))
 	if err != nil {
+		WriteError(w, Error{"unable to parse inactive:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	expired, err := scanBool(req.FormValue("expired"))
 	if err != nil {
+		WriteError(w, Error{"unable to parse expired:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
 
@@ -468,7 +486,11 @@ func (api *API) renterDownloadsHandler(w http.ResponseWriter, _ *http.Request, _
 
 // renterLoadHandler handles the API call to load a '.sia' file.
 func (api *API) renterLoadHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	source := req.FormValue("source")
+	source, err := url.QueryUnescape(req.FormValue("source"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape the source path"}, http.StatusBadRequest)
+		return
+	}
 	if !filepath.IsAbs(source) {
 		WriteError(w, Error{"source must be an absolute path"}, http.StatusBadRequest)
 		return
@@ -498,17 +520,21 @@ func (api *API) renterLoadASCIIHandler(w http.ResponseWriter, req *http.Request,
 // renterRenameHandler handles the API call to rename a file entry in the
 // renter.
 func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	err := api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), req.FormValue("newhyperspacepath"))
+	newSiaPath, err := url.QueryUnescape(req.FormValue("newhyperspacepath"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape newhyperspacepath"}, http.StatusBadRequest)
+		return
+	}
+	err = api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), newSiaPath)
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
 	}
-
 	WriteSuccess(w)
 }
 
-// renterFileHandler handles the API call to return specific file.
-func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+// renterFileHandler handles GET requests to the /renter/file/:hyperspacepath API endpoint.
+func (api *API) renterFileHandlerGET(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	file, err := api.renter.File(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
@@ -517,6 +543,21 @@ func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps h
 	WriteJSON(w, RenterFile{
 		File: file,
 	})
+}
+
+// renterFileHandler handles POST requests to the /renter/file/:hyperspacepath API endpoint.
+func (api *API) renterFileHandlerPOST(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	newTrackingPath := req.FormValue("trackingpath")
+
+	// Handle changing the tracking path of a file.
+	if newTrackingPath != "" {
+		hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
+		if err := api.renter.SetFileTrackingPath(hyperspacepath, newTrackingPath); err != nil {
+			WriteError(w, Error{"unable to parse funds"}, http.StatusBadRequest)
+			return
+		}
+	}
+	WriteSuccess(w)
 }
 
 // renterFilesHandler handles the API call to list all of the files.
@@ -594,7 +635,10 @@ func (api *API) renterDownloadAsyncHandler(w http.ResponseWriter, req *http.Requ
 // /renter/download endpoint. Validation of these parameters is done by the
 // renter.
 func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (modules.RenterDownloadParameters, error) {
-	destination := req.FormValue("destination")
+	destination, err := url.QueryUnescape(req.FormValue("destination"))
+	if err != nil {
+		return modules.RenterDownloadParameters{}, errors.AddContext(err, "failed to unescape the destination")
+	}
 
 	// The offset and length in bytes.
 	offsetparam := req.FormValue("offset")
@@ -612,26 +656,26 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 	if len(offsetparam) > 0 {
 		_, err := fmt.Sscan(offsetparam, &offset)
 		if err != nil {
-			return modules.RenterDownloadParameters{}, build.ExtendErr("could not decode the offset as uint64: ", err)
+			return modules.RenterDownloadParameters{}, errors.AddContext(err, "could not decode the offset as uint64")
 		}
 	}
 	if len(lengthparam) > 0 {
 		_, err := fmt.Sscan(lengthparam, &length)
 		if err != nil {
-			return modules.RenterDownloadParameters{}, build.ExtendErr("could not decode the offset as uint64: ", err)
+			return modules.RenterDownloadParameters{}, errors.AddContext(err, "could not decode the offset as uint64")
 		}
 	}
 
 	// Parse the httpresp parameter.
 	httpresp, err := scanBool(httprespparam)
 	if err != nil {
-		return modules.RenterDownloadParameters{}, build.ExtendErr("httpresp parameter could not be parsed", err)
+		return modules.RenterDownloadParameters{}, errors.AddContext(err, "httpresp parameter could not be parsed")
 	}
 
 	// Parse the async parameter.
 	async, err := scanBool(asyncparam)
 	if err != nil {
-		return modules.RenterDownloadParameters{}, build.ExtendErr("async parameter could not be parsed", err)
+		return modules.RenterDownloadParameters{}, errors.AddContext(err, "async parameter could not be parsed")
 	}
 
 	hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/") // Sia file name.
@@ -653,14 +697,18 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 // renterShareHandler handles the API call to create a '.sia' file that
 // shares a set of file.
 func (api *API) renterShareHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	destination := req.FormValue("destination")
+	destination, err := url.QueryUnescape(req.FormValue("destination"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape the destination path"}, http.StatusBadRequest)
+		return
+	}
 	// Check that the destination path is absolute.
 	if !filepath.IsAbs(destination) {
 		WriteError(w, Error{"destination must be an absolute path"}, http.StatusBadRequest)
 		return
 	}
 
-	err := api.renter.ShareFiles(strings.Split(req.FormValue("hyperspacepaths"), ","), destination)
+	err = api.renter.ShareFiles(strings.Split(req.FormValue("hyperspacepaths"), ","), destination)
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -696,7 +744,11 @@ func (api *API) renterStreamHandler(w http.ResponseWriter, req *http.Request, ps
 
 // renterUploadHandler handles the API call to upload a file.
 func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	source := req.FormValue("source")
+	source, err := url.QueryUnescape(req.FormValue("source"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape the source path"}, http.StatusBadRequest)
+		return
+	}
 	if !filepath.IsAbs(source) {
 		WriteError(w, Error{"source must be an absolute path"}, http.StatusBadRequest)
 		return
@@ -756,7 +808,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 	}
 
 	// Call the renter to upload the file.
-	err := api.renter.Upload(modules.FileUploadParams{
+	err = api.renter.Upload(modules.FileUploadParams{
 		Source:      source,
 		SiaPath:     strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
 		ErasureCode: ec,

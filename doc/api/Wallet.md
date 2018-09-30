@@ -268,7 +268,7 @@ returns a list of seeds in use by the wallet. The primary seed is the only seed
 that gets used to generate new addresses. This call is unavailable when the
 wallet is locked.
 
-A seed is an encoded version of a 128 bit random seed. The output is 15 words
+A seed is an encoded version of a 256 bit random seed. The output is 29 words
 chosen from a small dictionary as indicated by the input. The most common
 choice for the dictionary is going to be 'english'. The underlying seed is the
 same no matter what dictionary is used for the encoding. The encoding also
@@ -759,18 +759,45 @@ takes the address specified by :addr and returns a JSON response indicating if t
 }
 ```
 
+#### /wallet/watch [GET]
+
+returns the set of addresses that the wallet is watching. This set only
+includes addresses that were explicitly requested to be watched; addresses
+that were generated automatically by the wallet, or by /wallet/address, are
+not included.
+
+###### JSON Response [(with comments)](/doc/api/Wallet.md#json-response-12)
+```javascript
+{
+  // The addresses currently watched by the wallet.
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ]
+}
+```
+
 #### /wallet/watch [POST]
 
-start tracking a set of addresses. Outputs owned by the addresses will be
-reported in /wallet/unspent.
+updates the set of addresses watched by the wallet.
 
 ###### Request Body
-```javascript
-[
-  // unlock hashes to track
-  "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
-]
+```
+{
+  // The addresses to add or remove from the current set.
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ],
+
+  // If true, remove the addresses instead of adding them.
+  "remove": false,
+
+  // If true, the wallet will not rescan the blockchain. Only set this flag if
+  // the addresses have never appeared in the blockchain.
+  "unused": true,
+}
+
 ```
 
 ###### Response

@@ -1,9 +1,12 @@
 Version History
 ---------------
 
+v0.2.0
+- Added a /renter/contract/cancel endpoint
+
 Sept 19, 2018:
 
-v0.2.0
+v0.2.0-beta
 - Full nodes now generate and maintain Golomb-coded set filters
 - Wallets now generate addresses in accordance with an address gap limit
 - Scanning uses GCS filters and address gap limits and is much faster

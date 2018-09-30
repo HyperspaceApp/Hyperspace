@@ -470,6 +470,11 @@ func dbGetSeedsMaximumInternalIndexForSeed(tx *bolt.Tx, seedIndex uint64) (index
 	return
 }
 
+// dbPutWatchedAddresses stores the set of watched addresses.
+func dbPutWatchedAddresses(tx *bolt.Tx, addrs []types.UnlockHash) error {
+	return tx.Bucket(bucketWallet).Put(keyWatchedAddrs, encoding.Marshal(addrs))
+}
+
 // dbPutSeedsMaximumInternalIndexForSeed sets the maximum internal address index for a given seed
 // number.
 func dbPutSeedsMaximumInternalIndexForSeed(tx *bolt.Tx, seedIndex, index uint64) (err error) {

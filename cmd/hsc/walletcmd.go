@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 
@@ -47,8 +48,9 @@ var (
 	walletBroadcastCmd = &cobra.Command{
 		Use:   "broadcast [txn]",
 		Short: "Broadcast a transaction",
-		Long:  "Broadcast a transaction to connected peers. The transaction must be valid.",
-		Run:   wrap(walletbroadcastcmd),
+		Long: `Broadcast a JSON-encoded transaction to connected peers. The transaction must
+be valid. txn may be either JSON, base64, or a file containing either.`,
+		Run: wrap(walletbroadcastcmd),
 	}
 
 	walletChangepasswordCmd = &cobra.Command{
@@ -150,9 +152,14 @@ A dynamic transaction fee is applied depending on the size of the transaction an
 	walletSignCmd = &cobra.Command{
 		Use:   "sign [txn] [tosign]",
 		Short: "Sign a transaction",
-		Long: `Sign the specified inputs of a transaction. If siad is running with an
-unlocked wallet, the /wallet/sign API call will be used. Otherwise, sign will
-prompt for the wallet seed, and the signing key(s) will be regenerated.`,
+		Long: `Sign a transaction. If siad is running with an unlocked wallet, the
+/wallet/sign API call will be used. Otherwise, sign will prompt for the wallet
+seed, and the signing key(s) will be regenerated.
+
+txn may be either JSON, base64, or a file containing either.
+tosign is an optional JSON array of TransactionSignature ParentIDs to sign. If
+tosign is not provided, the wallet will sign every TransactionSignature it has
+keys for.`,
 		Run: walletsigncmd,
 	}
 
@@ -428,17 +435,7 @@ Estimated Fee:       %v / KB
 
 // walletbroadcastcmd broadcasts a transaction.
 func walletbroadcastcmd(txnStr string) {
-	var txn types.Transaction
-	var err error
-	if walletRawTxn {
-		var txnBytes []byte
-		txnBytes, err = base64.StdEncoding.DecodeString(txnStr)
-		if err == nil {
-			err = encoding.Unmarshal(txnBytes, &txn)
-		}
-	} else {
-		err = json.Unmarshal([]byte(txnStr), &txn)
-	}
+	txn, err := parseTxn(txnStr)
 	if err != nil {
 		die("Could not decode transaction:", err)
 	}
@@ -470,10 +467,9 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 		os.Exit(exitCodeUsage)
 	}
 
-	var txn types.Transaction
-	err := json.Unmarshal([]byte(args[0]), &txn)
+	txn, err := parseTxn(args[0])
 	if err != nil {
-		die("Invalid transaction:", err)
+		die("Could not decode transaction:", err)
 	}
 
 	var toSign []crypto.Hash
@@ -489,8 +485,13 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 	if err == nil {
 		txn = wspr.Transaction
 	} else {
-		// fallback to offline keygen
-		fmt.Println("Signing via API failed: either siad is not running, or your wallet is locked.")
+		// if siad is running, but the wallet is locked, assume the user
+		// wanted to sign with siad
+		if strings.Contains(err.Error(), modules.ErrLockedWallet.Error()) {
+			die("Signing via API failed: siad is running, but the wallet is locked.")
+		}
+
+		// siad is not running; fallback to offline keygen
 		fmt.Println("Enter your wallet seed to generate the signing key(s) now and sign without siad.")
 		seedString, err := passwordPrompt("Seed: ")
 		if err != nil {
@@ -500,10 +501,22 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 		if err != nil {
 			die("Invalid seed:", err)
 		}
+		// signing via seed may take a while, since we need to regenerate
+		// keys. If it takes longer than a second, print a message to assure
+		// the user that this is normal.
+		done := make(chan struct{})
+		go func() {
+			select {
+			case <-time.After(time.Second):
+				fmt.Println("Generating keys; this may take a few seconds...")
+			case <-done:
+			}
+		}()
 		err = wallet.SignTransaction(&txn, seed, toSign)
 		if err != nil {
 			die("Failed to sign transaction:", err)
 		}
+		close(done)
 	}
 
 	if walletRawTxn {

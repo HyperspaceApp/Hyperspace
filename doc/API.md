@@ -861,16 +861,17 @@ Renter
 | --------------------------------------------------------------------------| --------- |
 | [/renter](#renter-get)                                                    | GET       |
 | [/renter](#renter-post)                                                   | POST      |
+| [/renter/contract/cancel](#rentercontractcancel-post)                     | POST      |
 | [/renter/contracts](#rentercontracts-get)                                 | GET       |
 | [/renter/downloads](#renterdownloads-get)                                 | GET       |
 | [/renter/downloads/clear](#renterdownloadsclear-post)                     | POST      |
 | [/renter/prices](#renterprices-get)                                       | GET       |
 | [/renter/files](#renterfiles-get)                                         | GET       |
 | [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)               | GET       |
+| [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-post)              | POST       |
 | [/renter/delete/*___hyperspacepath___](#renterdeletehyperspacepath-post)                | POST      |
 | [/renter/download/*___hyperspacepath___](#renterdownloadhyperspacepath-get)             | GET       |
 | [/renter/downloadasync/*___hyperspacepath___](#renterdownloadasynchyperspacepath-get)   | GET       |
-| [/renter/rename/*___hyperspacepath___](#renterrenamehyperspacepath-post)                | POST      |
 | [/renter/stream/*___hyperspacepath___](#renterstreamhyperspacepath-get)                 | GET       |
 | [/renter/upload/*___hyperspacepath___](#renteruploadhyperspacepath-post)                | POST      |
 
@@ -926,6 +927,20 @@ streamcachesize   // number of data chunks cached when streaming
 ###### Response
 standard success or error response. See
 [#standard-responses](#standard-responses).
+
+#### /renter/contract/cancel [POST]
+
+cancels a specific contract of the Renter.
+
+###### Query String Parameters [(with comments)](/doc/api/Renter.md#query-string-parameter)
+```
+// ID of the file contract
+id
+```
+
+###### Response
+standard success or error response. See
+[API.md#standard-responses](/doc/API.md#standard-responses).
 
 #### /renter/contracts [GET]
 
@@ -1077,6 +1092,28 @@ lists the estimated prices of performing various storage and data operations.
 }
 ```
 
+#### /renter/file/*___hyperspacepath___ [POST]
+
+endpoint for changing file metadata.
+
+###### Path Parameters [(with comments)](/doc/api/Renter.md#path-parameters-3)
+```
+// SiaPath of the file on the network. The path must be non-empty, may not
+// include any path traversal strings ("./", "../"), and may not begin with a
+// forward-slash character.
+*hyperspacepath
+```
+
+###### Query String Parameters [(with comments)](/doc/api/Renter.md#query-string-parameters-3)
+```
+// If provided, this parameter changes the tracking path of a file to the
+// specified path. Useful if moving the file to a different location on disk.
+trackingpath
+```
+
+###### Response
+standard success or error response. See
+[#standard-responses](#standard-responses).
 
 #### /renter/delete/*___hyperspacepath___ [POST]
 
@@ -1158,11 +1195,13 @@ standard success or error response. See
 downloads a file using http streaming. This call blocks until the data is
 received.
 The streaming endpoint also uses caching internally to prevent hsd from
-redownloading the same chunk multiple times when only parts of a file are
+re-downloading the same chunk multiple times when only parts of a file are
 requested at once. This might lead to a substantial increase in ram usage and
 therefore it is not recommended to stream multiple files in parallel at the
 moment. This restriction will be removed together with the caching once partial
-downloads are supported in the future.
+downloads are supported in the future. If you want to stream multiple files you
+should increase the size of the Renter's `streamcachesize` to at least 2x the
+number of files you are steaming.
 
 ###### Path Parameters [(with comments)](/doc/api/Renter.md#path-parameters-1)
 ```
@@ -1289,6 +1328,7 @@ Wallet
 | [/wallet/unlockconditions/:___addr___](#walletunlockconditionsaddr-get) | GET       |
 | [/wallet/unspent](#walletunspent-get)                                   | GET       |
 | [/wallet/verify/address/:___addr___](#walletverifyaddressaddr-get)      | GET       |
+| [/wallet/watch](#walletwatch-get)                                       | GET       |
 | [/wallet/watch](#walletwatch-post)                                      | POST      |
 
 For examples and detailed descriptions of request and response parameters,
@@ -1717,17 +1757,36 @@ takes the address specified by :addr and returns a JSON response indicating if t
 }
 ```
 
+#### /wallet/watch [GET]
+
+returns the set of addresses that the wallet is watching.
+
+###### JSON Response [(with comments)](/doc/api/Wallet.md#json-response-12)
+```javascript
+{
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ]
+}
+```
+
 #### /wallet/watch [POST]
 
-Function: Start tracking a set of addresses. Outputs owned by the addresses
-will be reported in /wallet/unspent.
+updates the set of addresses watched by the wallet. Outputs owned by the
+addresses will be reported in /wallet/unspent.
 
 ###### Request Body
 ```
-[
-  "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
-]
+{
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ],
+  "remove": false,
+  "unused": true,
+}
+
 ```
 
 ###### Response

@@ -111,6 +111,7 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 	if api.renter != nil {
 		router.GET("/renter", api.renterHandlerGET)
 		router.POST("/renter", RequirePassword(api.renterHandlerPOST, requiredPassword))
+		router.POST("/renter/contract/cancel", RequirePassword(api.renterContractCancelHandler, requiredPassword))
 		router.GET("/renter/contracts", api.renterContractsHandler)
 		router.GET("/renter/downloads", api.renterDownloadsHandler)
 		router.POST("/renter/downloads/clear", RequirePassword(api.renterClearDownloadsHandler, requiredPassword))
@@ -131,6 +132,7 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.POST("/renter/rename/*hyperspacepath", RequirePassword(api.renterRenameHandler, requiredPassword))
 		router.GET("/renter/stream/*hyperspacepath", api.renterStreamHandler)
 		router.POST("/renter/upload/*hyperspacepath", RequirePassword(api.renterUploadHandler, requiredPassword))
+		router.POST("/renter/file/*hyperspacepath", RequirePassword(api.renterFileHandlerPOST, requiredPassword))
 
 		// HostDB endpoints.
 		router.GET("/hostdb", api.hostdbHandler)
@@ -182,7 +184,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.POST("/wallet/unlockconditions", RequirePassword(api.walletUnlockConditionsHandlerPOST, requiredPassword))
 		router.GET("/wallet/unspent", RequirePassword(api.walletUnspentHandler, requiredPassword))
 		router.POST("/wallet/sign", RequirePassword(api.walletSignHandler, requiredPassword))
-		router.POST("/wallet/watch", RequirePassword(api.walletWatchHandler, requiredPassword))
+		router.GET("/wallet/watch", RequirePassword(api.walletWatchHandlerGET, requiredPassword))
+		router.POST("/wallet/watch", RequirePassword(api.walletWatchHandlerPOST, requiredPassword))
 	}
 
 	// Apply UserAgent middleware and return the Router

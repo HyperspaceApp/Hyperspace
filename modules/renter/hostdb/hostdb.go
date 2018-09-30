@@ -12,11 +12,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb/hosttree"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
+	"github.com/HyperspaceApp/fastrand"
 	"github.com/HyperspaceApp/threadgroup"
 )
 
@@ -113,7 +115,7 @@ func NewCustomHostDB(g modules.Gateway, cs modules.ConsensusSet, persistDir stri
 	}
 
 	// The host tree is used to manage hosts and query them at random.
-	hdb.hostTree = hosttree.New(hdb.calculateHostWeight)
+	hdb.hostTree = hosttree.New(hdb.calculateHostWeight, deps.Resolver())
 
 	// Load the prior persistence structures.
 	hdb.mu.Lock()
@@ -206,7 +208,7 @@ func (hdb *HostDB) AllHosts() (allHosts []modules.HostDBEntry) {
 // AverageContractPrice returns the average price of a host.
 func (hdb *HostDB) AverageContractPrice() (totalPrice types.Currency) {
 	sampleSize := 32
-	hosts := hdb.hostTree.SelectRandom(sampleSize, nil)
+	hosts := hdb.hostTree.SelectRandom(sampleSize, nil, nil)
 	if len(hosts) == 0 {
 		return totalPrice
 	}
@@ -214,6 +216,41 @@ func (hdb *HostDB) AverageContractPrice() (totalPrice types.Currency) {
 		totalPrice = totalPrice.Add(host.ContractPrice)
 	}
 	return totalPrice.Div64(uint64(len(hosts)))
+}
+
+// CheckForIPViolations accepts a number of host public keys and returns the
+// ones that violate the rules of the addressFilter.
+func (hdb *HostDB) CheckForIPViolations(hosts []types.SiaPublicKey) []types.SiaPublicKey {
+	// Shuffle the hosts to non-deterministically decide which host is bad. The
+	// reason being that the address which is passed to the filter first, has
+	// priority over addresses which are passed in later. So if address A and B
+	// together violate the rules, passing B first will result in A being
+	// considered a bad host and vice versa.
+	if build.Release != "testing" {
+		fastrand.Shuffle(len(hosts), func(i, j int) { hosts[i], hosts[j] = hosts[j], hosts[i] })
+	}
+
+	// Create a filter.
+	filter := hosttree.NewFilter(hdb.deps.Resolver())
+
+	var badHosts []types.SiaPublicKey
+	for _, host := range hosts {
+		// Get the host from the db.
+		node, exists := hdb.hostTree.Select(host)
+		if !exists {
+			// A host that's not in the hostdb is bad.
+			badHosts = append(badHosts, host)
+			continue
+		}
+		// Check if the host violates the rules.
+		if filter.Filtered(node.NetAddress) {
+			badHosts = append(badHosts, host)
+			continue
+		}
+		// If it didn't then we add it to the filter.
+		filter.Add(node.NetAddress)
+	}
+	return badHosts
 }
 
 // Close closes the hostdb, terminating its scanning threads
@@ -250,12 +287,12 @@ func (hdb *HostDB) InitialScanComplete() (complete bool, err error) {
 // RandomHosts implements the HostDB interface's RandomHosts() method. It takes
 // a number of hosts to return, and a slice of netaddresses to ignore, and
 // returns a slice of entries.
-func (hdb *HostDB) RandomHosts(n int, excludeKeys []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
+func (hdb *HostDB) RandomHosts(n int, blacklist, addressBlacklist []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
 	hdb.mu.RLock()
 	initialScanComplete := hdb.initialScanComplete
 	hdb.mu.RUnlock()
 	if !initialScanComplete {
 		return []modules.HostDBEntry{}, ErrInitialScanIncomplete
 	}
-	return hdb.hostTree.SelectRandom(n, excludeKeys), nil
+	return hdb.hostTree.SelectRandom(n, blacklist, addressBlacklist), nil
 }

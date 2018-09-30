@@ -150,24 +150,27 @@ func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 	// Build the list of FileInfos.
 	fileList := []modules.FileInfo{}
 	for _, f := range files {
-		var localPath string
-		siaPath := f.SiaPath()
-		lockID := r.mu.RLock()
-		tf, exists := r.persist.Tracking[siaPath]
-		r.mu.RUnlock(lockID)
-		if exists {
-			localPath = tf.RepairPath
-		}
+		localPath := f.LocalPath()
+		_, err := os.Stat(localPath)
+		onDisk := !os.IsNotExist(err)
+		redundancy := f.Redundancy(offline, goodForRenew)
 		fileList = append(fileList, modules.FileInfo{
-			SiaPath:        f.SiaPath(),
-			LocalPath:      localPath,
-			Filesize:       f.Size(),
-			Renewing:       true,
+			AccessTime:     f.AccessTime(),
 			Available:      f.Available(offline),
-			Redundancy:     f.Redundancy(offline, goodForRenew),
+			ChangeTime:     f.ChangeTime(),
+			CipherType:     f.MasterKey().Type().String(),
+			CreateTime:     f.CreateTime(),
+			Expiration:     f.Expiration(contracts),
+			Filesize:       f.Size(),
+			LocalPath:      localPath,
+			ModTime:        f.ModTime(),
+			OnDisk:         onDisk,
+			Recoverable:    onDisk || redundancy >= 1,
+			Redundancy:     redundancy,
+			Renewing:       true,
+			SiaPath:        f.SiaPath(),
 			UploadedBytes:  f.UploadedBytes(),
 			UploadProgress: f.UploadProgress(),
-			Expiration:     f.Expiration(contracts),
 		})
 	}
 	return fileList
@@ -204,25 +207,32 @@ func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
 
 	// Build the FileInfo
 	renewing := true
-	var localPath string
-	tf, exists := r.persist.Tracking[file.SiaPath()]
-	if exists {
-		localPath = tf.RepairPath
-	}
+	localPath := file.LocalPath()
+	_, err := os.Stat(localPath)
+	onDisk := !os.IsNotExist(err)
+	redundancy := file.Redundancy(offline, goodForRenew)
 	fileInfo = modules.FileInfo{
-		SiaPath:        file.SiaPath(),
-		LocalPath:      localPath,
-		Filesize:       file.Size(),
-		Renewing:       renewing,
+		AccessTime:     file.AccessTime(),
 		Available:      file.Available(offline),
-		Redundancy:     file.Redundancy(offline, goodForRenew),
+		ChangeTime:     file.ChangeTime(),
+		CipherType:     file.MasterKey().Type().String(),
+		CreateTime:     file.CreateTime(),
+		Expiration:     file.Expiration(contracts),
+		Filesize:       file.Size(),
+		LocalPath:      localPath,
+		ModTime:        file.ModTime(),
+		OnDisk:         onDisk,
+		Recoverable:    onDisk || redundancy >= 1,
+		Redundancy:     redundancy,
+		Renewing:       renewing,
+		SiaPath:        file.SiaPath(),
 		UploadedBytes:  file.UploadedBytes(),
 		UploadProgress: file.UploadProgress(),
-		Expiration:     file.Expiration(contracts),
 	}
 
 	return fileInfo, nil
 }
+
 
 // RenameFile takes an existing file and changes the nickname. The original
 // file must exist, and there must not be any file that already has the
