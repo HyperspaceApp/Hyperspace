@@ -25,7 +25,7 @@ type explorerTester struct {
 	miner     modules.TestMiner
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	explorer *Explorer
 	testdir  string
@@ -59,7 +59,7 @@ func createExplorerTester(name string) (*explorerTester, error) {
 		log.Printf("Failed to open wallet: %s", err)
 		return nil, err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func (et *explorerTester) reorgToBlank() error {
 	if err != nil {
 		return err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return err

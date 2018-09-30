@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"github.com/HyperspaceApp/Hyperspace/crypto"
-	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 var (
@@ -47,9 +45,6 @@ var (
 		}
 		panic("undefined defaultParityPieces")
 	}()
-
-	// Erasure-coded piece size
-	pieceSize = modules.SectorSize - crypto.TwofishOverhead
 )
 
 const (

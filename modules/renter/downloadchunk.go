@@ -8,6 +8,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 
 	"github.com/HyperspaceApp/errors"
 )
@@ -37,7 +38,7 @@ type unfinishedDownloadChunk struct {
 	// Fetch + Write instructions - read only or otherwise thread safe.
 	destination downloadDestination // Where to write the recovered logical chunk.
 	erasureCode modules.ErasureCoder
-	masterKey   crypto.TwofishKey
+	masterKey   crypto.CipherKey
 
 	// Fetch + Write instructions - read only or otherwise thread safe.
 	staticChunkIndex  uint64                       // Required for deriving the encryption keys for each piece.
@@ -71,6 +72,9 @@ type unfinishedDownloadChunk struct {
 	// The download object, mostly to update download progress.
 	download *download
 	mu       sync.Mutex
+
+	// The SiaFile from which data is being downloaded.
+	renterFile *siafile.SiaFile
 
 	// Caching related fields
 	staticStreamCache *streamCache
@@ -232,10 +236,11 @@ func (udc *unfinishedDownloadChunk) threadedRecoverLogicalData() error {
 		// Download is complete, send out a notification and close the
 		// destination writer.
 		udc.download.endTime = time.Now()
+		err1 := udc.renterFile.UpdateAccessTime()
 		close(udc.download.completeChan)
-		err := udc.download.destination.Close()
+		err2 := udc.download.destination.Close()
 		udc.download.destination = nil
-		return err
+		return errors.Compose(err1, err2)
 	}
 	return nil
 }

@@ -246,7 +246,7 @@ func (c *Client) RenterStreamPartialGet(siaPath string, start, end uint64) (resp
 // path of a file to a new location. The file at newPath must exists.
 func (c *Client) RenterSetRepairPathPost(siaPath, newPath string) (err error) {
 	values := url.Values{}
-	values.Set("trackingpath", newPath)
+	values.Set("trackingpath", url.QueryEscape(newPath))
 	err = c.post("/renter/file/"+siaPath, values.Encode(), nil)
 	return
 }
@@ -269,5 +269,30 @@ func (c *Client) RenterUploadDefaultPost(path, siaPath string) (err error) {
 	values := url.Values{}
 	values.Set("source", path)
 	err = c.post(fmt.Sprintf("/renter/upload/%s", siaPath), values.Encode(), nil)
+	return
+}
+
+// RenterDirCreatePost uses the /renter/dir/ endpoint to create a directory for the
+// renter
+func (c *Client) RenterDirCreatePost(siaPath string) (err error) {
+	siaPath = strings.TrimPrefix(siaPath, "/")
+	err = c.post(fmt.Sprintf("/renter/dir/%s", siaPath), "action=create", nil)
+	return
+}
+
+// RenterDirDeletePost uses the /renter/dir/ endpoint to delete a directory for the
+// renter
+func (c *Client) RenterDirDeletePost(siaPath string) (err error) {
+	siaPath = strings.TrimPrefix(siaPath, "/")
+	err = c.post(fmt.Sprintf("/renter/dir/%s", siaPath), "action=delete", nil)
+	return
+}
+
+// RenterDirRenamePost uses the /renter/dir/ endpoint to rename a directory for the
+// renter
+func (c *Client) RenterDirRenamePost(siaPath, newSiaPath string) (err error) {
+	siaPath = strings.TrimPrefix(siaPath, "/")
+	newSiaPath = strings.TrimPrefix(newSiaPath, "/")
+	err = c.post(fmt.Sprintf("/renter/dir/%s?newsiapath=%s", siaPath, newSiaPath), "action=rename", nil)
 	return
 }

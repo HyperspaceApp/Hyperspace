@@ -38,6 +38,7 @@ import (
 
 	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/threadgroup"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 var (
@@ -160,15 +161,6 @@ type hostContractor interface {
 	SetRateLimits(int64, int64, uint64)
 }
 
-// A trackedFile contains metadata about files being tracked by the Renter.
-// Tracked files are actively repaired by the Renter. By default, files
-// uploaded by the user are tracked, and files that are added (via loading a
-// .sia file) are not.
-type trackedFile struct {
-	// location of original file on disk
-	RepairPath string
-}
-
 // A Renter is responsible for tracking all of the files that a user has
 // uploaded to Sia, as well as the locations and health of these files.
 //
@@ -220,6 +212,7 @@ type Renter struct {
 	mu                *siasync.RWMutex
 	tg                threadgroup.ThreadGroup
 	tpool             modules.TransactionPool
+	wal               *writeaheadlog.WAL
 }
 
 // Close closes the Renter and its dependencies
@@ -377,36 +370,30 @@ func (r *Renter) SetSettings(s modules.RenterSettings) error {
 // providing a different file with the same size.
 func (r *Renter) SetFileTrackingPath(siaPath, newPath string) error {
 	id := r.mu.Lock()
-	defer r.mu.Unlock(id)
 
 	// Check if file exists and is being tracked.
 	file, exists := r.files[siaPath]
 	if !exists {
+		r.mu.Unlock(id)
 		return fmt.Errorf("unknown file %s", siaPath)
-	}
-	tf, exists := r.persist.Tracking[siaPath]
-	if !exists {
-		return fmt.Errorf("file with path %s is not tracked", siaPath)
 	}
 
 	// Sanity check that a file with the correct size exists at the new
 	// location.
-	file.mu.Lock()
-	defer file.mu.Unlock()
 	fi, err := os.Stat(newPath)
 	if err != nil {
+		r.mu.Unlock(id)
 		return errors.AddContext(err, "failed to get fileinfo of the file")
 	}
-	if uint64(fi.Size()) != file.size {
-		return fmt.Errorf("file sizes don't match - want %v but got %v", file.size, fi.Size())
+	if uint64(fi.Size()) != file.Size() {
+		r.mu.Unlock(id)
+		return fmt.Errorf("file sizes don't match - want %v but got %v", file.Size(), fi.Size())
 	}
 
-	// Set new path
-	tf.RepairPath = newPath
-	r.persist.Tracking[siaPath] = tf
+	r.mu.Unlock(id)
 
-	// Save the change.
-	return r.saveSync()
+	// Set the new path on disk.
+	return file.SetLocalPath(newPath)
 }
 
 // ActiveHosts returns an array of hostDB's active hosts

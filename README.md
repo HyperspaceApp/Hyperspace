@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 # [![Hyperspace Logo](http://i.imgur.com/9rxi9UV.png)](http://hspace.app) v0.2.0 (Rye)
 ----------------------------
+=======
+# [![Sia Logo](http://sia.tech/img/svg/sia-green-logo.svg)](http://sia.tech) v1.3.5 (Capricorn)
+>>>>>>> nebulous-unstable
 
 [![Build Status](https://travis-ci.org/HyperspaceApp/Hyperspace.svg?branch=master)](https://travis-ci.org/HyperspaceApp/Hyperspace)
 [![GoDoc](https://godoc.org/github.com/HyperspaceApp/Hyperspace?status.svg)](https://godoc.org/github.com/HyperspaceApp/Hyperspace)

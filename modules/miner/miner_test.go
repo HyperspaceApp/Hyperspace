@@ -14,7 +14,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/HyperspaceApp/fastrand"
 )
 
 // A minerTester is the helper object for miner testing.
@@ -23,7 +22,7 @@ type minerTester struct {
 	cs        modules.ConsensusSet
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	miner *Miner
 
@@ -52,8 +51,7 @@ func createMinerTester(name string) (*minerTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	var key crypto.TwofishKey
-	fastrand.Read(key[:])
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err

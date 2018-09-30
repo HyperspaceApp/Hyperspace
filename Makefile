@@ -36,6 +36,7 @@ dependencies:
 	go get github.com/sasha-s/go-deadlock/...
 	go get -u github.com/gorilla/websocket
 	go get -u github.com/dchest/siphash
+	go get -u github.com/dchest/threefish
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
@@ -52,9 +53,10 @@ dependencies:
 run = .
 pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./gcs ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
-       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
-       ./modules/wallet ./modules/transactionpool ./modules/stratumminer ./node ./node/api ./persist ./siatest \
-       ./siatest/consensus ./siatest/renter ./siatest/wallet ./node/api/server ./sync ./types
+       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/renter/siafile \
+       ./modules/miner ./modules/miningpool ./modules/wallet ./modules/transactionpool ./modules/stratumminer \
+       ./node ./node/api ./node/api/server ./persist ./siatest ./siatest/consensus ./siatest/renter ./siatest/wallet \
+       ./sync ./types
 
 # fmt calls go fmt on all packages.
 fmt:
@@ -106,7 +108,7 @@ test-v:
 	go test -race -v -short -tags='debug testing netgo' -timeout=15s $(pkgs) -run=$(run)
 test-long: clean fmt vet lint
 	@mkdir -p cover
-	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug netgo' -timeout=1200s $(pkgs) -run=$(run)
+	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug netgo' -timeout=1800s $(pkgs) -run=$(run)
 test-vlong: clean fmt vet lint
 	@mkdir -p cover
 	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug vlong netgo' -timeout=5000s $(pkgs) -run=$(run)

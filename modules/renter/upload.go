@@ -14,13 +14,16 @@ package renter
 // all need to be fixed when we do enable it, but we should enable it.
 
 import (
-	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
+	"github.com/HyperspaceApp/errors"
 )
 
 var (
@@ -28,26 +31,16 @@ var (
 	errUploadDirectory = errors.New("cannot upload directory")
 )
 
-// newFile is a helper to more easily create a new Siafile.
-func newFile(name string, rsc modules.ErasureCoder, pieceSize, fileSize uint64, mode os.FileMode, source string) *siafile.SiaFile {
-	numChunks := 1
-	chunkSize := pieceSize * uint64(rsc.MinPieces())
-	if fileSize > 0 {
-		numChunks = int(fileSize / chunkSize)
-		if fileSize%chunkSize != 0 {
-			numChunks++
-		}
-	}
-	ecs := make([]modules.ErasureCoder, numChunks)
-	for i := 0; i < numChunks; i++ {
-		ecs[i] = rsc
-	}
-	return siafile.New(name, ecs, pieceSize, fileSize, mode, source)
-}
-
 // validateSource verifies that a sourcePath meets the
 // requirements for upload.
 func validateSource(sourcePath string) error {
+	// Check for read access
+	file, err := os.Open(sourcePath)
+	if err != nil {
+		return errors.AddContext(err, "unable to open the source file")
+	}
+	file.Close()
+
 	finfo, err := os.Stat(sourcePath)
 	if err != nil {
 		return err
@@ -94,7 +87,7 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 		return err
 	}
 	if up.ErasureCode == nil {
-		up.ErasureCode, _ = NewRSCode(defaultDataPieces, defaultParityPieces)
+		up.ErasureCode, _ = siafile.NewRSCode(defaultDataPieces, defaultParityPieces)
 	}
 
 	// Check that we have contracts to upload to. We need at least data +
@@ -107,21 +100,30 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 		return fmt.Errorf("not enough contracts to upload file: got %v, needed %v", numContracts, (up.ErasureCode.NumPieces()+up.ErasureCode.MinPieces())/2)
 	}
 
+	// Create the directory path on disk. Renter directory is already present so
+	// only files not in top level directory need to have directories created
+	dir, _ := filepath.Split(up.SiaPath)
+	dirSiaPath := strings.TrimSuffix(dir, "/")
+	if dirSiaPath != "" {
+		if err := r.createDir(dirSiaPath); err != nil {
+			return err
+		}
+	}
+
 	// Create file object.
-	f := newFile(up.SiaPath, up.ErasureCode, pieceSize, uint64(fileInfo.Size()), fileInfo.Mode(), up.Source)
+	siaFilePath := filepath.Join(r.persistDir, up.SiaPath+ShareExtension)
+	cipherType := crypto.TypeDefaultRenter
+
+	// Create the Siafile.
+	f, err := siafile.New(siaFilePath, up.SiaPath, up.Source, r.wal, up.ErasureCode, crypto.GenerateSiaKey(cipherType), uint64(fileInfo.Size()), fileInfo.Mode())
+	if err != nil {
+		return err
+	}
 
 	// Add file to renter.
 	lockID = r.mu.Lock()
 	r.files[up.SiaPath] = f
-	r.persist.Tracking[up.SiaPath] = trackedFile{
-		RepairPath: f.LocalPath(),
-	}
-	r.saveSync()
-	err = r.saveFile(f)
 	r.mu.Unlock(lockID)
-	if err != nil {
-		return err
-	}
 
 	// Send the upload to the repair loop.
 	hosts := r.managedRefreshHostsAndWorkers()

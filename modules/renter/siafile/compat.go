@@ -2,9 +2,11 @@ package siafile
 
 import (
 	"os"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/errors"
 )
 
 type (

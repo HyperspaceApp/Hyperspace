@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -16,6 +16,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 const (
@@ -24,6 +27,10 @@ const (
 	PersistFilename = "renter.json"
 	// ShareExtension is the extension to be used
 	ShareExtension = ".sia"
+	// SiaDirMetadata is the name of the metadata file for the sia directory
+	SiaDirMetadata = ".siadir"
+	// walFile is the filename of the renter's writeaheadlog's file.
+	walFile = modules.RenterDir + ".wal"
 )
 
 var (
@@ -55,7 +62,6 @@ type (
 		MaxDownloadSpeed int64
 		MaxUploadSpeed   int64
 		StreamCacheSize  uint64
-		Tracking         map[string]trackedFile
 	}
 )
 
@@ -84,11 +90,11 @@ func (f *file) MarshalSia(w io.Writer) error {
 
 	// encode erasureCode
 	switch code := f.erasureCode.(type) {
-	case *rsCode:
+	case *siafile.RSCode:
 		err = enc.EncodeAll(
 			"Reed-Solomon",
-			uint64(code.dataPieces),
-			uint64(code.numPieces-code.dataPieces),
+			uint64(code.MinPieces()),
+			uint64(code.NumPieces()-code.MinPieces()),
 		)
 		if err != nil {
 			return err
@@ -149,7 +155,7 @@ func (f *file) UnmarshalSia(r io.Reader) error {
 		if err != nil {
 			return err
 		}
-		rsc, err := NewRSCode(int(nData), int(nParity))
+		rsc, err := siafile.NewRSCode(int(nData), int(nParity))
 		if err != nil {
 			return err
 		}
@@ -174,33 +180,54 @@ func (f *file) UnmarshalSia(r io.Reader) error {
 	return nil
 }
 
-// saveFile saves a file to the renter directory.
-func (r *Renter) saveFile(f *siafile.SiaFile) error {
-	if f.Deleted() { // TODO: violation of locking convention
-		return errors.New("can't save deleted file")
-	}
-	// Create directory structure specified in nickname.
-	fullPath := filepath.Join(r.persistDir, f.SiaPath()+ShareExtension)
-	err := os.MkdirAll(filepath.Dir(fullPath), 0700)
-	if err != nil {
+// createDir creates directory in the renter directory
+func (r *Renter) createDir(siapath string) error {
+	// Enforce nickname rules.
+	if err := validateSiapath(siapath); err != nil {
 		return err
 	}
 
-	// Open SafeFile handle.
-	handle, err := persist.NewSafeFile(filepath.Join(r.persistDir, f.SiaPath()+ShareExtension))
-	if err != nil {
-		return err
-	}
-	defer handle.Close()
-
-	// Write file data.
-	err = r.shareFiles([]*siafile.SiaFile{f}, handle)
-	if err != nil {
+	// Create direcotry
+	path := filepath.Join(r.persistDir, siapath)
+	if err := os.MkdirAll(path, 0700); err != nil {
 		return err
 	}
 
-	// Commit the SafeFile.
-	return handle.CommitSync()
+	// Make sure all parent directories have metadata files
+	//
+	// TODO: this should be change when files are moved out of the top level
+	// directory of the renter.
+	for path != filepath.Dir(r.persistDir) {
+		if err := createDirMetadata(path); err != nil {
+			return err
+		}
+		path = filepath.Dir(path)
+	}
+	return nil
+}
+
+// createDirMetadata makes sure there is a metadata file in the directory and
+// updates or creates one as needed
+func createDirMetadata(path string) error {
+	fullPath := filepath.Join(path, SiaDirMetadata)
+	// Check if metadata file exists
+	if _, err := os.Stat(fullPath); err == nil {
+		// TODO: update metadata file
+		return nil
+	}
+
+	// TODO: update to get actual min redundancy
+	data := struct {
+		LastUpdate    int64
+		MinRedundancy float64
+	}{time.Now().UnixNano(), float64(0)}
+
+	metadataHeader := persist.Metadata{
+		Header:  "Sia Directory Metadata",
+		Version: persistVersion,
+	}
+
+	return persist.SaveJSON(metadataHeader, data, fullPath)
 }
 
 // saveSync stores the current renter data to disk and then syncs to disk.
@@ -226,29 +253,21 @@ func (r *Renter) loadSiaFiles() error {
 			return nil
 		}
 
-		// Open the file.
-		file, err := os.Open(path)
+		// Load the Siafile.
+		sf, err := siafile.LoadSiaFile(path, r.wal)
 		if err != nil {
+			// TODO try loading the file with the legacy format.
 			r.log.Println("ERROR: could not open .sia file:", err)
 			return nil
 		}
-		defer file.Close()
-
-		// Load the file contents into the renter.
-		_, err = r.loadSharedFiles(file)
-		if err != nil {
-			r.log.Println("ERROR: could not load .sia file:", err)
-			return nil
-		}
+		r.files[sf.SiaPath()] = sf
 		return nil
 	})
 }
 
 // load fetches the saved renter data from disk.
 func (r *Renter) loadSettings() error {
-	r.persist = persistence{
-		Tracking: make(map[string]trackedFile),
-	}
+	r.persist = persistence{}
 	err := persist.LoadJSON(settingsMetadata, &r.persist, filepath.Join(r.persistDir, PersistFilename))
 	if os.IsNotExist(err) {
 		// No persistence yet, set the defaults and continue.
@@ -277,101 +296,9 @@ func (r *Renter) loadSettings() error {
 	return r.setBandwidthLimits(r.persist.MaxDownloadSpeed, r.persist.MaxUploadSpeed)
 }
 
-// shareFiles writes the specified files to w. First a header is written,
-// followed by the gzipped concatenation of each file.
-func (r *Renter) shareFiles(siaFiles []*siafile.SiaFile, w io.Writer) error {
-	// Convert files to old type.
-	files := make([]*file, 0, len(siaFiles))
-	for _, sf := range siaFiles {
-		files = append(files, r.siaFileToFile(sf))
-	}
-	// Write header.
-	err := encoding.NewEncoder(w).EncodeAll(
-		shareHeader,
-		shareVersion,
-		uint64(len(files)),
-	)
-	if err != nil {
-		return err
-	}
-
-	// Create compressor.
-	zip, _ := gzip.NewWriterLevel(w, gzip.BestSpeed)
-	enc := encoding.NewEncoder(zip)
-
-	// Encode each file.
-	for _, f := range files {
-		err = enc.Encode(f)
-		if err != nil {
-			return err
-		}
-	}
-
-	return zip.Close()
-}
-
-// ShareFiles saves the specified files to shareDest.
-func (r *Renter) ShareFiles(nicknames []string, shareDest string) error {
-	lockID := r.mu.RLock()
-	defer r.mu.RUnlock(lockID)
-
-	// TODO: consider just appending the proper extension.
-	if filepath.Ext(shareDest) != ShareExtension {
-		return ErrNonShareSuffix
-	}
-
-	handle, err := os.Create(shareDest)
-	if err != nil {
-		return err
-	}
-	defer handle.Close()
-
-	// Load files from renter.
-	files := make([]*siafile.SiaFile, len(nicknames))
-	for i, name := range nicknames {
-		f, exists := r.files[name]
-		if !exists {
-			return ErrUnknownPath
-		}
-		files[i] = f
-	}
-
-	err = r.shareFiles(files, handle)
-	if err != nil {
-		os.Remove(shareDest)
-		return err
-	}
-
-	return nil
-}
-
-// ShareFilesASCII returns the specified files in ASCII format.
-func (r *Renter) ShareFilesASCII(nicknames []string) (string, error) {
-	lockID := r.mu.RLock()
-	defer r.mu.RUnlock(lockID)
-
-	// Load files from renter.
-	files := make([]*siafile.SiaFile, len(nicknames))
-	for i, name := range nicknames {
-		f, exists := r.files[name]
-		if !exists {
-			return "", ErrUnknownPath
-		}
-		files[i] = f
-	}
-
-	buf := new(bytes.Buffer)
-	err := r.shareFiles(files, base64.NewEncoder(base64.URLEncoding, buf))
-	if err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
 // loadSharedFiles reads .sia data from reader and registers the contained
 // files in the renter. It returns the nicknames of the loaded files.
-func (r *Renter) loadSharedFiles(reader io.Reader) ([]string, error) {
+func (r *Renter) loadSharedFiles(reader io.Reader, repairPath string) ([]string, error) {
 	// read header
 	var header [15]byte
 	var version string
@@ -421,14 +348,14 @@ func (r *Renter) loadSharedFiles(reader io.Reader) ([]string, error) {
 	// Add files to renter.
 	names := make([]string, numFiles)
 	for i, f := range files {
-		r.files[f.name] = r.fileToSiaFile(f, r.persist.Tracking[f.name].RepairPath)
+		sf, err := r.fileToSiaFile(f, repairPath)
+		if err != nil {
+			return nil, err
+		}
+		r.files[f.name] = sf
 		names[i] = f.name
 	}
-	// Save the files.
-	for _, f := range files {
-		r.saveFile(r.fileToSiaFile(f, r.persist.Tracking[f.name].RepairPath))
-	}
-
+	// TODO Save the file in the new format.
 	return names, nil
 }
 
@@ -453,6 +380,24 @@ func (r *Renter) initPersist() error {
 		return err
 	}
 
+	// Initialize the writeaheadlog.
+	txns, wal, err := writeaheadlog.New(filepath.Join(r.persistDir, walFile))
+	if err != nil {
+		return err
+	}
+	r.wal = wal
+
+	// Apply unapplied wal txns.
+	for _, txn := range txns {
+		for _, update := range txn.Updates {
+			if siafile.IsSiaFileUpdate(update) {
+				if err := siafile.ApplyUpdates(update); err != nil {
+					return errors.AddContext(err, "failed to apply SiaFile update")
+				}
+			}
+		}
+	}
+
 	// Load the siafiles into memory.
 	return r.loadSiaFiles()
 }
@@ -468,7 +413,7 @@ func (r *Renter) LoadSharedFiles(filename string) ([]string, error) {
 		return nil, err
 	}
 	defer file.Close()
-	return r.loadSharedFiles(file)
+	return r.loadSharedFiles(file, filename)
 }
 
 // LoadSharedFilesASCII loads an ASCII-encoded .sia file into the renter. It
@@ -478,7 +423,17 @@ func (r *Renter) LoadSharedFilesASCII(asciiSia string) ([]string, error) {
 	defer r.mu.Unlock(lockID)
 
 	dec := base64.NewDecoder(base64.URLEncoding, bytes.NewBufferString(asciiSia))
-	return r.loadSharedFiles(dec)
+	return r.loadSharedFiles(dec, "")
+}
+
+// ShareFiles writes an .sia file to disk to be shared with others.
+func (r *Renter) ShareFiles(paths []string, shareDest string) error {
+	return errors.New("Not implemented for new format yet")
+}
+
+// ShareFilesASCII creates an ASCII-encoded '.sia' file.
+func (r *Renter) ShareFilesASCII(paths []string) (asciiSia string, err error) {
+	return "", errors.New("Not implemented for new format yet")
 }
 
 // convertPersistVersionFrom040to133 upgrades a legacy persist file to the next
@@ -488,9 +443,7 @@ func convertPersistVersionFrom040To133(path string) error {
 		Header:  settingsMetadata.Header,
 		Version: persistVersion040,
 	}
-	p := persistence{
-		Tracking: make(map[string]trackedFile),
-	}
+	p := persistence{}
 
 	err := persist.LoadJSON(metadata, &p, path)
 	if err != nil {

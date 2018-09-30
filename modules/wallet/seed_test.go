@@ -26,11 +26,12 @@ func TestPrimarySeed(t *testing.T) {
 	defer wt.closeWt()
 
 	// Create a seed and unlock the wallet.
-	seed, err := wt.wallet.Encrypt(crypto.TwofishKey{})
+	seed, err := wt.wallet.Encrypt(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = wt.wallet.Unlock(crypto.TwofishKey(crypto.HashObject(seed)))
+	sk := crypto.NewWalletKey(crypto.HashObject(seed))
+	err = wt.wallet.Unlock(sk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +68,8 @@ func TestPrimarySeed(t *testing.T) {
 	if err != modules.ErrLockedWallet {
 		t.Error("unexpected err:", err)
 	}
-	err = wt.wallet.Unlock(crypto.TwofishKey(crypto.HashObject(seed)))
+	sk = crypto.NewWalletKey(crypto.HashObject(seed))
+	err = wt.wallet.Unlock(sk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,11 +117,12 @@ func TestLoadSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newSeed, err := w.Encrypt(crypto.TwofishKey{})
+	newSeed, err := w.Encrypt(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = w.Unlock(crypto.TwofishKey(crypto.HashObject(newSeed)))
+	sk := crypto.NewWalletKey(crypto.HashObject(newSeed))
+	err = w.Unlock(sk)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +134,8 @@ func TestLoadSeed(t *testing.T) {
 	if !siacoinBal.Equals64(0) {
 		t.Error("fresh wallet should not have a balance")
 	}
-	err = w.LoadSeed(crypto.TwofishKey(crypto.HashObject(newSeed)), seed)
+	sk = crypto.NewWalletKey(crypto.HashObject(newSeed))
+	err = w.LoadSeed(sk, seed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,11 +213,15 @@ func TestSweepSeedCoins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	newSeed, err := w.Encrypt(crypto.TwofishKey{})
+	newSeed, err := w.Encrypt(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = w.Unlock(crypto.TwofishKey(crypto.HashObject(newSeed)))
+	sk := crypto.NewWalletKey(crypto.HashObject(newSeed))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = w.Unlock(sk)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -98,7 +98,7 @@ func TestWalletEncrypt(t *testing.T) {
 	testdir := build.TempDir("api", t.Name())
 
 	walletPassword := "testpass"
-	key := crypto.TwofishKey(crypto.HashObject(walletPassword))
+	key := crypto.NewWalletKey(crypto.HashObject(walletPassword))
 
 	st, err := assembleServerTester(key, testdir)
 	if err != nil {
@@ -466,7 +466,7 @@ func TestIntegrationWalletSweepSeedPOST(t *testing.T) {
 	defer st.server.panicClose()
 
 	// send coins to a new wallet, then sweep them back
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
@@ -531,7 +531,7 @@ func TestIntegrationWalletLoadSeedPOST(t *testing.T) {
 	}
 
 	// Create a wallet.
-	key := crypto.TwofishKey(crypto.HashObject("password"))
+	key := crypto.NewWalletKey(crypto.HashObject("password"))
 	st, err := assembleServerTester(key, build.TempDir("api", t.Name()))
 	if err != nil {
 		t.Fatal(err)
@@ -546,7 +546,7 @@ func TestIntegrationWalletLoadSeedPOST(t *testing.T) {
 	}
 
 	// Create a wallet to load coins from.
-	key2 := crypto.GenerateTwofishKey()
+	key2 := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
@@ -1001,7 +1001,7 @@ func TestWalletReset(t *testing.T) {
 	testdir := build.TempDir("api", t.Name())
 
 	walletPassword := "testpass"
-	key := crypto.TwofishKey(crypto.HashObject(walletPassword))
+	key := crypto.NewWalletKey(crypto.HashObject(walletPassword))
 
 	st, err := assembleServerTester(key, testdir)
 	if err != nil {
@@ -1016,7 +1016,7 @@ func TestWalletReset(t *testing.T) {
 
 	// reencrypt the wallet
 	newPassword := "testpass2"
-	newKey := crypto.TwofishKey(crypto.HashObject(newPassword))
+	newKey := crypto.NewWalletKey(crypto.HashObject(newPassword))
 
 	initValues := url.Values{}
 	initValues.Set("force", "true")
@@ -1123,8 +1123,8 @@ func TestWalletChangePassword(t *testing.T) {
 
 	originalPassword := "testpass"
 	newPassword := "newpass"
-	originalKey := crypto.TwofishKey(crypto.HashObject(originalPassword))
-	newKey := crypto.TwofishKey(crypto.HashObject(newPassword))
+	originalKey := crypto.NewWalletKey(crypto.HashObject(originalPassword))
+	newKey := crypto.NewWalletKey(crypto.HashObject(newPassword))
 
 	st, err := assembleServerTester(originalKey, testdir)
 	if err != nil {

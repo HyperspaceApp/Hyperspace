@@ -12,7 +12,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/errors"
 
@@ -525,7 +525,7 @@ func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps
 		WriteError(w, Error{"failed to unescape newhyperspacepath"}, http.StatusBadRequest)
 		return
 	}
-	err = api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), newSiaPath)
+	err = api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), strings.TrimPrefix(newSiaPath, "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -547,13 +547,17 @@ func (api *API) renterFileHandlerGET(w http.ResponseWriter, req *http.Request, p
 
 // renterFileHandler handles POST requests to the /renter/file/:hyperspacepath API endpoint.
 func (api *API) renterFileHandlerPOST(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	newTrackingPath := req.FormValue("trackingpath")
+	newTrackingPath, err := url.QueryUnescape(req.FormValue("trackingpath"))
+	if err != nil {
+		WriteError(w, Error{"unable to unescape new tracking path"}, http.StatusBadRequest)
+		return
+	}
 
 	// Handle changing the tracking path of a file.
 	if newTrackingPath != "" {
-		hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
-		if err := api.renter.SetFileTrackingPath(hyperspacepath, newTrackingPath); err != nil {
-			WriteError(w, Error{"unable to parse funds"}, http.StatusBadRequest)
+		siapath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
+		if err := api.renter.SetFileTrackingPath(siapath, newTrackingPath); err != nil {
+			WriteError(w, Error{fmt.Sprintf("unable set tracking path: %v", err)}, http.StatusBadRequest)
 			return
 		}
 	}
@@ -800,7 +804,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 		}
 
 		// Create the erasure coder.
-		ec, err = renter.NewRSCode(dataPieces, parityPieces)
+		ec, err = siafile.NewRSCode(dataPieces, parityPieces)
 		if err != nil {
 			WriteError(w, Error{"unable to encode file using the provided parameters: " + err.Error()}, http.StatusBadRequest)
 			return
@@ -819,4 +823,41 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 		return
 	}
 	WriteSuccess(w)
+}
+
+// renterDirHandlerPOST handles the API call to create a directory
+func (api *API) renterDirHandlerPOST(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	// Parse action
+	action := req.FormValue("action")
+	if action == "" {
+		WriteError(w, Error{"you must set the action you wish to execute"}, http.StatusInternalServerError)
+		return
+	}
+	if action == "create" {
+		// Call the renter to create directory
+		err := api.renter.CreateDir(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
+		if err != nil {
+			WriteError(w, Error{"failed to create directory: " + err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		WriteSuccess(w)
+		return
+	}
+	if action == "delete" {
+		fmt.Println("delete")
+		// TODO - implement
+		WriteError(w, Error{"not implemented"}, http.StatusNotImplemented)
+		return
+	}
+	if action == "rename" {
+		fmt.Println("rename")
+		// newsiapath := ps.ByName("newsiapath")
+		// TODO - implement
+		WriteError(w, Error{"not implemented"}, http.StatusNotImplemented)
+		return
+	}
+
+	// Report that no calls were made
+	WriteError(w, Error{"no calls were made, please check your submission and try again"}, http.StatusInternalServerError)
+	return
 }

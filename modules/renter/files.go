@@ -6,11 +6,9 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
-	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/HyperspaceApp/errors"
@@ -34,11 +32,11 @@ type file struct {
 	name        string
 	size        uint64 // Static - can be accessed without lock.
 	contracts   map[types.FileContractID]fileContract
-	masterKey   crypto.TwofishKey    // Static - can be accessed without lock.
-	erasureCode modules.ErasureCoder // Static - can be accessed without lock.
-	pieceSize   uint64               // Static - can be accessed without lock.
-	mode        uint32               // actually an os.FileMode
-	deleted     bool                 // indicates if the file has been deleted.
+	masterKey   [crypto.EntropySize]byte // Static - can be accessed without lock.
+	erasureCode modules.ErasureCoder     // Static - can be accessed without lock.
+	pieceSize   uint64                   // Static - can be accessed without lock.
+	mode        uint32                   // actually an os.FileMode
+	deleted     bool                     // indicates if the file has been deleted.
 
 	staticUID string // A UID assigned to the file when it gets created.
 
@@ -66,11 +64,6 @@ type pieceData struct {
 	MerkleRoot crypto.Hash // the Merkle root of the piece
 }
 
-// deriveKey derives the key used to encrypt and decrypt a specific file piece.
-func deriveKey(masterKey crypto.TwofishKey, chunkIndex, pieceIndex uint64) crypto.TwofishKey {
-	return crypto.TwofishKey(crypto.HashAll(masterKey, chunkIndex, pieceIndex))
-}
-
 // DeleteFile removes a file entry from the renter and deletes its data from
 // the hosts it is stored on.
 //
@@ -84,22 +77,14 @@ func (r *Renter) DeleteFile(nickname string) error {
 		return ErrUnknownPath
 	}
 	delete(r.files, nickname)
-	delete(r.persist.Tracking, nickname)
-
-	err := persist.RemoveFile(filepath.Join(r.persistDir, f.SiaPath()+ShareExtension))
-	if err != nil {
-		r.log.Println("WARN: couldn't remove file :", err)
-	}
 
 	r.saveSync()
 	r.mu.Unlock(lockID)
 
-	// mark the file as deleted
-	f.Delete()
-
 	// TODO: delete the sectors of the file as well.
 
-	return nil
+	// mark the file as deleted
+	return f.Delete()
 }
 
 // FileList returns all of the files that the renter has or a filtered list
@@ -257,8 +242,7 @@ func (r *Renter) RenameFile(currentName, newName string) error {
 	}
 
 	// Modify the file and save it to disk.
-	file.Rename(newName) // TODO: violation of locking convention
-	err = r.saveFile(file)
+	err = file.Rename(newName, filepath.Join(r.persistDir, newName+ShareExtension)) // TODO: violation of locking convention
 	if err != nil {
 		return err
 	}
@@ -266,23 +250,13 @@ func (r *Renter) RenameFile(currentName, newName string) error {
 	// Update the entries in the renter.
 	delete(r.files, currentName)
 	r.files[newName] = file
-	if t, ok := r.persist.Tracking[currentName]; ok {
-		delete(r.persist.Tracking, currentName)
-		r.persist.Tracking[newName] = t
-	}
-	err = r.saveSync()
-	if err != nil {
-		return err
-	}
 
-	// Delete the old .sia file.
-	oldPath := filepath.Join(r.persistDir, currentName+ShareExtension)
-	return os.RemoveAll(oldPath)
+	return nil
 }
 
 // fileToSiaFile converts a legacy file to a SiaFile. Fields that can't be
 // populated using the legacy file remain blank.
-func (r *Renter) fileToSiaFile(f *file, repairPath string) *siafile.SiaFile {
+func (r *Renter) fileToSiaFile(f *file, repairPath string) (*siafile.SiaFile, error) {
 	fileData := siafile.FileData{
 		Name:        f.name,
 		FileSize:    f.size,
@@ -309,54 +283,6 @@ func (r *Renter) fileToSiaFile(f *file, repairPath string) *siafile.SiaFile {
 	}
 	fileData.Chunks = chunks
 	return siafile.NewFromFileData(fileData)
-}
-
-// siaFileToFile converts a SiaFile to a legacy file. Fields that don't exist
-// in the legacy file will get lost and therefore not persisted.
-func (r *Renter) siaFileToFile(sf *siafile.SiaFile) *file {
-	fileData := sf.ExportFileData()
-	f := &file{
-		contracts:   make(map[types.FileContractID]fileContract),
-		name:        fileData.Name,
-		size:        fileData.FileSize,
-		masterKey:   fileData.MasterKey,
-		erasureCode: fileData.ErasureCode,
-		pieceSize:   fileData.PieceSize,
-		mode:        uint32(fileData.Mode),
-		deleted:     fileData.Deleted,
-		staticUID:   fileData.UID,
-	}
-	for chunkIndex, chunk := range fileData.Chunks {
-		for pieceIndex, pieceSet := range chunk.Pieces {
-			for _, piece := range pieceSet {
-				c, ok := r.hostContractor.ContractByPublicKey(piece.HostPubKey)
-				if !ok {
-					build.Critical("missing contract when converting SiaFile to file")
-					continue
-				}
-				h, ok := r.hostDB.Host(piece.HostPubKey)
-				if !ok {
-					build.Critical("missing host when converting SiaFile to file")
-					continue
-				}
-				if _, exists := f.contracts[c.ID]; !exists {
-					f.contracts[c.ID] = fileContract{
-						ID:          c.ID,
-						IP:          h.NetAddress,
-						WindowStart: c.EndHeight,
-					}
-				}
-				fc := f.contracts[c.ID]
-				fc.Pieces = append(fc.Pieces, pieceData{
-					Chunk:      uint64(chunkIndex),
-					Piece:      uint64(pieceIndex),
-					MerkleRoot: piece.MerkleRoot,
-				})
-				f.contracts[c.ID] = fc
-			}
-		}
-	}
-	return f
 }
 
 // numChunks returns the number of chunks that f was split into.

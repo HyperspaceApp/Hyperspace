@@ -2,10 +2,12 @@ package siafile
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"

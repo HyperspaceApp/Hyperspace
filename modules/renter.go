@@ -49,7 +49,7 @@ type ErasureCoder interface {
 
 	// EncodeShards encodes the input data like Encode but accepts an already
 	// sharded input.
-	EncodeShards(data [][]byte) ([][]byte, error)
+	EncodeShards(data [][]byte, pieceSize uint64) ([][]byte, error)
 
 	// Recover recovers the original data from pieces and writes it to w.
 	// pieces should be identical to the slice returned by Encode (length and
@@ -105,17 +105,22 @@ type FileUploadParams struct {
 
 // FileInfo provides information about a file.
 type FileInfo struct {
-	SiaPath        string            `json:"hyperspacepath"`
-	LocalPath      string            `json:"localpath"`
-	Filesize       uint64            `json:"filesize"`
+	AccessTime     time.Time         `json:"accesstime"`
 	Available      bool              `json:"available"`
-	Renewing       bool              `json:"renewing"`
-	Redundancy     float64           `json:"redundancy"`
-	UploadedBytes  uint64            `json:"uploadedbytes"`
-	UploadProgress float64           `json:"uploadprogress"`
+	ChangeTime     time.Time         `json:"changetime"`
+	CipherType     string            `json:"ciphertype"`
+	CreateTime     time.Time         `json:"createtime"`
 	Expiration     types.BlockHeight `json:"expiration"`
+	Filesize       uint64            `json:"filesize"`
+	LocalPath      string            `json:"localpath"`
+	ModTime        time.Time         `json:"modtime"`
 	OnDisk         bool              `json:"ondisk"`
 	Recoverable    bool              `json:"recoverable"`
+	Redundancy     float64           `json:"redundancy"`
+	Renewing       bool              `json:"renewing"`
+	SiaPath        string            `json:"siapath"`
+	UploadedBytes  uint64            `json:"uploadedbytes"`
+	UploadProgress float64           `json:"uploadprogress"`
 }
 
 // A HostDBEntry represents one host entry in the Renter's host DB. It
@@ -425,6 +430,9 @@ type Renter interface {
 
 	// Upload uploads a file using the input parameters.
 	Upload(FileUploadParams) error
+
+	// CreateDir creates a directory for the renter
+	CreateDir(siaPath string) error
 }
 
 // RenterDownloadParameters defines the parameters passed to the Renter's

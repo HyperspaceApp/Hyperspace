@@ -5,7 +5,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 
 	"github.com/HyperspaceApp/errors"
@@ -23,7 +23,6 @@ type unfinishedUploadChunk struct {
 	// Information about the file. localPath may be the empty string if the file
 	// is known not to exist locally.
 	id         uploadChunkID
-	localPath  string
 	renterFile *siafile.SiaFile
 
 	// Information about the chunk, namely where it exists within the file.
@@ -135,7 +134,7 @@ func (r *Renter) managedDownloadLogicalChunkData(chunk *unfinishedUploadChunk) e
 	}
 
 	// Create the download.
-	buf := NewDownloadDestinationBuffer(chunk.length)
+	buf := NewDownloadDestinationBuffer(chunk.length, chunk.renterFile.PieceSize())
 	d, err := r.managedNewDownload(downloadParams{
 		destination:     buf,
 		destinationType: "buffer",
@@ -165,10 +164,10 @@ func (r *Renter) managedDownloadLogicalChunkData(chunk *unfinishedUploadChunk) e
 		return errors.New("repair download interrupted by stop call")
 	}
 	if d.Err() != nil {
-		buf = nil
+		buf.buf = nil
 		return d.Err()
 	}
-	chunk.logicalChunkData = [][]byte(buf)
+	chunk.logicalChunkData = [][]byte(buf.buf)
 	return nil
 }
 
@@ -177,7 +176,7 @@ func (r *Renter) managedDownloadLogicalChunkData(chunk *unfinishedUploadChunk) e
 func (r *Renter) managedFetchAndRepairChunk(chunk *unfinishedUploadChunk) {
 	// Calculate the amount of memory needed for erasure coding. This will need
 	// to be released if there's an error before erasure coding is complete.
-	erasureCodingMemory := chunk.renterFile.PieceSize() * uint64(chunk.renterFile.ErasureCode(chunk.index).MinPieces())
+	erasureCodingMemory := chunk.renterFile.PieceSize() * uint64(chunk.renterFile.ErasureCode().MinPieces())
 
 	// Calculate the amount of memory to release due to already completed
 	// pieces. This memory gets released during encryption, but needs to be
@@ -185,7 +184,7 @@ func (r *Renter) managedFetchAndRepairChunk(chunk *unfinishedUploadChunk) {
 	var pieceCompletedMemory uint64
 	for i := 0; i < len(chunk.pieceUsage); i++ {
 		if chunk.pieceUsage[i] {
-			pieceCompletedMemory += chunk.renterFile.PieceSize() + crypto.TwofishOverhead
+			pieceCompletedMemory += modules.SectorSize
 		}
 	}
 
@@ -222,7 +221,7 @@ func (r *Renter) managedFetchAndRepairChunk(chunk *unfinishedUploadChunk) {
 	// fact to reduce the total memory required to create the physical data.
 	// That will also change the amount of memory we need to allocate, and the
 	// number of times we need to return memory.
-	chunk.physicalChunkData, err = chunk.renterFile.ErasureCode(chunk.index).EncodeShards(chunk.logicalChunkData)
+	chunk.physicalChunkData, err = chunk.renterFile.ErasureCode().EncodeShards(chunk.logicalChunkData, chunk.renterFile.PieceSize())
 	chunk.logicalChunkData = nil
 	r.memoryManager.Return(erasureCodingMemory)
 	chunk.memoryReleased += erasureCodingMemory
@@ -252,7 +251,7 @@ func (r *Renter) managedFetchAndRepairChunk(chunk *unfinishedUploadChunk) {
 			chunk.physicalChunkData[i] = nil
 		} else {
 			// Encrypt the piece.
-			key := deriveKey(chunk.renterFile.MasterKey(), chunk.index, uint64(i))
+			key := chunk.renterFile.MasterKey().Derive(chunk.index, uint64(i))
 			chunk.physicalChunkData[i] = key.EncryptBytes(chunk.physicalChunkData[i])
 		}
 	}
@@ -278,9 +277,9 @@ func (r *Renter) managedFetchLogicalChunkData(chunk *unfinishedUploadChunk) erro
 	download := chunk.piecesCompleted+minMissingPiecesToDownload < chunk.piecesNeeded
 
 	// Download the chunk if it's not on disk.
-	if chunk.localPath == "" && download {
+	if chunk.renterFile.LocalPath() == "" && download {
 		return r.managedDownloadLogicalChunkData(chunk)
-	} else if chunk.localPath == "" {
+	} else if chunk.renterFile.LocalPath() == "" {
 		return errors.New("file not available locally")
 	}
 
@@ -291,7 +290,7 @@ func (r *Renter) managedFetchLogicalChunkData(chunk *unfinishedUploadChunk) erro
 	// loading fails. Should do this after we swap the file format, the tracking
 	// data for the file should reside in the file metadata and not in a
 	// separate struct.
-	osFile, err := os.Open(chunk.localPath)
+	osFile, err := os.Open(chunk.renterFile.LocalPath())
 	if err != nil && download {
 		return r.managedDownloadLogicalChunkData(chunk)
 	} else if err != nil {
@@ -301,7 +300,7 @@ func (r *Renter) managedFetchLogicalChunkData(chunk *unfinishedUploadChunk) erro
 	// TODO: Once we have enabled support for small chunks, we should stop
 	// needing to ignore the EOF errors, because the chunk size should always
 	// match the tail end of the file. Until then, we ignore io.EOF.
-	buf := NewDownloadDestinationBuffer(chunk.length)
+	buf := NewDownloadDestinationBuffer(chunk.length, chunk.renterFile.PieceSize())
 	sr := io.NewSectionReader(osFile, chunk.offset, int64(chunk.length))
 	_, err = buf.ReadFrom(sr)
 	if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF && download {
@@ -311,7 +310,7 @@ func (r *Renter) managedFetchLogicalChunkData(chunk *unfinishedUploadChunk) erro
 		r.log.Debugln("failed to read file locally:", err)
 		return errors.Extend(err, errors.New("failed to read file locally"))
 	}
-	chunk.logicalChunkData = buf
+	chunk.logicalChunkData = buf.buf
 
 	// Data successfully read from disk.
 	return nil
@@ -321,7 +320,6 @@ func (r *Renter) managedFetchLogicalChunkData(chunk *unfinishedUploadChunk) erro
 // cleanup required. This can include returning rememory and releasing the chunk
 // from the map of active chunks in the chunk heap.
 func (r *Renter) managedCleanUpUploadChunk(uc *unfinishedUploadChunk) {
-	pieceSize := uc.renterFile.PieceSize()
 	uc.mu.Lock()
 	piecesAvailable := 0
 	var memoryReleased uint64
@@ -338,7 +336,10 @@ func (r *Renter) managedCleanUpUploadChunk(uc *unfinishedUploadChunk) {
 		// will prefer releasing later pieces, which improves computational
 		// complexity for erasure coding.
 		if piecesAvailable >= uc.workersRemaining {
-			memoryReleased += pieceSize + crypto.TwofishOverhead
+			memoryReleased += modules.SectorSize
+			if len(uc.physicalChunkData) < len(uc.pieceUsage) {
+				// TODO handle this. Might happen if erasure coding the chunk failed.
+			}
 			uc.physicalChunkData[i] = nil
 			// Mark this piece as taken so that we don't double release memory.
 			uc.pieceUsage[i] = true
