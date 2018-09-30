@@ -20,7 +20,7 @@ var (
 	errPeerGenesisID = errors.New("peer has different genesis ID")
 )
 
-// A node represents a potential peer on the Sia network.
+// A node represents a potential peer on the Hyperspace network.
 type node struct {
 	NetAddress      modules.NetAddress `json:"netaddress"`
 	WasOutboundPeer bool               `json:"wasoutboundpeer"`
