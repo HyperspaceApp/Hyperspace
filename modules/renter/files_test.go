@@ -496,11 +496,11 @@ func TestRenterFileListWithFilter(t *testing.T) {
 
 	// Put a file in the renter.
 	f1 := newTestingFile()
-	f1.Rename("one")
+	f1.Rename("one", filepath.Join(rt.renter.persistDir, "one"+ShareExtension))
 
 	// Put multiple files in the renter.
 	f2 := newTestingFile()
-	f2.Rename("two")
+	f2.Rename("two", filepath.Join(rt.renter.persistDir, "two"+ShareExtension))
 
 	// Test regex returning all items
 	{

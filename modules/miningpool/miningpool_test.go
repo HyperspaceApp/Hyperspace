@@ -44,7 +44,7 @@ type poolTester struct {
 	cs        modules.ConsensusSet
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	mpool *Pool
 
@@ -88,8 +88,9 @@ func newPoolTester(name string, port int) (*poolTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	var key crypto.TwofishKey
-	fastrand.Read(key[:])
+	var entropy [crypto.EntropySize]byte
+	fastrand.Read(entropy[:])
+	key, _ := crypto.NewSiaKey(crypto.TypeThreefish, entropy[:])
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err

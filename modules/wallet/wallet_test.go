@@ -14,6 +14,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // A Wallet tester contains a ConsensusTester and has a bunch of helpful
@@ -664,8 +666,9 @@ func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*w
 		return nil, err
 	}
 	w.defragDisabled = true
-	var masterKey crypto.TwofishKey
-	fastrand.Read(masterKey[:])
+	var entropy [crypto.EntropySize]byte
+	fastrand.Read(entropy[:])
+	masterKey, _ := crypto.NewSiaKey(crypto.TypeTwofish, entropy[:])
 	_, err = w.Encrypt(masterKey)
 	if err != nil {
 		return nil, err
