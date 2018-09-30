@@ -228,6 +228,18 @@ type (
 		Drop()
 	}
 
+	TransactionSetBuilder interface {
+		FundSiacoinsForOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
+
+		AddSiacoinOutput(types.SiacoinOutput) uint64
+
+		// View returns the incomplete transaction along with all of its
+		// parents.
+		View() (txn types.Transaction, parents []types.Transaction)
+
+	}
+
+
 	// EncryptionManager can encrypt, lock, unlock, and indicate the current
 	// status of the EncryptionManager.
 	EncryptionManager interface {

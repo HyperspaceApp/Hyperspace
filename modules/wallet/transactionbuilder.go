@@ -215,6 +215,89 @@ func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutp
 	return nil
 }
 
+func (tb *transactionBuilder) fundSiacoinsForOutput(output types.SiacoinOutput) (types.Currency, []types.SiacoinOutputID, error) {
+	dustThreshold, err := tb.wallet.DustThreshold()
+	if err != nil {
+		return types.Currency{}, nil, err
+	}
+
+	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
+	if err != nil {
+		return types.Currency{}, nil, err
+	}
+
+	fund := types.Currency{}
+	amount := output.Value
+
+	// NOTE: miner fee is caller responsibility in this context
+
+	so, err := tb.wallet.getSortedOutputs()
+	if err != nil {
+		return fund, nil, err
+	}
+
+	// potentialFund tracks the balance of the wallet including outputs that
+	// have been spent in other unconfirmed transactions recently. This is to
+	// provide the user with a more useful error message in the event that they
+	// are overspending.
+	var potentialFund types.Currency
+	var spentScoids []types.SiacoinOutputID
+	for i := range so.ids {
+		scoid := so.ids[i]
+		sco := so.outputs[i]
+		// Check that the output can be spent.
+		if err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, scoid, sco, dustThreshold); err != nil {
+			if err == errSpendHeightTooHigh {
+				potentialFund = potentialFund.Add(sco.Value)
+			}
+			continue
+		}
+
+		// Add a siacoin input for this output.
+		sci := types.SiacoinInput{
+			ParentID:         scoid,
+			UnlockConditions: tb.wallet.keys[sco.UnlockHash].UnlockConditions,
+		}
+		tb.siacoinInputs = append(tb.siacoinInputs, len(tb.transaction.SiacoinInputs))
+		tb.transaction.SiacoinInputs = append(tb.transaction.SiacoinInputs, sci)
+		spentScoids = append(spentScoids, scoid)
+
+		// Add the output to the total fund
+		fund = fund.Add(sco.Value)
+		potentialFund = potentialFund.Add(sco.Value)
+		if fund.Cmp(amount) >= 0 {
+			break
+		}
+	}
+	if potentialFund.Cmp(amount) >= 0 && fund.Cmp(amount) < 0 {
+		return fund, nil, modules.ErrIncompleteTransactions
+	}
+	if fund.Cmp(amount) < 0 {
+		return fund, nil, modules.ErrLowBalance
+	}
+	// Add the output to the transaction
+	tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, output)
+	return fund, spentScoids, nil
+}
+
+func (tb *transactionBuilder) checkRefund(amount types.Currency, fund types.Currency) (types.SiacoinOutput, error) {
+	// Create a refund output if needed.
+	if !amount.Equals(fund) {
+		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
+		if err != nil {
+			return types.SiacoinOutput{}, err
+		}
+		refundOutput := types.SiacoinOutput{
+			Value:      fund.Sub(amount),
+			UnlockHash: refundUnlockConditions.UnlockHash(),
+		}
+		tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
+		return refundOutput, nil
+	}
+
+	return types.SiacoinOutput{}, nil
+}
+
 // FundSiacoins will add a siacoin input of exactly 'amount' to the
 // transaction. A parent transaction may be needed to achieve an input with the
 // correct value. The siacoin input will not be signed until 'Sign' is called
