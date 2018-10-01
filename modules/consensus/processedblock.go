@@ -110,7 +110,8 @@ func (cs *ConsensusSet) setChildTarget(blockMap *bolt.Bucket, pb *processedBlock
 }
 
 // newChild creates a blockNode from a block and adds it to the parent's set of
-// children. The new node is also returned. It necessarily modifies the database
+// children. The new node is also returned. It necessarily modifies the block
+// and block header buckets.
 func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
 	// Create the child node.
 	childID := b.ID()
@@ -166,7 +167,6 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 
 // newHeaderChild creates a new child headerNode from a header and adds it to the parent's set of
 // children. The new node is also returned. It necessarily modifies the BlockHeaderMap bucket
-// TODO we need to get the gcsfilter here somehow
 func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) *modules.ProcessedBlockHeader {
 	// Create the child node.
 	childID := header.BlockHeader.ID()
