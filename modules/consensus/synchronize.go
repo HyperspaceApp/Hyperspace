@@ -321,7 +321,7 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 	moreAvailable := true
 	for moreAvailable {
 		//Read a slice of headers from the wire.
-		var newHeadersForSend []modules.ProcessedBlockHeaderForSend
+		var newHeadersForSend []modules.TransmittedBlockHeader
 		if err := encoding.ReadObject(conn, &newHeadersForSend, uint64(MaxCatchUpBlocks)*types.BlockSizeLimit); err != nil {
 			return err
 		}
@@ -462,7 +462,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 		// Send 0 blocks.
 		if remoteSupportSPVHeader(conn.Version()) {
 			// processed block header for send
-			err = encoding.WriteObject(conn, []modules.ProcessedBlockHeaderForSend{})
+			err = encoding.WriteObject(conn, []modules.TransmittedBlockHeader{})
 		} else {
 			err = encoding.WriteObject(conn, []types.Block{})
 		}
@@ -478,7 +478,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	for moreAvailable {
 		// Get the set of blocks to send.
 		var blockHeaders []types.BlockHeader
-		var blockHeadersForSend []modules.ProcessedBlockHeaderForSend
+		var blockHeadersForSend []modules.TransmittedBlockHeader
 		cs.mu.RLock()
 		err = cs.db.View(func(tx *bolt.Tx) error {
 			height := blockHeight(tx)
@@ -683,7 +683,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 
 	// Decode the block header from the connection.
 	var h types.BlockHeader
-	var phfs modules.ProcessedBlockHeaderForSend
+	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
 	err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 	if err != nil {
@@ -729,7 +729,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	go func() {
 		defer wg.Done()
 		if cs.spv {
-			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{phfs})
+			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
 			if chainExtend {
 				id := h.ID()
 				keysArray := cs.getWalletKeysFunc()

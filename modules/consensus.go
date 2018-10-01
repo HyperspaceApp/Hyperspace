@@ -197,8 +197,8 @@ type (
 		Announcements             []HostAnnouncement
 	}
 
-	// ProcessedBlockHeaderForSend is a header to send to spv peers
-	ProcessedBlockHeaderForSend struct {
+	// TransmittedBlockHeader is a header to send to spv peers
+	TransmittedBlockHeader struct {
 		BlockHeader   types.BlockHeader
 		GCSFilter     types.GCSFilter
 		Announcements []HostAnnouncement
@@ -333,8 +333,8 @@ func (pbh *ProcessedBlockHeader) ChildDepth() types.Target {
 }
 
 // ForSend will only reserve BlockHeader, GCSFilter, Announcements
-func (pbh ProcessedBlockHeader) ForSend() *ProcessedBlockHeaderForSend {
-	return &ProcessedBlockHeaderForSend{
+func (pbh ProcessedBlockHeader) ForSend() *TransmittedBlockHeader {
+	return &TransmittedBlockHeader{
 		BlockHeader:   pbh.BlockHeader,
 		GCSFilter:     pbh.GCSFilter,
 		Announcements: pbh.Announcements,

@@ -167,7 +167,7 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 
 // newHeaderChild creates a new child headerNode from a header and adds it to the parent's set of
 // children. The new node is also returned. It necessarily modifies the BlockHeaderMap bucket
-func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) *modules.ProcessedBlockHeader {
+func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.TransmittedBlockHeader) *modules.ProcessedBlockHeader {
 	// Create the child node.
 	childID := header.BlockHeader.ID()
 	child := &modules.ProcessedBlockHeader{

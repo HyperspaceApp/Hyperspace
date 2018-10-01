@@ -653,7 +653,7 @@ func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTeste
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), true)
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}

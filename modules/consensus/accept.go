@@ -255,7 +255,7 @@ func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block, p
 }
 
 // addHeaderToTree adds a headerNode to the tree by adding it to it's parents list of children.
-func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) (ce changeEntry, err error) {
+func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.TransmittedBlockHeader) (ce changeEntry, err error) {
 	// Prepare the child header node associated with the parent header.
 	newNode := cs.newHeaderChild(tx, parentHeader, header)
 	// Check whether the new node is part of a chain that is heavier than the
@@ -319,7 +319,7 @@ func (cs *ConsensusSet) threadedSleepOnFutureBlock(b types.Block) {
 //
 // TODO: An attacker could produce a very large number of future blocks,
 // consuming memory. Need to prevent that.
-func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh modules.ProcessedBlockHeaderForSend) {
+func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh modules.TransmittedBlockHeader) {
 	// Add this thread to the threadgroup.
 	err := cs.tg.Add()
 	if err != nil {
@@ -331,7 +331,7 @@ func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh modules.ProcessedBlockHea
 	case <-cs.tg.StopChan():
 		return
 	case <-time.After(time.Duration(bh.BlockHeader.Timestamp-(types.CurrentTimestamp()+types.FutureThreshold)) * time.Second):
-		_, _, err := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{bh})
+		_, _, err := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{bh})
 		if err != nil {
 			cs.log.Debugln("WARN: failed to accept a future block header:", err)
 		}
@@ -486,7 +486,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, change
 // such that the fork becomes the longest currently known chain, the consensus
 // set will reorganize itself to recognize the new longest fork. Accepted
 // headers are not relayed.
-func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHeaderForSend) (bool, []changeEntry, error) {
+func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockHeader) (bool, []changeEntry, error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 	// Make sure that headers are consecutive. Though this isn't a strict
