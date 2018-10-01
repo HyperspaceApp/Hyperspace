@@ -677,6 +677,10 @@ func (pc mockPeerConn) SetDeadline(time.Time) error {
 	return nil
 }
 
+func (pc mockPeerConn) Version() string {
+	return ""
+}
+
 // Read is a mock implementation of modules.PeerConn.Read that always returns
 // an error.
 func (mockPeerConnFailingReader) Read([]byte) (int, error) {
@@ -687,6 +691,10 @@ func (mockPeerConnFailingReader) Read([]byte) (int, error) {
 // an error.
 func (mockPeerConnFailingWriter) Write([]byte) (int, error) {
 	return 0, errFailingWriter
+}
+
+func (mockPeerConnFailingReader) Version() string {
+	return ""
 }
 
 // TestSendBlk probes the ConsensusSet.rpcSendBlk method and tests that it

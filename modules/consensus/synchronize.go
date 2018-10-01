@@ -332,7 +332,7 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 			continue
 		}
 		stalled = false
-		extended, acceptErr := cs.managedAcceptHeaders(newHeadersForSend)
+		extended, _, acceptErr := cs.managedAcceptHeaders(newHeadersForSend)
 		if extended {
 			chainExtended = true
 		}
@@ -729,13 +729,16 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	go func() {
 		defer wg.Done()
 		if cs.spv {
-			id := h.ID()
-			keysArray := cs.getWalletKeysFunc()
-			if len(keysArray) > 0 { // unlocked
-				if phfs.GCSFilter.MatchUnlockHash(id[:], keysArray) {
-					err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlockForSPV(h.ID()))
-					if err != nil {
-						cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{phfs})
+			if chainExtend {
+				id := h.ID()
+				keysArray := cs.getWalletKeysFunc()
+				if len(keysArray) > 0 { // unlocked
+					if phfs.GCSFilter.MatchUnlockHash(id[:], keysArray) {
+						err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlockForSPV(h.ID(), changes))
+						if err != nil {
+							cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
+						}
 					}
 				}
 			}
@@ -866,7 +869,7 @@ func (cs *ConsensusSet) managedReceiveBlock(id types.BlockID) modules.RPCFunc {
 // managedReceiveBlockForSPV takes a block id and returns an RPCFunc that requests that
 // block and then calls AcceptBlockForSPV on it. The returned function should be used
 // as the calling end of the SendBlk RPC.
-func (cs *ConsensusSet) managedReceiveBlockForSPV(id types.BlockID) modules.RPCFunc {
+func (cs *ConsensusSet) managedReceiveBlockForSPV(id types.BlockID, changes []changeEntry) modules.RPCFunc {
 	return func(conn modules.PeerConn) error {
 		if err := encoding.WriteObject(conn, id); err != nil {
 			return err
@@ -875,7 +878,7 @@ func (cs *ConsensusSet) managedReceiveBlockForSPV(id types.BlockID) modules.RPCF
 		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return err
 		}
-		err := cs.managedAcceptSingleBlockForSPV(block)
+		err := cs.managedAcceptSingleBlockForSPV(block, changes)
 		if err != nil {
 			return err
 		}
