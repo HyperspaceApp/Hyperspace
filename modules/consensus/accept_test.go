@@ -477,14 +477,6 @@ func TestUnitValidateHeader(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		cs := ConsensusSet{
-			dosBlocks: tt.dosBlocks,
-			marshaler: tt.marshaler,
-			blockRuleHelper: mockBlockRuleHelper{
-				minTimestamp: tt.earliestValidTimestamp,
-			},
-			processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
-		}
 		// Initialize the blockmap in the tx.
 		blockBucket := mockDbBucket{map[string][]byte{}}
 		for _, mapPair := range tt.blockMapPairs {
