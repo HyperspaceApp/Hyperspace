@@ -29,6 +29,9 @@ var (
 	// parentBlockSerialized is a mock serialized form of a processedBlock.
 	parentBlockSerialized = []byte{3, 2, 1}
 
+	parentProcessedBlockHeader = modules.ProcessedBlockHeader{
+	}
+
 	parentBlockUnmarshaler = mockBlockMarshaler{
 		[]predefinedBlockUnmarshal{
 			{parentBlockSerialized, mockParent(), nil},
@@ -58,6 +61,8 @@ var (
 	serializedParentBlockMap = []blockMapPair{
 		{mockValidBlock.ParentID[:], parentBlockSerialized},
 	}
+
+	parentHeaderMap = make(map[types.BlockID]*modules.ProcessedBlockHeader)
 )
 
 type (
@@ -112,6 +117,12 @@ type (
 
 	// blockMapPair represents a key-value pair in the mock block map.
 	blockMapPair struct {
+		key []byte
+		val []byte
+	}
+
+	// headerMapPair represents a key-value pair in the mock header map.
+	headerMapPair struct {
 		key []byte
 		val []byte
 	}
@@ -205,6 +216,7 @@ func TestUnitValidateHeaderAndBlock(t *testing.T) {
 		block                  types.Block
 		dosBlocks              map[types.BlockID]struct{}
 		blockMapPairs          []blockMapPair
+		headerMapPairs         []headerMapPair
 		earliestValidTimestamp types.Timestamp
 		marshaler              mockBlockMarshaler
 		useNilBlockMap         bool
@@ -293,6 +305,7 @@ func TestUnitValidateHeaderAndBlock(t *testing.T) {
 				minTimestamp: tt.earliestValidTimestamp,
 			},
 			blockValidator: mockBlockValidator{tt.validateBlockErr},
+			processedBlockHeaders: parentHeaderMap,
 		}
 		// Reset the stored parameters to ValidateBlock.
 		validateBlockParamsGot = validateBlockParams{}
@@ -347,6 +360,8 @@ func TestUnitValidateHeader(t *testing.T) {
 		header                 types.BlockHeader
 		dosBlocks              map[types.BlockID]struct{}
 		blockMapPairs          []blockMapPair
+		headerMapPairs         []headerMapPair
+		processedBlockHeaders  []headerMapPair
 		earliestValidTimestamp types.Timestamp
 		marshaler              mockBlockMarshaler
 		useNilBlockMap         bool
@@ -366,7 +381,7 @@ func TestUnitValidateHeader(t *testing.T) {
 			errWant:                errDoSBlock,
 			msg:                    "validateHeader should reject known bad blocks",
 		},
-		// Test that blocks are rejected if a block map doesn't exist.
+		// Test that headers are rejected if a block header map doesn't exist.
 		{
 			header:                 mockValidBlock.Header(),
 			dosBlocks:              make(map[types.BlockID]struct{}),
@@ -374,8 +389,8 @@ func TestUnitValidateHeader(t *testing.T) {
 			earliestValidTimestamp: mockValidBlock.Timestamp,
 			marshaler:              parentBlockUnmarshaler,
 			useNilBlockMap:         true,
-			errWant:                errNoBlockMap,
-			msg:                    "validateHeader should fail when no block map is found in the database",
+			errWant:                errNoHeaderMap,
+			msg:                    "validateHeader should fail when no header map is found in the database",
 		},
 		// Test that known blocks are rejected.
 		{
@@ -463,17 +478,23 @@ func TestUnitValidateHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		// Initialize the blockmap in the tx.
-		bucket := mockDbBucket{map[string][]byte{}}
+		blockBucket := mockDbBucket{map[string][]byte{}}
 		for _, mapPair := range tt.blockMapPairs {
-			bucket.Set(mapPair.key, mapPair.val)
+			blockBucket.Set(mapPair.key, mapPair.val)
+		}
+		headerBucket := mockDbBucket{map[string][]byte{}}
+		for _, mapPair := range tt.headerMapPairs {
+			headerBucket.Set(mapPair.key, mapPair.val)
 		}
 		dbBucketMap := map[string]dbBucket{}
 		if tt.useNilBlockMap {
 			dbBucketMap[string(BlockMap)] = nil
 		} else {
-			dbBucketMap[string(BlockMap)] = bucket
+			dbBucketMap[string(BlockMap)] = blockBucket
 		}
+		dbBucketMap[string(BlockHeaderMap)] = headerBucket
 		tx := mockDbTx{dbBucketMap}
+		parentHeaderMap[mockValidBlock.ParentID] = &parentProcessedBlockHeader
 
 		cs := ConsensusSet{
 			dosBlocks: tt.dosBlocks,
@@ -481,6 +502,7 @@ func TestUnitValidateHeader(t *testing.T) {
 			blockRuleHelper: mockBlockRuleHelper{
 				minTimestamp: tt.earliestValidTimestamp,
 			},
+			processedBlockHeaders: parentHeaderMap,
 		}
 		_, err := cs.validateHeader(tx, tt.header)
 		if err != tt.errWant {
