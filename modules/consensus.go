@@ -84,7 +84,7 @@ type (
 		// In addition to a HeaderConsensusChange, returns a callback where a
 		// user can retrieve a set of SiacoinOutputDiffs - reverted or
 		// otherwise
-		ProcessHeaderConsensusChange(HeaderConsensusChange, func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error))
+		ProcessHeaderConsensusChange(HeaderConsensusChange)
 	}
 
 	// HeaderConsensusChange is the header consensus change
@@ -103,6 +103,8 @@ type (
 		// to the consensus set via maturation in the recent change. The direction for
 		// the set of diffs is 'DiffApply'.
 		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
+
+		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.

@@ -334,8 +334,14 @@ func (w *Wallet) WatchAddresses(addrs []types.UnlockHash) error {
 	done := make(chan struct{})
 	go w.rescanMessage(done)
 	defer close(done)
-	if err := w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
-		return err
+	if w.cs.SpvMode() {
+		if err := w.cs.HeaderConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
+			return err
+		}
+	} else {
+		if err := w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
+			return err
+		}
 	}
 	w.tpool.TransactionPoolSubscribe(w)
 

@@ -94,8 +94,7 @@ func (s *seedScanner) generateKeys(n uint64) {
 //
 // In a full node, we read the block directly from the consensus db and grab the
 // outputs from the block output diff.
-func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange,
-	getSiacoinOutputDiff func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error)) {
+func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 
 	var siacoinOutputDiffs []modules.SiacoinOutputDiff
 
@@ -108,7 +107,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
-			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffApply)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
 			if err != nil {
 				panic(err)
 			}
@@ -121,7 +120,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := getSiacoinOutputDiff(blockID, modules.DiffRevert)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
 			}
