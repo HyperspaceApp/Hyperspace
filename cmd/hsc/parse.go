@@ -118,7 +118,7 @@ func currencyUnits(c types.Currency) string {
 	// iterate until we find a unit greater than c
 	mag := pico
 	unit := ""
-	for _, unit = range []string{"pS", "nS", "uS", "mS", "SC", "KS", "MS", "GS", "TS"} {
+	for _, unit = range []string{"pS", "nS", "uS", "mS", "S", "KS", "MS", "GS", "TS"} {
 		if c.Cmp(mag.Mul64(1e3)) < 0 {
 			break
 		} else if unit != "TS" {
@@ -137,7 +137,7 @@ func currencyUnits(c types.Currency) string {
 
 // parseCurrency converts a SPACE amount to base units.
 func parseCurrency(amount string) (string, error) {
-	units := []string{"pS", "nS", "uS", "mS", "SC", "KS", "MS", "GS", "TS"}
+	units := []string{"pS", "nS", "uS", "mS", "S", "KS", "MS", "GS", "TS"}
 	for i, unit := range units {
 		if strings.HasSuffix(amount, unit) {
 			// scan into big.Rat

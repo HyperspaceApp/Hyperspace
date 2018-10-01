@@ -71,7 +71,7 @@ The smallest unit of SPACE is the hasting. One space cash is 10^24 hastings. Oth
   nS (nano,  10^-9 SPACE)
   uS (micro, 10^-6 SPACE)
   mS (milli, 10^-3 SPACE)
-  SPACE
+  S  (1 SPACE)
   KS (kilo, 10^3 SPACE)
   MS (mega, 10^6 SPACE)
   GS (giga, 10^9 SPACE)
