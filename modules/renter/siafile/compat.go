@@ -35,7 +35,7 @@ type (
 // previously created from a legacy file.
 func NewFromFileData(fd FileData) (*SiaFile, error) {
 	// legacy masterKeys are always twofish keys
-	mk, err := crypto.NewSiaKey(crypto.TypeTwofish, fd.MasterKey[:])
+	mk, err := crypto.NewSiaKey(crypto.TypeThreefish, fd.MasterKey[:])
 	if err != nil {
 		return nil, errors.AddContext(err, "failed to restore master key")
 	}
