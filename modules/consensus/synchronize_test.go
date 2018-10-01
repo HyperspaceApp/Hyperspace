@@ -677,6 +677,10 @@ func (pc mockPeerConn) SetDeadline(time.Time) error {
 	return nil
 }
 
+func (pc mockPeerConn) Version() string {
+	return "test"
+}
+
 // Read is a mock implementation of modules.PeerConn.Read that always returns
 // an error.
 func (mockPeerConnFailingReader) Read([]byte) (int, error) {
