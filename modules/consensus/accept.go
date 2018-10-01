@@ -7,10 +7,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
+)
+
+const (
+	minimumSendProcessedHeaderPeerVersion = "0.2.1"
 )
 
 var (
@@ -19,12 +24,38 @@ var (
 	errNoBlockMap      = errors.New("block map is not in database")
 	errNonLinearChain  = errors.New("block set is not a contiguous chain")
 	errOrphan          = errors.New("block has no known parent")
+	errNoHeaderMap     = errors.New("header map is not in database")
+	errHeaderNotExist  = errors.New("header is not in database")
 )
 
+func remoteSupportSPVHeader(v string) bool {
+	return build.VersionCmp(v, minimumSendProcessedHeaderPeerVersion) < 0
+}
+
 // managedBroadcastBlock will broadcast a block to the consensus set's peers.
-func (cs *ConsensusSet) managedBroadcastBlock(b types.Block) {
+func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 	// broadcast the block header to all peers
-	go cs.gateway.Broadcast("RelayHeader", b.Header(), cs.gateway.Peers())
+	// broadcast header and processed header to different version
+	var bhPeers, pbhPeers []modules.Peer
+	for _, p := range cs.gateway.Peers() {
+		if remoteSupportSPVHeader(p.Version) {
+			// old version
+			bhPeers = append(bhPeers)
+		} else {
+
+		}
+	}
+	if len(bhPeers) > 0 {
+		go cs.gateway.Broadcast(modules.RelayHeaderCmd, bh, bhPeers)
+	}
+	if len(pbhPeers) > 0 {
+		pbh, exist := cs.processedBlockHeaders[bh.ID()]
+		if !exist {
+			panic("broadcast header don't have related processed header")
+		}
+
+		go cs.gateway.Broadcast(modules.RelayHeaderCmd, pbh.ForSend(), pbhPeers)
+	}
 }
 
 // validateHeaderAndBlock does some early, low computation verification on the
@@ -59,24 +90,46 @@ func (cs *ConsensusSet) validateHeaderAndBlock(tx dbTx, b types.Block, id types.
 		return nil, err
 	}
 	// Check that the timestamp is not too far in the past to be acceptable.
-	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parent)
-
-	// XXX debugging
-	var payoutSum types.Currency
-	for _, payout := range b.MinerPayouts {
-		//if payout.Value.IsZero() {
-		//        return false
-		//}
-		payoutSum = payoutSum.Add(payout.Value)
-	}
-	// cs.log.Debugln(fmt.Sprintf("block id: %s, #txs: %d, miner fees %s, miner subsidy (calculated by transaction fees): %s miner payout: %s\n", b.ID(), len(b.Transactions), b.CalculateMinerFees().String(), b.CalculateSubsidy(parent.Height+1).String(), payoutSum.String()))
-	// XXX debugging
+	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parent.Block.ParentID, parent.Block.Timestamp)
 
 	err = cs.blockValidator.ValidateBlock(b, id, minTimestamp, parent.ChildTarget, parent.Height+1, cs.log)
 	if err != nil {
 		return nil, err
 	}
 	return parent, nil
+}
+
+func (cs *ConsensusSet) validateSingleHeaderAndBlockForSPV(tx dbTx, b types.Block, id types.BlockID) (parentHeader *modules.ProcessedBlockHeader, err error) {
+	// Check if the block is a DoS block - a known invalid block that is expensive
+	// to validate.
+	_, exists := cs.dosBlocks[id]
+	if exists {
+		return nil, errDoSBlock
+	}
+
+	// Check if the block is already known.
+	blockMap := tx.Bucket(BlockMap)
+	if blockMap == nil {
+		return nil, errNoBlockMap
+	}
+	if blockMap.Get(id[:]) != nil {
+		return nil, modules.ErrBlockKnown
+	}
+
+	// Check for the parent.
+	parentID := b.ParentID
+	parentHeader, exists = cs.processedBlockHeaders[parentID]
+	if !exists {
+		return nil, errOrphan
+	}
+	// Check that the timestamp is not too far in the past to be acceptable.
+	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parentID, parentHeader.BlockHeader.Timestamp)
+
+	err = cs.blockValidator.ValidateBlock(b, id, minTimestamp, parentHeader.ChildTarget, parentHeader.Height+1, cs.log)
+	if err != nil {
+		return nil, err
+	}
+	return parentHeader, nil
 }
 
 // checkHeaderTarget returns true if the header's ID meets the given target.
@@ -88,48 +141,46 @@ func checkHeaderTarget(h types.BlockHeader, target types.Target) bool {
 // validateHeader does some early, low computation verification on the header
 // to determine if the block should be downloaded. Callers should not assume
 // that validation will happen in a particular order.
-func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) error {
+func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHeader *modules.ProcessedBlockHeader, err error) {
 	// Check if the block is a DoS block - a known invalid block that is expensive
 	// to validate.
 	id := h.ID()
 	_, exists := cs.dosBlocks[id]
 	if exists {
-		return errDoSBlock
+		return nil, errDoSBlock
 	}
 
-	// Check if the block is already known.
-	blockMap := tx.Bucket(BlockMap)
-	if blockMap == nil {
-		return errNoBlockMap
+	// Check if the header is already known.
+	headerMap := tx.Bucket(BlockHeaderMap)
+	if headerMap == nil {
+		return nil, errNoHeaderMap
 	}
-	if blockMap.Get(id[:]) != nil {
-		return modules.ErrBlockKnown
+
+	_, exists = cs.processedBlockHeaders[id]
+	if exists {
+		return nil, modules.ErrBlockKnown
 	}
 
 	// Check for the parent.
 	parentID := h.ParentID
-	parentBytes := blockMap.Get(parentID[:])
-	if parentBytes == nil {
-		return errOrphan
-	}
-	var parent processedBlock
-	err := cs.marshaler.Unmarshal(parentBytes, &parent)
-	if err != nil {
-		return err
+	parentHeader, exists = cs.processedBlockHeaders[parentID]
+	if !exists {
+		return nil, errOrphan
 	}
 
 	// Check that the target of the new block is sufficient.
-	if !checkHeaderTarget(h, parent.ChildTarget) {
-		return modules.ErrBlockUnsolved
+	if !checkHeaderTarget(h, parentHeader.ChildTarget) {
+		return nil, modules.ErrBlockUnsolved
 	}
 
 	// TODO: check if the block is a non extending block once headers-first
 	// downloads are implemented.
 
+	// TODO: change header to use memory key map too, should be faster
 	// Check that the timestamp is not too far in the past to be acceptable.
-	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, &parent)
+	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(headerMap, parentHeader.BlockHeader.ParentID, parentHeader.BlockHeader.Timestamp)
 	if minTimestamp > h.Timestamp {
-		return errEarlyTimestamp
+		return nil, errEarlyTimestamp
 	}
 
 	// Check if the block is in the extreme future. We make a distinction between
@@ -137,14 +188,14 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) error {
 	// the extreme future arrives, this block will no longer be a part of the
 	// longest fork because it will have been ignored by all of the miners.
 	if h.Timestamp > types.CurrentTimestamp()+types.ExtremeFutureThreshold {
-		return errExtremeFutureTimestamp
+		return nil, errExtremeFutureTimestamp
 	}
 
 	// We do not check if the header is in the near future here, because we want
 	// to get the corresponding block as soon as possible, even if the block is in
 	// the near future.
 
-	return nil
+	return parentHeader, nil
 }
 
 // addBlockToTree inserts a block into the blockNode tree by adding it to its
@@ -190,6 +241,47 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	return ce, nil
 }
 
+func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block, parentHeader *modules.ProcessedBlockHeader) (err error) {
+	// Prepare the child processed block associated with the parent block.
+	newNode := cs.newSingleChildForSPV(tx, parentHeader, b)
+
+	// Fork the blockchain and put the new heaviest block at the tip of the
+	// chain.
+	// revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
+	// TODO: generate diffs for current block
+	cs.applyUntilBlockForSPV(tx, newNode)
+
+	return nil
+}
+
+// addHeaderToTree adds a headerNode to the tree by adding it to it's parents list of children.
+func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) (ce changeEntry, err error) {
+	// Prepare the child header node associated with the parent header.
+	newNode := cs.newHeaderChild(tx, parentHeader, header)
+	// Check whether the new node is part of a chain that is heavier than the
+	// current node. If not, return ErrNonExtending and don't fork the
+	// blockchain.
+	currentNode := currentProcessedHeader(tx)
+	if !newNode.HeavierThan(currentNode) {
+		return changeEntry{}, modules.ErrNonExtendingBlock
+	}
+	// Fork the blockchain and put the new heaviest headers at the tip of the
+	// chain.
+	var revertedBlocks, appliedBlocks []*modules.ProcessedBlockHeader
+	revertedBlocks, appliedBlocks = cs.forkHeadersBlockchain(tx, newNode)
+	for _, rn := range revertedBlocks {
+		ce.RevertedBlocks = append(ce.RevertedBlocks, rn.BlockHeader.ID())
+	}
+	for _, an := range appliedBlocks {
+		ce.AppliedBlocks = append(ce.AppliedBlocks, an.BlockHeader.ID())
+	}
+	err = appendChangeLog(tx, ce)
+	if err != nil {
+		return changeEntry{}, err
+	}
+	return ce, nil
+}
+
 // threadedSleepOnFutureBlock will sleep until the timestamp of a future block
 // has arrived.
 //
@@ -215,7 +307,34 @@ func (cs *ConsensusSet) threadedSleepOnFutureBlock(b types.Block) {
 		if err != nil {
 			cs.log.Debugln("WARN: failed to accept a future block:", err)
 		}
-		cs.managedBroadcastBlock(b)
+		cs.managedBroadcastBlock(b.Header())
+	}
+}
+
+// threadedSleepOnFutureHeader will sleep until the timestamp of a future header
+// has arrived.
+//
+// TODO: An attacker can broadcast a future block multiple times, resulting in a
+// goroutine spinup for each future block.  Need to prevent that.
+//
+// TODO: An attacker could produce a very large number of future blocks,
+// consuming memory. Need to prevent that.
+func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh modules.ProcessedBlockHeaderForSend) {
+	// Add this thread to the threadgroup.
+	err := cs.tg.Add()
+	if err != nil {
+		return
+	}
+	defer cs.tg.Done()
+	// Perform a soft-sleep while we wait for the block to become valid.
+	select {
+	case <-cs.tg.StopChan():
+		return
+	case <-time.After(time.Duration(bh.BlockHeader.Timestamp-(types.CurrentTimestamp()+types.FutureThreshold)) * time.Second):
+		_, err := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{bh})
+		if err != nil {
+			cs.log.Debugln("WARN: failed to accept a future block header:", err)
+		}
 	}
 }
 
@@ -322,6 +441,129 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 	return chainExtended, nil
 }
 
+// managedAcceptBlocksForSPV deal with a new block for spv comes in
+func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block) error {
+	// Grab a lock on the consensus set.
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	setErr := cs.db.Update(func(tx *bolt.Tx) error {
+		parentHeader, err := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
+		if err == modules.ErrBlockKnown {
+			// Skip over known blocks.
+			return err
+		}
+		// if err == errFutureTimestamp {
+		// 	// Queue the block to be tried again if it is a future block.
+		// 	go cs.threadedSleepOnFutureBlock(block)
+		// }
+		if err != nil {
+			return err
+		}
+
+		// Try adding the block to consensus.
+		return cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
+	})
+	if _, ok := setErr.(bolt.MmapError); ok {
+		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
+		fmt.Println("Blockchain database has run out of disk space!")
+		os.Exit(1)
+	}
+	if setErr != nil {
+		fmt.Println("Received an invalid single block.")
+		cs.log.Println("Consensus received an invalid single block:", setErr)
+		return setErr
+	}
+	return nil
+}
+
+// managedAcceptHeaders will try to add headers to the consensus set. If the
+// headers do not extend the longest currently known chain, an error is
+// returned but the headers are still kept in memory. If the headers extend a fork
+// such that the fork becomes the longest currently known chain, the consensus
+// set will reorganize itself to recognize the new longest fork. Accepted
+// headers are not relayed.
+func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHeaderForSend) (blockchainExtended bool, err error) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	// Make sure that headers are consecutive. Though this isn't a strict
+	// requirement, if blocks are not consecutive then it becomes a lot harder
+	// to maintain correcetness when adding multiple blocks in a single tx.
+	// This is the first time that IDs on the blocks have been computed.
+	headerIds := make([]types.BlockID, 0, len(headers))
+	for i := 0; i < len(headers); i++ {
+		headerIds = append(headerIds, headers[i].BlockHeader.ID())
+		if i > 0 && headers[i].BlockHeader.ParentID != headerIds[i-1] {
+			return false, errNonLinearChain
+		}
+	}
+	// Verify the headers, throw out known headers, and the
+	// invalid headers (which includes the children of invalid headers).
+	chainExtended := false
+	changes := make([]changeEntry, 0, len(headers))
+	setErr := cs.db.Update(func(tx *bolt.Tx) error {
+		for i := 0; i < len(headers); i++ {
+			//start by checking the header of the block
+			parentHeader, err := cs.validateHeader(boltTxWrapper{tx}, headers[i].BlockHeader)
+			if err == modules.ErrHeaderKnown {
+				// Skip over known headers.
+				continue
+			}
+			if err == errFutureTimestamp {
+				// Queue the block to be tried again if it is a future block.
+				go cs.threadedSleepOnFutureHeader(headers[i])
+			}
+			if err != nil {
+				return err
+			}
+			// Try adding the header to consnesus.
+			changeEntry, err := cs.addHeaderToTree(tx, parentHeader, headers[i])
+			if err == nil {
+				chainExtended = true
+			}
+			if err == modules.ErrNonExtendingBlock {
+				err = nil
+			}
+			if err != nil {
+				return err
+			}
+			// Sanity check - If reverted blocks is zero, applied blocks should also
+			// be zero.
+			if build.DEBUG && len(changeEntry.AppliedBlocks) == 0 && len(changeEntry.RevertedBlocks) != 0 {
+				panic("after adding a change entry, there are no applied blocks but there are reverted blocks")
+			}
+			// Append to the set of changes, and append the valid block.
+			changes = append(changes, changeEntry)
+		}
+		return nil
+	})
+
+	if _, ok := setErr.(bolt.MmapError); ok {
+		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
+		fmt.Println("Blockchain database has run out of disk space!")
+		os.Exit(1)
+	}
+	if setErr != nil {
+		if len(changes) == 0 {
+			fmt.Println("Received an invalid block header set.")
+			cs.log.Println("Consensus received an invalid block header:", setErr)
+		} else {
+			fmt.Println("Received a partially valid block header set.")
+			cs.log.Println("Consensus received a chain of block headers, where one was valid, but others were not:", setErr)
+		}
+		return false, setErr
+	}
+	// Stop here if the blocks did not extend the longest blockchain.
+	if !chainExtended {
+		return false, modules.ErrNonExtendingBlock
+	}
+	// Send any changes to subscribers.
+	for i := 0; i < len(changes); i++ {
+		cs.updateHeaderSubscribers(changes[i])
+	}
+	return chainExtended, nil
+}
+
 // AcceptBlock will try to add a block to the consensus set. If the block does
 // not extend the longest currently known chain, an error is returned but the
 // block is still kept in memory. If the block extends a fork such that the
@@ -341,7 +583,7 @@ func (cs *ConsensusSet) AcceptBlock(b types.Block) error {
 		return err
 	}
 	if chainExtended {
-		cs.managedBroadcastBlock(b)
+		cs.managedBroadcastBlock(b.Header())
 	}
 	return nil
 }

@@ -646,14 +646,14 @@ func TestDistantWallets(t *testing.T) {
 }
 
 // createWalletTester takes a testing.T and creates a WalletTester.
-func createWalletSPVTester(name string, deps modules.Dependencies, spv bool) (*walletTester, error) {
+func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTester, error) {
 	// Create the modules
 	testdir := build.TempDir(modules.WalletDir, name)
 	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), spv)
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), true)
 	if err != nil {
 		return nil, err
 	}

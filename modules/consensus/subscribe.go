@@ -71,7 +71,7 @@ func (cs *ConsensusSet) computeConsensusChange(tx *bolt.Tx, ce changeEntry) (mod
 		cs.log.Critical("could not find process block for known block")
 	}
 	cc.ChildTarget = pb.ChildTarget
-	cc.MinimumValidChildTimestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb)
+	cc.MinimumValidChildTimestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb.Block.ParentID, pb.Block.Timestamp)
 
 	currentBlock := currentBlockID(tx)
 	if cs.synced && recentBlock == currentBlock {
@@ -106,6 +106,44 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 	for _, subscriber := range cs.subscribers {
 		subscriber.ProcessConsensusChange(cc)
 	}
+}
+
+func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
+	if len(cs.subscribers) == 0 {
+		return
+	}
+	// Get the consensus change and send it to all subscribers.
+	var hcc modules.HeaderConsensusChange
+	cs.db.View(func(tx *bolt.Tx) error {
+		// Compute the consensus change so it can be sent to subscribers.
+		var err error
+		hcc, err = cs.computeHeaderConsensusChange(ce)
+		if err != nil {
+			cs.log.Critical("computeConsensusChange failed:", err)
+			return nil
+		}
+		for _, subscriber := range cs.headerSubscribers {
+			subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
+				err error) {
+				pb, err := getBlockMap(tx, id)
+				if err != nil {
+					return nil, err
+				}
+				pbScods := pb.SiacoinOutputDiffs
+				if direction == modules.DiffRevert {
+					for i := len(pbScods) - 1; i >= 0; i-- {
+						pbScod := pbScods[i]
+						pbScod.Direction = !pbScod.Direction
+						scods = append(scods, pbScod)
+					}
+				} else {
+					scods = pbScods
+				}
+				return
+			})
+		}
+		return nil
+	})
 }
 
 // managedInitializeSubscribe will take a subscriber and feed them all of the
@@ -444,23 +482,20 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				}
 				subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
 					err error) {
-					err = cs.db.View(func(tx *bolt.Tx) error {
-						pb, err := getBlockMap(tx, id)
-						if err != nil {
-							return err
+					pb, err := getBlockMap(tx, id)
+					if err != nil {
+						return nil, err
+					}
+					pbScods := pb.SiacoinOutputDiffs
+					if direction == modules.DiffRevert {
+						for i := len(pbScods) - 1; i >= 0; i-- {
+							pbScod := pbScods[i]
+							pbScod.Direction = !pbScod.Direction
+							scods = append(scods, pbScod)
 						}
-						pbScods := pb.SiacoinOutputDiffs
-						if direction == modules.DiffRevert {
-							for i := len(pbScods) - 1; i >= 0; i-- {
-								pbScod := pbScods[i]
-								pbScod.Direction = !pbScod.Direction
-								scods = append(scods, pbScod)
-							}
-						} else {
-							scods = pbScods
-						}
-						return nil
-					})
+					} else {
+						scods = pbScods
+					}
 					return
 				})
 				entry, exists = entry.NextEntry(tx)

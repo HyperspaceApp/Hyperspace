@@ -19,6 +19,10 @@ const (
 	SendBlocksCmd = "SendBlocks"
 	// SendBlockCmd requests that a node send us a specific consensus block
 	SendBlockCmd = "SendBlk"
+	// SendHeadersCmd requests that a node send us a list of headers
+	SendHeadersCmd = "SndHdrs"
+	// SendHeaderCmd requests that a node send us a specific header
+	SendHeaderCmd = "SndHdr"
 	// RelayHeaderCmd sends a block header to a peer with the expectation
 	// that the peer will pass on the header to other nodes
 	RelayHeaderCmd = "RelayHeader"
@@ -79,6 +83,7 @@ type (
 	PeerConn interface {
 		net.Conn
 		RPCAddr() NetAddress
+		Version() string
 	}
 
 	// RPCFunc is the type signature of functions that handle RPCs. It is used for

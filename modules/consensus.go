@@ -1,9 +1,12 @@
 package modules
 
 import (
+	"bytes"
 	"errors"
+	"math/big"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -35,6 +38,8 @@ var (
 	// ErrBlockKnown is an error indicating that a block is already in the
 	// database.
 	ErrBlockKnown = errors.New("block already present in database")
+
+	ErrHeaderKnown = errors.New("header already present in database")
 
 	// ErrBlockUnsolved indicates that a block did not meet the required POW
 	// target.
@@ -180,12 +185,21 @@ type (
 
 	// ProcessedBlockHeader is a header with more info
 	ProcessedBlockHeader struct {
-		BlockHeader        types.BlockHeader
-		Height             types.BlockHeight
-		Depth              types.Target
-		ChildTarget        types.Target
-		GCSFilter          types.GCSFilter
-		SiacoinOutputDiffs []SiacoinOutputDiff
+		BlockHeader               types.BlockHeader
+		Height                    types.BlockHeight
+		Depth                     types.Target
+		ChildTarget               types.Target
+		GCSFilter                 types.GCSFilter
+		SiacoinOutputDiffs        []SiacoinOutputDiff
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+		Announcements             []HostAnnouncement
+	}
+
+	// ProcessedBlockHeaderForSend is a header to send to spv peers
+	ProcessedBlockHeaderForSend struct {
+		BlockHeader   types.BlockHeader
+		GCSFilter     types.GCSFilter
+		Announcements []HostAnnouncement
 	}
 
 	// A ConsensusSet accepts blocks and builds an understanding of network
@@ -273,6 +287,9 @@ type (
 
 		// SpvMode return true if the consensus set is in spv mode
 		SpvMode() bool
+
+		// SetGetWalletKeysFuc setup the function for consensus to fetch keys from wallet
+		SetGetWalletKeysFunc(func() [][]byte)
 	}
 )
 
@@ -288,4 +305,95 @@ func (cc ConsensusChange) Append(cc2 ConsensusChange) ConsensusChange {
 		FileContractDiffs:         append(cc.FileContractDiffs, cc2.FileContractDiffs...),
 		DelayedSiacoinOutputDiffs: append(cc.DelayedSiacoinOutputDiffs, cc2.DelayedSiacoinOutputDiffs...),
 	}
+}
+
+// TODO move this back into the consensus package
+// SurpassThreshold is a percentage that dictates how much heavier a competing
+// chain has to be before the node will switch to mining on that chain. This is
+// not a consensus rule. This percentage is only applied to the most recent
+// block, not the entire chain; see blockNode.heavierThan.
+//
+// If no threshold were in place, it would be possible to manipulate a block's
+// timestamp to produce a sufficiently heavier block.
+var SurpassThreshold = big.NewRat(20, 100)
+
+// HeavierThan compare processed header difficulty
+func (pbh *ProcessedBlockHeader) HeavierThan(cmp *ProcessedBlockHeader) bool {
+	requirement := cmp.Depth.AddDifficulties(cmp.ChildTarget.MulDifficulty(SurpassThreshold))
+	return requirement.Cmp(pbh.Depth) > 0
+}
+
+// ChildDepth returns the depth of a headerNode's child nodes. The depth is the
+// "sum" of the current depth and current difficulty. See target.Add for more
+// detailed information.
+func (pbh *ProcessedBlockHeader) ChildDepth() types.Target {
+	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
+}
+
+// ForSend will only reserve BlockHeader, GCSFilter, Announcements
+func (pbh ProcessedBlockHeader) ForSend() *ProcessedBlockHeaderForSend {
+	return &ProcessedBlockHeaderForSend{
+		BlockHeader:   pbh.BlockHeader,
+		GCSFilter:     pbh.GCSFilter,
+		Announcements: pbh.Announcements,
+	}
+}
+
+func (pbh *ProcessedBlockHeader) childDepth() types.Target {
+	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
+}
+
+// FindHostAnnouncementsFromBlock extract announcements from block
+func FindHostAnnouncementsFromBlock(b types.Block) (has []HostAnnouncement) {
+	for _, t := range b.Transactions {
+		// the HostAnnouncement must be prefaced by the standard host
+		// announcement string
+		for _, arb := range t.ArbitraryData {
+			ha, err := DecodeAnnouncementForAnnouncement(arb)
+			if err != nil {
+				continue
+			}
+			has = append(has, ha)
+		}
+	}
+	return
+}
+
+// DecodeAnnouncementForAnnouncement decodes announcement bytes into a host announcement,
+// verifying the prefix and the signature. and return the struct
+func DecodeAnnouncementForAnnouncement(fullAnnouncement []byte) (ha HostAnnouncement, err error) {
+	// Read the first part of the announcement to get the intended host
+	// announcement.
+	dec := encoding.NewDecoder(bytes.NewReader(fullAnnouncement))
+	err = dec.Decode(&ha)
+	if err != nil {
+		return
+	}
+
+	// Check that the announcement was registered as a host announcement.
+	if ha.Specifier != PrefixHostAnnouncement {
+		err = ErrAnnNotAnnouncement
+		return
+	}
+	// Check that the public key is a recognized type of public key.
+	if ha.PublicKey.Algorithm != types.SignatureEd25519 {
+		err = ErrAnnUnrecognizedSignature
+		return
+	}
+
+	// Read the signature out of the reader.
+	var sig crypto.Signature
+	err = dec.Decode(&sig)
+	if err != nil {
+		return
+	}
+	// Verify the signature.
+	var pk crypto.PublicKey
+	copy(pk[:], ha.PublicKey.Key)
+	annHash := crypto.HashObject(ha)
+	err = crypto.VerifyHash(annHash, pk, sig)
+	if err != nil {
+		return
+	}
+	return
 }

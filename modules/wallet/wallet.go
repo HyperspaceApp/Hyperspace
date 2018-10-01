@@ -203,6 +203,15 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		return nil, err
 	}
 
+	cs.SetGetWalletKeysFunc(func() [][]byte {
+		var keyArray [][]byte
+		// TODO: maybe cache this somewhere
+		for u := range w.keys {
+			keyArray = append(keyArray, u[:])
+		}
+		return keyArray
+	})
+
 	return w, nil
 }
 

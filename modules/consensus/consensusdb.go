@@ -216,6 +216,15 @@ func currentProcessedBlock(tx *bolt.Tx) *processedBlock {
 	return pb
 }
 
+// currentProcessedHeader returns the most recent header in the consensus set
+func currentProcessedHeader(tx *bolt.Tx) *modules.ProcessedBlockHeader {
+	ph, err := getBlockHeaderMap(tx, currentBlockID(tx))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	return ph
+}
+
 // getBlockHeaderMap returns a processed block header with the input id.
 func getBlockHeaderMap(tx *bolt.Tx, id types.BlockID) (*modules.ProcessedBlockHeader, error) {
 	// Look up the encoded block.

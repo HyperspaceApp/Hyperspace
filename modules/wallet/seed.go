@@ -274,7 +274,6 @@ func (w *Wallet) LoadSeed(masterKey crypto.CipherKey, seed modules.Seed) error {
 	w.mu.RUnlock()
 
 	// scan blockchain to determine how many keys to generate for the seed
-
 	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err

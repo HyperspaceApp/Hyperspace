@@ -131,7 +131,7 @@ func TestScanLoop(t *testing.T) {
 	}
 
 	// the scanner should have generated a specific number of keys
-	expected := numInitialKeys + (numInitialKeys * scanMultiplier) + (numInitialKeys * scanMultiplier * scanMultiplier)
+	expected := numInitialKeys
 	if uint64(len(ss.keys)) != expected {
 		t.Errorf("expected %v keys, got %v", expected, len(ss.keys))
 	}
@@ -145,7 +145,7 @@ func TestScanLoop(t *testing.T) {
 
 func TestSlowScan(t *testing.T) {
 
-	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies, false)
+	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,3 +262,25 @@ func TestScannerGenerateKeys(t *testing.T) {
 		t.Fatalf("Maximum internal index should be %v but is %v\n", numKeys, ss.maximumInternalIndex)
 	}
 }
+
+// func TestSPVScan(t *testing.T) {
+// 	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer wt.closeWt()
+
+// 	for i := 0; i <= 10000; i++ {
+// 		// insert some tx
+// 		if i%100 == 0 {
+// 			wt.wallet.SendSiacoins(types.NewCurrency(1), types.UnlockHash{})
+// 		}
+
+// 		b, _ := wt.miner.FindBlock()
+// 		err := wt.cs.AcceptBlock(b)
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 	}
+
+// }

@@ -136,6 +136,7 @@ func NewFilter(P uint8, key [KeySize]byte, data [][]byte) (*Filter, error) {
 	return &f, nil
 }
 
+
 // FromBytes deserializes a GCS filter from a known N, P, and serialized filter
 // as returned by Bytes().
 func FromBytes(N uint32, P uint8, d []byte) (*Filter, error) {
