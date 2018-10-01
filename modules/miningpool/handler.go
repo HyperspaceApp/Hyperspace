@@ -265,6 +265,12 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 		h.s.SetCurrentDifficulty(0.03)
 		h.s.SetDisableVarDiff(true)
 	}
+	if len(m.Params) > 0 && m.Params[0].(string) == "NiceHash/1.0.0" {
+		r := types.StratumResponse{ID: m.ID}
+		r.Result = false
+		r.Error = interfaceify([]string{"NiceHash client is not supported"})
+		return h.sendResponse(r)
+	}
 
 	r := types.StratumResponse{ID: m.ID}
 	r.Method = m.Method
