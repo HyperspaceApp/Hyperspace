@@ -3,6 +3,7 @@ Version History
 
 v0.2.0
 - Added a /renter/contract/cancel endpoint
+- File encryption uses Threefish instead of Twofish
 
 Sept 19, 2018:
 
