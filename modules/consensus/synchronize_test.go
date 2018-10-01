@@ -693,6 +693,10 @@ func (mockPeerConnFailingWriter) Write([]byte) (int, error) {
 	return 0, errFailingWriter
 }
 
+func (mockPeerConnFailingReader) Version() string {
+	return ""
+}
+
 // TestSendBlk probes the ConsensusSet.rpcSendBlk method and tests that it
 // correctly receives block ids and writes out the corresponding blocks.
 func TestSendBlk(t *testing.T) {

@@ -348,6 +348,13 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 	}
 }
 
+// ProcessHeaderConsensusChange parses a header consensus change to update the set of
+// confiremd outputs known to the wallet
+func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
+	//
+	return
+}
+
 // ReceiveUpdatedUnconfirmedTransactions updates the wallet's unconfirmed
 // transaction set.
 func (w *Wallet) ReceiveUpdatedUnconfirmedTransactions(diff *modules.TransactionPoolDiff) {

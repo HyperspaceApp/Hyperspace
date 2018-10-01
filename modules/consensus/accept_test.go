@@ -477,6 +477,14 @@ func TestUnitValidateHeader(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		cs := ConsensusSet{
+			dosBlocks: tt.dosBlocks,
+			marshaler: tt.marshaler,
+			blockRuleHelper: mockBlockRuleHelper{
+				minTimestamp: tt.earliestValidTimestamp,
+			},
+			processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
+		}
 		// Initialize the blockmap in the tx.
 		blockBucket := mockDbBucket{map[string][]byte{}}
 		for _, mapPair := range tt.blockMapPairs {
@@ -486,6 +494,12 @@ func TestUnitValidateHeader(t *testing.T) {
 		for _, mapPair := range tt.headerMapPairs {
 			headerBucket.Set(mapPair.key, mapPair.val)
 		}
+		// cs.processedBlockHeaders[tt.header.ID()] = &modules.ProcessedBlockHeader{
+		// 	BlockHeader: tt.header,
+		// }
+		// cs.processedBlockHeaders[tt.header.ParentID] = &modules.ProcessedBlockHeader{
+		// 	BlockHeader: tt.header,
+		// }
 		dbBucketMap := map[string]dbBucket{}
 		if tt.useNilBlockMap {
 			dbBucketMap[string(BlockMap)] = nil

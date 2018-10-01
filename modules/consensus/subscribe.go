@@ -122,25 +122,25 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 			cs.log.Critical("computeConsensusChange failed:", err)
 			return nil
 		}
+		hcc.GetSiacoinOutputDiff = func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+			pb, err := getBlockMap(tx, id)
+			if err != nil {
+				return nil, err
+			}
+			pbScods := pb.SiacoinOutputDiffs
+			if direction == modules.DiffRevert {
+				for i := len(pbScods) - 1; i >= 0; i-- {
+					pbScod := pbScods[i]
+					pbScod.Direction = !pbScod.Direction
+					scods = append(scods, pbScod)
+				}
+			} else {
+				scods = pbScods
+			}
+			return
+		}
 		for _, subscriber := range cs.headerSubscribers {
-			subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
-				err error) {
-				pb, err := getBlockMap(tx, id)
-				if err != nil {
-					return nil, err
-				}
-				pbScods := pb.SiacoinOutputDiffs
-				if direction == modules.DiffRevert {
-					for i := len(pbScods) - 1; i >= 0; i-- {
-						pbScod := pbScods[i]
-						pbScod.Direction = !pbScod.Direction
-						scods = append(scods, pbScod)
-					}
-				} else {
-					scods = pbScods
-				}
-				return
-			})
+			subscriber.ProcessHeaderConsensusChange(hcc)
 		}
 		return nil
 	})
@@ -480,7 +480,7 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				if err != nil {
 					return err
 				}
-				subscriber.ProcessHeaderConsensusChange(hcc, func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
+				hcc.GetSiacoinOutputDiff = func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
 					err error) {
 					pb, err := getBlockMap(tx, id)
 					if err != nil {
@@ -497,7 +497,8 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 						scods = pbScods
 					}
 					return
-				})
+				}
+				subscriber.ProcessHeaderConsensusChange(hcc)
 				entry, exists = entry.NextEntry(tx)
 			}
 			return nil

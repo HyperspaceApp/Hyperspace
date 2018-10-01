@@ -235,8 +235,11 @@ func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 		done := make(chan struct{})
 		go w.rescanMessage(done)
 		defer close(done)
-
-		err = w.cs.ConsensusSetSubscribe(w, lastChange, w.tg.StopChan())
+		if w.cs.SpvMode() {
+			err = w.cs.HeaderConsensusSetSubscribe(w, lastChange, w.tg.StopChan())
+		} else {
+			err = w.cs.ConsensusSetSubscribe(w, lastChange, w.tg.StopChan())
+		}
 		if err == modules.ErrInvalidConsensusChangeID {
 			// something went wrong; resubscribe from the beginning
 			err = dbPutConsensusChangeID(w.dbTx, modules.ConsensusChangeBeginning)
@@ -247,7 +250,11 @@ func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 			if err != nil {
 				return fmt.Errorf("failed to reset db during rescan: %v", err)
 			}
-			err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+			if w.cs.SpvMode() {
+				err = w.cs.HeaderConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+			} else {
+				err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+			}
 		}
 		if err != nil {
 			return fmt.Errorf("wallet subscription failed: %v", err)

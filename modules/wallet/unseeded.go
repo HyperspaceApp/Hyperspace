@@ -202,7 +202,11 @@ func (w *Wallet) LoadSiagKeys(masterKey crypto.CipherKey, keyfiles []string) err
 	go w.rescanMessage(done)
 	defer close(done)
 
-	err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+	if w.cs.SpvMode() {
+		err = w.cs.HeaderConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+	} else {
+		err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+	}
 	if err != nil {
 		return err
 	}

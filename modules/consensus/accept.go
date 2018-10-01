@@ -331,7 +331,7 @@ func (cs *ConsensusSet) threadedSleepOnFutureHeader(bh modules.ProcessedBlockHea
 	case <-cs.tg.StopChan():
 		return
 	case <-time.After(time.Duration(bh.BlockHeader.Timestamp-(types.CurrentTimestamp()+types.FutureThreshold)) * time.Second):
-		_, err := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{bh})
+		_, _, err := cs.managedAcceptHeaders([]modules.ProcessedBlockHeaderForSend{bh})
 		if err != nil {
 			cs.log.Debugln("WARN: failed to accept a future block header:", err)
 		}
@@ -442,7 +442,7 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 }
 
 // managedAcceptBlocksForSPV deal with a new block for spv comes in
-func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block) error {
+func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, changes []changeEntry) error {
 	// Grab a lock on the consensus set.
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
@@ -474,6 +474,9 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block) error 
 		cs.log.Println("Consensus received an invalid single block:", setErr)
 		return setErr
 	}
+	for i := 0; i < len(changes); i++ {
+		cs.updateHeaderSubscribers(changes[i])
+	}
 	return nil
 }
 
@@ -483,7 +486,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block) error 
 // such that the fork becomes the longest currently known chain, the consensus
 // set will reorganize itself to recognize the new longest fork. Accepted
 // headers are not relayed.
-func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHeaderForSend) (blockchainExtended bool, err error) {
+func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHeaderForSend) (bool, []changeEntry, error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 	// Make sure that headers are consecutive. Though this isn't a strict
@@ -494,7 +497,7 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHea
 	for i := 0; i < len(headers); i++ {
 		headerIds = append(headerIds, headers[i].BlockHeader.ID())
 		if i > 0 && headers[i].BlockHeader.ParentID != headerIds[i-1] {
-			return false, errNonLinearChain
+			return false, []changeEntry{}, errNonLinearChain
 		}
 	}
 	// Verify the headers, throw out known headers, and the
@@ -551,17 +554,17 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.ProcessedBlockHea
 			fmt.Println("Received a partially valid block header set.")
 			cs.log.Println("Consensus received a chain of block headers, where one was valid, but others were not:", setErr)
 		}
-		return false, setErr
+		return false, []changeEntry{}, setErr
 	}
 	// Stop here if the blocks did not extend the longest blockchain.
 	if !chainExtended {
-		return false, modules.ErrNonExtendingBlock
+		return false, []changeEntry{}, modules.ErrNonExtendingBlock
 	}
 	// Send any changes to subscribers.
 	for i := 0; i < len(changes); i++ {
 		cs.updateHeaderSubscribers(changes[i])
 	}
-	return chainExtended, nil
+	return chainExtended, changes, nil
 }
 
 // AcceptBlock will try to add a block to the consensus set. If the block does
