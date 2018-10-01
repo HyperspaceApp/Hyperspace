@@ -161,6 +161,31 @@ func (cs *ConsensusSet) applyUntilBlock(tx *bolt.Tx, pb *processedBlock,
 	return appliedBlocks, nil
 }
 
+func (cs *ConsensusSet) applyUntilBlockForSPV(tx *bolt.Tx, block *processedBlock) (err error) {
+	// Backtrack to the common parent of 'bn' and current path and then apply the new blocks.
+
+	if block.DiffsGenerated {
+		commitDiffSet(tx, block, modules.DiffApply)
+	} else {
+		err := generateAndApplyDiffForSPV(tx, block)
+		if err != nil {
+			// Mark the block as invalid.
+			cs.dosBlocks[block.Block.ID()] = struct{}{}
+			return err
+		}
+	}
+
+	// Sanity check - after applying a block, check that the consensus set
+	// has maintained consistency.
+	if build.Release == "testing" {
+		cs.checkConsistency(tx)
+	} else {
+		cs.maybeCheckConsistency(tx)
+	}
+
+	return nil
+}
+
 // applyUntilHeader will successively apply the headers between the consensus
 // set's current path and 'ph'.
 func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHeader) (headers []*modules.ProcessedBlockHeader) {

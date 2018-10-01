@@ -203,8 +203,13 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		return nil, err
 	}
 
-	cs.SetIsWalletAddressFuc(func(u types.UnlockHash) bool {
-		return w.isWalletAddress(u)
+	cs.SetGetWalletKeysFunc(func() [][]byte {
+		var keyArray [][]byte
+		// TODO: maybe cache this somewhere
+		for u := range w.keys {
+			keyArray = append(keyArray, u[:])
+		}
+		return keyArray
 	})
 
 	return w, nil
@@ -329,8 +334,14 @@ func (w *Wallet) WatchAddresses(addrs []types.UnlockHash) error {
 	done := make(chan struct{})
 	go w.rescanMessage(done)
 	defer close(done)
-	if err := w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
-		return err
+	if w.cs.SpvMode() {
+		if err := w.cs.HeaderConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
+			return err
+		}
+	} else {
+		if err := w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
+			return err
+		}
 	}
 	w.tpool.TransactionPoolSubscribe(w)
 

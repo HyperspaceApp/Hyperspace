@@ -46,8 +46,8 @@ type ConsensusSet struct {
 	// The block root contains the genesis block.
 	blockRoot processedBlock
 
-	// isWalletAddressFunc will help check block addresses in wallet keys or not
-	isWalletAddressFunc func(types.UnlockHash) bool
+	// getWalletKeysFunc will help check block addresses in wallet keys or not
+	getWalletKeysFunc func() [][]byte
 
 	// headerSubscribers subscribe header change
 	headerSubscribers []modules.HeaderConsensusSetSubscriber
@@ -169,7 +169,11 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		if bootstrap {
 			// We are in a virgin goroutine right now, so calling the threaded
 			// function without a goroutine is okay.
-			err = cs.threadedInitialBlockchainDownload()
+			if cs.spv {
+				err = cs.threadedInitialHeadersDownload()
+			} else {
+				err = cs.threadedInitialBlockchainDownload()
+			}
 			if err != nil {
 				return
 			}
@@ -197,7 +201,7 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		}
 		// SPV nodes and full nodes will send headers and relay headers
 		gateway.RegisterRPC(modules.SendHeadersCmd, cs.rpcSendHeaders)
-		gateway.RegisterRPC(modules.SendHeaderCmd, cs.rpcSendHeader)
+		// gateway.RegisterRPC(modules.SendHeaderCmd, cs.rpcSendHeader)
 		gateway.RegisterRPC(modules.RelayHeaderCmd, cs.threadedRPCRelayHeader)
 		cs.tg.OnStop(func() {
 			if spv {
@@ -208,7 +212,7 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 				cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
 			}
 			cs.gateway.UnregisterRPC(modules.SendHeadersCmd)
-			cs.gateway.UnregisterRPC(modules.SendHeaderCmd)
+			// cs.gateway.UnregisterRPC(modules.SendHeaderCmd)
 			cs.gateway.UnregisterRPC(modules.RelayHeaderCmd)
 		})
 
@@ -433,7 +437,7 @@ func (cs *ConsensusSet) SpvMode() bool {
 	return cs.spv
 }
 
-// SetIsWalletAddressFuc set the isWalletAddress callback
-func (cs *ConsensusSet) SetIsWalletAddressFuc(f func(types.UnlockHash) bool) {
-	cs.isWalletAddressFunc = f
+// SetGetWalletKeysFunc set the getWalletKeysFunc callback
+func (cs *ConsensusSet) SetGetWalletKeysFunc(f func() [][]byte) {
+	cs.getWalletKeysFunc = f
 }

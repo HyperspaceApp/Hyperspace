@@ -147,11 +147,12 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 		panic(err)
 	}
 	childHeader := &modules.ProcessedBlockHeader{
-		BlockHeader: b.Header(),
-		Height:      child.Height,
-		Depth:       child.Depth,
-		ChildTarget: child.ChildTarget,
-		GCSFilter:   *filter,
+		BlockHeader:   b.Header(),
+		Height:        child.Height,
+		Depth:         child.Depth,
+		ChildTarget:   child.ChildTarget,
+		GCSFilter:     *filter,
+		Announcements: modules.FindHostAnnouncementsFromBlock(child.Block),
 	}
 
 	blockHeaderMap := tx.Bucket(BlockHeaderMap)
@@ -166,16 +167,19 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 // newHeaderChild creates a new child headerNode from a header and adds it to the parent's set of
 // children. The new node is also returned. It necessarily modifies the BlockHeaderMap bucket
 // TODO we need to get the gcsfilter here somehow
-func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header types.BlockHeader) *modules.ProcessedBlockHeader {
+func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.ProcessedBlockHeaderForSend) *modules.ProcessedBlockHeader {
 	// Create the child node.
-	childID := header.ID()
+	childID := header.BlockHeader.ID()
 	child := &modules.ProcessedBlockHeader{
-		BlockHeader: header,
-		Height:      parentHeader.Height + 1,
-		Depth:       parentHeader.ChildDepth(),
+		BlockHeader:   header.BlockHeader,
+		Height:        parentHeader.Height + 1,
+		Depth:         parentHeader.ChildDepth(),
+		GCSFilter:     header.GCSFilter,
+		Announcements: header.Announcements,
 	}
-	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, header.ParentID)
-	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, parentHeader.BlockHeader.Timestamp, header.Timestamp, prevTotalTarget, parentHeader.ChildTarget)
+	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, header.BlockHeader.ParentID)
+	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, parentHeader.BlockHeader.Timestamp,
+		header.BlockHeader.Timestamp, prevTotalTarget, parentHeader.ChildTarget)
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
@@ -187,5 +191,34 @@ func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.Proces
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
+	return child
+}
+
+func (cs *ConsensusSet) newSingleChildForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, b types.Block) *processedBlock {
+	// Create the child node.
+	childID := b.ID()
+	child := &processedBlock{
+		Block:  b,
+		Height: pbh.Height + 1,
+		Depth:  pbh.ChildDepth(),
+	}
+
+	// Push the total values for this block into the oak difficulty adjustment
+	// bucket. The previous totals are required to compute the new totals.
+	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, b.ParentID)
+	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, pbh.BlockHeader.Timestamp, b.Timestamp, prevTotalTarget, pbh.ChildTarget)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+
+	// Use the difficulty adjustment algorithm to set the target of the child
+	// block and put the new processed block into the database.
+	blockMap := tx.Bucket(BlockMap)
+	child.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, pbh.ChildTarget, pbh.Height, pbh.BlockHeader.Timestamp)
+	err = blockMap.Put(childID[:], encoding.Marshal(*child))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+
 	return child
 }
