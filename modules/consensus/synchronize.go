@@ -685,11 +685,18 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	var h types.BlockHeader
 	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
-	err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
-	if err != nil {
-		return err
+	if remoteSupportSPVHeader(conn.Version()) {
+		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
+		if err != nil {
+			return err
+		}
+		h = phfs.BlockHeader
+	} else {
+		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
+		if err != nil {
+			return err
+		}
 	}
-	h = phfs.BlockHeader
 	// Start verification inside of a bolt View tx.
 	cs.mu.RLock()
 	err = cs.db.View(func(tx *bolt.Tx) error {
@@ -714,6 +721,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// TODO: deal with orphan header case
 			err := cs.gateway.RPC(conn.RPCAddr(), modules.SendBlocksCmd, cs.managedReceiveBlocks)
 			if err != nil {
 				cs.log.Debugln("WARN: failed to get parents of orphan header:", err)
@@ -729,6 +737,9 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	go func() {
 		defer wg.Done()
 		if cs.spv {
+			if !remoteSupportSPVHeader(conn.Version()) {
+				return
+			}
 			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
 			if chainExtend {
 				id := h.ID()
