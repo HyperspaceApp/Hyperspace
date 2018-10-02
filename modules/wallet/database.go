@@ -143,8 +143,8 @@ func dbReset(tx *bolt.Tx) error {
 	wb.Put(keyAuxiliarySeedFiles, encoding.Marshal([]seedFile{}))
 	wb.Put(keySpendableKeyFiles, encoding.Marshal([]spendableKeyFile{}))
 	wb.Put(keyWatchedAddrs, encoding.Marshal([]types.UnlockHash{}))
-	wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{}))
-	wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{}))
+	wb.Put(keySeedsMaximumInternalIndex, encoding.Marshal([]uint64{0}))
+	wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{0}))
 	dbPutConsensusHeight(tx, 0)
 	dbPutConsensusChangeID(tx, modules.ConsensusChangeBeginning)
 
