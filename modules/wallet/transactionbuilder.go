@@ -25,6 +25,9 @@ var (
 	// errSpendHeightTooHigh indicates an output's spend height is greater than
 	// the allowed height.
 	errSpendHeightTooHigh = errors.New("output spend height exceeds the allowed height")
+
+	// errMissingOutputKey indicates that we are missing the key corresponding to an output
+	errMissingOutputKey = errors.New("no corresponding key found for output")
 )
 
 // transactionBuilder allows transactions to be manually constructed, including
@@ -155,10 +158,15 @@ func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutp
 			continue
 		}
 
+		key, ok := tb.wallet.keys[sco.UnlockHash]
+		if !ok {
+			return errMissingOutputKey
+		}
+
 		// Add a siacoin input for this output.
 		sci := types.SiacoinInput{
 			ParentID:         scoid,
-			UnlockConditions: tb.wallet.keys[sco.UnlockHash].UnlockConditions,
+			UnlockConditions: key.UnlockConditions,
 		}
 		tb.siacoinInputs = append(tb.siacoinInputs, len(tb.transaction.SiacoinInputs))
 		tb.transaction.SiacoinInputs = append(tb.transaction.SiacoinInputs, sci)
@@ -252,10 +260,15 @@ func (tb *transactionBuilder) FundSiacoins(amount types.Currency) error {
 			continue
 		}
 
+		key, ok := tb.wallet.keys[sco.UnlockHash]
+		if !ok {
+			return errMissingOutputKey
+		}
+
 		// Add a siacoin input for this output.
 		sci := types.SiacoinInput{
 			ParentID:         scoid,
-			UnlockConditions: tb.wallet.keys[sco.UnlockHash].UnlockConditions,
+			UnlockConditions: key.UnlockConditions,
 		}
 		parentTxn.SiacoinInputs = append(parentTxn.SiacoinInputs, sci)
 		spentScoids = append(spentScoids, scoid)
