@@ -1704,7 +1704,7 @@ func TestFilteredTransactionsGET(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(wtg.ConfirmedTransactions) != 0 {
-		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+		t.Fatal("expecting no sent wallet transactions, there have only been miner payout receiving transactions.")
 	}
 	if len(wtg.UnconfirmedTransactions) != 0 {
 		t.Fatal("expecting 0 unconfirmed transactions")
@@ -1716,7 +1716,7 @@ func TestFilteredTransactionsGET(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(wtg.ConfirmedTransactions) != 0 {
-		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+		t.Fatal("expecting no wallet transactions, filtered by an empty watch list.")
 	}
 	if len(wtg.UnconfirmedTransactions) != 0 {
 		t.Fatal("expecting 0 unconfirmed transactions")
@@ -1726,14 +1726,28 @@ func TestFilteredTransactionsGET(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(wag.Addresses) == 0 {
+		t.Fatal("expecting wallet addresses, but found none.")
+	}
 	var wwp WalletWatchPOST
 	addresses := []string{}
 	for _, addr := range wag.Addresses {
 		addresses = append(addresses, addr.String())
 	}
-	wwr := walletWatchReq{addresses: addresses}
+	wwr := walletWatchReq{Addresses: addresses}
 	err = st.postAPIJSON("/wallet/watch", wwr, &wwp)
 	if err != nil {
 		t.Fatal(err)
+	}
+	// Test that the watch-only filter works
+	err = st.getAPI("/wallet/transactions?watchonly=true", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting some wallet transactions since we filtered using a list of all the addresses in the wallet.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
 	}
 }
