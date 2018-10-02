@@ -203,13 +203,8 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		return nil, err
 	}
 
-	cs.SetGetWalletKeysFunc(func() [][]byte {
-		var keyArray [][]byte
-		// TODO: maybe cache this somewhere
-		for u := range w.keys {
-			keyArray = append(keyArray, u[:])
-		}
-		return keyArray
+	cs.SetGetWalletKeysFunc(func() ([][]byte, error) {
+		return w.allAddressesInByteArray()
 	})
 
 	return w, nil
@@ -239,6 +234,23 @@ func (w *Wallet) Close() error {
 		errs = append(errs, fmt.Errorf("log.Close failed: %v", err))
 	}
 	return build.JoinErrors(errs, "; ")
+}
+
+func (w *Wallet) allAddressesInByteArray() ([][]byte, error) {
+	if err := w.tg.Add(); err != nil {
+		return [][]byte{}, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	var keyArray [][]byte
+	// TODO: maybe cache this somewhere
+	for u := range w.keys {
+		keyArray = append(keyArray, u[:])
+	}
+	return keyArray, nil
 }
 
 // AllAddresses returns all addresses that the wallet is able to spend from,

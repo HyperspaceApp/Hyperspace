@@ -124,7 +124,9 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 		}
 		hcc.GetSiacoinOutputDiff = func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
 			pb, err := getBlockMap(tx, id)
-			if err != nil {
+			if err == errNilItem { // assume it is not related block, so not locally exist
+				return nil, nil
+			} else if err != nil {
 				return nil, err
 			}
 			pbScods := pb.SiacoinOutputDiffs
@@ -483,7 +485,9 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				hcc.GetSiacoinOutputDiff = func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff,
 					err error) {
 					pb, err := getBlockMap(tx, id)
-					if err != nil {
+					if err == errNilItem { // assume it is not related block, so not locally exist
+						return nil, nil
+					} else if err != nil {
 						return nil, err
 					}
 					pbScods := pb.SiacoinOutputDiffs

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -163,6 +164,8 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 
 	// Check for the parent.
 	parentID := h.ParentID
+
+	log.Printf("to find:%s", parentID)
 	parentHeader, exists = cs.processedBlockHeaders[parentID]
 	if !exists {
 		return nil, errOrphan
