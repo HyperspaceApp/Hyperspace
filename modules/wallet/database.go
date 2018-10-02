@@ -61,6 +61,7 @@ var (
 	keyConsensusHeight           = []byte("keyConsensusHeight")
 	keyEncryptionVerification    = []byte("keyEncryptionVerification")
 	keyPrimarySeedFile           = []byte("keyPrimarySeedFile")
+	keyPrimarySeedProgress       = []byte("keyPrimarySeedProgress")
 	keySpendableKeyFiles         = []byte("keySpendableKeyFiles")
 	keyUID                       = []byte("keyUID")
 	keyWatchedAddrs              = []byte("keyWatchedAddrs")
@@ -421,6 +422,18 @@ func dbProcessedTransactionsIterator(tx *bolt.Tx) *processedTransactionsIter {
 func dbGetWalletUID(tx *bolt.Tx) (uid uniqueID) {
 	copy(uid[:], tx.Bucket(bucketWallet).Get(keyUID))
 	return
+}
+
+// dbGetPrimarySeedProgress returns the number of keys generated from the
+// primary seed.
+func dbGetPrimarySeedProgress(tx *bolt.Tx) (progress uint64, err error) {
+	err = encoding.Unmarshal(tx.Bucket(bucketWallet).Get(keyPrimarySeedProgress), &progress)
+	return
+}
+
+// dbPutPrimarySeedProgress sets the primary seed progress counter.
+func dbPutPrimarySeedProgress(tx *bolt.Tx, progress uint64) error {
+	return tx.Bucket(bucketWallet).Put(keyPrimarySeedProgress, encoding.Marshal(progress))
 }
 
 // dbGetConsensusChangeID returns the ID of the last ConsensusChange processed by the wallet.

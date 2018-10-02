@@ -80,6 +80,18 @@ func (w *Wallet) openDB(filename string) (err error) {
 		if wb.Get(keySeedsMaximumExternalIndex) == nil {
 			wb.Put(keySeedsMaximumExternalIndex, encoding.Marshal([]uint64{0}))
 		}
+		if wb.Get(keyPrimarySeedProgress) == nil {
+			wb.Put(keyPrimarySeedProgress, encoding.Marshal(uint64(0)))
+		}
+		// COMPATv0.1.1 - set the internal index to the primary seed progress if
+		// the progress is greater. We don't know what the user has done with the keys
+		// up to progress, so we generate them all and start from there.
+		seedProgress, _ := dbGetPrimarySeedProgress(tx)
+		internalIndex, _ := dbGetPrimarySeedMaximumInternalIndex(tx)
+		if seedProgress > internalIndex {
+			dbPutPrimarySeedMaximumExternalIndex(tx, seedProgress)
+			dbPutPrimarySeedMaximumInternalIndex(tx, seedProgress)
+		}
 
 		// build the bucketAddrTransactions bucket if necessary
 		if buildAddrTxns {
