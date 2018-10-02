@@ -635,9 +635,17 @@ func (st *serverTester) postAPI(call string, values url.Values, obj interface{})
 	return nil
 }
 
+type walletWatchReq struct {
+	addresses []string
+}
+
 // postAPIJSON makes a json-encoded API call and decodes the response.
-func (st *serverTester) postAPIJSON(call string, values url.Values, obj interface{}) error {
-	resp, err := HttpPOSTJSON("http://"+st.server.listener.Addr().String()+call, values.Encode())
+func (st *serverTester) postAPIJSON(call string, jsonObj, obj interface{}) error {
+	js, err := json.Marshal(jsonObj)
+	if err != nil {
+		log.Fatal(err)
+	}
+	resp, err := HttpPOSTJSON("http://"+st.server.listener.Addr().String()+call, string(js))
 	if err != nil {
 		return err
 	}

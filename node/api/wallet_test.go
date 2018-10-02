@@ -1721,4 +1721,19 @@ func TestFilteredTransactionsGET(t *testing.T) {
 	if len(wtg.UnconfirmedTransactions) != 0 {
 		t.Fatal("expecting 0 unconfirmed transactions")
 	}
+	var wag WalletAddressesGET
+	err = st.getAPI("/wallet/addresses", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wwp WalletWatchPOST
+	addresses := []string{}
+	for _, addr := range wag.Addresses {
+		addresses = append(addresses, addr.String())
+	}
+	wwr := walletWatchReq{addresses: addresses}
+	err = st.postAPIJSON("/wallet/watch", wwr, &wwp)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
