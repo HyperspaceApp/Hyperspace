@@ -167,42 +167,6 @@ func (w *Wallet) revertHistory(tx *bolt.Tx, reverted []types.Block) error {
 
 func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange) error {
 	for _, pb := range hcc.RevertedBlockHeaders {
-		// Remove any transactions that have been reverted.
-		// for i := len(block.Transactions) - 1; i >= 0; i-- {
-		// 	// If the transaction is relevant to the wallet, it will be the
-		// 	// most recent transaction in bucketProcessedTransactions.
-		// 	txid := block.Transactions[i].ID()
-		// 	pt, err := dbGetLastProcessedTransaction(tx)
-		// 	if err != nil {
-		// 		break // bucket is empty
-		// 	}
-		// 	if txid == pt.TransactionID {
-		// 		w.log.Println("A wallet transaction has been reverted due to a reorg:", txid)
-		// 		if err := dbDeleteLastProcessedTransaction(tx); err != nil {
-		// 			w.log.Severe("Could not revert transaction:", err)
-		// 			return err
-		// 		}
-		// 	}
-		// }
-
-		// Remove the miner payout transaction if applicable.
-		// for i, mp := range block.MinerPayouts {
-		// 	// If the transaction is relevant to the wallet, it will be the
-		// 	// most recent transaction in bucketProcessedTransactions.
-		// 	pt, err := dbGetLastProcessedTransaction(tx)
-		// 	if err != nil {
-		// 		break // bucket is empty
-		// 	}
-		// 	if types.TransactionID(block.ID()) == pt.TransactionID {
-		// 		w.log.Println("Miner payout has been reverted due to a reorg:", block.MinerPayoutID(uint64(i)), "::", mp.Value.HumanString())
-		// 		if err := dbDeleteLastProcessedTransaction(tx); err != nil {
-		// 			w.log.Severe("Could not revert transaction:", err)
-		// 			return err
-		// 		}
-		// 		break // there will only ever be one miner transaction
-		// 	}
-		// }
-
 		// decrement the consensus height
 		if pb.BlockHeader.ID() != types.GenesisID {
 			consensusHeight, err := dbGetConsensusHeight(tx)
@@ -212,6 +176,47 @@ func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusCha
 			err = dbPutConsensusHeight(tx, consensusHeight-1)
 			if err != nil {
 				return err
+			}
+		}
+
+		block, exists := hcc.GetBlockByID(pb.BlockHeader.ID())
+		if !exists {
+			continue
+		}
+
+		// Remove any transactions that have been reverted.
+		for i := len(block.Transactions) - 1; i >= 0; i-- {
+			// If the transaction is relevant to the wallet, it will be the
+			// most recent transaction in bucketProcessedTransactions.
+			txid := block.Transactions[i].ID()
+			pt, err := dbGetLastProcessedTransaction(tx)
+			if err != nil {
+				break // bucket is empty
+			}
+			if txid == pt.TransactionID {
+				w.log.Println("A wallet transaction has been reverted due to a reorg:", txid)
+				if err := dbDeleteLastProcessedTransaction(tx); err != nil {
+					w.log.Severe("Could not revert transaction:", err)
+					return err
+				}
+			}
+		}
+
+		// Remove the miner payout transaction if applicable.
+		for i, mp := range block.MinerPayouts {
+			// If the transaction is relevant to the wallet, it will be the
+			// most recent transaction in bucketProcessedTransactions.
+			pt, err := dbGetLastProcessedTransaction(tx)
+			if err != nil {
+				break // bucket is empty
+			}
+			if types.TransactionID(block.ID()) == pt.TransactionID {
+				w.log.Println("Miner payout has been reverted due to a reorg:", block.MinerPayoutID(uint64(i)), "::", mp.Value.HumanString())
+				if err := dbDeleteLastProcessedTransaction(tx); err != nil {
+					w.log.Severe("Could not revert transaction:", err)
+					return err
+				}
+				break // there will only ever be one miner transaction
 			}
 		}
 	}
@@ -364,8 +369,9 @@ func (w *Wallet) applyHistory(tx *bolt.Tx, cc modules.ConsensusChange) error {
 	return nil
 }
 
-func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange) error {
-	// spentSiacoinOutputs := computeSpentSiacoinOutputSet(cc.SiacoinOutputDiffs)
+func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange,
+	siacoinOutputDiffs []modules.SiacoinOutputDiff) error {
+	spentSiacoinOutputs := computeSpentSiacoinOutputSet(siacoinOutputDiffs)
 
 	for _, pb := range hcc.AppliedBlockHeaders {
 		consensusHeight, err := dbGetConsensusHeight(tx)
@@ -381,14 +387,19 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 			}
 		}
 
+		block, exists := hcc.GetBlockByID(pb.BlockHeader.ID())
+		if !exists {
+			continue
+		}
+
 		// maintain processed txs
-		// pts := w.computeProcessedTransactionsFromBlock(tx, block, spentSiacoinOutputs, consensusHeight)
-		// for _, pt := range pts {
-		// 	err := dbAppendProcessedTransaction(tx, pt)
-		// 	if err != nil {
-		// 		return errors.AddContext(err, "could not put processed transaction")
-		// 	}
-		// }
+		pts := w.computeProcessedTransactionsFromBlock(tx, block, spentSiacoinOutputs, consensusHeight)
+		for _, pt := range pts {
+			err := dbAppendProcessedTransaction(tx, pt)
+			if err != nil {
+				return errors.AddContext(err, "could not put processed transaction")
+			}
+		}
 	}
 
 	return nil
@@ -460,7 +471,7 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 		w.log.Severe("ERROR: failed to revert consensus change:", err)
 		w.dbRollback = true
 	}
-	if err := w.applyHistoryForSPV(w.dbTx, hcc); err != nil {
+	if err := w.applyHistoryForSPV(w.dbTx, hcc, siacoinOutputDiffs); err != nil {
 		w.log.Severe("ERROR: failed to apply consensus change:", err)
 		w.dbRollback = true
 	}

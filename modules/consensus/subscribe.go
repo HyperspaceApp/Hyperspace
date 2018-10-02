@@ -141,6 +141,16 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 			}
 			return
 		}
+		hcc.GetBlockByID = func(id types.BlockID) (types.Block, bool) {
+			pb, err := getBlockMap(tx, id)
+			if err == errNilItem { // assume it is not related block, so not locally exist
+				return types.Block{}, false
+			} else if err != nil {
+				panic(err)
+				return types.Block{}, false
+			}
+			return pb.Block, true
+		}
 		for _, subscriber := range cs.headerSubscribers {
 			subscriber.ProcessHeaderConsensusChange(hcc)
 		}

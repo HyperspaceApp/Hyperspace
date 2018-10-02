@@ -104,7 +104,11 @@ type (
 		// the set of diffs is 'DiffApply'.
 		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
 
+		// GetSiacoinOutputDiff will return the outputdiffs requested
 		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
+
+		// GetBlockByID will return the block requested
+		GetBlockByID func(types.BlockID) (types.Block, bool)
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
