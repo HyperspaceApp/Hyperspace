@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -686,7 +685,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	var h types.BlockHeader
 	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
-	log.Printf("remote version: %s", conn.Version())
+	// log.Printf("remote version: %s", conn.Version())
 	if remoteSupportSPVHeader(conn.Version()) {
 		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 		if err != nil {
