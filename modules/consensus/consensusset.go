@@ -47,7 +47,7 @@ type ConsensusSet struct {
 	blockRoot processedBlock
 
 	// getWalletKeysFunc will help check block addresses in wallet keys or not
-	getWalletKeysFunc func() [][]byte
+	getWalletKeysFunc func() ([][]byte, error)
 
 	// headerSubscribers subscribe header change
 	headerSubscribers []modules.HeaderConsensusSetSubscriber
@@ -438,6 +438,6 @@ func (cs *ConsensusSet) SpvMode() bool {
 }
 
 // SetGetWalletKeysFunc set the getWalletKeysFunc callback
-func (cs *ConsensusSet) SetGetWalletKeysFunc(f func() [][]byte) {
+func (cs *ConsensusSet) SetGetWalletKeysFunc(f func() ([][]byte, error)) {
 	cs.getWalletKeysFunc = f
 }

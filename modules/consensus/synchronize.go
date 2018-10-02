@@ -732,7 +732,10 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
 			if chainExtend {
 				id := h.ID()
-				keysArray := cs.getWalletKeysFunc()
+				keysArray, err := cs.getWalletKeysFunc()
+				if err != nil {
+					cs.log.Debugln("WARN: failed to get addresses from wallet:", err)
+				}
 				if len(keysArray) > 0 { // unlocked
 					if phfs.GCSFilter.MatchUnlockHash(id[:], keysArray) {
 						err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlockForSPV(h.ID(), changes))

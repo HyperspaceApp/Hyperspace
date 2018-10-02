@@ -291,7 +291,7 @@ type (
 		SpvMode() bool
 
 		// SetGetWalletKeysFuc setup the function for consensus to fetch keys from wallet
-		SetGetWalletKeysFunc(func() [][]byte)
+		SetGetWalletKeysFunc(func() ([][]byte, error))
 	}
 )
 

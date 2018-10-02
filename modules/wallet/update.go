@@ -65,12 +65,12 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 
 // updateLookahead uses a consensus change to update the seed progress if one of the outputs
 // contains an unlock hash of the lookahead set. Returns true if a blockchain rescan is required
-func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error {
+func (w *Wallet) updateLookahead(tx *bolt.Tx, sods []modules.SiacoinOutputDiff) error {
 	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
 	if err != nil {
 		return err
 	}
-	for _, diff := range cc.SiacoinOutputDiffs {
+	for _, diff := range sods {
 		//fmt.Printf("scanning %v\n", diff.SiacoinOutput.UnlockHash)
 		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
 			if index >= externalIndex {
@@ -87,8 +87,8 @@ func (w *Wallet) updateLookahead(tx *bolt.Tx, cc modules.ConsensusChange) error 
 
 // updateConfirmedSet uses a consensus change to update the confirmed set of
 // outputs as understood by the wallet.
-func (w *Wallet) updateConfirmedSet(tx *bolt.Tx, cc modules.ConsensusChange) error {
-	for _, diff := range cc.SiacoinOutputDiffs {
+func (w *Wallet) updateConfirmedSet(tx *bolt.Tx, sods []modules.SiacoinOutputDiff) error {
+	for _, diff := range sods {
 		// Verify that the diff is relevant to the wallet.
 		if !w.isWalletAddress(diff.SiacoinOutput.UnlockHash) {
 			continue
@@ -152,6 +152,59 @@ func (w *Wallet) revertHistory(tx *bolt.Tx, reverted []types.Block) error {
 
 		// decrement the consensus height
 		if block.ID() != types.GenesisID {
+			consensusHeight, err := dbGetConsensusHeight(tx)
+			if err != nil {
+				return err
+			}
+			err = dbPutConsensusHeight(tx, consensusHeight-1)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange) error {
+	for _, pb := range hcc.RevertedBlockHeaders {
+		// Remove any transactions that have been reverted.
+		// for i := len(block.Transactions) - 1; i >= 0; i-- {
+		// 	// If the transaction is relevant to the wallet, it will be the
+		// 	// most recent transaction in bucketProcessedTransactions.
+		// 	txid := block.Transactions[i].ID()
+		// 	pt, err := dbGetLastProcessedTransaction(tx)
+		// 	if err != nil {
+		// 		break // bucket is empty
+		// 	}
+		// 	if txid == pt.TransactionID {
+		// 		w.log.Println("A wallet transaction has been reverted due to a reorg:", txid)
+		// 		if err := dbDeleteLastProcessedTransaction(tx); err != nil {
+		// 			w.log.Severe("Could not revert transaction:", err)
+		// 			return err
+		// 		}
+		// 	}
+		// }
+
+		// Remove the miner payout transaction if applicable.
+		// for i, mp := range block.MinerPayouts {
+		// 	// If the transaction is relevant to the wallet, it will be the
+		// 	// most recent transaction in bucketProcessedTransactions.
+		// 	pt, err := dbGetLastProcessedTransaction(tx)
+		// 	if err != nil {
+		// 		break // bucket is empty
+		// 	}
+		// 	if types.TransactionID(block.ID()) == pt.TransactionID {
+		// 		w.log.Println("Miner payout has been reverted due to a reorg:", block.MinerPayoutID(uint64(i)), "::", mp.Value.HumanString())
+		// 		if err := dbDeleteLastProcessedTransaction(tx); err != nil {
+		// 			w.log.Severe("Could not revert transaction:", err)
+		// 			return err
+		// 		}
+		// 		break // there will only ever be one miner transaction
+		// 	}
+		// }
+
+		// decrement the consensus height
+		if pb.BlockHeader.ID() != types.GenesisID {
 			consensusHeight, err := dbGetConsensusHeight(tx)
 			if err != nil {
 				return err
@@ -311,6 +364,36 @@ func (w *Wallet) applyHistory(tx *bolt.Tx, cc modules.ConsensusChange) error {
 	return nil
 }
 
+func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange) error {
+	// spentSiacoinOutputs := computeSpentSiacoinOutputSet(cc.SiacoinOutputDiffs)
+
+	for _, pb := range hcc.AppliedBlockHeaders {
+		consensusHeight, err := dbGetConsensusHeight(tx)
+		if err != nil {
+			return errors.AddContext(err, "failed to consensus height")
+		}
+		// Increment the consensus height.
+		if pb.BlockHeader.ID() != types.GenesisID {
+			consensusHeight++
+			err = dbPutConsensusHeight(tx, consensusHeight)
+			if err != nil {
+				return errors.AddContext(err, "failed to store consensus height in database")
+			}
+		}
+
+		// maintain processed txs
+		// pts := w.computeProcessedTransactionsFromBlock(tx, block, spentSiacoinOutputs, consensusHeight)
+		// for _, pt := range pts {
+		// 	err := dbAppendProcessedTransaction(tx, pt)
+		// 	if err != nil {
+		// 		return errors.AddContext(err, "could not put processed transaction")
+		// 	}
+		// }
+	}
+
+	return nil
+}
+
 // ProcessConsensusChange parses a consensus change to update the set of
 // confirmed outputs known to the wallet.
 func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
@@ -322,11 +405,11 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if err := w.updateLookahead(w.dbTx, cc); err != nil {
+	if err := w.updateLookahead(w.dbTx, cc.SiacoinOutputDiffs); err != nil {
 		w.log.Severe("ERROR: failed to update lookahead:", err)
 		w.dbRollback = true
 	}
-	if err := w.updateConfirmedSet(w.dbTx, cc); err != nil {
+	if err := w.updateConfirmedSet(w.dbTx, cc.SiacoinOutputDiffs); err != nil {
 		w.log.Severe("ERROR: failed to update confirmed set:", err)
 		w.dbRollback = true
 	}
@@ -351,8 +434,85 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 // ProcessHeaderConsensusChange parses a header consensus change to update the set of
 // confiremd outputs known to the wallet
 func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
-	//
-	return
+	// should only pass related changes
+
+	if err := w.tg.Add(); err != nil {
+		return
+	}
+	defer w.tg.Done()
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	siacoinOutputDiffs := w.siacoinOutputDiffsFromHeaderConsensusChange(hcc)
+
+	if err := w.updateLookahead(w.dbTx, siacoinOutputDiffs); err != nil {
+		w.log.Severe("ERROR: failed to update lookahead:", err)
+		w.dbRollback = true
+	}
+	if err := w.updateConfirmedSet(w.dbTx, siacoinOutputDiffs); err != nil {
+		w.log.Severe("ERROR: failed to update confirmed set:", err)
+		w.dbRollback = true
+	}
+
+	// this will revert tx to maintain a tx history which seems can not be maintained in spv mode
+	if err := w.revertHistoryForSPV(w.dbTx, hcc); err != nil {
+		w.log.Severe("ERROR: failed to revert consensus change:", err)
+		w.dbRollback = true
+	}
+	if err := w.applyHistoryForSPV(w.dbTx, hcc); err != nil {
+		w.log.Severe("ERROR: failed to apply consensus change:", err)
+		w.dbRollback = true
+	}
+	if err := dbPutConsensusChangeID(w.dbTx, hcc.ID); err != nil {
+		w.log.Severe("ERROR: failed to update consensus change ID:", err)
+		w.dbRollback = true
+	}
+
+	// defrag should also be removed in next version
+	// if hcc.Synced {
+	// 	go w.threadedDefragWallet()
+	// }
+}
+
+func (w *Wallet) siacoinOutputDiffsFromHeaderConsensusChange(hcc modules.HeaderConsensusChange) []modules.SiacoinOutputDiff {
+	var siacoinOutputDiffs []modules.SiacoinOutputDiff
+
+	// grab matured outputs
+	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
+	keysArray, err := w.allAddressesInByteArray()
+	if err == nil {
+		panic("wallet is not unlocked in wallet.siacoinOutputDiffsFromHeaderConsensusChange")
+	}
+
+	// grab applied active outputs from full blocks
+	for _, pbh := range hcc.AppliedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], keysArray) {
+			// log.Printf("apply block: %d", pbh.Height)
+			// read the block, process the output
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
+			if err != nil {
+				panic(err)
+			}
+			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+		}
+	}
+
+	// grab reverted active outputs from full blocks
+	for _, pbh := range hcc.RevertedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], keysArray) {
+			// log.Printf("revert block: %d", pbh.Height)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
+			if err != nil {
+				panic(err)
+			}
+			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+		}
+	}
+
+	return siacoinOutputDiffs
 }
 
 // ReceiveUpdatedUnconfirmedTransactions updates the wallet's unconfirmed
