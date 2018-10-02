@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/dchest/threefish"
 	"github.com/HyperspaceApp/fastrand"
+	"github.com/dchest/threefish"
 )
 
 const (

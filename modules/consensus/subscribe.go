@@ -147,7 +147,6 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 				return types.Block{}, false
 			} else if err != nil {
 				panic(err)
-				return types.Block{}, false
 			}
 			return pb.Block, true
 		}

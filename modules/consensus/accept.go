@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -16,7 +15,7 @@ import (
 )
 
 const (
-	minimumSendProcessedHeaderPeerVersion = "0.2.1"
+	minimumSendProcessedHeaderPeerVersion = "0.2.0"
 )
 
 var (
@@ -30,7 +29,7 @@ var (
 )
 
 func remoteSupportSPVHeader(v string) bool {
-	return build.VersionCmp(v, minimumSendProcessedHeaderPeerVersion) < 0
+	return build.VersionCmp(v, minimumSendProcessedHeaderPeerVersion) >= 0
 }
 
 // managedBroadcastBlock will broadcast a block to the consensus set's peers.
@@ -165,7 +164,6 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 	// Check for the parent.
 	parentID := h.ParentID
 
-	log.Printf("to find:%s", parentID)
 	parentHeader, exists = cs.processedBlockHeaders[parentID]
 	if !exists {
 		return nil, errOrphan

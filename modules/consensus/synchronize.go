@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -685,6 +686,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	var h types.BlockHeader
 	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
+	log.Printf("remote version: %s", conn.Version())
 	if remoteSupportSPVHeader(conn.Version()) {
 		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 		if err != nil {
@@ -692,7 +694,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 		}
 		h = phfs.BlockHeader
 	} else {
-		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
+		err = encoding.ReadObject(conn, &h, types.BlockHeaderSize)
 		if err != nil {
 			return err
 		}
@@ -705,6 +707,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 		return err
 	})
 	cs.mu.RUnlock()
+	// log.Printf("after validate header")
 	// WARN: orphan multithreading logic (dangerous areas, see below)
 	//
 	// If the header is valid and extends the heaviest chain, fetch the

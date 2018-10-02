@@ -637,8 +637,8 @@ func (st *serverTester) postAPI(call string, values url.Values, obj interface{})
 
 type walletWatchReq struct {
 	Addresses []string `json:"addresses"`
-	Remove bool `json:"remove"`
-	Unused bool `json:"unused"`
+	Remove    bool     `json:"remove"`
+	Unused    bool     `json:"unused"`
 }
 
 // postAPIJSON makes a json-encoded API call and decodes the response.

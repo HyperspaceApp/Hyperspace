@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/dchest/threefish"
 	"github.com/HyperspaceApp/fastrand"
+	"github.com/dchest/threefish"
 )
 
 // TestThreefishEncryptDecrypt makes sure that the encryption and decryption
