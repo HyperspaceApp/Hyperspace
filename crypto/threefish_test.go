@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/dchest/threefish"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestThreefishEncryptDecrypt makes sure that the encryption and decryption

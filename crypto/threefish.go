@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dchest/threefish"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 const (

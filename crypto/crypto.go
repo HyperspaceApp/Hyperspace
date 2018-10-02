@@ -3,7 +3,7 @@ package crypto
 import (
 	"errors"
 
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 var (

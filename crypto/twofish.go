@@ -4,8 +4,8 @@ import (
 	"crypto/cipher"
 	"fmt"
 
-	"gitlab.com/NebulousLabs/errors"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/fastrand"
 	"golang.org/x/crypto/twofish"
 )
 
