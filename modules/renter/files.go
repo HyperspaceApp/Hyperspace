@@ -218,7 +218,6 @@ func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
 	return fileInfo, nil
 }
 
-
 // RenameFile takes an existing file and changes the nickname. The original
 // file must exist, and there must not be any file that already has the
 // replacement nickname.

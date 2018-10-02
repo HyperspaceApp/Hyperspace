@@ -615,7 +615,7 @@ func (api *API) walletTransactionsHandler(w http.ResponseWriter, req *http.Reque
 			WriteError(w, Error{"error when calling /wallet/transactions: " + err.Error()}, http.StatusBadRequest)
 			return
 		}
-	// handle count, watchonly, category searches
+		// handle count, watchonly, category searches
 	} else {
 		count = 10
 		if countStr != "" {

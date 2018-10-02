@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/klauspost/reedsolomon"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/klauspost/reedsolomon"
 )
 
 // RSCode is a Reed-Solomon encoder/decoder. It implements the

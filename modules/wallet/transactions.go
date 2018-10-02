@@ -168,8 +168,8 @@ txloop:
 					}
 				}
 			}
-		// handle no watch filter, including category filters if
-		// necessary
+			// handle no watch filter, including category filters if
+			// necessary
 		} else {
 			if len(pt.Inputs) > 0 && (category == "" || category == "send") {
 				pts = append(pts, pt)
@@ -182,7 +182,6 @@ txloop:
 		}
 	}
 }
-
 
 // Transactions returns all transactions relevant to the wallet that were
 // confirmed in the range [startHeight, endHeight].
