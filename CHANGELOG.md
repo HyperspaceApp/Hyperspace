@@ -1,9 +1,13 @@
 Version History
 ---------------
 
+Oct 04, 2018:
+
 v0.2.0
+- Updated the /wallet/transactions endpoint
 - Added a /renter/contract/cancel endpoint
 - File encryption uses Threefish instead of Twofish
+- Added much header-only consensus processing code for SPV
 - Many bug fixes from the beta
 
 Sept 19, 2018:
