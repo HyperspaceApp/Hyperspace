@@ -28,7 +28,7 @@ var (
 	errHeaderNotExist  = errors.New("header is not in database")
 )
 
-func remoteSupportSpvHeader(v string) bool {
+func remoteSupportsSpvHeader(v string) bool {
 	return build.VersionCmp(v, minimumSendProcessedHeaderPeerVersion) >= 0
 }
 
@@ -38,7 +38,7 @@ func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 	// broadcast header and processed header to different version
 	var bhPeers, pbhPeers []modules.Peer
 	for _, p := range cs.gateway.Peers() {
-		if remoteSupportSpvHeader(p.Version) {
+		if remoteSupportsSpvHeader(p.Version) {
 			pbhPeers = append(pbhPeers)
 		} else {
 			// old version
