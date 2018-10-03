@@ -11,9 +11,16 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
-// WalletAddressGet requests a new address from the /wallet/address endpoint
+// WalletAddressGet requests an unused address from the /wallet/address endpoint
 func (c *Client) WalletAddressGet() (wag api.WalletAddressGET, err error) {
 	err = c.get("/wallet/address", &wag)
+	return
+}
+
+// WalletAddressPost requests a new address from the /wallet/address endpoint
+func (c *Client) WalletAddressPost() (wap api.WalletAddressPOST, err error) {
+	values := url.Values{}
+	err = c.post("/wallet/address", values.Encode(), &wap)
 	return
 }
 

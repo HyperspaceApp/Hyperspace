@@ -24,13 +24,6 @@ import (
 )
 
 var (
-	walletAddressCmd = &cobra.Command{
-		Use:   "address",
-		Short: "Get a new wallet address",
-		Long:  "Generate a new wallet address from the wallet's primary seed.",
-		Run:   wrap(walletaddresscmd),
-	}
-
 	walletAddressesCmd = &cobra.Command{
 		Use:   "addresses",
 		Short: "List all addresses",
@@ -79,6 +72,13 @@ The smallest unit of SPACE is the hasting. One space cash is 10^24 hastings. Oth
 		Run: wrap(walletbalancecmd),
 	}
 
+	walletGetAddressCmd = &cobra.Command{
+		Use:   "get-address",
+		Short: "Get an unused wallet address",
+		Long:  "Get a wallet address that hasn't been seen on the blockchain yet from the wallet's primary seed.",
+		Run:   wrap(walletgetaddresscmd),
+	}
+
 	walletInitCmd = &cobra.Command{
 		Use:   "init",
 		Short: "Initialize and encrypt a new wallet",
@@ -121,6 +121,13 @@ By default the wallet encryption / unlock password is the same as the generated 
 		Short: "Lock the wallet",
 		Long:  "Lock the wallet, preventing further use",
 		Run:   wrap(walletlockcmd),
+	}
+
+	walletNewAddressCmd = &cobra.Command{
+		Use:   "new-address",
+		Short: "Create a new wallet address",
+		Long:  "Create a new wallet address from the wallet's primary seed.",
+		Run:   wrap(walletnewaddresscmd),
 	}
 
 	walletSeedsCmd = &cobra.Command{
@@ -218,16 +225,6 @@ func confirmPassword(prev string) error {
 	return nil
 }
 
-// walletaddresscmd fetches a new address from the wallet that will be able to
-// receive coins.
-func walletaddresscmd() {
-	addr, err := httpClient.WalletAddressGet()
-	if err != nil {
-		die("Could not generate new address:", err)
-	}
-	fmt.Printf("Created new address: %s\n", addr.Address)
-}
-
 // walletaddressescmd fetches the list of addresses that the wallet knows.
 func walletaddressescmd() {
 	addrs, err := httpClient.WalletAddressesGet()
@@ -256,6 +253,16 @@ func walletchangepasswordcmd() {
 		die("Changing the password failed:", err)
 	}
 	fmt.Println("Password changed successfully.")
+}
+
+// walletgetaddresscmd fetches a new address from the wallet that will be able to
+// receive coins.
+func walletgetaddresscmd() {
+	addr, err := httpClient.WalletAddressGet()
+	if err != nil {
+		die("Could not get unused address:", err)
+	}
+	fmt.Printf("Got unused address: %s\n", addr.Address)
 }
 
 // walletinitcmd encrypts the wallet with the given password
@@ -344,6 +351,16 @@ func walletlockcmd() {
 	if err != nil {
 		die("Could not lock wallet:", err)
 	}
+}
+
+// walletnewaddresscmd fetches a new address from the wallet that will be able to
+// receive coins.
+func walletnewaddresscmd() {
+	addr, err := httpClient.WalletAddressPost()
+	if err != nil {
+		die("Could not create a new address:", err)
+	}
+	fmt.Printf("Created new address: %s\n", addr.Address)
 }
 
 // walletseedcmd returns the current seed {
