@@ -229,6 +229,7 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// validated all at once because some transactions may not be valid until
 	// previous transactions have been applied.
 	for _, txn := range pb.Block.Transactions {
+		// TODO: won't pass becaues of no valid output in bucket for inputs
 		err := validTransaction(tx, txn)
 		if err != nil {
 			return err

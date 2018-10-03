@@ -39,10 +39,10 @@ func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 	var bhPeers, pbhPeers []modules.Peer
 	for _, p := range cs.gateway.Peers() {
 		if remoteSupportSPVHeader(p.Version) {
+			pbhPeers = append(pbhPeers)
+		} else {
 			// old version
 			bhPeers = append(bhPeers)
-		} else {
-
 		}
 	}
 	if len(bhPeers) > 0 {
