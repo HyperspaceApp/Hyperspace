@@ -32,5 +32,44 @@ unused
 
 ###### Response
 
-standard success or error response. See
-[#standard-responses](#standard-responses).
+standard success or error response.
+
+#### /wallet/transactions [GET]
+
+returns a list of transactions related to the wallet.
+
+###### Query String Parameters
+```
+// Number of most recent transactions to return. 
+// Must provide a valid value, defaults to 10 if unspecified.
+count // block height
+
+// An optional parameter specifying if we want to filter 
+// only transactions being sent or being received by the wallet.
+// Can be either "send" or "receive".
+category // block height
+
+// A boolean parameter specifying if we want to filter
+// only transactions pertaining to addresses being watched via
+// the /wallet/watch [POST] command.
+watchonly
+```
+
+###### JSON Response
+```javascript
+{
+  // The most recent 'count' transactions satisfying the filter criteria.
+  "confirmedtransactions": [
+    {
+      // See the documentation for '/wallet/transaction/:id' for more information.
+    }
+  ],
+
+  // All of the unconfirmed transactions.
+  "unconfirmedtransactions": [
+    {
+      // See the documentation for '/wallet/transaction/:id' for more information.
+    }
+  ]
+}
+```
