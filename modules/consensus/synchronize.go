@@ -460,7 +460,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	// don't send any blocks.
 	if !found {
 		// Send 0 blocks.
-		if remoteSupportsSpvHeader(conn.Version()) {
+		if remoteSupportsSPVHeader(conn.Version()) {
 			// processed block header for send
 			err = encoding.WriteObject(conn, []modules.TransmittedBlockHeader{})
 		} else {
@@ -497,7 +497,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 					cs.log.Critical("getBlock Header yielded 'nil' block header:", height, ":: request", i, ":: id", id)
 					return errNilProcBlock
 				}
-				if remoteSupportsSpvHeader(conn.Version()) {
+				if remoteSupportsSPVHeader(conn.Version()) {
 					blockHeadersForSend = append(blockHeadersForSend, *ph.ForSend())
 				} else {
 					blockHeaders = append(blockHeaders, ph.BlockHeader)
@@ -514,7 +514,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 
 		// Send a set of blocks to the caller + a flag indicating whether more
 		// are available.
-		if remoteSupportsSpvHeader(conn.Version()) {
+		if remoteSupportsSPVHeader(conn.Version()) {
 			err = encoding.WriteObject(conn, blockHeadersForSend)
 		} else {
 			err = encoding.WriteObject(conn, blockHeaders)
@@ -686,7 +686,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
 	// log.Printf("remote version: %s", conn.Version())
-	if remoteSupportsSpvHeader(conn.Version()) {
+	if remoteSupportsSPVHeader(conn.Version()) {
 		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 		if err != nil {
 			return err
@@ -739,7 +739,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	go func() {
 		defer wg.Done()
 		if cs.spv {
-			if !remoteSupportsSpvHeader(conn.Version()) {
+			if !remoteSupportsSPVHeader(conn.Version()) {
 				return
 			}
 			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
