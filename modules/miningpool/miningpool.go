@@ -340,6 +340,8 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		return nil, err
 	}
 
+	deadlock.Opts.DeadlockTimeout = time.Minute * 2
+
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.
 	// fmt.Println("log path:", filepath.Join(p.persistDir, logFile))
