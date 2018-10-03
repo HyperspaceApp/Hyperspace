@@ -112,8 +112,8 @@ func main() {
 	stratumminerCmd.AddCommand(stratumminerStartCmd, stratumminerStopCmd)
 
 	root.AddCommand(walletCmd)
-	walletCmd.AddCommand(walletAddressCmd, walletAddressesCmd, walletChangepasswordCmd, walletInitCmd, walletInitSeedCmd,
-		walletLoadCmd, walletLockCmd, walletSeedsCmd, walletSendCmd, walletSweepCmd, walletSignCmd,
+	walletCmd.AddCommand(walletAddressesCmd, walletChangepasswordCmd, walletGetAddressCmd, walletInitCmd, walletInitSeedCmd,
+		walletLoadCmd, walletLockCmd, walletNewAddressCmd, walletSeedsCmd, walletSendCmd, walletSweepCmd, walletSignCmd,
 		walletBalanceCmd, walletBroadcastCmd, walletTransactionsCmd, walletUnlockCmd)
 	walletInitCmd.Flags().BoolVarP(&initPassword, "password", "p", false, "Prompt for a custom password")
 	walletInitCmd.Flags().BoolVarP(&initForce, "force", "", false, "destroy the existing wallet and re-encrypt")
