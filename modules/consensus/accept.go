@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	minimumSendProcessedHeaderPeerVersion = "0.2.0"
+	minimumSendProcessedHeaderPeerVersion = "0.2.1"
 )
 
 var (
