@@ -386,7 +386,10 @@ func (cs *ConsensusSet) threadedReceiveHeaders(conn modules.PeerConn) error {
 		return err
 	}
 	defer cs.tg.Done()
-	return cs.managedReceiveHeaders(conn)
+	if remoteSupportsSPVHeader(conn.Version()) {
+		return cs.managedReceiveHeaders(conn)
+	}
+	return nil
 }
 
 // rpcSendBlocks is the receiving end of the SendBlocks RPC. It returns a
