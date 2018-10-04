@@ -24,7 +24,10 @@ const (
 
 	// DefaultAddressGapLimit is the default address gap limit as specified in
 	// BIP 44.
-	DefaultAddressGapLimit = 20
+
+	// Bitcoin defaults to 20, but we can create a lot of addresses quickly
+	// when we form contracts, so we set to 50.
+	DefaultAddressGapLimit = 50
 )
 
 var (
