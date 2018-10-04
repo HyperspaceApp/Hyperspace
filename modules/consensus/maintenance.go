@@ -107,7 +107,7 @@ func applyMaturedSiacoinOutputs(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 // applyMaturedSiacoinOutputsForHeader goes through the list of siacoin outputs that
 // have matured and adds them to the consensus set. This also updates the block
 // node diff set.
-func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
+func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
 	// Skip this step if the blockchain is not old enough to have maturing
 	// outputs.
 	if pbh.Height < types.MaturityDelay {
@@ -259,5 +259,11 @@ func applyFileContractMaintenance(tx *bolt.Tx, pb *processedBlock) {
 func applyMaintenance(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
 	applyMinerPayouts(tx, pb)
 	applyMaturedSiacoinOutputs(tx, pb, newBlockHeader)
+	applyFileContractMaintenance(tx, pb)
+}
+
+func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
+	applyMinerPayouts(tx, pb)
+	applyMaturedSiacoinOutputsForSPV(tx, pb, newBlockHeader)
 	applyFileContractMaintenance(tx, pb)
 }

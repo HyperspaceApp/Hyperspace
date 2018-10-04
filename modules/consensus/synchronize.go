@@ -312,8 +312,8 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 			if build.DEBUG && initialBlock == cs.dbCurrentBlockID() {
 				panic("blockchain extension reporting is incorrect")
 			}
-			header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
-			cs.managedBroadcastBlock(header)
+			// header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
+			// cs.managedBroadcastBlock(header) // even broadcast, no block for fullblock remote
 		}
 	}()
 	// Read headers off of the wire and add them to the consensus set until
@@ -321,18 +321,18 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 	moreAvailable := true
 	for moreAvailable {
 		//Read a slice of headers from the wire.
-		var newHeadersForSend []modules.TransmittedBlockHeader
-		if err := encoding.ReadObject(conn, &newHeadersForSend, uint64(MaxCatchUpBlocks)*types.BlockSizeLimit); err != nil {
+		var newTransmittedHeaders []modules.TransmittedBlockHeader
+		if err := encoding.ReadObject(conn, &newTransmittedHeaders, uint64(MaxCatchUpBlocks)*types.BlockSizeLimit); err != nil {
 			return err
 		}
 		if err := encoding.ReadObject(conn, &moreAvailable, 1); err != nil {
 			return err
 		}
-		if len(newHeadersForSend) == 0 {
+		if len(newTransmittedHeaders) == 0 {
 			continue
 		}
 		stalled = false
-		extended, _, acceptErr := cs.managedAcceptHeaders(newHeadersForSend)
+		extended, _, acceptErr := cs.managedAcceptHeaders(newTransmittedHeaders)
 		if extended {
 			chainExtended = true
 		}
