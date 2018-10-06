@@ -196,6 +196,9 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 		id := ph.BlockHeader.ID()
 		headerMap.Put(id[:], encoding.Marshal(*header))
 		headers = append(headers, header)
+
+		applyMaturedSiacoinOutputsForSPV(tx, header) // deal delay stuff in header accpetance
+
 		// Sanity check - after applying a block, check that the consensus set
 		// has maintained consistency.
 		if build.Release == "testing" {

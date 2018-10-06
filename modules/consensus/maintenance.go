@@ -114,12 +114,22 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHe
 		return
 	}
 
+	// apply header should always eailier than apply block,
+	// so construct a block and save siacoinOutputDiffs/DelayedSiacoinOutputDiffs
+	// to a new empty block and save
+	pb := &processedBlock{
+		Block:       types.Block{},
+		Height:      pbh.Height,
+		Depth:       pbh.Depth,
+		ChildTarget: pbh.ChildTarget,
+	}
+
 	// Iterate through the list of delayed siacoin outputs. Sometimes boltdb
 	// has trouble if you delete elements in a bucket while iterating through
 	// the bucket (and sometimes not - nondeterministic), so all of the
 	// elements are collected into an array and then deleted after the bucket
 	// scan is complete.
-	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
+	bucketID := append(prefixDSCO, encoding.Marshal(pb.Height)...)
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
 	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {
@@ -152,7 +162,7 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHe
 			Direction:      modules.DiffRevert,
 			ID:             id,
 			SiacoinOutput:  sco,
-			MaturityHeight: pbh.Height,
+			MaturityHeight: pb.Height,
 		}
 		dscods = append(dscods, dscod)
 		return nil
@@ -161,14 +171,24 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHe
 		panic(dbErr)
 	}
 	for _, scod := range scods {
-		pbh.SiacoinOutputDiffs = append(pbh.SiacoinOutputDiffs, scod)
+		pb.SiacoinOutputDiffs = append(pb.SiacoinOutputDiffs, scod)
+		if pbh != nil { // not empty header
+			pbh.SiacoinOutputDiffs = append(pbh.SiacoinOutputDiffs, scod)
+		}
 		commitSiacoinOutputDiff(tx, scod, modules.DiffApply)
 	}
 	for _, dscod := range dscods {
-		pbh.DelayedSiacoinOutputDiffs = append(pbh.DelayedSiacoinOutputDiffs, dscod)
+		pb.DelayedSiacoinOutputDiffs = append(pb.DelayedSiacoinOutputDiffs, dscod)
 		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
 	}
-	deleteDSCOBucket(tx, pbh.Height)
+	deleteDSCOBucket(tx, pb.Height)
+	// save diff holding empty block to bucket
+	blockMap := tx.Bucket(BlockMap)
+	id := pbh.BlockHeader.ID()
+	err := blockMap.Put(id[:], encoding.Marshal(*pb))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
 }
 
 // applyMissedStorageProof adds the outputs and diffs that result from a file
@@ -264,6 +284,6 @@ func applyMaintenance(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.P
 
 func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
 	applyMinerPayouts(tx, pb)
-	applyMaturedSiacoinOutputsForSPV(tx, pb, newBlockHeader)
+	// applyMaturedSiacoinOutputsForSPV(tx, newBlockHeader) // move delayed output mature to siacoin
 	applyFileContractMaintenance(tx, pb)
 }

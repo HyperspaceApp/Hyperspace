@@ -243,7 +243,7 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 
 func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block, parentHeader *modules.ProcessedBlockHeader) (err error) {
 	// Prepare the child processed block associated with the parent block.
-	newNode := cs.newSingleChildForSPV(tx, parentHeader, b)
+	newNode, _ := cs.newSingleChildForSPV(tx, parentHeader, b)
 
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
