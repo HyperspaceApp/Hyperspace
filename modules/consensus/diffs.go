@@ -230,7 +230,7 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// previous transactions have been applied.
 	for _, txn := range pb.Block.Transactions {
 		// TODO: won't pass becaues of no valid output in bucket for inputs
-		err := validTransaction(tx, txn)
+		err := validTransactionForSPV(tx, txn)
 		if err != nil {
 			return err
 		}
@@ -241,7 +241,7 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// applied on the block. This includes adding any outputs that have reached
 	// maturity, applying any contracts with missed storage proofs, and adding
 	// the miner payouts to the list of delayed outputs.
-	applyMaintenance(tx, pb, nil)
+	applyMaintenanceForSPV(tx, pb, nil)
 
 	// DiffsGenerated are only set to true after the block has been fully
 	// validated and integrated. This is required to prevent later blocks from
