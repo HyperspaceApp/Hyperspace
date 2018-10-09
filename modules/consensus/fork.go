@@ -197,7 +197,7 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 		headerMap.Put(id[:], encoding.Marshal(*header))
 		headers = append(headers, header)
 
-		applyMaturedSiacoinOutputsForSPV(tx, header) // deal delay stuff in header accpetance
+		applyMaturedSiacoinOutputsForSPV(tx, nil, header) // deal delay stuff in header accpetance
 
 		// Sanity check - after applying a block, check that the consensus set
 		// has maintained consistency.
@@ -232,6 +232,13 @@ func (cs *ConsensusSet) forkBlockchain(tx *bolt.Tx, newBlock *processedBlock,
 func (cs *ConsensusSet) forkHeadersBlockchain(tx *bolt.Tx, newHeader *modules.ProcessedBlockHeader) (revertedBlocks, appliedHeaders []*modules.ProcessedBlockHeader) {
 	commonParent := backtrackHeadersToCurrentPath(tx, newHeader)[0]
 	revertedBlocks = cs.revertToHeader(tx, commonParent)
+	for _, pbh := range revertedBlocks {
+		updateCurrentPath(tx, pbh.BlockHeader.ID(), modules.DiffRevert) // fix getPath function
+	}
 	appliedHeaders = cs.applyUntilHeader(tx, newHeader)
+	for _, pbh := range appliedHeaders {
+		updateCurrentPath(tx, pbh.BlockHeader.ID(), modules.DiffApply)
+	}
+
 	return revertedBlocks, appliedHeaders
 }

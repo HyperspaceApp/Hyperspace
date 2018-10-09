@@ -123,10 +123,10 @@ func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, pb *processedBlock, dir module
 }
 
 // updateCurrentPath updates the current path after applying a diff set.
-func updateCurrentPath(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+func updateCurrentPath(tx *bolt.Tx, id types.BlockID, dir modules.DiffDirection) {
 	// Update the current path.
 	if dir == modules.DiffApply {
-		pushPath(tx, pb.Block.ID())
+		pushPath(tx, id)
 	} else {
 		popPath(tx)
 	}
@@ -142,7 +142,7 @@ func commitDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	createUpcomingDelayedOutputMaps(tx, pb, dir)
 	commitNodeDiffs(tx, pb, dir)
 	deleteObsoleteDelayedOutputMaps(tx, pb, dir)
-	updateCurrentPath(tx, pb, dir)
+	// updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
 }
 
 // generateAndApplyDiff will verify the block and then integrate it into the
@@ -191,7 +191,7 @@ func generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock, pbh *modules.Processe
 	// Add the block to the current path and block map.
 	bid := pb.Block.ID()
 	blockMap := tx.Bucket(BlockMap)
-	updateCurrentPath(tx, pb, modules.DiffApply)
+	// updateCurrentPath(tx, pb.Block.ID(), modules.DiffApply)
 
 	// Sanity check preparation - set the consensus hash at this height so that
 	// during reverting a check can be performed to assure consistency when
@@ -255,7 +255,7 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// Add the block to the current path and block map.
 	bid := pb.Block.ID()
 	blockMap := tx.Bucket(BlockMap)
-	updateCurrentPath(tx, pb, modules.DiffApply)
+	// updateCurrentPath(tx, pb, modules.DiffApply)
 
 	// Sanity check preparation - set the consensus hash at this height so that
 	// during reverting a check can be performed to assure consistency when

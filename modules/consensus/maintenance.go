@@ -107,21 +107,34 @@ func applyMaturedSiacoinOutputs(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 // applyMaturedSiacoinOutputsForHeader goes through the list of siacoin outputs that
 // have matured and adds them to the consensus set. This also updates the block
 // node diff set.
-func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
+func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {
 	// Skip this step if the blockchain is not old enough to have maturing
 	// outputs.
 	if pbh.Height < types.MaturityDelay {
 		return
 	}
 
+	if pb == nil && pbh == nil {
+		panic("both block and block header nil")
+	}
+	var err error
 	// apply header should always eailier than apply block,
 	// so construct a block and save siacoinOutputDiffs/DelayedSiacoinOutputDiffs
 	// to a new empty block and save
-	pb := &processedBlock{
-		Block:       types.Block{},
-		Height:      pbh.Height,
-		Depth:       pbh.Depth,
-		ChildTarget: pbh.ChildTarget,
+	if pb == nil { // pbh not nil
+		pb, err = getBlockMap(tx, pbh.BlockHeader.ID())
+		if err == errNilItem { // initial block header acccpt mature
+			pb = &processedBlock{
+				Block:       types.Block{},
+				Height:      pbh.Height,
+				Depth:       pbh.Depth,
+				ChildTarget: pbh.ChildTarget,
+			}
+		} else {
+			if err != nil {
+				panic(err)
+			}
+		}
 	}
 
 	// Iterate through the list of delayed siacoin outputs. Sometimes boltdb
@@ -185,7 +198,7 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHe
 	// save diff holding empty block to bucket
 	blockMap := tx.Bucket(BlockMap)
 	id := pbh.BlockHeader.ID()
-	err := blockMap.Put(id[:], encoding.Marshal(*pb))
+	err = blockMap.Put(id[:], encoding.Marshal(*pb))
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
@@ -284,6 +297,6 @@ func applyMaintenance(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.P
 
 func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
 	applyMinerPayouts(tx, pb)
-	// applyMaturedSiacoinOutputsForSPV(tx, newBlockHeader) // move delayed output mature to siacoin
+	applyMaturedSiacoinOutputsForSPV(tx, pb, nil) // move delayed output mature to siacoin
 	applyFileContractMaintenance(tx, pb)
 }

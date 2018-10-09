@@ -897,7 +897,7 @@ func (cs *ConsensusSet) managedReceiveBlockForSPV(id types.BlockID, changes []ch
 		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return err
 		}
-		err := cs.managedAcceptSingleBlockForSPV(block, changes)
+		_, err := cs.managedAcceptSingleBlockForSPV(block, changes)
 		if err != nil {
 			return err
 		}
@@ -1089,4 +1089,41 @@ func (cs *ConsensusSet) Synced() bool {
 	cs.mu.RLock()
 	defer cs.mu.RUnlock()
 	return cs.synced
+}
+
+func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pb *processedBlock) modules.RPCFunc {
+	return func(conn modules.PeerConn) (err error) {
+		if err = encoding.WriteObject(conn, id); err != nil {
+			return
+		}
+		var block types.Block
+		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
+			return
+		}
+		pb, err = cs.managedAcceptSingleBlockForSPV(block, nil)
+		if err != nil {
+			return
+		}
+		return nil
+	}
+}
+
+func (cs *ConsensusSet) getOrDownloadBlock(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
+	pb, err := getBlockMap(tx, id)
+	if err == errNilItem {
+		//TODO: randomly pick a node
+		for _, peer := range cs.gateway.Peers() {
+			// how to get this peer connection
+			err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pb))
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		if err == nil {
+			return pb, nil
+		}
+		return nil, err
+	}
+	return pb, nil
 }

@@ -241,9 +241,10 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	return ce, nil
 }
 
-func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block, parentHeader *modules.ProcessedBlockHeader) (err error) {
+func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block,
+	parentHeader *modules.ProcessedBlockHeader) (newNode *processedBlock, err error) {
 	// Prepare the child processed block associated with the parent block.
-	newNode, _ := cs.newSingleChildForSPV(tx, parentHeader, b)
+	newNode, _ = cs.newSingleChildForSPV(tx, parentHeader, b)
 
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
@@ -251,7 +252,7 @@ func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block, p
 	// TODO: generate diffs for current block
 	cs.applyUntilBlockForSPV(tx, newNode)
 
-	return nil
+	return
 }
 
 // addHeaderToTree adds a headerNode to the tree by adding it to it's parents list of children.
@@ -442,10 +443,11 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 }
 
 // managedAcceptBlocksForSPV deal with a new block for spv comes in
-func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, changes []changeEntry) error {
+func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, changes []changeEntry) (*processedBlock, error) {
 	// Grab a lock on the consensus set.
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
+	var pb *processedBlock
 
 	setErr := cs.db.Update(func(tx *bolt.Tx) error {
 		parentHeader, err := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
@@ -453,7 +455,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, change
 			// Skip over known blocks.
 			return err
 		}
-		// if err == errFutureTimestamp {
+		// if err == errFutureTimestamp { // header should already downloaded
 		// 	// Queue the block to be tried again if it is a future block.
 		// 	go cs.threadedSleepOnFutureBlock(block)
 		// }
@@ -462,7 +464,8 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, change
 		}
 
 		// Try adding the block to consensus.
-		return cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
+		pb, err = cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
+		return err
 	})
 	if _, ok := setErr.(bolt.MmapError); ok {
 		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
@@ -472,12 +475,12 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, change
 	if setErr != nil {
 		fmt.Println("Received an invalid single block.")
 		cs.log.Println("Consensus received an invalid single block:", setErr)
-		return setErr
+		return nil, setErr
 	}
 	for i := 0; i < len(changes); i++ {
 		cs.updateHeaderSubscribers(changes[i])
 	}
-	return nil
+	return pb, nil
 }
 
 // managedAcceptHeaders will try to add headers to the consensus set. If the
