@@ -191,7 +191,7 @@ func generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock, pbh *modules.Processe
 	// Add the block to the current path and block map.
 	bid := pb.Block.ID()
 	blockMap := tx.Bucket(BlockMap)
-	// updateCurrentPath(tx, pb.Block.ID(), modules.DiffApply)
+	updateCurrentPath(tx, pb.Block.ID(), modules.DiffApply)
 
 	// Sanity check preparation - set the consensus hash at this height so that
 	// during reverting a check can be performed to assure consistency when
