@@ -747,6 +747,10 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 			}
 			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
 			if chainExtend {
+				if cs.getWalletKeysFunc == nil {
+					cs.log.Printf("wallet not loaded, won't check gcs")
+					return
+				}
 				id := h.ID()
 				keysArray, err := cs.getWalletKeysFunc()
 				if err != nil {

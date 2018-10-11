@@ -697,7 +697,8 @@ func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTeste
 
 	// Mine blocks until there is money in the wallet.
 	b, _ := wt.miner.FindBlock()
-	log.Printf("new first block payout addr: %s\n", b.MinerPayouts[0].UnlockHash.String())
+	// log.Printf("new first block payout addr: %s\n", b.MinerPayouts[0].UnlockHash.String())
+	log.Printf("new first block id: %s\nparent id: %s\n", b.ID().String(), b.ParentID)
 	err = wt.cs.AcceptBlock(b)
 	if err != nil {
 		return nil, err

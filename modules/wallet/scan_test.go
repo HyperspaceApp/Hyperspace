@@ -145,7 +145,7 @@ func TestScanLoop(t *testing.T) {
 
 func TestSlowScan(t *testing.T) {
 
-	wt, err := createWalletSPVTester("TestSPVScan", modules.ProdDependencies)
+	wt, err := createWalletSPVTester("TestSlowScan", modules.ProdDependencies)
 	if err != nil {
 		t.Fatal(err)
 	}

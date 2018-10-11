@@ -142,7 +142,7 @@ func commitDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	createUpcomingDelayedOutputMaps(tx, pb, dir)
 	commitNodeDiffs(tx, pb, dir)
 	deleteObsoleteDelayedOutputMaps(tx, pb, dir)
-	// updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
+	updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
 }
 
 // generateAndApplyDiff will verify the block and then integrate it into the
