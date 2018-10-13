@@ -155,3 +155,46 @@ func TestRevertToNode(t *testing.T) {
 	}()
 	cst.cs.dbRevertToNode(pb)
 }
+
+func TestRevertToHeaderNode(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+	cst, err := createSPVConsensusSetTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst.Close()
+	pbh := cst.cs.dbCurrentProcessedHeader()
+
+	// Revert to a grandparent and verify the returned array is correct.
+	parent, err := cst.cs.dbGetBlockHeaderMap(pbh.BlockHeader.ParentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	grandParent, err := cst.cs.dbGetBlockHeaderMap(parent.BlockHeader.ParentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revertedHeaderNodes := cst.cs.dbRevertToHeaderNode(grandParent)
+	if len(revertedHeaderNodes) != 2 {
+		t.Error("wrong number of nodes reverted")
+	}
+	if revertedHeaderNodes[0].BlockHeader.ID() != pbh.BlockHeader.ID() {
+		t.Error("wrong composition of reverted nodes")
+	}
+	if revertedHeaderNodes[1].BlockHeader.ID() != parent.BlockHeader.ID() {
+		t.Error("wrong composition of reverted nodes")
+	}
+
+	// Trigger a panic by trying to revert to a node outside of the current
+	// path.
+	defer func() {
+		r := recover()
+		if r != errExternalRevert {
+			t.Error(r)
+		}
+	}()
+	cst.cs.dbRevertToHeaderNode(pbh)
+}

@@ -145,6 +145,24 @@ func commitDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
 }
 
+func commitHeaderDiffSet(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
+	// Sanity checks - there are a few so they were moved to another function.
+	// if build.DEBUG {
+	// 	// TODO: add back check
+	// 	commitDiffSetSanity(tx, pb, dir)
+	// }
+
+	pb, err := getBlockMap(tx, pbh.BlockHeader.ID())
+	if err == errNilItem { // unrelated block
+		updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
+	} else {
+		createUpcomingDelayedOutputMaps(tx, pb, dir)
+		commitNodeDiffs(tx, pb, dir)
+		deleteObsoleteDelayedOutputMaps(tx, pb, dir)
+		updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
+	}
+}
+
 // generateAndApplyDiff will verify the block and then integrate it into the
 // consensus state. These two actions must happen at the same time because
 // transactions are allowed to depend on each other. We can't be sure that a

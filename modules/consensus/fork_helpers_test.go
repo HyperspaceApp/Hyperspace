@@ -33,6 +33,14 @@ func (cs *ConsensusSet) dbRevertToNode(pb *processedBlock) (pbs []*processedBloc
 	return pbs
 }
 
+func (cs *ConsensusSet) dbRevertToHeaderNode(pbh *modules.ProcessedBlockHeader) (pbhs []*modules.ProcessedBlockHeader) {
+	_ = cs.db.Update(func(tx *bolt.Tx) error {
+		pbhs = cs.revertToHeader(tx, pbh)
+		return nil
+	})
+	return pbhs
+}
+
 // dbForkBlockchain is a convenience function to call forkBlockchain without a
 // bolt.Tx.
 func (cs *ConsensusSet) dbForkBlockchain(pb *processedBlock) (revertedBlocks, appliedBlocks []*processedBlock, err error) {

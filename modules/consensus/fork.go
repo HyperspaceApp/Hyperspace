@@ -113,10 +113,10 @@ func (cs *ConsensusSet) revertToHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHe
 	if build.DEBUG && (err != nil || currentPathID != ph.BlockHeader.ID()) {
 		panic(errExternalRevert)
 	}
-	// Rewind blocks until 'ph' is the current block.
-	curr := currentBlockID(tx)
-	for curr != ph.BlockHeader.ID() {
+
+	for currentBlockID(tx) != ph.BlockHeader.ID() {
 		header := currentProcessedHeader(tx)
+		commitHeaderDiffSet(tx, header, modules.DiffRevert)
 		revertedHeaders = append(revertedHeaders, header)
 		// Sanity check - after removing a block, check that the consensus set
 		// has maintained consistency.
