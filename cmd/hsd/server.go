@@ -520,6 +520,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "e") {
 		i++
 		fmt.Printf("(%d/%d) Loading explorer...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("explorer moudle not supported in spv mode")
+		}
 		e, err = explorer.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.ExplorerDir))
 		if err != nil {
 			return err
@@ -540,6 +543,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "m") {
 		i++
 		fmt.Printf("(%d/%d) Loading miner...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("miner moudle not supported in spv mode")
+		}
 		m, err = miner.New(cs, tpool, w, filepath.Join(srv.config.Siad.SiaDir, modules.MinerDir))
 		if err != nil {
 			return err
@@ -550,6 +556,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "h") {
 		i++
 		fmt.Printf("(%d/%d) Loading host...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("host moudle not supported in spv mode")
+		}
 		h, err = host.New(cs, g, tpool, w, srv.config.Siad.HostAddr, filepath.Join(srv.config.Siad.SiaDir, modules.HostDir))
 		if err != nil {
 			return err
@@ -570,6 +579,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "p") {
 		i++
 		fmt.Printf("(%d/%d) Loading pool...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("miningpool moudle not supported in spv mode")
+		}
 		p, err = pool.New(cs, tpool, g, w, filepath.Join(srv.config.Siad.SiaDir, modules.PoolDir), srv.config.MiningPoolConfig)
 		if err != nil {
 			return err
@@ -580,6 +592,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "s") {
 		i++
 		fmt.Printf("(%d/%d) Loading stratum miner...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("stratum miner moudle not supported in spv mode")
+		}
 		sm, err = stratumminer.New(filepath.Join(srv.config.Siad.SiaDir, modules.StratumMinerDir))
 		if err != nil {
 			return err

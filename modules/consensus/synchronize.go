@@ -575,23 +575,23 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 	err = cs.db.View(func(tx *bolt.Tx) error {
 		csHeight = blockHeight(tx)
 		for _, id := range knownBlocks {
-			pb, err := getBlockMap(tx, id)
+			pbh, exists := cs.processedBlockHeaders[id]
+			if !exists {
+				continue
+			}
+			pathID, err := getPath(tx, pbh.Height)
 			if err != nil {
 				continue
 			}
-			pathID, err := getPath(tx, pb.Height)
-			if err != nil {
+			if pathID != pbh.BlockHeader.ID() {
 				continue
 			}
-			if pathID != pb.Block.ID() {
-				continue
-			}
-			if pb.Height == csHeight {
+			if pbh.Height == csHeight {
 				break
 			}
 			found = true
 			// Start from the child of the common block.
-			start = pb.Height + 1
+			start = pbh.Height + 1
 			break
 		}
 		return nil
@@ -604,9 +604,16 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 	// don't send anything.
 	if !found {
 		// Send 0 headers.
-		err = encoding.WriteObject(conn, []types.BlockHeader{})
-		if err != nil {
-			return err
+		if remoteSupportsSPVHeader(conn.Version()) {
+			err = encoding.WriteObject(conn, []modules.TransmittedBlockHeader{})
+			if err != nil {
+				return err
+			}
+		} else {
+			err = encoding.WriteObject(conn, []types.BlockHeader{})
+			if err != nil {
+				return err
+			}
 		}
 		// Indicate that no more headers are available.
 		return encoding.WriteObject(conn, false)
@@ -616,6 +623,7 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 	for moreAvailable {
 		// Get the set of block headers to send
 		var blockHeaders []types.BlockHeader
+		var transmittedBlockHeaders []modules.TransmittedBlockHeader
 		cs.mu.RLock()
 		err = cs.db.View(func(tx *bolt.Tx) error {
 			height := blockHeight(tx)
@@ -626,16 +634,20 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 					return err
 				}
 				// TODO: read from mem
-				pb, err := getBlockMap(tx, id)
-				if err != nil {
-					cs.log.Critical("Unable to get block from block map: height", height, ":: request", i, ":: id", id)
-					return err
+				pbh, exists := cs.processedBlockHeaders[id]
+				if !exists {
+					cs.log.Critical("Unable to get header from mem: height", height, ":: request", i, ":: id", id)
+					return errHeaderNotExist
 				}
-				if pb == nil {
-					cs.log.Critical("getBlockMap yielded 'nil' block:", height, ":: request", i, ":: id", id)
-					return errNilProcBlock
+				if pbh == nil {
+					cs.log.Critical("header from mem yielded 'nil' header:", height, ":: request", i, ":: id", id)
+					return errHeaderNotExist
 				}
-				blockHeaders = append(blockHeaders, pb.Block.Header())
+				if remoteSupportsSPVHeader(conn.Version()) {
+					transmittedBlockHeaders = append(transmittedBlockHeaders, *pbh.ForSend())
+				} else {
+					blockHeaders = append(blockHeaders, pbh.BlockHeader)
+				}
 			}
 			moreAvailable = start+MaxCatchUpBlocks <= height
 			start += MaxCatchUpBlocks
@@ -647,9 +659,16 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 		}
 		// Send a set of blocks to the caller + a flag indicating whether more
 		// are available.
-		if err = encoding.WriteObject(conn, blockHeaders); err != nil {
-			return err
+		if remoteSupportsSPVHeader(conn.Version()) {
+			if err = encoding.WriteObject(conn, transmittedBlockHeaders); err != nil {
+				return err
+			}
+		} else {
+			if err = encoding.WriteObject(conn, blockHeaders); err != nil {
+				return err
+			}
 		}
+
 		if err = encoding.WriteObject(conn, moreAvailable); err != nil {
 			return err
 		}

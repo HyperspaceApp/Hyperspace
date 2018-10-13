@@ -60,12 +60,12 @@ func TestBacktrackToCurrentPath(t *testing.T) {
 	}
 }
 
-func TestSPVBacktrackToCurrentPath(t *testing.T) {
+func TestHeaderBacktrackToCurrentPath(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
 	t.Parallel()
-	cst, err := createSPVConsensusSetTester(t.Name())
+	cst, err := createConsensusSetTester(t.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +161,7 @@ func TestRevertToHeaderNode(t *testing.T) {
 		t.SkipNow()
 	}
 	t.Parallel()
-	cst, err := createSPVConsensusSetTester(t.Name())
+	cst, err := createConsensusSetTester(t.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
