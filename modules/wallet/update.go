@@ -452,10 +452,10 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	}
 	defer w.tg.Done()
 
+	siacoinOutputDiffs := w.siacoinOutputDiffsFromHeaderConsensusChange(hcc)
+
 	w.mu.Lock()
 	defer w.mu.Unlock()
-
-	siacoinOutputDiffs := w.siacoinOutputDiffsFromHeaderConsensusChange(hcc)
 
 	if err := w.updateLookahead(w.dbTx, siacoinOutputDiffs); err != nil {
 		w.log.Severe("ERROR: failed to update lookahead:", err)
@@ -492,8 +492,8 @@ func (w *Wallet) siacoinOutputDiffsFromHeaderConsensusChange(hcc modules.HeaderC
 	// grab matured outputs
 	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
 	keysArray, err := w.allAddressesInByteArray()
-	if err == nil {
-		panic("wallet is not unlocked in wallet.siacoinOutputDiffsFromHeaderConsensusChange")
+	if err != nil {
+		panic(err)
 	}
 
 	// grab applied active outputs from full blocks

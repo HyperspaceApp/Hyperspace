@@ -510,6 +510,15 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 					}
 					return
 				}
+				hcc.GetBlockByID = func(id types.BlockID) (types.Block, bool) {
+					pb, err := getBlockMap(tx, id)
+					if err == errNilItem { // assume it is not related block, so not locally exist
+						return types.Block{}, false
+					} else if err != nil {
+						panic(err)
+					}
+					return pb.Block, true
+				}
 				subscriber.ProcessHeaderConsensusChange(hcc)
 				entry, exists = entry.NextEntry(tx)
 			}

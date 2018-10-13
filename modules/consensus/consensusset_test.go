@@ -98,10 +98,68 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	return cst, nil
 }
 
+func spvConsensusSetTester(name string, deps modules.Dependencies) (*consensusSetTester, error) {
+	testdir := build.TempDir(modules.ConsensusDir, name)
+
+	// Create modules.
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	if err != nil {
+		return nil, err
+	}
+	cs, err := NewCustomConsensusSet(g, false, filepath.Join(testdir, modules.ConsensusDir), deps, true)
+	if err != nil {
+		return nil, err
+	}
+	tp, err := transactionpool.New(cs, g, filepath.Join(testdir, modules.ConsensusDir))
+	if err != nil {
+		return nil, err
+	}
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
+	if err != nil {
+		return nil, err
+	}
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
+	_, err = w.Encrypt(key)
+	if err != nil {
+		return nil, err
+	}
+	err = w.Unlock(key)
+	if err != nil {
+		return nil, err
+	}
+	m, err := miner.New(cs, tp, w, filepath.Join(testdir, modules.MinerDir))
+	if err != nil {
+		return nil, err
+	}
+
+	// Assemble all objects into a consensusSetTester.
+	cst := &consensusSetTester{
+		gateway:   g,
+		miner:     m,
+		tpool:     tp,
+		wallet:    w,
+		walletKey: key,
+
+		cs: cs,
+
+		persistDir: testdir,
+	}
+	return cst, nil
+}
+
 // createConsensusSetTester creates a consensusSetTester that's ready for use,
 // including siacoins available in the wallet.
 func createConsensusSetTester(name string) (*consensusSetTester, error) {
 	cst, err := blankConsensusSetTester(name, modules.ProdDependencies)
+	if err != nil {
+		return nil, err
+	}
+	cst.mineSiacoins()
+	return cst, nil
+}
+
+func createSPVConsensusSetTester(name string) (*consensusSetTester, error) {
+	cst, err := spvConsensusSetTester(name, modules.ProdDependencies)
 	if err != nil {
 		return nil, err
 	}

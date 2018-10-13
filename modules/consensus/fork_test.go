@@ -60,6 +60,58 @@ func TestBacktrackToCurrentPath(t *testing.T) {
 	}
 }
 
+func TestSPVBacktrackToCurrentPath(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+	cst, err := createSPVConsensusSetTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst.Close()
+	pbh := cst.cs.dbCurrentProcessedHeader()
+
+	// Backtrack from the current node to the blockchain.
+	nodes := cst.cs.dbHeaderBacktrackToCurrentPath(pbh)
+	if len(nodes) != 1 {
+		t.Fatal("backtracking to the current node gave incorrect result")
+	}
+	if nodes[0].BlockHeader.ID() != pbh.BlockHeader.ID() {
+		t.Error("backtrack header returned the wrong node")
+	}
+
+	// Backtrack from a node that has diverted from the current blockchain.
+	child0, _ := cst.miner.FindBlock()
+	child1, _ := cst.miner.FindBlock() // Is the block not on hte current path.
+	err = cst.cs.AcceptBlock(child0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = cst.cs.AcceptBlock(child1)
+	if err != modules.ErrNonExtendingBlock {
+		t.Fatal(err)
+	}
+	pbh, err = cst.cs.dbGetBlockHeaderMap(child1.ID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes = cst.cs.dbHeaderBacktrackToCurrentPath(pbh)
+	if len(nodes) != 2 {
+		t.Error("backtracking grabbed wrong number of nodes")
+	}
+	parent, err := cst.cs.dbGetBlockHeaderMap(pbh.BlockHeader.ParentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodes[0].BlockHeader.ID() != parent.BlockHeader.ID() {
+		t.Error("grabbed the wrong block header as the common block header")
+	}
+	if nodes[1].BlockHeader.ID() != pbh.BlockHeader.ID() {
+		t.Error("backtracked header from the wrong node")
+	}
+}
+
 // TestRevertToNode probes the revertToBlock method of the consensus set.
 func TestRevertToNode(t *testing.T) {
 	if testing.Short() {

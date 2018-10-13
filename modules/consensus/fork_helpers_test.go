@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/coreos/bbolt"
 )
 
@@ -12,6 +13,14 @@ func (cs *ConsensusSet) dbBacktrackToCurrentPath(pb *processedBlock) (pbs []*pro
 		return nil
 	})
 	return pbs
+}
+
+func (cs *ConsensusSet) dbHeaderBacktrackToCurrentPath(pbh *modules.ProcessedBlockHeader) (pbhs []*modules.ProcessedBlockHeader) {
+	_ = cs.db.Update(func(tx *bolt.Tx) error {
+		pbhs = backtrackHeadersToCurrentPath(tx, pbh)
+		return nil
+	})
+	return pbhs
 }
 
 // dbRevertToNode is a convenience function to call revertToBlock without a
