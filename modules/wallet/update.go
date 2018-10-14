@@ -166,9 +166,9 @@ func (w *Wallet) revertHistory(tx *bolt.Tx, reverted []types.Block) error {
 }
 
 func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange) error {
-	for _, pb := range hcc.RevertedBlockHeaders {
+	for _, pbh := range hcc.RevertedBlockHeaders {
 		// decrement the consensus height
-		if pb.BlockHeader.ID() != types.GenesisID {
+		if pbh.BlockHeader.ID() != types.GenesisID {
 			consensusHeight, err := dbGetConsensusHeight(tx)
 			if err != nil {
 				return err
@@ -179,7 +179,7 @@ func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusCha
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(pb.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
