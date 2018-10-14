@@ -166,9 +166,9 @@ func (w *Wallet) revertHistory(tx *bolt.Tx, reverted []types.Block) error {
 }
 
 func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange) error {
-	for _, pb := range hcc.RevertedBlockHeaders {
+	for _, pbh := range hcc.RevertedBlockHeaders {
 		// decrement the consensus height
-		if pb.BlockHeader.ID() != types.GenesisID {
+		if pbh.BlockHeader.ID() != types.GenesisID {
 			consensusHeight, err := dbGetConsensusHeight(tx)
 			if err != nil {
 				return err
@@ -179,7 +179,7 @@ func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusCha
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(pb.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
@@ -373,13 +373,13 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 	siacoinOutputDiffs []modules.SiacoinOutputDiff) error {
 	spentSiacoinOutputs := computeSpentSiacoinOutputSet(siacoinOutputDiffs)
 
-	for _, pb := range hcc.AppliedBlockHeaders {
+	for _, pbh := range hcc.AppliedBlockHeaders {
 		consensusHeight, err := dbGetConsensusHeight(tx)
 		if err != nil {
 			return errors.AddContext(err, "failed to consensus height")
 		}
 		// Increment the consensus height.
-		if pb.BlockHeader.ID() != types.GenesisID {
+		if pbh.BlockHeader.ID() != types.GenesisID {
 			consensusHeight++
 			err = dbPutConsensusHeight(tx, consensusHeight)
 			if err != nil {
@@ -387,7 +387,7 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(pb.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
@@ -452,7 +452,11 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	}
 	defer w.tg.Done()
 
-	siacoinOutputDiffs := w.siacoinOutputDiffsFromHeaderConsensusChange(hcc)
+	keysArray, err := w.allAddressesInByteArray()
+	if err != nil {
+		panic(err)
+	}
+	siacoinOutputDiffs := hcc.FetchSpaceCashOutputDiffs(keysArray)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -481,49 +485,11 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	}
 
 	// defrag should also be removed in next version
-	// if hcc.Synced {
-	// 	go w.threadedDefragWallet()
-	// }
-}
-
-func (w *Wallet) siacoinOutputDiffsFromHeaderConsensusChange(hcc modules.HeaderConsensusChange) []modules.SiacoinOutputDiff {
-	var siacoinOutputDiffs []modules.SiacoinOutputDiff
-
-	// grab matured outputs
-	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
-	keysArray, err := w.allAddressesInByteArray()
-	if err != nil {
-		panic(err)
+	/*
+	if hcc.Synced {
+		go w.threadedDefragWallet()
 	}
-
-	// grab applied active outputs from full blocks
-	for _, pbh := range hcc.AppliedBlockHeaders {
-		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], keysArray) {
-			// log.Printf("apply block: %d", pbh.Height)
-			// read the block, process the output
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
-			if err != nil {
-				panic(err)
-			}
-			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
-		}
-	}
-
-	// grab reverted active outputs from full blocks
-	for _, pbh := range hcc.RevertedBlockHeaders {
-		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], keysArray) {
-			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
-			if err != nil {
-				panic(err)
-			}
-			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
-		}
-	}
-
-	return siacoinOutputDiffs
+	*/
 }
 
 // ReceiveUpdatedUnconfirmedTransactions updates the wallet's unconfirmed

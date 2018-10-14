@@ -104,6 +104,10 @@ type (
 		// the set of diffs is 'DiffApply'.
 		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
 
+		// DelayedSiacoinOutputDiffs contains the set of delayed siacoin output
+		// diffs that were applied to the consensus set in the recent change.
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+
 		// GetSiacoinOutputDiff will return the outputdiffs requested
 		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
 
@@ -402,4 +406,44 @@ func DecodeAnnouncementForAnnouncement(fullAnnouncement []byte) (ha HostAnnounce
 		return
 	}
 	return
+}
+
+// FetchSpaceCashOutputDiffs retrieves output diffs relevant to the addresses
+// given from the header consensus change. If the output diffs are in block
+// connected to the header but the block has not yet been downloaded,
+// FetchSpaceCashOutputDiffs will download the block, parse it for the scods,
+// and then return the result.
+func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) []SiacoinOutputDiff {
+	var siacoinOutputDiffs []SiacoinOutputDiff
+	// grab matured outputs
+	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
+
+	// grab applied active outputs from full blocks
+	for _, pbh := range hcc.AppliedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
+			// log.Printf("apply block: %d", pbh.Height)
+			// read the block, process the output
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffApply)
+			if err != nil {
+				panic(err)
+			}
+			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+		}
+	}
+
+	// grab reverted active outputs from full blocks
+	for _, pbh := range hcc.RevertedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
+			// log.Printf("revert block: %d", pbh.Height)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffRevert)
+			if err != nil {
+				panic(err)
+			}
+			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+		}
+	}
+
+	return siacoinOutputDiffs
 }

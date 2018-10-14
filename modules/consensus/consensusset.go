@@ -198,11 +198,14 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 			// send block to peer
 			gateway.RegisterRPC(modules.SendBlockCmd, cs.rpcSendBlk)
 			gateway.RegisterConnectCall(modules.SendBlocksCmd, cs.threadedReceiveBlocks)
+			// SPV nodes and full nodes can send headers and relay headers
+			// TODO: currently we only have full nodes send headers because
+			// when a full node is relayed a header it tries to grab a full block
+			// from the relayer
+			gateway.RegisterRPC(modules.SendHeadersCmd, cs.rpcSendHeaders)
+			// gateway.RegisterRPC(modules.SendHeaderCmd, cs.rpcSendHeader)
+			gateway.RegisterRPC(modules.RelayHeaderCmd, cs.threadedRPCRelayHeader)
 		}
-		// SPV nodes and full nodes will send headers and relay headers
-		gateway.RegisterRPC(modules.SendHeadersCmd, cs.rpcSendHeaders)
-		// gateway.RegisterRPC(modules.SendHeaderCmd, cs.rpcSendHeader)
-		gateway.RegisterRPC(modules.RelayHeaderCmd, cs.threadedRPCRelayHeader)
 		cs.tg.OnStop(func() {
 			if spv {
 				cs.gateway.UnregisterConnectCall(modules.SendHeadersCmd)
