@@ -91,26 +91,26 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 	// around by having the full node grab the block from someone else, but it's
 	// unclear from whom the full node would know to grab the block.
 	/*
-	var initialBlock types.BlockID
-	if build.DEBUG {
-		// Prepare for a sanity check on 'chainExtended' - chain extended should
-		// be set to true if an ony if the result of calling dbCurrentBlockID
-		// changes.
-		initialBlock = cs.dbCurrentBlockID()
-	}
-	chainExtended := false
-	defer func() {
-		cs.mu.RLock()
-		synced := cs.synced
-		cs.mu.RUnlock()
-		if synced && chainExtended {
-			if build.DEBUG && initialBlock == cs.dbCurrentBlockID() {
-				panic("blockchain extension reporting is incorrect")
-			}
-			header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
-			cs.managedBroadcastBlock(header) // even broadcast, no block for fullblock remote
+		var initialBlock types.BlockID
+		if build.DEBUG {
+			// Prepare for a sanity check on 'chainExtended' - chain extended should
+			// be set to true if an ony if the result of calling dbCurrentBlockID
+			// changes.
+			initialBlock = cs.dbCurrentBlockID()
 		}
-	}()
+		chainExtended := false
+		defer func() {
+			cs.mu.RLock()
+			synced := cs.synced
+			cs.mu.RUnlock()
+			if synced && chainExtended {
+				if build.DEBUG && initialBlock == cs.dbCurrentBlockID() {
+					panic("blockchain extension reporting is incorrect")
+				}
+				header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
+				cs.managedBroadcastBlock(header) // even broadcast, no block for fullblock remote
+			}
+		}()
 	*/
 	// Read headers off of the wire and add them to the consensus set until
 	// there are no more blocks available.
@@ -131,9 +131,9 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 		//extended, _, acceptErr := cs.managedAcceptHeaders(newTransmittedHeaders)
 		_, _, acceptErr := cs.managedAcceptHeaders(newTransmittedHeaders)
 		/*
-		if extended {
-			chainExtended = true
-		}
+			if extended {
+				chainExtended = true
+			}
 		*/
 		// Don't throw an error for non-extending headers. We need to keep them in the bucket in case
 		// they become the heaviest chain in the future.
@@ -143,6 +143,7 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 	}
 	return nil
 }
+
 // threadedReceiveHeaders is the calling end of the SendHeaders RPC.
 func (cs *ConsensusSet) threadedReceiveHeaders(conn modules.PeerConn) error {
 	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
@@ -324,7 +325,7 @@ func (cs *ConsensusSet) managedReceiveSingleBlock(id types.BlockID, changes []ch
 		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return err
 		}
-		_, err := cs.managedAcceptSingleBlockForSPV(block, changes)
+		_, err := cs.managedAcceptSingleBlock(block, changes)
 		if err != nil {
 			return err
 		}
