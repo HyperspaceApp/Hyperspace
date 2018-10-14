@@ -1034,6 +1034,12 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 		numOutboundSynced = 0
 		numOutboundNotSynced = 0
 		for _, p := range cs.gateway.Peers() {
+			// We can't sync from old peers - move on to the next peer if this peer
+			// is too old
+			if !remoteSupportsSPVHeader(p.Version) {
+				continue
+			}
+
 			// We only sync on outbound peers at first to make IBD less susceptible to
 			// fast-mining and other attacks, as outbound peers are more difficult to
 			// manipulate.
@@ -1049,8 +1055,8 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 				}
 				defer cs.tg.Done()
 
-				// Request blocks from the peer. The error returned will only be
-				// 'nil' if there are no more blocks to receive.
+				// Request headers from the peer. The error returned will only be
+				// 'nil' if there are no more headers to receive.
 				err = cs.gateway.RPC(p.NetAddress, modules.SendHeadersCmd, cs.managedReceiveHeaders)
 				if err == nil {
 					numOutboundSynced++
