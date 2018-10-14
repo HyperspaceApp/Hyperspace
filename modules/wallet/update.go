@@ -452,7 +452,11 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	}
 	defer w.tg.Done()
 
-	siacoinOutputDiffs := w.siacoinOutputDiffsFromHeaderConsensusChange(hcc)
+	keysArray, err := w.allAddressesInByteArray()
+	if err != nil {
+		panic(err)
+	}
+	siacoinOutputDiffs := hcc.FetchSpaceCashOutputDiffs(keysArray)
 
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -486,46 +490,6 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 		go w.threadedDefragWallet()
 	}
 	*/
-}
-
-func (w *Wallet) siacoinOutputDiffsFromHeaderConsensusChange(hcc modules.HeaderConsensusChange) []modules.SiacoinOutputDiff {
-	var siacoinOutputDiffs []modules.SiacoinOutputDiff
-
-	// grab matured outputs
-	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
-	keysArray, err := w.allAddressesInByteArray()
-	if err != nil {
-		panic(err)
-	}
-
-	// grab applied active outputs from full blocks
-	for _, pbh := range hcc.AppliedBlockHeaders {
-		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], keysArray) {
-			// log.Printf("apply block: %d", pbh.Height)
-			// read the block, process the output
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
-			if err != nil {
-				panic(err)
-			}
-			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
-		}
-	}
-
-	// grab reverted active outputs from full blocks
-	for _, pbh := range hcc.RevertedBlockHeaders {
-		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], keysArray) {
-			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
-			if err != nil {
-				panic(err)
-			}
-			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
-		}
-	}
-
-	return siacoinOutputDiffs
 }
 
 // ReceiveUpdatedUnconfirmedTransactions updates the wallet's unconfirmed
