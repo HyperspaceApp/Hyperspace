@@ -357,7 +357,7 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 
 	// Make sure that blocks are consecutive. Though this isn't a strict
 	// requirement, if blocks are not consecutive then it becomes a lot harder
-	// to maintain correcetness when adding multiple blocks in a single tx.
+	// to maintain correctness when adding multiple blocks in a single tx.
 	//
 	// This is the first time that IDs on the blocks have been computed.
 	blockIDs := make([]types.BlockID, 0, len(blocks))
@@ -494,7 +494,7 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockH
 	defer cs.mu.Unlock()
 	// Make sure that headers are consecutive. Though this isn't a strict
 	// requirement, if blocks are not consecutive then it becomes a lot harder
-	// to maintain correcetness when adding multiple blocks in a single tx.
+	// to maintain correctness when adding multiple blocks in a single tx.
 	// This is the first time that IDs on the blocks have been computed.
 	headerIds := make([]types.BlockID, 0, len(headers))
 	for i := 0; i < len(headers); i++ {
