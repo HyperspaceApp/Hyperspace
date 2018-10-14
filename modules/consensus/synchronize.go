@@ -298,6 +298,15 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 	// Broadcast the last BlockID accepted. This functionality is in a defer to
 	// ensure that a block is always broadcast if any blocks are accepted. This
 	// is to stop an attacker from preventing block broadcasts.
+	//
+	// NOTE: SPV nodes don't broadcast headers for 2 reasons:
+	// 1) We want to save bandwidth on mobile devices
+	// 2) Currently, full nodes will ask for full blocks from the broadcasting
+	// peer when they receive a header. If they receive a header from an SPV
+	// node, the getblock request to the SPV node will fail. This could be worked
+	// around by having the full node grab the block from someone else, but it's
+	// unclear from whom the full node would know to grab the block.
+	/*
 	var initialBlock types.BlockID
 	if build.DEBUG {
 		// Prepare for a sanity check on 'chainExtended' - chain extended should
@@ -314,10 +323,11 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 			if build.DEBUG && initialBlock == cs.dbCurrentBlockID() {
 				panic("blockchain extension reporting is incorrect")
 			}
-			// header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
-			// cs.managedBroadcastBlock(header) // even broadcast, no block for fullblock remote
+			header := cs.managedCurrentHeader() // TODO: Add cacheing, replace this line by looking at the cache.
+			cs.managedBroadcastBlock(header) // even broadcast, no block for fullblock remote
 		}
 	}()
+	*/
 	// Read headers off of the wire and add them to the consensus set until
 	// there are no more blocks available.
 	moreAvailable := true
@@ -334,10 +344,13 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 			continue
 		}
 		stalled = false
-		extended, _, acceptErr := cs.managedAcceptHeaders(newTransmittedHeaders)
+		//extended, _, acceptErr := cs.managedAcceptHeaders(newTransmittedHeaders)
+		_, _, acceptErr := cs.managedAcceptHeaders(newTransmittedHeaders)
+		/*
 		if extended {
 			chainExtended = true
 		}
+		*/
 		if acceptErr != nil && acceptErr != modules.ErrNonExtendingBlock && acceptErr != modules.ErrBlockKnown {
 			return acceptErr
 		}
