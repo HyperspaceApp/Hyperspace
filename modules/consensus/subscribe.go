@@ -548,6 +548,11 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 			scod.Direction = !scod.Direction
 			hcc.MaturedSiacoinOutputDiffs = append(hcc.MaturedSiacoinOutputDiffs, scod)
 		}
+		for i := len(revertedBlockHeader.DelayedSiacoinOutputDiffs) - 1; i >= 0; i-- {
+			dscod := revertedBlockHeader.DelayedSiacoinOutputDiffs[i]
+			dscod.Direction = !dscod.Direction
+			hcc.DelayedSiacoinOutputDiffs = append(hcc.DelayedSiacoinOutputDiffs, dscod)
+		}
 	}
 	for _, appliedBlockID := range ce.AppliedBlocks {
 		appliedBlockHeader, exist := cs.processedBlockHeaders[appliedBlockID]
@@ -558,6 +563,9 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 		}
 		for _, scod := range appliedBlockHeader.SiacoinOutputDiffs {
 			hcc.MaturedSiacoinOutputDiffs = append(hcc.MaturedSiacoinOutputDiffs, scod)
+		}
+		for _, dscod := range appliedBlockHeader.DelayedSiacoinOutputDiffs {
+			hcc.DelayedSiacoinOutputDiffs = append(hcc.DelayedSiacoinOutputDiffs, dscod)
 		}
 	}
 

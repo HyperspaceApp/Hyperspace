@@ -481,9 +481,11 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	}
 
 	// defrag should also be removed in next version
-	// if hcc.Synced {
-	// 	go w.threadedDefragWallet()
-	// }
+	/*
+	if hcc.Synced {
+		go w.threadedDefragWallet()
+	}
+	*/
 }
 
 func (w *Wallet) siacoinOutputDiffsFromHeaderConsensusChange(hcc modules.HeaderConsensusChange) []modules.SiacoinOutputDiff {

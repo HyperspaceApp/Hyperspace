@@ -104,6 +104,10 @@ type (
 		// the set of diffs is 'DiffApply'.
 		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
 
+		// DelayedSiacoinOutputDiffs contains the set of delayed siacoin output
+		// diffs that were applied to the consensus set in the recent change.
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+
 		// GetSiacoinOutputDiff will return the outputdiffs requested
 		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
 
