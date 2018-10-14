@@ -241,7 +241,7 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 	return ce, nil
 }
 
-func (cs *ConsensusSet) addSingleBlockToTreeForSPV(tx *bolt.Tx, b types.Block,
+func (cs *ConsensusSet) addSingleBlock(tx *bolt.Tx, b types.Block,
 	parentHeader *modules.ProcessedBlockHeader) (newNode *processedBlock, err error) {
 	// Prepare the child processed block associated with the parent block.
 	newNode, _ = cs.newSingleChildForSPV(tx, parentHeader, b)
@@ -443,7 +443,7 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 }
 
 // managedAcceptBlocksForSPV deal with a new block for spv comes in
-func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, changes []changeEntry) (*processedBlock, error) {
+func (cs *ConsensusSet) managedAcceptSingleBlock(block types.Block, changes []changeEntry) (*processedBlock, error) {
 	// Grab a lock on the consensus set.
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
@@ -464,7 +464,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlockForSPV(block types.Block, change
 		}
 
 		// Try adding the block to consensus.
-		pb, err = cs.addSingleBlockToTreeForSPV(tx, block, parentHeader)
+		pb, err = cs.addSingleBlock(tx, block, parentHeader)
 		return err
 	})
 	if _, ok := setErr.(bolt.MmapError); ok {
