@@ -248,9 +248,9 @@ func (cs *ConsensusSet) managedReceiveBlocks(conn modules.PeerConn) (returnErr e
 // This method will only be used by SPV clients.  It should not have any dependency on the
 // BlockMap DB bucket
 func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr error) {
-	// Set a deadline after which SendHeaders will timeout. During IBD, esepcially,
-	// SendHeaders will timeout. This is by design so that IBD switches peers to
-	// prevent any one peer from stalling IBD.
+	// Set a deadline after which SendHeaders will timeout. During IHD, esepcially,
+	// SendHeaders will timeout. This is by design so that IHD switches peers to
+	// prevent any one peer from stalling IHD.
 	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
 	if err != nil {
 		return err
@@ -272,6 +272,8 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 		// TODO: Timeout errors returned by muxado do not conform to the net.Error
 		// interface and therefore we cannot check if the error is a timeout using
 		// the Timeout() method. Once muxado issue #14 is resolved change the below
+		//
+		// TODO: we're not even using muxado anymore - can this be changed?
 		// condition to:
 		//     if netErr, ok := returnErr.(net.Error); ok && netErr.Timeout() && stalled { ... }
 		if stalled && returnErr != nil && (returnErr.Error() == "Read timeout" || returnErr.Error() == "Write timeout") {
@@ -1105,7 +1107,7 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 		if numOutboundSynced > numOutboundNotSynced && (numOutboundSynced >= minNumOutbound || time.Now().After(deadline)) {
 			break
 		} else {
-			// Sleep so we don't hammer the network with SendBlock requests.
+			// Sleep so we don't hammer the network with SendHeader requests.
 			time.Sleep(ibdLoopDelay)
 		}
 	}
