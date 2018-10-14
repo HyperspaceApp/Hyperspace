@@ -373,13 +373,13 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 	siacoinOutputDiffs []modules.SiacoinOutputDiff) error {
 	spentSiacoinOutputs := computeSpentSiacoinOutputSet(siacoinOutputDiffs)
 
-	for _, pb := range hcc.AppliedBlockHeaders {
+	for _, pbh := range hcc.AppliedBlockHeaders {
 		consensusHeight, err := dbGetConsensusHeight(tx)
 		if err != nil {
 			return errors.AddContext(err, "failed to consensus height")
 		}
 		// Increment the consensus height.
-		if pb.BlockHeader.ID() != types.GenesisID {
+		if pbh.BlockHeader.ID() != types.GenesisID {
 			consensusHeight++
 			err = dbPutConsensusHeight(tx, consensusHeight)
 			if err != nil {
@@ -387,7 +387,7 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(pb.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
