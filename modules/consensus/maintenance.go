@@ -107,34 +107,11 @@ func applyMaturedSiacoinOutputs(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 // applyMaturedSiacoinOutputsForHeader goes through the list of siacoin outputs that
 // have matured and adds them to the consensus set. This also updates the block
 // node diff set.
-func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {
+func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader) {
 	// Skip this step if the blockchain is not old enough to have maturing
 	// outputs.
 	if pbh.Height < types.MaturityDelay {
 		return
-	}
-
-	if pb == nil && pbh == nil {
-		panic("both block and block header nil")
-	}
-	var err error
-	// apply header should always eailier than apply block,
-	// so construct a block and save siacoinOutputDiffs/DelayedSiacoinOutputDiffs
-	// to a new empty block and save
-	if pb == nil { // pbh not nil
-		pb, err = getBlockMap(tx, pbh.BlockHeader.ID())
-		if err == errNilItem { // initial block header acccpt mature
-			pb = &processedBlock{
-				Block:       types.Block{},
-				Height:      pbh.Height,
-				Depth:       pbh.Depth,
-				ChildTarget: pbh.ChildTarget,
-			}
-		} else {
-			if err != nil {
-				panic(err)
-			}
-		}
 	}
 
 	// Iterate through the list of delayed siacoin outputs. Sometimes boltdb
@@ -142,14 +119,10 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modu
 	// the bucket (and sometimes not - nondeterministic), so all of the
 	// elements are collected into an array and then deleted after the bucket
 	// scan is complete.
-	bucketID := append(prefixDSCO, encoding.Marshal(pb.Height)...)
+	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
-	dscoBucket := tx.Bucket(bucketID) // no dsco for this height
-	if dscoBucket == nil {
-		return
-	}
-	dbErr := dscoBucket.ForEach(func(idBytes, scoBytes []byte) error {
+	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {
 		// Decode the key-value pair into an id and a siacoin output.
 		var id types.SiacoinOutputID
 		var sco types.SiacoinOutput
@@ -179,7 +152,7 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modu
 			Direction:      modules.DiffRevert,
 			ID:             id,
 			SiacoinOutput:  sco,
-			MaturityHeight: pb.Height,
+			MaturityHeight: pbh.Height,
 		}
 		dscods = append(dscods, dscod)
 		return nil
@@ -188,24 +161,14 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modu
 		panic(dbErr)
 	}
 	for _, scod := range scods {
-		pb.SiacoinOutputDiffs = append(pb.SiacoinOutputDiffs, scod)
-		if pbh != nil { // not empty header
-			pbh.SiacoinOutputDiffs = append(pbh.SiacoinOutputDiffs, scod)
-		}
+		pbh.SiacoinOutputDiffs = append(pbh.SiacoinOutputDiffs, scod)
 		commitSiacoinOutputDiff(tx, scod, modules.DiffApply)
 	}
 	for _, dscod := range dscods {
-		pb.DelayedSiacoinOutputDiffs = append(pb.DelayedSiacoinOutputDiffs, dscod)
+		pbh.DelayedSiacoinOutputDiffs = append(pbh.DelayedSiacoinOutputDiffs, dscod)
 		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
 	}
-	deleteDSCOBucket(tx, pb.Height)
-	// save diff holding empty block to bucket
-	blockMap := tx.Bucket(BlockMap)
-	id := pbh.BlockHeader.ID()
-	err = blockMap.Put(id[:], encoding.Marshal(*pb))
-	if build.DEBUG && err != nil {
-		panic(err)
-	}
+	deleteDSCOBucket(tx, pbh.Height)
 }
 
 // applyMissedStorageProof adds the outputs and diffs that result from a file
@@ -301,6 +264,6 @@ func applyMaintenance(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.P
 
 func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
 	applyMinerPayouts(tx, pb)
-	applyMaturedSiacoinOutputsForSPV(tx, pb, nil) // move delayed output mature to siacoin
+	// applyMaturedSiacoinOutputsForSPV(tx, pb, nil) // move delayed output mature to siacoin
 	applyFileContractMaintenance(tx, pb)
 }

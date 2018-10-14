@@ -195,31 +195,20 @@ func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.Proces
 	return childHeader
 }
 
-func (cs *ConsensusSet) newSingleChildForSPV(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
+func (cs *ConsensusSet) newSingleChild(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
 	// Create the child node.
 	childID := b.ID()
-	var child *processedBlock
-	// fetch from bucket if exist, if have delayed diff, will exist
-	child, err := getBlockMap(tx, childID)
-	if err != nil {
-		if err == errNilItem { // no delayed diff
-			child = &processedBlock{
-				Block:  b,
-				Height: pbh.Height + 1,
-				Depth:  pbh.ChildDepth(),
-			}
-		} else {
-			panic(err)
-		}
-	} else {
-		// block with diffs only
-		child.Block = b
+
+	child := &processedBlock{
+		Block:  b,
+		Height: pbh.Height + 1,
+		Depth:  pbh.ChildDepth(),
 	}
 
 	// Push the total values for this block into the oak difficulty adjustment
 	// bucket. The previous totals are required to compute the new totals.
 	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, b.ParentID)
-	_, _, err = cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, pbh.BlockHeader.Timestamp, b.Timestamp, prevTotalTarget, pbh.ChildTarget)
+	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, pbh.BlockHeader.Timestamp, b.Timestamp, prevTotalTarget, pbh.ChildTarget)
 	if build.DEBUG && err != nil {
 		panic(err)
 	}

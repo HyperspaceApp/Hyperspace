@@ -244,13 +244,13 @@ func (cs *ConsensusSet) addBlockToTree(tx *bolt.Tx, b types.Block, parent *proce
 func (cs *ConsensusSet) addSingleBlock(tx *bolt.Tx, b types.Block,
 	parentHeader *modules.ProcessedBlockHeader) (newNode *processedBlock, err error) {
 	// Prepare the child processed block associated with the parent block.
-	newNode, _ = cs.newSingleChildForSPV(tx, parentHeader, b)
+	newNode, _ = cs.newSingleChild(tx, parentHeader, b)
 
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
 	// revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
 	// TODO: generate diffs for current block
-	cs.applyUntilBlockForSPV(tx, newNode)
+	cs.applySingleBlock(tx, newNode)
 
 	return
 }

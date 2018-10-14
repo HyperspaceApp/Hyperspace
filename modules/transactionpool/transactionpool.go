@@ -103,11 +103,14 @@ func New(cs modules.ConsensusSet, g modules.Gateway, persistDir string) (*Transa
 		return nil, err
 	}
 
-	// Register RPCs
-	g.RegisterRPC(modules.RelayTransactionSetCmd, tp.relayTransactionSet)
-	tp.tg.OnStop(func() {
-		tp.gateway.UnregisterRPC(modules.RelayTransactionSetCmd)
-	})
+	// NOTE: don't relay tp when spv
+	if !tp.consensusSet.SpvMode() {
+		// Register RPCs
+		g.RegisterRPC(modules.RelayTransactionSetCmd, tp.relayTransactionSet)
+		tp.tg.OnStop(func() {
+			tp.gateway.UnregisterRPC(modules.RelayTransactionSetCmd)
+		})
+	}
 	return tp, nil
 }
 

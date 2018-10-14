@@ -78,11 +78,11 @@ func commitDelayedSiacoinOutputDiff(tx *bolt.Tx, dscod modules.DelayedSiacoinOut
 
 // createUpcomingDelayeOutputdMaps creates the delayed siacoin output maps that
 // will be used when applying delayed siacoin outputs in the diff set.
-func createUpcomingDelayedOutputMaps(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+func createUpcomingDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
-		createDSCOBucket(tx, pb.Height+types.MaturityDelay)
-	} else if pb.Height >= types.MaturityDelay {
-		createDSCOBucket(tx, pb.Height)
+		createDSCOBucket(tx, height+types.MaturityDelay)
+	} else if height >= types.MaturityDelay {
+		createDSCOBucket(tx, height)
 	}
 }
 
@@ -113,12 +113,12 @@ func commitNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection)
 
 // deleteObsoleteDelayedOutputMaps deletes the delayed siacoin output maps that
 // are no longer in use.
-func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	// There are no outputs that mature in the first MaturityDelay blocks.
-	if dir == modules.DiffApply && pb.Height >= types.MaturityDelay {
-		deleteDSCOBucket(tx, pb.Height)
+	if dir == modules.DiffApply && height >= types.MaturityDelay {
+		deleteDSCOBucket(tx, height)
 	} else if dir == modules.DiffRevert {
-		deleteDSCOBucket(tx, pb.Height+types.MaturityDelay)
+		deleteDSCOBucket(tx, height+types.MaturityDelay)
 	}
 }
 
@@ -139,9 +139,9 @@ func commitDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 		commitDiffSetSanity(tx, pb, dir)
 	}
 
-	createUpcomingDelayedOutputMaps(tx, pb, dir)
+	createUpcomingDelayedOutputMaps(tx, pb.Height, dir)
 	commitNodeDiffs(tx, pb, dir)
-	deleteObsoleteDelayedOutputMaps(tx, pb, dir)
+	deleteObsoleteDelayedOutputMaps(tx, pb.Height, dir)
 	updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
 }
 

@@ -730,7 +730,7 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pb *processedBlock
 		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return
 		}
-		pb, err = cs.managedAcceptSingleBlockForSPV(block, nil)
+		pb, err = cs.managedAcceptSingleBlock(block, nil)
 		if err != nil {
 			return
 		}

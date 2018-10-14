@@ -16,10 +16,25 @@ func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffD
 	// 	commitDiffSetSanity(tx, pb, dir)
 	// }
 
-	createUpcomingDelayedOutputMaps(tx, pb, dir)
 	commitNodeDiffs(tx, pb, dir)
-	deleteObsoleteDelayedOutputMaps(tx, pb, dir)
-	updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
+}
+
+func commitHeaderDiffs(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
+	if dir == modules.DiffApply {
+		for _, scod := range pbh.SiacoinOutputDiffs {
+			commitSiacoinOutputDiff(tx, scod, dir)
+		}
+		for _, dscod := range pbh.DelayedSiacoinOutputDiffs {
+			commitDelayedSiacoinOutputDiff(tx, dscod, dir)
+		}
+	} else {
+		for i := len(pbh.SiacoinOutputDiffs) - 1; i >= 0; i-- {
+			commitSiacoinOutputDiff(tx, pbh.SiacoinOutputDiffs[i], dir)
+		}
+		for i := len(pbh.DelayedSiacoinOutputDiffs) - 1; i >= 0; i-- {
+			commitDelayedSiacoinOutputDiff(tx, pbh.DelayedSiacoinOutputDiffs[i], dir)
+		}
+	}
 }
 
 func commitHeaderDiffSet(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
@@ -29,15 +44,10 @@ func commitHeaderDiffSet(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir mod
 	// 	commitDiffSetSanity(tx, pb, dir)
 	// }
 
-	pb, err := getBlockMap(tx, pbh.BlockHeader.ID())
-	if err == errNilItem { // unrelated block
-		updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
-	} else {
-		createUpcomingDelayedOutputMaps(tx, pb, dir)
-		commitNodeDiffs(tx, pb, dir)
-		deleteObsoleteDelayedOutputMaps(tx, pb, dir)
-		updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
-	}
+	createUpcomingDelayedOutputMaps(tx, pbh.Height, dir)
+	commitHeaderDiffs(tx, pbh, dir)
+	deleteObsoleteDelayedOutputMaps(tx, pbh.Height, dir)
+	updateCurrentPath(tx, pbh.BlockHeader.ID(), dir)
 }
 
 func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
