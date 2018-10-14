@@ -413,7 +413,7 @@ func DecodeAnnouncementForAnnouncement(fullAnnouncement []byte) (ha HostAnnounce
 // connected to the header but the block has not yet been downloaded,
 // FetchSpaceCashOutputDiffs will download the block, parse it for the scods,
 // and then return the result.
-func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) []SiacoinOutputDiff {
+func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) ([]SiacoinOutputDiff, error) {
 	var siacoinOutputDiffs []SiacoinOutputDiff
 	// grab matured outputs
 	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
@@ -426,7 +426,7 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffApply)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
 		}
@@ -439,11 +439,11 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 			// log.Printf("revert block: %d", pbh.Height)
 			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffRevert)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
 		}
 	}
 
-	return siacoinOutputDiffs
+	return siacoinOutputDiffs, nil
 }

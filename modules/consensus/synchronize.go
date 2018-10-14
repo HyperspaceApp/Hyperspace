@@ -741,13 +741,13 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pb *processedBlock
 func (cs *ConsensusSet) getOrDownloadBlock(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
 	pb, err := getBlockMap(tx, id)
 	if err == errNilItem {
-		//TODO: randomly pick a node
-		for _, peer := range cs.gateway.Peers() {
-			// how to get this peer connection
-			err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pb))
-			if err != nil {
-				return nil, err
-			}
+		peer, err := cs.gateway.RandomPeer()
+		if err != nil {
+			return nil, err
+		}
+		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pb))
+		if err != nil {
+			return nil, err
 		}
 	} else {
 		if err == nil {

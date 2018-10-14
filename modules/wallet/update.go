@@ -3,6 +3,7 @@ package wallet
 import (
 	//"fmt"
 	"math"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -456,7 +457,24 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	if err != nil {
 		panic(err)
 	}
-	siacoinOutputDiffs := hcc.FetchSpaceCashOutputDiffs(keysArray)
+
+	// This is probably not the best way to handle this. Here is the dilemma:
+	// We're updating our lookahead with each block. We don't know how to
+	// update the lookahead until we have the block's outputs, and we can't
+	// do that until we've downloaded the full block. This means we have to
+	// block and download blocks sequentially for the wallet. If we fail to
+	// download, we just have to wait and then try again.
+	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(keysArray)
+	for err != nil {
+		w.log.Severe("ERROR: failed to fetch space cash outputs:", err)
+	        select {
+		case <-time.After(2 * time.Second):
+			break
+		case <-w.tg.StopChan():
+			break
+		}
+		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(keysArray)
+	}
 
 	w.mu.Lock()
 	defer w.mu.Unlock()

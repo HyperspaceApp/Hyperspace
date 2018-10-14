@@ -120,6 +120,9 @@ type (
 		// Peers returns the addresses that the Gateway is currently connected to.
 		Peers() []Peer
 
+		// RandomPeer returns a random peer currently connected to the Gateway.
+		RandomPeer() (Peer, error)
+
 		// RegisterRPC registers a function to handle incoming connections that
 		// supply the given RPC ID.
 		RegisterRPC(string, RPCFunc)
