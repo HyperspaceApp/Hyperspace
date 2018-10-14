@@ -522,7 +522,7 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockH
 			if err != nil {
 				return err
 			}
-			// Try adding the header to consnesus.
+			// Try adding the header to consensus.
 			changeEntry, err := cs.addHeaderToTree(tx, parentHeader, headers[i])
 			if err == nil {
 				chainExtended = true
