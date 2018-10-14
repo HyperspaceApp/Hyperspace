@@ -1020,7 +1020,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 }
 
 func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
-	// The consensus set will not recognize IBD as complete until it has enough
+	// The consensus set will not recognize IHD as complete until it has enough
 	// peers. After the deadline though, it will recognize the blockchain
 	// download as complete even with only one peer. This deadline is helpful
 	// to local-net setups, where a machine will frequently only have one peer
@@ -1035,12 +1035,18 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 		numOutboundNotSynced = 0
 		for _, p := range cs.gateway.Peers() {
 			// We can't sync from old peers - move on to the next peer if this peer
-			// is too old
+			// is too old.
+			//
+			// We also disconnect from the old peer because it's useless to us.
 			if !remoteSupportsSPVHeader(p.Version) {
+				err := cs.gateway.Disconnect(p.NetAddress)
+				if err != nil {
+					cs.log.Printf("WARN: disconnecting from peer %v failed: %v", p.NetAddress, err)
+				}
 				continue
 			}
 
-			// We only sync on outbound peers at first to make IBD less susceptible to
+			// We only sync on outbound peers at first to make IHD less susceptible to
 			// fast-mining and other attacks, as outbound peers are more difficult to
 			// manipulate.
 			if p.Inbound {
@@ -1066,7 +1072,7 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 				}
 				numOutboundNotSynced++
 				if !isTimeoutErr(err) {
-					cs.log.Printf("WARN: disconnecting from peer %v because IBD failed: %v", p.NetAddress, err)
+					cs.log.Printf("WARN: disconnecting from peer %v because IHD failed: %v", p.NetAddress, err)
 					// Disconnect if there is an unexpected error (not a timeout). This
 					// includes errSendBlocksStalled.
 					//
@@ -1104,7 +1110,7 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 		}
 	}
 
-	cs.log.Printf("INFO: IBD done, synced with %v peers", numOutboundSynced)
+	cs.log.Printf("INFO: IHD done, synced with %v peers", numOutboundSynced)
 	return nil
 }
 
