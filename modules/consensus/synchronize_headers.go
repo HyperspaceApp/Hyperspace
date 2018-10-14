@@ -135,6 +135,8 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 			chainExtended = true
 		}
 		*/
+		// Don't throw an error for non-extending headers. We need to keep them in the bucket in case
+		// they become the heaviest chain in the future.
 		if acceptErr != nil && acceptErr != modules.ErrNonExtendingBlock && acceptErr != modules.ErrBlockKnown {
 			return acceptErr
 		}
@@ -268,7 +270,6 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 					cs.log.Critical("Unable to get path: height", height, ":: request", i)
 					return err
 				}
-				// TODO: read from mem
 				pbh, exists := cs.processedBlockHeaders[id]
 				if !exists {
 					cs.log.Critical("Unable to get header from mem: height", height, ":: request", i, ":: id", id)
@@ -424,41 +425,4 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 
 	cs.log.Printf("INFO: IHD done, synced with %v peers", numOutboundSynced)
 	return nil
-}
-
-func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pb *processedBlock) modules.RPCFunc {
-	return func(conn modules.PeerConn) (err error) {
-		if err = encoding.WriteObject(conn, id); err != nil {
-			return
-		}
-		var block types.Block
-		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
-			return
-		}
-		pb, err = cs.managedAcceptSingleBlockForSPV(block, nil)
-		if err != nil {
-			return
-		}
-		return nil
-	}
-}
-
-func (cs *ConsensusSet) getOrDownloadBlock(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
-	pb, err := getBlockMap(tx, id)
-	if err == errNilItem {
-		//TODO: randomly pick a node
-		for _, peer := range cs.gateway.Peers() {
-			// how to get this peer connection
-			err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pb))
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		if err == nil {
-			return pb, nil
-		}
-		return nil, err
-	}
-	return pb, nil
 }
