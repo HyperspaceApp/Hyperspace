@@ -108,6 +108,40 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 	}
 }
 
+func (cs *ConsensusSet) buildDiffGetter(tx *bolt.Tx) func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error) {
+	return func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+		pb, err := cs.getOrDownloadBlock(tx, id)
+		if err == errNilItem { // assume it is not related block, so not locally exist
+			return nil, nil
+		} else if err != nil {
+			return nil, err
+		}
+		pbScods := pb.SiacoinOutputDiffs
+		if direction == modules.DiffRevert {
+			for i := len(pbScods) - 1; i >= 0; i-- {
+				pbScod := pbScods[i]
+				pbScod.Direction = !pbScod.Direction
+				scods = append(scods, pbScod)
+			}
+		} else {
+			scods = pbScods
+		}
+		return
+	}
+}
+
+func (cs *ConsensusSet) buildBlockGetter(tx *bolt.Tx) func(types.BlockID) (types.Block, bool) {
+	return func(id types.BlockID) (types.Block, bool) {
+		pb, err := getBlockMap(tx, id)
+		if err == errNilItem { // assume it is not related block, so not locally exist
+			return types.Block{}, false
+		} else if err != nil {
+			panic(err)
+		}
+		return pb.Block, true
+	}
+}
+
 func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 	if len(cs.subscribers) == 0 {
 		return
@@ -122,34 +156,8 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 			cs.log.Critical("computeConsensusChange failed:", err)
 			return nil
 		}
-		hcc.GetSiacoinOutputDiff = func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
-			pb, err := cs.getOrDownloadBlock(tx, id)
-			if err == errNilItem { // assume it is not related block, so not locally exist
-				return nil, nil
-			} else if err != nil {
-				return nil, err
-			}
-			pbScods := pb.SiacoinOutputDiffs
-			if direction == modules.DiffRevert {
-				for i := len(pbScods) - 1; i >= 0; i-- {
-					pbScod := pbScods[i]
-					pbScod.Direction = !pbScod.Direction
-					scods = append(scods, pbScod)
-				}
-			} else {
-				scods = pbScods
-			}
-			return
-		}
-		hcc.GetBlockByID = func(id types.BlockID) (types.Block, bool) {
-			pb, err := getBlockMap(tx, id)
-			if err == errNilItem { // assume it is not related block, so not locally exist
-				return types.Block{}, false
-			} else if err != nil {
-				panic(err)
-			}
-			return pb.Block, true
-		}
+		hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
+		hcc.GetBlockByID = cs.buildBlockGetter(tx)
 		for _, subscriber := range cs.headerSubscribers {
 			subscriber.ProcessHeaderConsensusChange(hcc)
 		}
@@ -491,34 +499,8 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				if err != nil {
 					return err
 				}
-				hcc.GetSiacoinOutputDiff = func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
-					pb, err := cs.getOrDownloadBlock(tx, id)
-					if err == errNilItem { // assume it is not related block, so not locally exist
-						return nil, nil
-					} else if err != nil {
-						return nil, err
-					}
-					pbScods := pb.SiacoinOutputDiffs
-					if direction == modules.DiffRevert {
-						for i := len(pbScods) - 1; i >= 0; i-- {
-							pbScod := pbScods[i]
-							pbScod.Direction = !pbScod.Direction
-							scods = append(scods, pbScod)
-						}
-					} else {
-						scods = pbScods
-					}
-					return
-				}
-				hcc.GetBlockByID = func(id types.BlockID) (types.Block, bool) {
-					pb, err := getBlockMap(tx, id)
-					if err == errNilItem { // assume it is not related block, so not locally exist
-						return types.Block{}, false
-					} else if err != nil {
-						panic(err)
-					}
-					return pb.Block, true
-				}
+				hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
+				hcc.GetBlockByID = cs.buildBlockGetter(tx)
 				subscriber.ProcessHeaderConsensusChange(hcc)
 				entry, exists = entry.NextEntry(tx)
 			}
