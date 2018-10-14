@@ -269,11 +269,11 @@ func (cs *ConsensusSet) managedReceiveHeaders(conn modules.PeerConn) (returnErr 
 	// needs to be chosen.
 	stalled := true
 	defer func() {
+		// TODO: we're not even using muxado anymore - can this be changed?
+		//
 		// TODO: Timeout errors returned by muxado do not conform to the net.Error
 		// interface and therefore we cannot check if the error is a timeout using
 		// the Timeout() method. Once muxado issue #14 is resolved change the below
-		//
-		// TODO: we're not even using muxado anymore - can this be changed?
 		// condition to:
 		//     if netErr, ok := returnErr.(net.Error); ok && netErr.Timeout() && stalled { ... }
 		if stalled && returnErr != nil && (returnErr.Error() == "Read timeout" || returnErr.Error() == "Write timeout") {
