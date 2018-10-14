@@ -145,7 +145,11 @@ func applyMaturedSiacoinOutputsForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modu
 	bucketID := append(prefixDSCO, encoding.Marshal(pb.Height)...)
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
-	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {
+	dscoBucket := tx.Bucket(bucketID) // no dsco for this height
+	if dscoBucket == nil {
+		return
+	}
+	dbErr := dscoBucket.ForEach(func(idBytes, scoBytes []byte) error {
 		// Decode the key-value pair into an id and a siacoin output.
 		var id types.SiacoinOutputID
 		var sco types.SiacoinOutput

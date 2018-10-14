@@ -59,6 +59,17 @@ func spvConsensusSetTester(name string, deps modules.Dependencies) (*consensusSe
 	return cst, nil
 }
 
+func (cst *consensusSetTester) CloseSPV() error {
+	errs := []error{
+		cst.cs.Close(),
+		cst.gateway.Close(),
+	}
+	if err := build.JoinErrors(errs, "; "); err != nil {
+		panic(err)
+	}
+	return nil
+}
+
 func createSPVConsensusSetTester(name string) (*consensusSetTester, error) {
 	cst, err := spvConsensusSetTester(name, modules.ProdDependencies)
 	if err != nil {
@@ -68,14 +79,14 @@ func createSPVConsensusSetTester(name string) (*consensusSetTester, error) {
 }
 
 func TestSPVConsensusSync(t *testing.T) {
-	// if testing.Short() {
-	// 	t.SkipNow()
-	// }
+	if testing.Short() {
+		t.SkipNow()
+	}
 	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cst1.Close()
+	defer cst1.CloseSPV()
 	cst2, err := createConsensusSetTester(t.Name() + "2")
 	if err != nil {
 		t.Fatal(err)
