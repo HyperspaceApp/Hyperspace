@@ -108,6 +108,10 @@ type (
 		// diffs that were applied to the consensus set in the recent change.
 		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
 
+		// Synced indicates whether or not the ConsensusSet is synced with its
+		// peers.
+		Synced bool
+
 		// GetSiacoinOutputDiff will return the outputdiffs requested
 		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
 

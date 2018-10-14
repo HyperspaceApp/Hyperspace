@@ -249,7 +249,6 @@ func (cs *ConsensusSet) addSingleBlock(tx *bolt.Tx, b types.Block,
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
 	// revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
-	// TODO: generate diffs for current block
 	cs.applySingleBlock(tx, newNode)
 
 	return

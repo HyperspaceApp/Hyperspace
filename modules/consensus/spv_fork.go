@@ -21,6 +21,16 @@ func (cs *ConsensusSet) revertToHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHe
 	for currentBlockID(tx) != ph.BlockHeader.ID() {
 		header := currentProcessedHeader(tx)
 		commitHeaderDiffSet(tx, header, modules.DiffRevert)
+		// if block exist, need to revert diffs too
+		block, err := getBlockMap(tx, header.BlockHeader.ID())
+		if err == nil {
+			commitSingleBlockDiffSet(tx, block, modules.DiffRevert)
+		} else {
+			if err != errNilItem {
+				panic(err)
+			}
+		}
+
 		revertedHeaders = append(revertedHeaders, header)
 		// Sanity check - after removing a block, check that the consensus set
 		// has maintained consistency.
