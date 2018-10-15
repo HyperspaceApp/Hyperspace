@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"log"
 	"path/filepath"
 	"testing"
 
@@ -39,8 +40,12 @@ func randAddress() (uh types.UnlockHash) {
 // mineCoins mines blocks until there are siacoins in the wallet.
 func (cst *consensusSetTester) mineSiacoins() {
 	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
-		b, _ := cst.miner.FindBlock()
-		err := cst.cs.AcceptBlock(b)
+		b, err := cst.miner.FindBlock()
+		if err != nil {
+			panic(err)
+		}
+		log.Printf("b:%d %s, %s", i, b.ID(), b.ParentID)
+		err = cst.cs.AcceptBlock(b)
 		if err != nil {
 			panic(err)
 		}

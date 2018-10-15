@@ -1,9 +1,12 @@
 package consensus
 
 import (
+	"log"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -78,17 +81,18 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 		id := ph.BlockHeader.ID()
 		headerMap.Put(id[:], encoding.Marshal(*header))
 		headers = append(headers, header)
+		createDSCOBucket(tx, ph.Height+types.MaturityDelay)
 
 		applyMaturedSiacoinOutputsForHeader(tx, header) // deal delay stuff in header accpetance
 
 		// Sanity check - after applying a block, check that the consensus set
 		// has maintained consistency.
 		// TODO: figure out what to check later
-		// if build.Release == "testing" {
-		// 	cs.checkConsistency(tx)
-		// } else {
-		// 	cs.maybeCheckConsistency(tx)
-		// }
+		if build.Release == "testing" {
+			cs.checkConsistency(tx)
+		} else {
+			cs.maybeCheckConsistency(tx)
+		}
 	}
 	return headers
 }
@@ -103,6 +107,7 @@ func (cs *ConsensusSet) forkHeadersBlockchain(tx *bolt.Tx, newHeader *modules.Pr
 	for _, pbh := range revertedBlocks {
 		updateCurrentPath(tx, pbh.BlockHeader.ID(), modules.DiffRevert) // fix getPath function
 	}
+	log.Printf("apply until height:%d, %s", newHeader.Height, newHeader.BlockHeader.ID())
 	appliedHeaders = cs.applyUntilHeader(tx, newHeader)
 	for _, pbh := range appliedHeaders {
 		updateCurrentPath(tx, pbh.BlockHeader.ID(), modules.DiffApply)

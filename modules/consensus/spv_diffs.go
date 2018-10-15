@@ -9,12 +9,63 @@ import (
 	"github.com/coreos/bbolt"
 )
 
+func commitHeaderDiffSetSanity(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
+	// This function is purely sanity checks.
+	if !build.DEBUG {
+		return
+	}
+
+	// Current node must be the input node's parent if applying, and
+	// current node must be the input node if reverting.
+	if dir == modules.DiffApply {
+		parent, err := getBlockHeaderMap(tx, pbh.BlockHeader.ParentID)
+		if build.DEBUG && err != nil {
+			panic(err)
+		}
+		if parent.BlockHeader.ID() != currentBlockID(tx) {
+			panic(errWrongAppliedDiffSet)
+		}
+	} else {
+		if pbh.BlockHeader.ID() != currentBlockID(tx) {
+			panic(errWrongRevertDiffSet)
+		}
+	}
+}
+
+func commitSingleBlockDiffSetSanity(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+	// This function is purely sanity checks.
+	if !build.DEBUG {
+		return
+	}
+
+	// Diffs should have already been generated for this node.
+	if !pb.DiffsGenerated {
+		panic(errDiffsNotGenerated)
+	}
+
+	// Current node must be the input node's parent if applying, and
+	// current node must be the input node if reverting.
+	if dir == modules.DiffApply {
+		parent, err := getBlockMap(tx, pb.Block.ParentID)
+		if build.DEBUG && err != nil {
+			panic(err)
+		}
+		if parent.Block.ID() != currentBlockID(tx) {
+			panic(errWrongAppliedDiffSet)
+		}
+	} else {
+		if pb.Block.ID() != currentBlockID(tx) {
+			panic(errWrongRevertDiffSet)
+		}
+	}
+}
+
 func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	// Sanity checks - there are a few so they were moved to another function.
 	// TODO: add back check
-	// if build.DEBUG {
-	// 	commitDiffSetSanity(tx, pb, dir)
-	// }
+	if build.DEBUG {
+		commitSingleBlockDiffSetSanity(tx, pb, dir)
+	}
 
 	commitNodeDiffs(tx, pb, dir)
 }
@@ -40,9 +91,9 @@ func commitHeaderDiffs(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modul
 func commitHeaderDiffSet(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
 	// Sanity checks - there are a few so they were moved to another function.
 	// TODO: add back check
-	// if build.DEBUG {
-	// 	commitDiffSetSanity(tx, pb, dir)
-	// }
+	if build.DEBUG {
+		commitHeaderDiffSetSanity(tx, pbh, dir)
+	}
 
 	createUpcomingDelayedOutputMaps(tx, pbh.Height, dir)
 	commitHeaderDiffs(tx, pbh, dir)

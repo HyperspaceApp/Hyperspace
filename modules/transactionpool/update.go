@@ -650,9 +650,9 @@ func (tp *TransactionPool) ProcessHeaderConsensusChange(hcc modules.HeaderConsen
 	// }
 
 	// // Inform subscribers that an update has executed.
-	// tp.mu.Demote()
+	tp.mu.Demote()
 	// tp.updateSubscribersTransactions()
-	// tp.mu.DemotedUnlock()
+	tp.mu.DemotedUnlock()
 }
 
 // PurgeTransactionPool deletes all transactions from the transaction pool.

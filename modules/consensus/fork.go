@@ -126,6 +126,7 @@ func (cs *ConsensusSet) applyUntilBlock(tx *bolt.Tx, pb *processedBlock,
 
 		// Sanity check - after applying a block, check that the consensus set
 		// has maintained consistency.
+		// TODO: fix  total number of coins in the delayed output bucket is incorrect
 		if build.Release == "testing" {
 			cs.checkConsistency(tx)
 		} else {

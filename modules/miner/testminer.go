@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"log"
 	"unsafe"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -111,6 +112,7 @@ func (m *Miner) FindBlock() (types.Block, error) {
 	}
 
 	block, ok := m.SolveBlock(bfw, target)
+	log.Printf("SolveBlock parent: %s", block.ParentID)
 	if !ok {
 		return types.Block{}, errors.New("could not solve block using limited hashing power")
 	}

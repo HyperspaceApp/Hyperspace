@@ -139,9 +139,9 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		blockRuleHelper: stdBlockRuleHelper{},
 		blockValidator:  NewBlockValidator(),
 
-		staticDeps: deps,
-		persistDir: persistDir,
-		spv:        spv,
+		staticDeps:            deps,
+		persistDir:            persistDir,
+		spv:                   spv,
 		processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 	}
 
@@ -213,10 +213,10 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 				cs.gateway.UnregisterRPC(modules.SendBlocksCmd)
 				cs.gateway.UnregisterRPC(modules.SendBlockCmd)
 				cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
+				cs.gateway.UnregisterRPC(modules.SendHeadersCmd)
+				// cs.gateway.UnregisterRPC(modules.SendHeaderCmd)
+				cs.gateway.UnregisterRPC(modules.RelayHeaderCmd)
 			}
-			cs.gateway.UnregisterRPC(modules.SendHeadersCmd)
-			// cs.gateway.UnregisterRPC(modules.SendHeaderCmd)
-			cs.gateway.UnregisterRPC(modules.RelayHeaderCmd)
 		})
 
 		// Mark that we are synced with the network.

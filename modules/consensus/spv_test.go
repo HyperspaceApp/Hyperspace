@@ -79,9 +79,9 @@ func createSPVConsensusSetTester(name string) (*consensusSetTester, error) {
 }
 
 func TestSPVConsensusSync(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
+	// if testing.Short() {
+	// 	t.SkipNow()
+	// }
 	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
 	if err != nil {
 		t.Fatal(err)
