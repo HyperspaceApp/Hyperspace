@@ -120,6 +120,7 @@ func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBloc
 	// elements are collected into an array and then deleted after the bucket
 	// scan is complete.
 	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
+	// log.Printf("applyMaturedSiacoinOutputsForHeader dsco for %d", pbh.Height)
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
 	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {
@@ -259,5 +260,11 @@ func applyFileContractMaintenance(tx *bolt.Tx, pb *processedBlock) {
 func applyMaintenance(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
 	applyMinerPayouts(tx, pb)
 	applyMaturedSiacoinOutputs(tx, pb, newBlockHeader)
+	applyFileContractMaintenance(tx, pb)
+}
+
+func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
+	applyMinerPayouts(tx, pb)
+	// applyMaturedSiacoinOutputsForSPV(tx, pb, nil) // move delayed output mature to siacoin
 	applyFileContractMaintenance(tx, pb)
 }

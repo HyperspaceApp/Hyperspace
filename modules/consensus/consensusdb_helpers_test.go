@@ -5,6 +5,7 @@ package consensus
 
 import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
@@ -34,6 +35,17 @@ func (cs *ConsensusSet) dbCurrentProcessedBlock() (pb *processedBlock) {
 		panic(dbErr)
 	}
 	return pb
+}
+
+func (cs *ConsensusSet) dbCurrentProcessedHeader() (pbh *modules.ProcessedBlockHeader) {
+	dbErr := cs.db.View(func(tx *bolt.Tx) error {
+		pbh = currentProcessedHeader(tx)
+		return nil
+	})
+	if dbErr != nil {
+		panic(dbErr)
+	}
+	return pbh
 }
 
 // dbGetPath is a convenience function allowing getPath to be called without a
@@ -72,6 +84,17 @@ func (cs *ConsensusSet) dbGetBlockMap(id types.BlockID) (pb *processedBlock, err
 		panic(dbErr)
 	}
 	return pb, err
+}
+
+func (cs *ConsensusSet) dbGetBlockHeaderMap(id types.BlockID) (pbh *modules.ProcessedBlockHeader, err error) {
+	dbErr := cs.db.View(func(tx *bolt.Tx) error {
+		pbh, err = getBlockHeaderMap(tx, id)
+		return nil
+	})
+	if dbErr != nil {
+		panic(dbErr)
+	}
+	return pbh, err
 }
 
 // dbGetSiacoinOutput is a convenience function allowing getSiacoinOutput to be

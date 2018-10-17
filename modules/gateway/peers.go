@@ -527,6 +527,27 @@ func (g *Gateway) Peers() []modules.Peer {
 	return peers
 }
 
+// RandomPeer returns a random peer currently connected to the Gateway.
+func (g *Gateway) RandomPeer() (modules.Peer, error) {
+	var emptyPeer modules.Peer
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if len(g.peers) == 0 {
+		return emptyPeer, errNoPeers
+	}
+
+	// Select a random peer. Note that the algorithm below is roughly linear in
+	// the number of peers connected to the gateway.
+	r := fastrand.Intn(len(g.peers))
+	for _, p := range g.peers {
+		if r <= 0 {
+			return p.Peer, nil
+		}
+		r--
+	}
+	return emptyPeer, errNoPeers
+}
+
 // Online returns true if the node is connected to the internet. During testing
 // we always assume that the node is online
 func (g *Gateway) Online() bool {

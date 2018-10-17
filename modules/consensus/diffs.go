@@ -78,11 +78,12 @@ func commitDelayedSiacoinOutputDiff(tx *bolt.Tx, dscod modules.DelayedSiacoinOut
 
 // createUpcomingDelayeOutputdMaps creates the delayed siacoin output maps that
 // will be used when applying delayed siacoin outputs in the diff set.
-func createUpcomingDelayedOutputMaps(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+func createUpcomingDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
-		createDSCOBucket(tx, pb.Height+types.MaturityDelay)
-	} else if pb.Height >= types.MaturityDelay {
-		createDSCOBucket(tx, pb.Height)
+		// log.Printf("create dsco for %d", height+types.MaturityDelay)
+		createDSCOBucket(tx, height+types.MaturityDelay)
+	} else if height >= types.MaturityDelay {
+		createDSCOBucket(tx, height)
 	}
 }
 
@@ -113,20 +114,21 @@ func commitNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection)
 
 // deleteObsoleteDelayedOutputMaps deletes the delayed siacoin output maps that
 // are no longer in use.
-func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	// There are no outputs that mature in the first MaturityDelay blocks.
-	if dir == modules.DiffApply && pb.Height >= types.MaturityDelay {
-		deleteDSCOBucket(tx, pb.Height)
+	if dir == modules.DiffApply && height >= types.MaturityDelay {
+		// log.Printf("delete dsco for %d", height)
+		deleteDSCOBucket(tx, height)
 	} else if dir == modules.DiffRevert {
-		deleteDSCOBucket(tx, pb.Height+types.MaturityDelay)
+		deleteDSCOBucket(tx, height+types.MaturityDelay)
 	}
 }
 
 // updateCurrentPath updates the current path after applying a diff set.
-func updateCurrentPath(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+func updateCurrentPath(tx *bolt.Tx, id types.BlockID, dir modules.DiffDirection) {
 	// Update the current path.
 	if dir == modules.DiffApply {
-		pushPath(tx, pb.Block.ID())
+		pushPath(tx, id)
 	} else {
 		popPath(tx)
 	}
@@ -139,10 +141,10 @@ func commitDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 		commitDiffSetSanity(tx, pb, dir)
 	}
 
-	createUpcomingDelayedOutputMaps(tx, pb, dir)
+	createUpcomingDelayedOutputMaps(tx, pb.Height, dir)
 	commitNodeDiffs(tx, pb, dir)
-	deleteObsoleteDelayedOutputMaps(tx, pb, dir)
-	updateCurrentPath(tx, pb, dir)
+	deleteObsoleteDelayedOutputMaps(tx, pb.Height, dir)
+	updateCurrentPath(tx, pb.Block.ID(), dir) // can form this with inconsistent blocks
 }
 
 // generateAndApplyDiff will verify the block and then integrate it into the
@@ -191,7 +193,7 @@ func generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock, pbh *modules.Processe
 	// Add the block to the current path and block map.
 	bid := pb.Block.ID()
 	blockMap := tx.Bucket(BlockMap)
-	updateCurrentPath(tx, pb, modules.DiffApply)
+	updateCurrentPath(tx, pb.Block.ID(), modules.DiffApply)
 
 	// Sanity check preparation - set the consensus hash at this height so that
 	// during reverting a check can be performed to assure consistency when
@@ -208,61 +210,6 @@ func generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock, pbh *modules.Processe
 			return err
 		}
 		//TODO: need to update the cs.processedBlockHeaders
-	}
-
-	return blockMap.Put(bid[:], encoding.Marshal(*pb))
-}
-
-func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
-	// Sanity check - the block being applied should have the current block as
-	// a parent.
-	if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
-		panic(errInvalidSuccessor)
-	}
-
-	// Create the bucket to hold all of the delayed siacoin outputs created by
-	// transactions this block. Needs to happen before any transactions are
-	// applied.
-	createDSCOBucket(tx, pb.Height+types.MaturityDelay)
-
-	// Validate and apply each transaction in the block. They cannot be
-	// validated all at once because some transactions may not be valid until
-	// previous transactions have been applied.
-	for _, txn := range pb.Block.Transactions {
-		// TODO: won't pass becaues of no valid output in bucket for inputs
-		err := validTransaction(tx, txn)
-		if err != nil {
-			return err
-		}
-		applyTransactionForSPV(tx, pb, txn)
-	}
-
-	// After all of the transactions have been applied, 'maintenance' is
-	// applied on the block. This includes adding any outputs that have reached
-	// maturity, applying any contracts with missed storage proofs, and adding
-	// the miner payouts to the list of delayed outputs.
-	applyMaintenance(tx, pb, nil)
-
-	// DiffsGenerated are only set to true after the block has been fully
-	// validated and integrated. This is required to prevent later blocks from
-	// being accepted on top of an invalid block - if the consensus set ever
-	// forks over an invalid block, 'DiffsGenerated' will be set to 'false',
-	// requiring validation to occur again. when 'DiffsGenerated' is set to
-	// true, validation is skipped, therefore the flag should only be set to
-	// true on fully validated blocks.
-	pb.DiffsGenerated = true
-
-	// Add the block to the current path and block map.
-	bid := pb.Block.ID()
-	blockMap := tx.Bucket(BlockMap)
-	updateCurrentPath(tx, pb, modules.DiffApply)
-
-	// Sanity check preparation - set the consensus hash at this height so that
-	// during reverting a check can be performed to assure consistency when
-	// adding and removing blocks. Must happen after the block is added to the
-	// path.
-	if build.DEBUG {
-		pb.ConsensusChecksum = consensusChecksum(tx)
 	}
 
 	return blockMap.Put(bid[:], encoding.Marshal(*pb))

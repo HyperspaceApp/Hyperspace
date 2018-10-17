@@ -213,6 +213,17 @@ func validTransaction(tx *bolt.Tx, t types.Transaction) error {
 	return nil
 }
 
+func validTransactionForSPV(tx *bolt.Tx, t types.Transaction) error {
+	// StandaloneValid will check things like signatures and properties that
+	// should be inherent to the transaction. (storage proof rules, etc.)
+	err := t.StandaloneValid(blockHeight(tx))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // tryTransactionSet applies the input transactions to the consensus set to
 // determine if they are valid. An error is returned IFF they are not a valid
 // set in the current consensus set. The size of the transactions and the set
