@@ -43,35 +43,6 @@ func backtrackToCurrentPath(tx *bolt.Tx, pb *processedBlock) []*processedBlock {
 	return path
 }
 
-// backtrackHeadersToCurrentPath traces backwards from 'pb' until it reaches a header
-// in the ConsensusSet's current path (the "common parent"). It returns the
-// (inclusive) set of blocks between the common parent and 'pb', starting from
-// the former.
-func backtrackHeadersToCurrentPath(tx *bolt.Tx, ph *modules.ProcessedBlockHeader) []*modules.ProcessedBlockHeader {
-	path := []*modules.ProcessedBlockHeader{ph}
-	for {
-		// Error is not checked in production code - an error can only indicate
-		// that pb.Height > blockHeight(tx).
-		currentPathID, err := getPath(tx, ph.Height)
-		if currentPathID == ph.BlockHeader.ID() {
-			break
-		}
-		// Sanity check - an error should only indicate that pb.Height >
-		// blockHeight(tx).
-		if build.DEBUG && err != nil && ph.Height <= blockHeight(tx) {
-			panic(err)
-		}
-		// Prepend the next block to the list of blocks leading from the
-		// current path to the input block.
-		ph, err = getBlockHeaderMap(tx, ph.BlockHeader.ParentID)
-		if build.DEBUG && err != nil {
-			panic(err)
-		}
-		path = append([]*modules.ProcessedBlockHeader{ph}, path...)
-	}
-	return path
-}
-
 // revertToBlock will revert blocks from the ConsensusSet's current path until
 // 'pb' is the current block. Blocks are returned in the order that they were
 // reverted.  'pb' is not reverted.

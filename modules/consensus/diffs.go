@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -81,7 +80,7 @@ func commitDelayedSiacoinOutputDiff(tx *bolt.Tx, dscod modules.DelayedSiacoinOut
 // will be used when applying delayed siacoin outputs in the diff set.
 func createUpcomingDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
-		log.Printf("create dsco for %d", height+types.MaturityDelay)
+		// log.Printf("create dsco for %d", height+types.MaturityDelay)
 		createDSCOBucket(tx, height+types.MaturityDelay)
 	} else if height >= types.MaturityDelay {
 		createDSCOBucket(tx, height)
@@ -118,7 +117,7 @@ func commitNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection)
 func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	// There are no outputs that mature in the first MaturityDelay blocks.
 	if dir == modules.DiffApply && height >= types.MaturityDelay {
-		log.Printf("delete dsco for %d", height)
+		// log.Printf("delete dsco for %d", height)
 		deleteDSCOBucket(tx, height)
 	} else if dir == modules.DiffRevert {
 		deleteDSCOBucket(tx, height+types.MaturityDelay)

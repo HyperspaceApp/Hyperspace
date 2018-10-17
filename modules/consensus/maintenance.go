@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -121,7 +120,7 @@ func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBloc
 	// elements are collected into an array and then deleted after the bucket
 	// scan is complete.
 	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
-	log.Printf("applyMaturedSiacoinOutputsForHeader dsco for %d", pbh.Height)
+	// log.Printf("applyMaturedSiacoinOutputsForHeader dsco for %d", pbh.Height)
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
 	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {

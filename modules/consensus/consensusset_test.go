@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"log"
 	"path/filepath"
 	"testing"
 
@@ -44,7 +43,7 @@ func (cst *consensusSetTester) mineSiacoins() {
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("b:%d %s, %s", i, b.ID(), b.ParentID)
+		// log.Printf("b:%d %s, %s", i+1, b.ID(), b.ParentID)
 		err = cst.cs.AcceptBlock(b)
 		if err != nil {
 			panic(err)

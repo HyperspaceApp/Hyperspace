@@ -1,8 +1,6 @@
 package consensus
 
 import (
-	"log"
-
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -10,6 +8,35 @@ import (
 
 	"github.com/coreos/bbolt"
 )
+
+// backtrackHeadersToCurrentPath traces backwards from 'pb' until it reaches a header
+// in the ConsensusSet's current path (the "common parent"). It returns the
+// (inclusive) set of blocks between the common parent and 'pb', starting from
+// the former.
+func backtrackHeadersToCurrentPath(tx *bolt.Tx, ph *modules.ProcessedBlockHeader) []*modules.ProcessedBlockHeader {
+	path := []*modules.ProcessedBlockHeader{ph}
+	for {
+		// Error is not checked in production code - an error can only indicate
+		// that pb.Height > blockHeight(tx).
+		currentPathID, err := getPath(tx, ph.Height)
+		if currentPathID == ph.BlockHeader.ID() {
+			break
+		}
+		// Sanity check - an error should only indicate that pb.Height >
+		// blockHeight(tx).
+		if build.DEBUG && err != nil && ph.Height <= blockHeight(tx) {
+			panic(err)
+		}
+		// Prepend the next block to the list of blocks leading from the
+		// current path to the input block.
+		ph, err = getBlockHeaderMap(tx, ph.BlockHeader.ParentID)
+		if build.DEBUG && err != nil {
+			panic(err)
+		}
+		path = append([]*modules.ProcessedBlockHeader{ph}, path...)
+	}
+	return path
+}
 
 // revertToHeader will revert headers from the ConsensusSet's current path until
 // 'ph' is the current block. Blocks are returned in the order that they were
@@ -73,45 +100,45 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 
 // applyUntilHeader will successively apply the headers between the consensus
 // set's current path and 'ph'.
-func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHeader) (headers []*modules.ProcessedBlockHeader) {
+func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHeader) (headers []*modules.ProcessedBlockHeader, err error) {
 	// Backtrack to the common parent of 'bn' and current path and then apply the new blocks.
+	// log.Printf("applyUntilHeader height:%d, %s", ph.Height, ph.BlockHeader.ID())
 	newPath := backtrackHeadersToCurrentPath(tx, ph)
 	for _, header := range newPath[1:] {
-		headerMap := tx.Bucket(BlockHeaderMap)
-		id := ph.BlockHeader.ID()
-		headerMap.Put(id[:], encoding.Marshal(*header))
-		headers = append(headers, header)
+		applyMaturedSiacoinOutputsForHeader(tx, header) // deal delay stuff in header accpetance
 		createDSCOBucket(tx, ph.Height+types.MaturityDelay)
 
-		applyMaturedSiacoinOutputsForHeader(tx, header) // deal delay stuff in header accpetance
+		headerMap := tx.Bucket(BlockHeaderMap)
+		id := header.BlockHeader.ID()
+		updateCurrentPath(tx, id, modules.DiffApply)
+
+		headerMap.Put(id[:], encoding.Marshal(*header))
+		headers = append(headers, header)
 
 		// Sanity check - after applying a block, check that the consensus set
 		// has maintained consistency.
-		// TODO: figure out what to check later
+		// NOTE: no every block payout info, no totally supply, no parent block, so won't check consistency in spv
 		if build.Release == "testing" {
-			cs.checkConsistency(tx)
-		} else {
-			cs.maybeCheckConsistency(tx)
+			cs.checkHeaderConsistency(tx)
 		}
 	}
-	return headers
+	return headers, nil
 }
 
 // forkHeadersBlockchain will move the consensus set onto the 'newHeaders' fork. An
 // error will be returned if any of the blocks headers in the transition are
 // found to be invalid. forkHeadersBlockchain is atomic; the ConsensusSet is only
 // updated if the function returns nil.
-func (cs *ConsensusSet) forkHeadersBlockchain(tx *bolt.Tx, newHeader *modules.ProcessedBlockHeader) (revertedBlocks, appliedHeaders []*modules.ProcessedBlockHeader) {
+func (cs *ConsensusSet) forkHeadersBlockchain(tx *bolt.Tx, newHeader *modules.ProcessedBlockHeader) (revertedHeaders, appliedHeaders []*modules.ProcessedBlockHeader, err error) {
+	// log.Printf("\n\nforkHeadersBlockchain height:%d, %s", newHeader.Height, newHeader.BlockHeader.ID())
 	commonParent := backtrackHeadersToCurrentPath(tx, newHeader)[0]
-	revertedBlocks = cs.revertToHeader(tx, commonParent)
-	for _, pbh := range revertedBlocks {
-		updateCurrentPath(tx, pbh.BlockHeader.ID(), modules.DiffRevert) // fix getPath function
-	}
-	log.Printf("apply until height:%d, %s", newHeader.Height, newHeader.BlockHeader.ID())
-	appliedHeaders = cs.applyUntilHeader(tx, newHeader)
-	for _, pbh := range appliedHeaders {
-		updateCurrentPath(tx, pbh.BlockHeader.ID(), modules.DiffApply)
+	// log.Printf("commonParent:%d, %s", commonParent.Height, commonParent.BlockHeader.ID())
+	revertedHeaders = cs.revertToHeader(tx, commonParent)
+	appliedHeaders, err = cs.applyUntilHeader(tx, newHeader)
+	if err != nil {
+		return revertedHeaders, appliedHeaders, err
 	}
 
-	return revertedBlocks, appliedHeaders
+	// log.Printf("forkHeadersBlockchain height end:%d, %s\n\n", newHeader.Height, newHeader.BlockHeader.ID())
+	return revertedHeaders, appliedHeaders, nil
 }

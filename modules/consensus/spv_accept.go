@@ -71,7 +71,10 @@ func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.Proce
 	// Fork the blockchain and put the new heaviest headers at the tip of the
 	// chain.
 	var revertedBlocks, appliedBlocks []*modules.ProcessedBlockHeader
-	revertedBlocks, appliedBlocks = cs.forkHeadersBlockchain(tx, newNode)
+	revertedBlocks, appliedBlocks, err = cs.forkHeadersBlockchain(tx, newNode)
+	if err != nil {
+		return ce, err
+	}
 	for _, rn := range revertedBlocks {
 		ce.RevertedBlocks = append(ce.RevertedBlocks, rn.BlockHeader.ID())
 	}

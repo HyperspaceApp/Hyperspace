@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"log"
 	"sort"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -291,7 +290,6 @@ func (m *Miner) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 	// Update the unsolved block.
 	m.persist.UnsolvedBlock.ParentID = cc.AppliedBlocks[len(cc.AppliedBlocks)-1].ID()
-	log.Printf("ParentID: %s", m.persist.UnsolvedBlock.ParentID)
 	m.persist.Target = cc.ChildTarget
 	m.persist.UnsolvedBlock.Timestamp = cc.MinimumValidChildTimestamp
 
