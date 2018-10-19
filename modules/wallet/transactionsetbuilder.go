@@ -76,7 +76,12 @@ func (tb *transactionSetBuilder) checkDefragCondition(dustThreshold types.Curren
 	return true, nil
 }
 
-func (tb *transactionSetBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
+func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee types.Currency) error {
+	var outputs []types.SiacoinOutput
+	return tb.FundOutputs(append(outputs, output), fee)
+}
+
+func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
 	// dustThreshold has to be obtained separate from the lock
 	dustThreshold, err := tb.wallet.DustThreshold()
 	if err != nil {
@@ -102,9 +107,9 @@ func (tb *transactionSetBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinO
 
 	// If that's not the case, then we will try to fill a txnset up
 	// to the valid transaction set size.
-
-	amount := calculateAmountFromOutputs(outputs, fee)
 	var totalFund types.Currency
+	var refund types.SiacoinOutput
+	amount := calculateAmountFromOutputs(outputs, fee)
 	addFee := true
 	needRefund := true
 	txFilled := false
@@ -128,7 +133,7 @@ func (tb *transactionSetBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinO
 			addFee = false;
 		}
 
-		addedFunds, scoids, err := builder.fundSiacoinsForOutput(outputs[i])
+		addedFunds, scoids, err := builder.fundOutput(outputs[i], refund)
 		if (err != nil) {
 			return err
 		}
@@ -139,11 +144,11 @@ func (tb *transactionSetBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinO
 		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
 			// TODO: this refund should be used by the next builder
 			// it should be possible to just pass it to the next call
-			_, err := builder.checkRefund(amount, totalFund)
+			refund, err = builder.checkRefund(amount, totalFund)
 			if (err != nil) {
 				return err
 			}
-			needRefund = false;
+			needRefund = false
 			// Mark all outputs that were spent as spent
 			for _, scoid := range scoids {
 				err := dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(scoid), consensusHeight)
@@ -152,8 +157,8 @@ func (tb *transactionSetBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinO
 				}
 			}
 			// We will add a fee to each builder
-			addFee = true;
-			txFilled = true;
+			addFee = true
+			txFilled = true
 		}
 	}
 
@@ -169,11 +174,11 @@ func (tb *transactionSetBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinO
 	return nil
 }
 
-func (tb *transactionSetBuilder) AddSiacoinOutput(output types.SiacoinOutput) uint64 {
+func (tb *transactionSetBuilder) AddOutput(output types.SiacoinOutput) uint64 {
 	return tb.currentBuilder().AddSiacoinOutput(output)
 }
 
-func (tb *transactionSetBuilder) AddSiacoinInput(output types.SiacoinInput) uint64 {
+func (tb *transactionSetBuilder) AddInput(output types.SiacoinInput) uint64 {
 	return tb.currentBuilder().AddSiacoinInput(output)
 }
 
