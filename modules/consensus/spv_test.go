@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"fmt"
 	"log"
 	"path/filepath"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/gateway"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 func spvConsensusSetTester(name string, deps modules.Dependencies) (*consensusSetTester, error) {
@@ -79,9 +81,9 @@ func createSPVConsensusSetTester(name string) (*consensusSetTester, error) {
 }
 
 func TestSPVConsensusSync(t *testing.T) {
-	// if testing.Short() {
-	// 	t.SkipNow()
-	// }
+	if testing.Short() {
+		t.SkipNow()
+	}
 	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
 	if err != nil {
 		t.Fatal(err)
@@ -161,4 +163,86 @@ func TestSPVConsensusSync(t *testing.T) {
 	if cst1.cs.dbBlockHeight() == cst2.cs.dbBlockHeight() {
 		t.Fatal("cst1 did not reject bad block")
 	}
+}
+
+// test miner payout detection (delayed diffs)
+
+func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
+	// blockchains should now match
+	for i := 0; i < 50; i++ {
+		if cst1.cs.dbCurrentBlockID() != cst2.cs.dbCurrentBlockID() {
+			time.Sleep(250 * time.Millisecond)
+		}
+	}
+
+	if cst1.cs.dbCurrentBlockID() != cst2.cs.dbCurrentBlockID() {
+		t.Fatal("Synchronize failed")
+	}
+}
+
+// TestSPVBalance test txn detection
+func TestSPVBalance(t *testing.T) {
+	// if testing.Short() {
+	// 	t.SkipNow()
+	// }
+	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst1.CloseSPV()
+	cst2, err := createConsensusSetTester(t.Name() + "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst2.Close()
+	// 2 wallet with same seed
+
+	// mine on cst2 until it is above cst1
+	for cst1.cs.dbBlockHeight() >= cst2.cs.dbBlockHeight() {
+		b, _ := cst2.miner.FindBlock()
+		err = cst2.cs.AcceptBlock(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	uc, err := cst1.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
+	cst2.mineSiacoins()
+	// balance1
+	// connect gateways, triggering a Synchronize
+	err = cst1.gateway.Connect(cst2.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTillSync(cst1, cst2, t)
+	balance1, err := cst1.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !balance1.Equals(types.SiacoinPrecision) {
+		t.Fatal(fmt.Printf("balance not match: %s\n", balance1.String()))
+	}
+
+	// cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
+	// cst2.mineSiacoins()
+
+	// balance2
+	// uc2, err := cst1.wallet.NextAddress()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// cst1.wallet.SendSiacoins(types.SiacoinPrecision, uc2.UnlockHash())
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	// cst2.mineSiacoins()
+
+	// balance3
+
+	// send a mount of coin to
+
 }

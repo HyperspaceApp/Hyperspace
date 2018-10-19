@@ -150,6 +150,12 @@ type (
 		// Unsubscribe removes a subscriber from the transaction pool.
 		// This is necessary for clean shutdown of the miner.
 		Unsubscribe(TransactionPoolSubscriber)
+
+		// SetGetWalletKeysFuc setup the function for consensus to fetch keys from wallet
+		SetGetWalletKeysFunc(func() (map[types.UnlockHash]bool, error))
+
+		// StartSubscribeHeaders will subscribe after wallet unlock done
+		StartSubscribeHeaders() error
 	}
 )
 

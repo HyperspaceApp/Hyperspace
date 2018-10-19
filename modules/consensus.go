@@ -117,6 +117,12 @@ type (
 
 		// GetBlockByID will return the block requested
 		GetBlockByID func(types.BlockID) (types.Block, bool)
+
+		// TryTransactionSet is an unlocked version of
+		// ConsensusSet.TryTransactionSet. This allows the TryTransactionSet
+		// function to be called by a subscriber during
+		// ProcessConsensusChange.
+		TryTransactionSet func([]types.Transaction) (ConsensusChange, error)
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.

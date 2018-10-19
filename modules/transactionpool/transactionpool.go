@@ -34,6 +34,9 @@ type (
 		consensusSet modules.ConsensusSet
 		gateway      modules.Gateway
 
+		// getWalletKeysFunc will help check block addresses in wallet keys or not
+		getWalletKeysFunc func() (map[types.UnlockHash]bool, error)
+
 		// To prevent double spends in the unconfirmed transaction set, the
 		// transaction pool keeps a list of all objects that have either been
 		// created or consumed by the current unconfirmed transaction pool. All
@@ -273,4 +276,9 @@ func (tp *TransactionPool) TransactionSet(oid crypto.Hash) []types.Transaction {
 // peers.
 func (tp *TransactionPool) Broadcast(ts []types.Transaction) {
 	go tp.gateway.Broadcast("RelayTransactionSet", ts, tp.gateway.Peers())
+}
+
+// SetGetWalletKeysFunc set the getWalletKeysFunc callback
+func (tp *TransactionPool) SetGetWalletKeysFunc(f func() (map[types.UnlockHash]bool, error)) {
+	tp.getWalletKeysFunc = f
 }
