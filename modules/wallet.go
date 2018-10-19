@@ -229,9 +229,13 @@ type (
 	}
 
 	TransactionSetBuilder interface {
-		FundSiacoinsForOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
+		FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
+		FundOutput(output types.SiacoinOutput, fee types.Currency) error
 
-		AddSiacoinOutput(types.SiacoinOutput) uint64
+		AddOutput(types.SiacoinOutput) uint64
+		AddInput(types.SiacoinInput) uint64
+
+		Sign(wholeTransaction bool) ([]types.Transaction, error)
 
 		// View returns the incomplete transaction along with all of its
 		// parents.

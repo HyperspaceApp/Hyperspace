@@ -215,7 +215,7 @@ func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutp
 	return nil
 }
 
-func (tb *transactionBuilder) fundSiacoinsForOutput(output types.SiacoinOutput) (types.Currency, []types.SiacoinOutputID, error) {
+func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, refund types.SiacoinOutput) (types.Currency, []types.SiacoinOutputID, error) {
 	dustThreshold, err := tb.wallet.DustThreshold()
 	if err != nil {
 		return types.Currency{}, nil, err
