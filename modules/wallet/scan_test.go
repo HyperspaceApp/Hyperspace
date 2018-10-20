@@ -3,6 +3,7 @@ package wallet
 import (
 	"log"
 	"testing"
+
 	//"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -45,7 +46,6 @@ func TestScanLargeIndex(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
 	}
 
 	// send money to ourselves so that we sweep a real output (instead of just

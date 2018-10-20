@@ -27,6 +27,8 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 		}
 		hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
 		hcc.GetBlockByID = cs.buildBlockGetter(tx)
+		hcc.TryTransactionSet = cs.tryTransactionSet
+
 		for _, subscriber := range cs.headerSubscribers {
 			subscriber.ProcessHeaderConsensusChange(hcc)
 		}
@@ -183,6 +185,7 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				}
 				hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
 				hcc.GetBlockByID = cs.buildBlockGetter(tx)
+				hcc.TryTransactionSet = cs.tryTransactionSet
 				subscriber.ProcessHeaderConsensusChange(hcc)
 				entry, exists = entry.NextEntry(tx)
 			}

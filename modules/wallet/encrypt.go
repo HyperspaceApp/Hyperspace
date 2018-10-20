@@ -260,6 +260,12 @@ func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 			return fmt.Errorf("wallet subscription failed: %v", err)
 		}
 		w.tpool.TransactionPoolSubscribe(w)
+		if w.cs.SpvMode() {
+			err = w.tpool.StartSubscribeHeaders()
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	w.mu.Lock()
