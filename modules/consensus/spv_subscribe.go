@@ -12,7 +12,7 @@ import (
 )
 
 func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
-	if len(cs.subscribers) == 0 {
+	if len(cs.headerSubscribers) == 0 {
 		return
 	}
 	// Get the consensus change and send it to all subscribers.
