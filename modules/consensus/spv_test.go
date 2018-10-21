@@ -182,9 +182,9 @@ func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
 
 // TestSPVBalance test txn detection
 func TestSPVBalance(t *testing.T) {
-	// if testing.Short() {
-	// 	t.SkipNow()
-	// }
+	if testing.Short() {
+		t.SkipNow()
+	}
 	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
 	if err != nil {
 		t.Fatal(err)
@@ -210,6 +210,7 @@ func TestSPVBalance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// cst1.wallet.Lock()
 	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
 	cst2.mineSiacoins()
 	// balance1
@@ -219,6 +220,11 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitTillSync(cst1, cst2, t)
+	// err = cst1.wallet.Unlock(cst1.walletKey)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
 	balance1, err := cst1.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
@@ -226,6 +232,8 @@ func TestSPVBalance(t *testing.T) {
 	if !balance1.Equals(types.SiacoinPrecision) {
 		t.Fatal(fmt.Printf("balance should be 1 XSC but is %s\n", balance1.String()))
 	}
+
+	time.Sleep(2 * time.Minute)
 
 	// cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
 	// cst2.mineSiacoins()

@@ -325,7 +325,9 @@ func (cs *ConsensusSet) managedReceiveSingleBlock(id types.BlockID, changes []ch
 		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return err
 		}
+		cs.mu.Lock()
 		_, err := cs.managedAcceptSingleBlock(block, changes)
+		cs.mu.Unlock()
 		if err != nil {
 			return err
 		}

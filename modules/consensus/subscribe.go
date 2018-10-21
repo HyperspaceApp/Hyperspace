@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -109,6 +110,7 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 
 func (cs *ConsensusSet) buildDiffGetter(tx *bolt.Tx) func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error) {
 	return func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+		log.Printf("getOrDownloadBlock: %s", id)
 		pb, err := cs.getOrDownloadBlock(tx, id)
 		if err == errNilItem { // assume it is not related block, so not locally exist
 			return nil, nil

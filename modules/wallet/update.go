@@ -2,6 +2,7 @@ package wallet
 
 import (
 	//"fmt"
+	"log"
 	"math"
 	"time"
 
@@ -447,6 +448,10 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 // confiremd outputs known to the wallet
 func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	// should only pass related changes
+	log.Printf("ProcessHeaderConsensusChange")
+	for _, pbh := range hcc.AppliedBlockHeaders {
+		log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, pbh.BlockHeader.ID())
+	}
 
 	if err := w.tg.Add(); err != nil {
 		return
@@ -472,7 +477,7 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(keysArray)
 	for err != nil {
 		w.log.Severe("ERROR: failed to fetch space cash outputs:", err)
-	        select {
+		select {
 		case <-time.After(2 * time.Second):
 			break
 		case <-w.tg.StopChan():
@@ -509,9 +514,9 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 
 	// defrag should also be removed in next version
 	/*
-	if hcc.Synced {
-		go w.threadedDefragWallet()
-	}
+		if hcc.Synced {
+			go w.threadedDefragWallet()
+		}
 	*/
 }
 
