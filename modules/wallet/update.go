@@ -457,6 +457,11 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	if err != nil {
 		panic(err)
 	}
+	lookaheadKeysArray, err := w.lookaheadAddressesInByteArray()
+	if err != nil {
+		panic(err)
+	}
+	keysArray = append(keysArray, lookaheadKeysArray...)
 
 	// This is probably not the best way to handle this. Here is the dilemma:
 	// We're updating our lookahead with each block. We don't know how to

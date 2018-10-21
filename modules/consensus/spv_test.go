@@ -224,7 +224,7 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !balance1.Equals(types.SiacoinPrecision) {
-		t.Fatal(fmt.Printf("balance not match: %s\n", balance1.String()))
+		t.Fatal(fmt.Printf("balance should be 1 XSC but is %s\n", balance1.String()))
 	}
 
 	// cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())

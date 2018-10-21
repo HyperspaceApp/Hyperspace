@@ -256,6 +256,23 @@ func (w *Wallet) allAddressesInByteArray() ([][]byte, error) {
 	return keyArray, nil
 }
 
+func (w *Wallet) lookaheadAddressesInByteArray() ([][]byte, error) {
+	if err := w.tg.Add(); err != nil {
+		return [][]byte{}, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	var keyArray [][]byte
+	// TODO: maybe cache this somewhere
+	for _, u := range w.lookahead.Addresses() {
+		keyArray = append(keyArray, u[:])
+	}
+	return keyArray, nil
+}
+
 func (w *Wallet) allAddressesInMap() (map[types.UnlockHash]bool, error) {
 	if err := w.tg.Add(); err != nil {
 		return nil, modules.ErrWalletShutdown

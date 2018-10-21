@@ -55,6 +55,14 @@ func (la *lookahead) PopNextKeys(n uint64) []spendableKey {
 	return keys
 }
 
+func (la *lookahead) Addresses() []types.UnlockHash {
+	hashes := make([]types.UnlockHash, 0, len(la.hashIndexMap))
+	for h := range la.hashIndexMap {
+		hashes = append(hashes, h)
+	}
+	return hashes
+}
+
 func (la *lookahead) Length() uint64 {
 	return uint64(len(la.keys))
 }
