@@ -25,6 +25,10 @@ func (cs *ConsensusSet) validateSingleHeaderAndBlockForSPV(tx dbTx, b types.Bloc
 	if blockMap == nil {
 		return nil, errNoBlockMap
 	}
+	blockHeaderMap := tx.Bucket(BlockHeaderMap)
+	if blockHeaderMap == nil {
+		return nil, errNoHeaderMap
+	}
 	if blockMap.Get(id[:]) != nil {
 		return nil, modules.ErrBlockKnown
 	}
@@ -36,7 +40,7 @@ func (cs *ConsensusSet) validateSingleHeaderAndBlockForSPV(tx dbTx, b types.Bloc
 		return nil, errOrphan
 	}
 	// Check that the timestamp is not too far in the past to be acceptable.
-	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockMap, parentID, parentHeader.BlockHeader.Timestamp)
+	minTimestamp := cs.blockRuleHelper.minimumValidChildTimestamp(blockHeaderMap, parentID, parentHeader.BlockHeader.Timestamp)
 
 	err = cs.blockValidator.ValidateBlock(b, id, minTimestamp, parentHeader.ChildTarget, parentHeader.Height+1, cs.log)
 	if err != nil {

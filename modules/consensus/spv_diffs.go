@@ -4,7 +4,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
@@ -104,14 +103,14 @@ func commitHeaderDiffSet(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir mod
 func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// Sanity check - the block being applied should have the current block as
 	// a parent.
-	if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
-		panic(errInvalidSuccessor)
-	}
+	// if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
+	// 	panic(errInvalidSuccessor)
+	// }
 
 	// Create the bucket to hold all of the delayed siacoin outputs created by
 	// transactions this block. Needs to happen before any transactions are
 	// applied.
-	createDSCOBucket(tx, pb.Height+types.MaturityDelay)
+	// createDSCOBucket(tx, pb.Height+types.MaturityDelay) // have done this in header
 
 	// Validate and apply each transaction in the block. They cannot be
 	// validated all at once because some transactions may not be valid until
