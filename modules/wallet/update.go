@@ -2,7 +2,7 @@ package wallet
 
 import (
 	//"fmt"
-	"log"
+
 	"math"
 	"time"
 
@@ -448,10 +448,10 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 // confiremd outputs known to the wallet
 func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	// should only pass related changes
-	log.Printf("ProcessHeaderConsensusChange")
-	for _, pbh := range hcc.AppliedBlockHeaders {
-		log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, pbh.BlockHeader.ID())
-	}
+	// log.Printf("ProcessHeaderConsensusChange")
+	// for _, pbh := range hcc.AppliedBlockHeaders {
+	// 	log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, pbh.BlockHeader.ID())
+	// }
 
 	if err := w.tg.Add(); err != nil {
 		return

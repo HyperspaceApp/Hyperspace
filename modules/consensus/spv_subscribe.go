@@ -17,23 +17,20 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 	}
 	// Get the consensus change and send it to all subscribers.
 	var hcc modules.HeaderConsensusChange
-	cs.db.View(func(tx *bolt.Tx) error {
-		// Compute the consensus change so it can be sent to subscribers.
-		var err error
-		hcc, err = cs.computeHeaderConsensusChange(ce)
-		if err != nil {
-			cs.log.Critical("computeConsensusChange failed:", err)
-			return nil
-		}
-		hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
-		hcc.GetBlockByID = cs.buildBlockGetter(tx)
-		hcc.TryTransactionSet = cs.tryTransactionSet
+	// Compute the consensus change so it can be sent to subscribers.
+	var err error
+	hcc, err = cs.computeHeaderConsensusChange(ce)
+	if err != nil {
+		cs.log.Critical("computeConsensusChange failed:", err)
+		return
+	}
+	hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+	hcc.GetBlockByID = cs.getBlockByID
+	hcc.TryTransactionSet = cs.tryTransactionSet
 
-		for _, subscriber := range cs.headerSubscribers {
-			subscriber.ProcessHeaderConsensusChange(hcc)
-		}
-		return nil
-	})
+	for _, subscriber := range cs.headerSubscribers {
+		subscriber.ProcessHeaderConsensusChange(hcc)
+	}
 }
 
 // HeaderConsensusSetSubscribe will send change to subscriber from start
@@ -183,8 +180,8 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				if err != nil {
 					return err
 				}
-				hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
-				hcc.GetBlockByID = cs.buildBlockGetter(tx)
+				hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+				hcc.GetBlockByID = cs.getBlockByID
 				hcc.TryTransactionSet = cs.tryTransactionSet
 				subscriber.ProcessHeaderConsensusChange(hcc)
 				entry, exists = entry.NextEntry(tx)

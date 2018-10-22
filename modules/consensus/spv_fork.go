@@ -65,9 +65,9 @@ func (cs *ConsensusSet) revertToHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHe
 		// Sanity check - after removing a block, check that the consensus set
 		// has maintained consistency.
 		if build.Release == "testing" {
-			cs.checkConsistency(tx)
+			cs.checkHeaderConsistency(tx)
 		} else {
-			cs.maybeCheckConsistency(tx)
+			cs.maybeCheckHeaderConsistency(tx)
 		}
 	}
 	return revertedHeaders
@@ -90,9 +90,9 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 	// Sanity check - after applying a block, check that the consensus set
 	// has maintained consistency.
 	if build.Release == "testing" {
-		cs.checkConsistency(tx)
+		cs.checkHeaderConsistency(tx)
 	} else {
-		cs.maybeCheckConsistency(tx)
+		cs.maybeCheckHeaderConsistency(tx)
 	}
 
 	return nil
@@ -120,6 +120,8 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 		// NOTE: no every block payout info, no totally supply, no parent block, so won't check consistency in spv
 		if build.Release == "testing" {
 			cs.checkHeaderConsistency(tx)
+		} else {
+			cs.maybeCheckHeaderConsistency(tx)
 		}
 	}
 	return headers, nil

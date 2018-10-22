@@ -339,5 +339,11 @@ func (cs *ConsensusSet) maybeCheckConsistency(tx *bolt.Tx) {
 	}
 }
 
+func (cs *ConsensusSet) maybeCheckHeaderConsistency(tx *bolt.Tx) {
+	if fastrand.Intn(1000) == 0 {
+		cs.checkHeaderConsistency(tx)
+	}
+}
+
 // TODO: Check that every file contract has an expiration too, and that the
 // number of file contracts + the number of expirations is equal.

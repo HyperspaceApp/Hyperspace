@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -108,39 +107,40 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 	}
 }
 
-func (cs *ConsensusSet) buildDiffGetter(tx *bolt.Tx) func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error) {
-	return func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
-		log.Printf("getOrDownloadBlock: %s", id)
-		pb, err := cs.getOrDownloadBlock(tx, id)
-		if err == errNilItem { // assume it is not related block, so not locally exist
-			return nil, nil
-		} else if err != nil {
-			return nil, err
-		}
-		pbScods := pb.SiacoinOutputDiffs
-		if direction == modules.DiffRevert {
-			for i := len(pbScods) - 1; i >= 0; i-- {
-				pbScod := pbScods[i]
-				pbScod.Direction = !pbScod.Direction
-				scods = append(scods, pbScod)
-			}
-		} else {
-			scods = pbScods
-		}
-		return
+func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+	// log.Printf("getOrDownloadBlock: %s", id)
+	pb, err := cs.getOrDownloadBlock(id)
+	if err == errNilItem { // assume it is not related block, so not locally exist
+		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
+	pbScods := pb.SiacoinOutputDiffs
+	if direction == modules.DiffRevert {
+		for i := len(pbScods) - 1; i >= 0; i-- {
+			pbScod := pbScods[i]
+			pbScod.Direction = !pbScod.Direction
+			scods = append(scods, pbScod)
+		}
+	} else {
+		scods = pbScods
+	}
+	return
 }
 
-func (cs *ConsensusSet) buildBlockGetter(tx *bolt.Tx) func(types.BlockID) (types.Block, bool) {
-	return func(id types.BlockID) (types.Block, bool) {
-		pb, err := getBlockMap(tx, id)
-		if err == errNilItem { // assume it is not related block, so not locally exist
-			return types.Block{}, false
-		} else if err != nil {
-			panic(err)
-		}
-		return pb.Block, true
+func (cs *ConsensusSet) getBlockByID(id types.BlockID) (types.Block, bool) {
+	var pb *processedBlock
+	err := cs.db.View(func(tx *bolt.Tx) error {
+		var errInside error
+		pb, errInside = getBlockMap(tx, id)
+		return errInside
+	})
+	if err == errNilItem { // assume it is not related block, so not locally exist
+		return types.Block{}, false
+	} else if err != nil {
+		panic(err)
 	}
+	return pb.Block, true
 }
 
 // managedInitializeSubscribe will take a subscriber and feed them all of the

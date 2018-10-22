@@ -233,7 +233,7 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(fmt.Printf("balance should be 1 XSC but is %s\n", balance1.String()))
 	}
 
-	time.Sleep(2 * time.Minute)
+	time.Sleep(2 * time.Millisecond)
 
 	// cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
 	// cst2.mineSiacoins()

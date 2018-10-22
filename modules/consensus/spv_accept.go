@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -100,8 +99,6 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(block types.Block, changes []ch
 	// defer cs.mu.Unlock()
 
 	var pb *processedBlock
-	log.Printf("managedAcceptSingleBlock: 1")
-
 	setErr := cs.db.Update(func(tx *bolt.Tx) error {
 		parentHeader, err := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
 		if err == modules.ErrBlockKnown {
@@ -120,7 +117,6 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(block types.Block, changes []ch
 		pb, err = cs.addSingleBlock(tx, block, parentHeader)
 		return err
 	})
-	log.Printf("managedAcceptSingleBlock: 2")
 	if _, ok := setErr.(bolt.MmapError); ok {
 		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
 		fmt.Println("Blockchain database has run out of disk space!")
@@ -146,7 +142,6 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(block types.Block, changes []ch
 func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockHeader) (bool, []changeEntry, error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
-	log.Printf("managedAcceptHeaders num: %d", len(headers))
 	// Make sure that headers are consecutive. Though this isn't a strict
 	// requirement, if blocks are not consecutive then it becomes a lot harder
 	// to maintain correctness when adding multiple blocks in a single tx.
@@ -218,7 +213,7 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockH
 	if !chainExtended {
 		return false, []changeEntry{}, modules.ErrNonExtendingBlock
 	}
-	log.Printf("managedAcceptHeaders changes: %d", len(changes))
+	// log.Printf("managedAcceptHeaders changes: %d", len(changes))
 	// Send any changes to subscribers.
 	for i := 0; i < len(changes); i++ {
 		cs.updateHeaderSubscribers(changes[i])
