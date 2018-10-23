@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -730,6 +731,7 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlo
 		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return
 		}
+		log.Printf("downloadSingleBlock: %s", id)
 		*ppb, err = cs.managedAcceptSingleBlock(block, nil)
 		if err != nil {
 			cs.log.Printf("err when download single block: %s", err)

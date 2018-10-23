@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -54,7 +53,7 @@ func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 		if !exist {
 			cs.log.Printf("broadcast header don't have related processed header")
 		}
-		log.Printf("Broadcast spv: %d %s", pbh.Height, pbh.BlockHeader.ID())
+		// log.Printf("Broadcast spv: %d %s", pbh.Height, pbh.BlockHeader.ID())
 		go cs.gateway.Broadcast(modules.RelayHeaderCmd, *pbh.ForSend(), pbhPeers)
 	}
 }

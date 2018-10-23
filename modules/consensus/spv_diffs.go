@@ -59,6 +59,24 @@ func commitSingleBlockDiffSetSanity(tx *bolt.Tx, pb *processedBlock, dir modules
 	}
 }
 
+func commitSingleNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
+	if dir == modules.DiffApply {
+		for _, scod := range pb.SiacoinOutputDiffs {
+			commitSiacoinOutputDiff(tx, scod, dir)
+		}
+		for _, fcd := range pb.FileContractDiffs {
+			commitFileContractDiff(tx, fcd, dir)
+		}
+	} else {
+		for i := len(pb.SiacoinOutputDiffs) - 1; i >= 0; i-- {
+			commitSiacoinOutputDiff(tx, pb.SiacoinOutputDiffs[i], dir)
+		}
+		for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
+			commitFileContractDiff(tx, pb.FileContractDiffs[i], dir)
+		}
+	}
+}
+
 func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	// Sanity checks - there are a few so they were moved to another function.
 	// TODO: add back check
@@ -67,7 +85,7 @@ func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffD
 	// 	commitSingleBlockDiffSetSanity(tx, pb, dir)
 	// }
 
-	commitNodeDiffs(tx, pb, dir)
+	commitSingleNodeDiffs(tx, pb, dir)
 }
 
 func commitHeaderDiffs(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {

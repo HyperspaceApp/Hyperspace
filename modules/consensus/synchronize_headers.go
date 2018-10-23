@@ -5,6 +5,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -326,6 +327,7 @@ func (cs *ConsensusSet) managedReceiveSingleBlock(id types.BlockID, changes []ch
 			return err
 		}
 		cs.mu.Lock()
+		log.Printf("managedReceiveSingleBlock: %s", id)
 		_, err := cs.managedAcceptSingleBlock(block, changes)
 		cs.mu.Unlock()
 		if err != nil {
