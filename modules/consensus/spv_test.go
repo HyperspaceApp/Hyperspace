@@ -233,12 +233,18 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(fmt.Printf("balance should be 1 XSC but is %s\n", balance1.String()))
 	}
 
-	time.Sleep(2 * time.Millisecond)
+	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
+	cst2.mineSiacoins()
 
-	// cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
-	// cst2.mineSiacoins()
-
+	waitTillSync(cst1, cst2, t)
 	// balance2
+	balance2, err := cst1.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !balance2.Equals(types.SiacoinPrecision.Add(types.SiacoinPrecision)) {
+		t.Fatal(fmt.Printf("balance should be 2 XSC but is %s\n", balance2.String()))
+	}
 	// uc2, err := cst1.wallet.NextAddress()
 	// if err != nil {
 	// 	t.Fatal(err)
@@ -253,4 +259,5 @@ func TestSPVBalance(t *testing.T) {
 
 	// send a mount of coin to
 
+	time.Sleep(2 * time.Millisecond)
 }

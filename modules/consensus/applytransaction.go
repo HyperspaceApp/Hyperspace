@@ -159,9 +159,6 @@ func applySiacoinInputsForSPV(tx *bolt.Tx, pb *processedBlock, t types.Transacti
 	// Remove all siacoin inputs from the unspent siacoin outputs list.
 	for _, sci := range t.SiacoinInputs {
 		sco, err := getSiacoinOutput(tx, sci.ParentID)
-		if build.DEBUG && err != errNilItem {
-			panic(err)
-		}
 		if err == errNilItem {
 			// not related inputs
 			return

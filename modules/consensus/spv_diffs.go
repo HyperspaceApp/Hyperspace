@@ -62,9 +62,10 @@ func commitSingleBlockDiffSetSanity(tx *bolt.Tx, pb *processedBlock, dir modules
 func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	// Sanity checks - there are a few so they were moved to another function.
 	// TODO: add back check
-	if build.DEBUG {
-		commitSingleBlockDiffSetSanity(tx, pb, dir)
-	}
+	// can't check block with currentBlockID, cause currentBlockID is current header id
+	// if build.DEBUG {
+	// 	commitSingleBlockDiffSetSanity(tx, pb, dir)
+	// }
 
 	commitNodeDiffs(tx, pb, dir)
 }
