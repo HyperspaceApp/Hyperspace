@@ -487,25 +487,9 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 			if !remoteSupportsSPVHeader(conn.Version()) {
 				return
 			}
-			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
-			if chainExtend {
-				if cs.getWalletKeysFunc == nil {
-					cs.log.Printf("wallet not loaded, won't check gcs")
-					return
-				}
-				id := h.ID()
-				keysArray, err := cs.getWalletKeysFunc()
-				if err != nil {
-					cs.log.Debugln("WARN: failed to get addresses from wallet:", err)
-				}
-				if len(keysArray) > 0 { // unlocked
-					if phfs.GCSFilter.MatchUnlockHash(id[:], keysArray) {
-						err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveSingleBlock(h.ID(), changes))
-						if err != nil {
-							cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
-						}
-					}
-				}
+			_, _, err := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
+			if err != nil {
+				cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
 			}
 		} else {
 			err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlock(h.ID()))
