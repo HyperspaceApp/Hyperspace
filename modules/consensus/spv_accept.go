@@ -29,11 +29,9 @@ func (cs *ConsensusSet) validateSingleHeaderAndBlockForSPV(tx dbTx, b types.Bloc
 	if blockHeaderMap == nil {
 		return nil, errNoHeaderMap
 	}
-	log.Printf("validateSingleHeaderAndBlockForSPV 1: %s", b.ID())
 	if blockMap.Get(id[:]) != nil {
 		return nil, modules.ErrBlockKnown
 	}
-	log.Printf("validateSingleHeaderAndBlockForSPV 2: %s", b.ID())
 
 	// Check for the parent.
 	parentID := b.ParentID

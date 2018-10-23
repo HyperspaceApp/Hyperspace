@@ -197,20 +197,10 @@ func TestSPVBalance(t *testing.T) {
 	defer cst2.Close()
 	// 2 wallet with same seed
 
-	// mine on cst2 until it is above cst1
-	for cst1.cs.dbBlockHeight() >= cst2.cs.dbBlockHeight() {
-		b, _ := cst2.miner.FindBlock()
-		err = cst2.cs.AcceptBlock(b)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
 	uc, err := cst1.wallet.NextAddress()
 	if err != nil {
 		t.Fatal(err)
 	}
-	// cst1.wallet.Lock()
 	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
 	cst2.mineSiacoins()
 	// balance1
@@ -220,10 +210,6 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitTillSync(cst1, cst2, t)
-	// err = cst1.wallet.Unlock(cst1.walletKey)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
 
 	balance1, err := cst1.wallet.ConfirmedBalance()
 	if err != nil {
@@ -233,7 +219,10 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(fmt.Printf("balance should be 1 XSC but is %s\n", balance1.String()))
 	}
 
-	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
+	_, err = cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
+	if err != nil {
+		t.Fatal(err)
+	}
 	cst2.mineSiacoins()
 
 	waitTillSync(cst1, cst2, t)
@@ -242,22 +231,141 @@ func TestSPVBalance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !balance2.Equals(types.SiacoinPrecision.Add(types.SiacoinPrecision)) {
+	if !balance2.Equals(types.SiacoinPrecision.MulFloat(2.0)) {
 		t.Fatal(fmt.Printf("balance should be 2 XSC but is %s\n", balance2.String()))
 	}
-	// uc2, err := cst1.wallet.NextAddress()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// cst1.wallet.SendSiacoins(types.SiacoinPrecision, uc2.UnlockHash())
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// cst2.mineSiacoins()
 
+	uc2, err := cst1.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc2.UnlockHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cst2.mineSiacoins()
+
+	waitTillSync(cst1, cst2, t)
 	// balance3
+	balance3, err := cst1.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !balance3.Equals(types.SiacoinPrecision.MulFloat(3.0)) {
+		t.Fatal(fmt.Printf("balance should be 3 XSC but is %s\n", balance3.String()))
+	}
 
-	// send a mount of coin to
+	testSendFromSPV(cst1, cst2, t)
+}
 
-	time.Sleep(2 * time.Millisecond)
+func TestSPVDelayedOutputDiff(t *testing.T) {
+	// if testing.Short() {
+	// 	t.SkipNow()
+	// }
+	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst1.CloseSPV()
+	cst2, err := createConsensusSetTester(t.Name() + "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst2.Close()
+	// 2 wallet with same seed
+
+	uc, err := cst1.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block, err := cst2.miner.AddBlockWithAddress(uc.UnlockHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cst2.mineSiacoins()
+
+	// balance1
+	// connect gateways, triggering a Synchronize
+	err = cst1.gateway.Connect(cst2.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTillSync(cst1, cst2, t)
+
+	balance1, err := cst1.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !balance1.Equals(block.MinerPayouts[0].Value) {
+		t.Fatal(fmt.Printf("balance should be equal minerpayout, %s %s\n",
+			balance1.String(), block.MinerPayouts[0].Value.String()))
+	}
+
+	testSendFromSPV(cst1, cst2, t)
+}
+
+func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
+	balanceBefore1, err := cst1.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cst3, err := createSPVConsensusSetTester(t.Name() + "3")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cst3.gateway.Connect(cst2.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTillSync(cst3, cst2, t)
+	balanceBefore3, err := cst3.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uc, err := cst3.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	txns, err := cst1.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// _, err = cst2.miner.AddBlockWithAddress(types.UnlockHash{})
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+	cst2.mineSiacoins()
+
+	waitTillSync(cst1, cst2, t)
+	waitTillSync(cst3, cst2, t)
+
+	balanceAfter1, err := cst1.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	balanceAfter3, err := cst3.wallet.ConfirmedBalance()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var totalFee types.Currency
+	for _, txn := range txns {
+		for _, fee := range txn.MinerFees {
+			totalFee = totalFee.Add(fee)
+		}
+	}
+
+	if !balanceAfter3.Equals(balanceBefore3.Add(types.SiacoinPrecision)) {
+		t.Fatal(fmt.Printf("balanceAfter3 not match, %s = %s + %s\n",
+			balanceAfter3, balanceBefore3, types.SiacoinPrecision))
+	}
+	if !balanceBefore1.Equals(balanceAfter1.Add(types.SiacoinPrecision).Add(totalFee)) {
+		t.Fatal(fmt.Printf("balanceAfter1 not match, %s = %s + %s\n",
+			balanceBefore1, balanceAfter1, types.SiacoinPrecision.Add(totalFee)))
+	}
 }
