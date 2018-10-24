@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"fmt"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -73,6 +75,19 @@ func (cs *ConsensusSet) revertToHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHe
 	return revertedHeaders
 }
 
+func (cs *ConsensusSet) checkSingleBlockApplyConsistency(tx *bolt.Tx, block *processedBlock) {
+	scoBucket := tx.Bucket(SiacoinOutputs)
+	for _, txn := range block.Block.Transactions {
+		for i := range txn.SiacoinOutputs {
+			scoid := txn.SiacoinOutputID(uint64(i))
+			scoBytes := scoBucket.Get(scoid[:])
+			if scoBytes == nil {
+				panic(fmt.Errorf("checkSingleBlockApplyConsistency fail: %s", scoid))
+			}
+		}
+	}
+}
+
 func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (err error) {
 	// Backtrack to the common parent of 'bn' and current path and then apply the new blocks.
 
@@ -91,6 +106,7 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 	// has maintained consistency.
 	if build.Release == "testing" {
 		cs.checkHeaderConsistency(tx)
+		cs.checkSingleBlockApplyConsistency(tx, block)
 	} else {
 		cs.maybeCheckHeaderConsistency(tx)
 	}
@@ -110,6 +126,15 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 
 		headerMap := tx.Bucket(BlockHeaderMap)
 		id := header.BlockHeader.ID()
+
+		block, err := getBlockMap(tx, id)
+		if err == nil {
+			commitSingleBlockDiffSet(tx, block, modules.DiffApply)
+		} else {
+			if err != errNilItem {
+				panic(err)
+			}
+		}
 		updateCurrentPath(tx, id, modules.DiffApply)
 
 		headerMap.Put(id[:], encoding.Marshal(*header))

@@ -449,7 +449,7 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 // confiremd outputs known to the wallet
 func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	// should only pass related changes
-	log.Printf("ProcessHeaderConsensusChange")
+	// log.Printf("ProcessHeaderConsensusChange")
 	for _, pbh := range hcc.AppliedBlockHeaders {
 		log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, pbh.BlockHeader.ID())
 	}
@@ -486,6 +486,10 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 		}
 		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(keysArray)
 	}
+	// for _, diff := range siacoinOutputDiffs {
+	// 	log.Printf("siacoinOutputDiffs: %s %s %v %s", diff.SiacoinOutput.UnlockHash,
+	// 		diff.SiacoinOutput.Value, diff.Direction, diff.ID)
+	// }
 
 	w.mu.Lock()
 	defer w.mu.Unlock()

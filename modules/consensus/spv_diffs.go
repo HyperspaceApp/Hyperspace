@@ -31,49 +31,21 @@ func commitHeaderDiffSetSanity(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, d
 	}
 }
 
-func commitSingleBlockDiffSetSanity(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
-	// This function is purely sanity checks.
-	if !build.DEBUG {
-		return
-	}
-
-	// Diffs should have already been generated for this node.
-	if !pb.DiffsGenerated {
-		panic(errDiffsNotGenerated)
-	}
-
-	// Current node must be the input node's parent if applying, and
-	// current node must be the input node if reverting.
-	if dir == modules.DiffApply {
-		parent, err := getBlockMap(tx, pb.Block.ParentID)
-		if build.DEBUG && err != nil {
-			panic(err)
-		}
-		if parent.Block.ID() != currentBlockID(tx) {
-			panic(errWrongAppliedDiffSet)
-		}
-	} else {
-		if pb.Block.ID() != currentBlockID(tx) {
-			panic(errWrongRevertDiffSet)
-		}
-	}
-}
-
 func commitSingleNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
 		for _, scod := range pb.SiacoinOutputDiffs {
 			commitSiacoinOutputDiff(tx, scod, dir)
 		}
-		for _, fcd := range pb.FileContractDiffs {
-			commitFileContractDiff(tx, fcd, dir)
-		}
+		// for _, fcd := range pb.FileContractDiffs {
+		// 	commitFileContractDiff(tx, fcd, dir)
+		// }
 	} else {
 		for i := len(pb.SiacoinOutputDiffs) - 1; i >= 0; i-- {
 			commitSiacoinOutputDiff(tx, pb.SiacoinOutputDiffs[i], dir)
 		}
-		for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
-			commitFileContractDiff(tx, pb.FileContractDiffs[i], dir)
-		}
+		// for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
+		// 	commitFileContractDiff(tx, pb.FileContractDiffs[i], dir)
+		// }
 	}
 }
 

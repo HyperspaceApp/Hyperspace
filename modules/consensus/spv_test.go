@@ -246,6 +246,7 @@ func TestSPVBalance(t *testing.T) {
 	cst2.mineSiacoins()
 
 	waitTillSync(cst1, cst2, t)
+	time.Sleep(2 * time.Millisecond)
 	// balance3
 	balance3, err := cst1.wallet.ConfirmedBalance()
 	if err != nil {
