@@ -94,7 +94,7 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 	if block.DiffsGenerated {
 		commitSingleBlockDiffSet(tx, block, modules.DiffApply)
 	} else {
-		err := generateAndApplyDiffForSPV(tx, block)
+		err := cs.generateAndApplyDiffForSPV(tx, block)
 		if err != nil {
 			// Mark the block as invalid.
 			cs.dosBlocks[block.Block.ID()] = struct{}{}

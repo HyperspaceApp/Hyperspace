@@ -263,8 +263,23 @@ func applyMaintenance(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.P
 	applyFileContractMaintenance(tx, pb)
 }
 
-func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, newBlockHeader *modules.ProcessedBlockHeader) {
-	applyMinerPayouts(tx, pb)
-	// applyMaturedSiacoinOutputsForSPV(tx, pb, nil) // move delayed output mature to siacoin
-	applyFileContractMaintenance(tx, pb)
+func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {
+	applyMinerPayoutsForHeader(tx, pb, pbh)
+	// TODO: add matured for each gap block
+	// applyMaturedSiacoinOutputsForHeader(tx, pbh)
+	// applyFileContractMaintenance(tx, pb) // not deal with filecontracts in spv for now
+}
+
+func applyMinerPayoutsForHeader(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {
+	for i := range pb.Block.MinerPayouts {
+		mpid := pb.Block.MinerPayoutID(uint64(i))
+		dscod := modules.DelayedSiacoinOutputDiff{
+			Direction:      modules.DiffApply,
+			ID:             mpid,
+			SiacoinOutput:  pb.Block.MinerPayouts[i],
+			MaturityHeight: pb.Height + types.MaturityDelay,
+		}
+		pbh.DelayedSiacoinOutputDiffs = append(pbh.DelayedSiacoinOutputDiffs, dscod)
+		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
+	}
 }

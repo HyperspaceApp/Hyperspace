@@ -131,9 +131,9 @@ func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules
 func (cs *ConsensusSet) getBlockByID(id types.BlockID) (types.Block, bool) {
 	var pb *processedBlock
 	err := cs.db.View(func(tx *bolt.Tx) error {
-		var errInside error
-		pb, errInside = getBlockMap(tx, id)
-		return errInside
+		var blockMapErr error
+		pb, blockMapErr = getBlockMap(tx, id)
+		return blockMapErr
 	})
 	if err == errNilItem { // assume it is not related block, so not locally exist
 		return types.Block{}, false

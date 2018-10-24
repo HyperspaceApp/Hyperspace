@@ -207,7 +207,7 @@ func consensusBlocksGetFromBlock(b types.Block, h types.BlockHeight) ConsensusBl
 
 // consensusHandler handles the API calls to /consensus.
 func (api *API) consensusHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	cbid := api.cs.CurrentBlock().ID()
+	cbid := api.cs.CurrentHeader().ID()
 	currentTarget, _ := api.cs.ChildTarget(cbid)
 	WriteJSON(w, ConsensusGET{
 		Synced:       api.cs.Synced(),

@@ -335,6 +335,29 @@ func (cs *ConsensusSet) CurrentBlock() (block types.Block) {
 	return block
 }
 
+// CurrentHeader returns the latest header in the heaviest known blockchain.
+func (cs *ConsensusSet) CurrentHeader() (header types.BlockHeader) {
+	// A call to a closed database can cause undefined behavior.
+	err := cs.tg.Add()
+	if err != nil {
+		return types.BlockHeader{}
+	}
+	defer cs.tg.Done()
+
+	// Block until a lock can be grabbed on the consensus set, indicating that
+	// all modules have received the most recent block. The lock is held so that
+	// there are no race conditions when trying to synchronize nodes.
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	_ = cs.db.View(func(tx *bolt.Tx) error {
+		pbh := currentProcessedHeader(tx)
+		header = pbh.BlockHeader
+		return nil
+	})
+	return header
+}
+
 // Flush will block until the consensus set has finished all in-progress
 // routines.
 func (cs *ConsensusSet) Flush() error {

@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -104,6 +105,8 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
+		log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, blockID)
+		// TODO: maybe help mature header first
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
@@ -118,6 +121,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	// grab reverted active outputs from full blocks
 	for _, pbh := range hcc.RevertedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
+		log.Printf("ProcessHeaderConsensusChange revert: %d %s", pbh.Height, blockID)
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("revert block: %d", pbh.Height)
 			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)

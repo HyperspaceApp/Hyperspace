@@ -265,6 +265,9 @@ type (
 		// blockchain.
 		CurrentBlock() types.Block
 
+		// CurrentHeader returns the latest header in the heaviest known blockchain
+		CurrentHeader() types.BlockHeader
+
 		// Flush will cause the consensus set to finish all in-progress
 		// routines.
 		Flush() error

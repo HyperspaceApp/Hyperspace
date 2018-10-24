@@ -548,6 +548,17 @@ func deleteDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
 	}
 }
 
+func createDSCOBucketIfNotExist(tx *bolt.Tx, bh types.BlockHeight) {
+	bucketID := append(prefixDSCO, encoding.Marshal(bh)...)
+	bucket := tx.Bucket(bucketID)
+	if bucket == nil {
+		_, err := tx.CreateBucket(bucketID)
+		if build.DEBUG && err != nil {
+			panic(err)
+		}
+	}
+}
+
 // getRelatedFileContracts finds contracts related to the storage proofs in a block
 // TODO: this is currently used in lieu of a fuller-featured FileContractUnlockHashMap
 func getRelatedFileContracts(tx *bolt.Tx, block *types.Block) []types.FileContract {

@@ -728,9 +728,9 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlo
 func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, error) {
 	var pb *processedBlock
 	err := cs.db.View(func(tx *bolt.Tx) error {
-		var errInside error
-		pb, errInside = getBlockMap(tx, id)
-		return errInside
+		var blockMapErr error
+		pb, blockMapErr = getBlockMap(tx, id)
+		return blockMapErr
 	})
 	if err == errNilItem {
 		// TODO: add retry download when fail to download from one peer (could be spv)
