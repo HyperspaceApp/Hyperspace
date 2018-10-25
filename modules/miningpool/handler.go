@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"math/big"
 	// "math/big"
 	"net"
@@ -311,6 +312,7 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 	h.p.mu.Unlock()
 
 	lock.Lock()
+	log.Println("lock: ", client, " ", worker)
 	defer lock.Unlock()
 	c, err := h.p.FindClientDB(client)
 	if err != ErrNoUsernameInDatabase {
@@ -336,6 +338,7 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 		h.p.log.Printf("Adding client in memory: %s\n", client)
 		h.p.AddClient(c)
 	}
+	log.Println("unlock: ", client, " ", worker)
 	return c, nil
 }
 
