@@ -316,7 +316,7 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 	lock.Lock()
 	defer func() {
 		lock.Unlock()
-		log.Printf("unlock: %s %s %f", client, " ", worker, time.Now().Sub(start).Seconds())
+		log.Printf("unlock: %s %s %f", client, worker, time.Now().Sub(start).Seconds())
 	}()
 	c, err := h.p.FindClientDB(client)
 	if err != ErrNoUsernameInDatabase {
