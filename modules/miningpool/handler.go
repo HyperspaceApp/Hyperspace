@@ -319,11 +319,7 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 		log.Printf("unlock: %s %s %f", client, worker, time.Now().Sub(start).Seconds())
 	}()
 	c, err := h.p.FindClientDB(client)
-	if err != ErrNoUsernameInDatabase {
-		return c, err
-	}
-	if c == nil {
-		//fmt.Printf("Unable to find client in db: %s\n", client)
+	if err == ErrNoUsernameInDatabase {
 		c, err = newClient(h.p, client)
 		if err != nil {
 			//fmt.Println("Failed to create a new Client")
@@ -335,8 +331,6 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 			h.p.log.Printf("Failed to add client to DB: %s\n", err)
 			return nil, err
 		}
-	} else {
-		//fmt.Printf("Found client: %s\n", client)
 	}
 	if h.p.Client(client) == nil {
 		h.p.log.Printf("Adding client in memory: %s\n", client)
