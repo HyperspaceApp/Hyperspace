@@ -5,7 +5,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -314,29 +313,6 @@ func (cs *ConsensusSet) rpcSendHeaders(conn modules.PeerConn) error {
 	return nil
 }
 
-// managedReceiveSingleBlock takes a block id and returns an RPCFunc that requests that
-// block and then calls AcceptBlockForSPV on it. The returned function should be used
-// as the calling end of the SendBlk RPC.
-func (cs *ConsensusSet) managedReceiveSingleBlock(id types.BlockID, changes []changeEntry) modules.RPCFunc {
-	return func(conn modules.PeerConn) error {
-		if err := encoding.WriteObject(conn, id); err != nil {
-			return err
-		}
-		var block types.Block
-		if err := encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
-			return err
-		}
-		cs.mu.Lock()
-		log.Printf("managedReceiveSingleBlock: %s", id)
-		_, err := cs.managedAcceptSingleBlock(block, changes)
-		cs.mu.Unlock()
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
 func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 	// The consensus set will not recognize IHD as complete until it has enough
 	// peers. After the deadline though, it will recognize the blockchain
@@ -359,7 +335,7 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 			if !remoteSupportsSPVHeader(p.Version) {
 				err := cs.gateway.Disconnect(p.NetAddress)
 				if err != nil {
-					cs.log.Printf("WARN: disconnecting from peer %v failed: %v", p.NetAddress, err)
+					cs.log.Printf("WARN: disconnecting from peer %v because remote not support spv, failed: %v", p.NetAddress, err)
 				}
 				continue
 			}

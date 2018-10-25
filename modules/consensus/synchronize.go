@@ -706,7 +706,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 	return nil
 }
 
-func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlock) modules.RPCFunc {
+func (cs *ConsensusSet) downloadSingleBlock(tx *bolt.Tx, id types.BlockID, ppb **processedBlock) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
@@ -715,8 +715,9 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlo
 		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return
 		}
-		log.Printf("downloadSingleBlock: %s", id)
-		*ppb, err = cs.managedAcceptSingleBlock(block, nil)
+		log.Printf("before downloadSingleBlock: %s", id)
+		*ppb, err = cs.managedAcceptSingleBlock(tx, block)
+		log.Printf("after downloadSingleBlock: %s", id)
 		if err != nil {
 			cs.log.Printf("err when download single block: %s", err)
 			return
@@ -725,20 +726,15 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlo
 	}
 }
 
-func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, error) {
-	var pb *processedBlock
-	err := cs.db.View(func(tx *bolt.Tx) error {
-		var blockMapErr error
-		pb, blockMapErr = getBlockMap(tx, id)
-		return blockMapErr
-	})
+func (cs *ConsensusSet) getOrDownloadBlock(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
+	pb, err := getBlockMap(tx, id)
 	if err == errNilItem {
 		// TODO: add retry download when fail to download from one peer (could be spv)
 		peer, err := cs.gateway.RandomPeer()
 		if err != nil {
 			return nil, err
 		}
-		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, &pb))
+		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(tx, id, &pb))
 		// log.Printf("cs.gateway.RPC: %s", (*pb).Block.ID())
 		if err != nil {
 			return nil, err

@@ -107,9 +107,9 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 	}
 }
 
-func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+func (cs *ConsensusSet) getSiacoinOutputDiff(tx *bolt.Tx, id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
 	// log.Printf("getOrDownloadBlock: %s", id)
-	pb, err := cs.getOrDownloadBlock(id)
+	pb, err := cs.getOrDownloadBlock(tx, id)
 	if err == errNilItem { // assume it is not related block, so not locally exist
 		return nil, nil
 	} else if err != nil {
@@ -128,13 +128,8 @@ func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules
 	return
 }
 
-func (cs *ConsensusSet) getBlockByID(id types.BlockID) (types.Block, bool) {
-	var pb *processedBlock
-	err := cs.db.View(func(tx *bolt.Tx) error {
-		var blockMapErr error
-		pb, blockMapErr = getBlockMap(tx, id)
-		return blockMapErr
-	})
+func (cs *ConsensusSet) getBlockByID(tx *bolt.Tx, id types.BlockID) (types.Block, bool) {
+	pb, err := getBlockMap(tx, id)
 	if err == errNilItem { // assume it is not related block, so not locally exist
 		return types.Block{}, false
 	} else if err != nil {

@@ -121,7 +121,7 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, modules.DiffApply)
 			if err != nil {
 				panic(err)
 			}
@@ -135,7 +135,7 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
 			}

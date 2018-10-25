@@ -3,7 +3,6 @@ package wallet
 import (
 	//"fmt"
 
-	"log"
 	"math"
 	"time"
 
@@ -182,7 +181,7 @@ func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusCha
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(hcc.ConsensusDBTx, pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
@@ -390,7 +389,7 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(hcc.ConsensusDBTx, pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
@@ -450,9 +449,9 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	// should only pass related changes
 	// log.Printf("ProcessHeaderConsensusChange")
-	for _, pbh := range hcc.AppliedBlockHeaders {
-		log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, pbh.BlockHeader.ID())
-	}
+	// for _, pbh := range hcc.AppliedBlockHeaders {
+	// 	log.Printf("ProcessHeaderConsensusChange: %d %s", pbh.Height, pbh.BlockHeader.ID())
+	// }
 
 	if err := w.tg.Add(); err != nil {
 		return

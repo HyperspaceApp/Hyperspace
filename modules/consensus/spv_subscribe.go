@@ -15,21 +15,27 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 	if len(cs.headerSubscribers) == 0 {
 		return
 	}
-	// Get the consensus change and send it to all subscribers.
-	var hcc modules.HeaderConsensusChange
-	// Compute the consensus change so it can be sent to subscribers.
-	var err error
-	hcc, err = cs.computeHeaderConsensusChange(ce)
-	if err != nil {
-		cs.log.Critical("computeConsensusChange failed:", err)
-		return
-	}
-	hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
-	hcc.GetBlockByID = cs.getBlockByID
-	hcc.TryTransactionSet = cs.tryTransactionSet
+	err := cs.db.Update(func(tx *bolt.Tx) error {
+		// Get the consensus change and send it to all subscribers.
+		var hcc modules.HeaderConsensusChange
+		// Compute the consensus change so it can be sent to subscribers.
+		var err error
+		hcc, err = cs.computeHeaderConsensusChange(tx, ce)
+		if err != nil {
+			cs.log.Critical("computeConsensusChange failed:", err)
+			return err
+		}
+		hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+		hcc.GetBlockByID = cs.getBlockByID
+		hcc.TryTransactionSet = cs.tryTransactionSet
 
-	for _, subscriber := range cs.headerSubscribers {
-		subscriber.ProcessHeaderConsensusChange(hcc)
+		for _, subscriber := range cs.headerSubscribers {
+			subscriber.ProcessHeaderConsensusChange(hcc)
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -168,7 +174,7 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 		// Send changes in batches of 100 so that we don't hold the
 		// lock for too long.
 		cs.mu.RLock()
-		err := cs.db.View(func(tx *bolt.Tx) error {
+		err := cs.db.Update(func(tx *bolt.Tx) error {
 			for i := 0; i < 100 && exists; i++ {
 				latestChangeID = entry.ID()
 				select {
@@ -176,7 +182,7 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 					return siasync.ErrStopped
 				default:
 				}
-				hcc, err := cs.computeHeaderConsensusChange(entry)
+				hcc, err := cs.computeHeaderConsensusChange(tx, entry)
 				if err != nil {
 					return err
 				}
@@ -196,9 +202,10 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 	return latestChangeID, nil
 }
 
-func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.HeaderConsensusChange, error) {
+func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry) (modules.HeaderConsensusChange, error) {
 	hcc := modules.HeaderConsensusChange{
-		ID: ce.ID(),
+		ID:            ce.ID(),
+		ConsensusDBTx: tx,
 	}
 	for _, revertedBlockID := range ce.RevertedBlocks {
 		revertedBlockHeader, exist := cs.processedBlockHeaders[revertedBlockID]
@@ -242,7 +249,7 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 	// hcc.ChildTarget = pbh.ChildTarget
 	// hcc.MinimumValidChildTimestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb.Block.ParentID, pb.Block.Timestamp)
 
-	currentBlock := cs.dbCurrentBlockID()
+	currentBlock := currentBlockID(tx)
 	if cs.synced && recentBlock == currentBlock {
 		hcc.Synced = true
 	}

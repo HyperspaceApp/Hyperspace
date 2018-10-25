@@ -110,7 +110,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, modules.DiffApply)
 			if err != nil {
 				panic(err)
 			}
@@ -121,10 +121,10 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	// grab reverted active outputs from full blocks
 	for _, pbh := range hcc.RevertedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
-		log.Printf("ProcessHeaderConsensusChange revert: %d %s", pbh.Height, blockID)
+		// log.Printf("ProcessHeaderConsensusChange revert: %d %s", pbh.Height, blockID)
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
 			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, modules.DiffRevert)
 			if err != nil {
 				panic(err)
 			}
@@ -157,6 +157,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
 		if exists {
 			s.log.Debugln("Seed scanner found a key used at index", index)
+			log.Println("Seed scanner found a key used at index", index)
 			if index > s.maximumExternalIndex {
 				s.maximumExternalIndex = index
 			}

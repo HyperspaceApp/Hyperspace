@@ -182,6 +182,7 @@ func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
 
 // TestSPVBalance test txn detection
 func TestSPVBalance(t *testing.T) {
+	log.Printf("TestSPVBalance start!")
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -190,6 +191,12 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cst1.CloseSPV()
+
+	uc, err := cst1.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cst2, err := createConsensusSetTester(t.Name() + "2")
 	if err != nil {
 		t.Fatal(err)
@@ -197,10 +204,6 @@ func TestSPVBalance(t *testing.T) {
 	defer cst2.Close()
 	// 2 wallet with same seed
 
-	uc, err := cst1.wallet.NextAddress()
-	if err != nil {
-		t.Fatal(err)
-	}
 	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
 	cst2.mineSiacoins()
 	// balance1
@@ -243,6 +246,8 @@ func TestSPVBalance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	time.Sleep(2 * time.Millisecond)
+
 	cst2.mineSiacoins()
 
 	waitTillSync(cst1, cst2, t)
@@ -316,6 +321,7 @@ func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer cst3.Close()
 
 	err = cst3.gateway.Connect(cst2.gateway.Address())
 	if err != nil {

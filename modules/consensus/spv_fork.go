@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -94,7 +95,9 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 	if block.DiffsGenerated {
 		commitSingleBlockDiffSet(tx, block, modules.DiffApply)
 	} else {
+		log.Printf("before generateAndApplyDiffForSPV: %s", block.Block.ID())
 		err := cs.generateAndApplyDiffForSPV(tx, block)
+		log.Printf("after generateAndApplyDiffForSPV: %s", block.Block.ID())
 		if err != nil {
 			// Mark the block as invalid.
 			cs.dosBlocks[block.Block.ID()] = struct{}{}

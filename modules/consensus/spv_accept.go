@@ -57,7 +57,9 @@ func (cs *ConsensusSet) addSingleBlock(tx *bolt.Tx, b types.Block,
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
 	// revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
+	log.Printf("before applySingleBlock: %s", b.ID())
 	cs.applySingleBlock(tx, newNode)
+	log.Printf("after applySingleBlock: %s", b.ID())
 
 	return
 }
@@ -94,31 +96,25 @@ func (cs *ConsensusSet) addHeaderToTree(tx *bolt.Tx, parentHeader *modules.Proce
 }
 
 // managedAcceptBlocksForSPV deal with a new block for spv comes in
-func (cs *ConsensusSet) managedAcceptSingleBlock(block types.Block, changes []changeEntry) (*processedBlock, error) {
+func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block) (*processedBlock, error) {
 	// deal the lock outside to avoid lock twice
 	// cs.mu.Lock()
 	// defer cs.mu.Unlock()
 	log.Printf("managedAcceptSingleBlock: %s", block.ID())
 
+	parentHeader, setErr := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
+	// if err == errFutureTimestamp { // header should already downloaded
+	// 	// Queue the block to be tried again if it is a future block.
+	// 	go cs.threadedSleepOnFutureBlock(block)
+	// }
 	var pb *processedBlock
-	setErr := cs.db.Update(func(tx *bolt.Tx) error {
-		parentHeader, err := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
-		if err == modules.ErrBlockKnown {
-			// Skip over known blocks.
-			return err
-		}
-		// if err == errFutureTimestamp { // header should already downloaded
-		// 	// Queue the block to be tried again if it is a future block.
-		// 	go cs.threadedSleepOnFutureBlock(block)
-		// }
-		if err != nil {
-			return err
-		}
-
+	if setErr == nil {
+		log.Printf("before add single block: %s", block.ID())
 		// Try adding the block to consensus.
-		pb, err = cs.addSingleBlock(tx, block, parentHeader)
-		return err
-	})
+		pb, setErr = cs.addSingleBlock(tx, block, parentHeader)
+		log.Printf("after add single block: %s", block.ID())
+	}
+
 	if _, ok := setErr.(bolt.MmapError); ok {
 		cs.log.Println("ERROR: Bolt mmap failed:", setErr)
 		fmt.Println("Blockchain database has run out of disk space!")
@@ -129,9 +125,8 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(block types.Block, changes []ch
 		cs.log.Println("Consensus received an invalid single block:", setErr)
 		return nil, setErr
 	}
-	for i := 0; i < len(changes); i++ {
-		cs.updateHeaderSubscribers(changes[i])
-	}
+	log.Printf("after invalid single block")
+
 	return pb, nil
 }
 
@@ -203,7 +198,9 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockH
 	}
 	if setErr != nil {
 		if len(changes) == 0 {
-			fmt.Println("Received an invalid block header set.")
+			if setErr != modules.ErrBlockKnown {
+				log.Println("Received an invalid block header set.")
+			}
 			cs.log.Println("Consensus received an invalid block header:", setErr)
 		} else {
 			fmt.Println("Received a partially valid block header set.")

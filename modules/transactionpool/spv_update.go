@@ -84,7 +84,7 @@ func (tp *TransactionPool) ProcessHeaderConsensusChange(hcc modules.HeaderConsen
 
 	for _, header := range hcc.AppliedBlockHeaders {
 		// if block exists, relevent and already been download before
-		block, exists := hcc.GetBlockByID(header.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(hcc.ConsensusDBTx, header.BlockHeader.ID())
 		if exists {
 			for _, txn := range block.Transactions {
 				txids[txn.ID()] = struct{}{}
@@ -140,7 +140,7 @@ func (tp *TransactionPool) ProcessHeaderConsensusChange(hcc modules.HeaderConsen
 	// // reverted to the tpool.
 	for i := len(hcc.RevertedBlockHeaders) - 1; i >= 0; i-- {
 		header := hcc.RevertedBlockHeaders[i]
-		block, exists := hcc.GetBlockByID(header.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(hcc.ConsensusDBTx, header.BlockHeader.ID())
 		if exists {
 			for _, txn := range block.Transactions {
 				// Check whether this transaction has already be re-added to the

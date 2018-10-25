@@ -2,6 +2,7 @@ package transactionpool
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -106,6 +107,7 @@ func (tp *TransactionPool) initPersist() error {
 			tp.log.Println("Error while closing transaction pool database:", err)
 		}
 	})
+	log.Println("Begin TPool DB")
 	// Create the global tpool tx that will be used for most persist actions.
 	tp.dbTx, err = tp.db.Begin(true)
 	if err != nil {
