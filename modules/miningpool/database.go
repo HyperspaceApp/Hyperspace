@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -105,7 +104,7 @@ func (p *Pool) FindClientDB(name string) (*Client, error) {
 	c := p.Client(name)
 	// if it's in memory, just return a pointer to the copy in memory
 	if c != nil {
-		log.Println("found in mem: ", name)
+		// log.Println("found in mem: ", name)
 		return c, nil
 	}
 

@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	// "math/big"
 	"net"
@@ -311,12 +310,12 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 	}
 	h.p.mu.Unlock()
 
-	start := time.Now()
-	log.Println("lock: ", client, " ", worker)
+	// start := time.Now()
+	// log.Println("lock: ", client, " ", worker)
 	lock.Lock()
 	defer func() {
 		lock.Unlock()
-		log.Printf("unlock: %s %s %f", client, worker, time.Now().Sub(start).Seconds())
+		// log.Printf("unlock: %s %s %f", client, worker, time.Now().Sub(start).Seconds())
 	}()
 	c, err := h.p.FindClientDB(client)
 	if err == ErrNoUsernameInDatabase {
