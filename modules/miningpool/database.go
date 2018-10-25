@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -101,15 +102,17 @@ func (p *Pool) AddClientDB(c *Client) error {
 
 // FindClientDB find user in accounts
 func (p *Pool) FindClientDB(name string) (*Client, error) {
+	c := p.Client(name)
+	// if it's in memory, just return a pointer to the copy in memory
+	if c != nil {
+		log.Println("found in mem: ", name)
+		return c, nil
+	}
+
 	var clientID int64
 	var Name, Wallet string
 	var coinid int
 
-	c := p.Client(Name)
-	// if it's in memory, just return a pointer to the copy in memory
-	if c != nil {
-		return c, nil
-	}
 	p.yiilog.Debugf("Searching for %s in existing accounts\n", name)
 	err := p.sqldb.QueryRow("SELECT id, username, username, coinid FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet, &coinid)
 	if err != nil {
@@ -120,13 +123,6 @@ func (p *Pool) FindClientDB(name string) (*Client, error) {
 	if coinid != CoinID {
 		p.yiilog.Debugf(ErrDuplicateUserInDifferentCoin.Error())
 		return nil, ErrDuplicateUserInDifferentCoin
-	}
-	// if we're here, we found the client in the database
-	// try looking for the client in memory
-	c = p.Client(Name)
-	// if it's in memory, just return a pointer to the copy in memory
-	if c != nil {
-		return c, nil
 	}
 
 	// client was in database but not in memory -
