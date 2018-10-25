@@ -265,9 +265,9 @@ func TestSPVBalance(t *testing.T) {
 }
 
 func TestSPVDelayedOutputDiff(t *testing.T) {
-	// if testing.Short() {
-	// 	t.SkipNow()
-	// }
+	if testing.Short() {
+		t.SkipNow()
+	}
 	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
 	if err != nil {
 		t.Fatal(err)

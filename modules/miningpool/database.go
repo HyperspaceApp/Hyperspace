@@ -101,6 +101,13 @@ func (p *Pool) AddClientDB(c *Client) error {
 
 // FindClientDB find user in accounts
 func (p *Pool) FindClientDB(name string) (*Client, error) {
+	c := p.Client(name)
+	// if it's in memory, just return a pointer to the copy in memory
+	if c != nil {
+		// log.Println("found in mem: ", name)
+		return c, nil
+	}
+
 	var clientID int64
 	var Name, Wallet string
 	var coinid int
@@ -116,13 +123,7 @@ func (p *Pool) FindClientDB(name string) (*Client, error) {
 		p.yiilog.Debugf(ErrDuplicateUserInDifferentCoin.Error())
 		return nil, ErrDuplicateUserInDifferentCoin
 	}
-	// if we're here, we found the client in the database
-	// try looking for the client in memory
-	c := p.Client(Name)
-	// if it's in memory, just return a pointer to the copy in memory
-	if c != nil {
-		return c, nil
-	}
+
 	// client was in database but not in memory -
 	// find workers and connect them to the in memory copy
 	c, err = newClient(p, name)

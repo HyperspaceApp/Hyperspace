@@ -6,7 +6,6 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/types"
 
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/coreos/bbolt"
@@ -105,37 +104,6 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 	for _, subscriber := range cs.subscribers {
 		subscriber.ProcessConsensusChange(cc)
 	}
-}
-
-func (cs *ConsensusSet) getSiacoinOutputDiff(tx *bolt.Tx, id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
-	// log.Printf("getOrDownloadBlock: %s", id)
-	pb, err := cs.getOrDownloadBlock(tx, id)
-	if err == errNilItem { // assume it is not related block, so not locally exist
-		return nil, nil
-	} else if err != nil {
-		return nil, err
-	}
-	pbScods := pb.SiacoinOutputDiffs
-	if direction == modules.DiffRevert {
-		for i := len(pbScods) - 1; i >= 0; i-- {
-			pbScod := pbScods[i]
-			pbScod.Direction = !pbScod.Direction
-			scods = append(scods, pbScod)
-		}
-	} else {
-		scods = pbScods
-	}
-	return
-}
-
-func (cs *ConsensusSet) getBlockByID(tx *bolt.Tx, id types.BlockID) (types.Block, bool) {
-	pb, err := getBlockMap(tx, id)
-	if err == errNilItem { // assume it is not related block, so not locally exist
-		return types.Block{}, false
-	} else if err != nil {
-		panic(err)
-	}
-	return pb.Block, true
 }
 
 // managedInitializeSubscribe will take a subscriber and feed them all of the

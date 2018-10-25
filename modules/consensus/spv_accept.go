@@ -112,6 +112,12 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 		log.Printf("before add single block: %s", block.ID())
 		// Try adding the block to consensus.
 		pb, setErr = cs.addSingleBlock(tx, block, parentHeader)
+		// TODO: still have tryTransactionSet deadlock
+		// setErr = cs.db.Update(func(updateTx *bolt.Tx) error {
+		// 	var errAddSingleBlock error
+		// 	pb, errAddSingleBlock = cs.addSingleBlock(updateTx, block, parentHeader)
+		// 	return errAddSingleBlock
+		// })
 		log.Printf("after add single block: %s", block.ID())
 	}
 

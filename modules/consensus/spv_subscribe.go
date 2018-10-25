@@ -6,6 +6,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/coreos/bbolt"
@@ -15,6 +16,7 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 	if len(cs.headerSubscribers) == 0 {
 		return
 	}
+	// err := cs.db.View(func(tx *bolt.Tx) error {
 	err := cs.db.Update(func(tx *bolt.Tx) error {
 		// Get the consensus change and send it to all subscribers.
 		var hcc modules.HeaderConsensusChange
@@ -174,6 +176,7 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 		// Send changes in batches of 100 so that we don't hold the
 		// lock for too long.
 		cs.mu.RLock()
+		// err := cs.db.View(func(tx *bolt.Tx) error {
 		err := cs.db.Update(func(tx *bolt.Tx) error {
 			for i := 0; i < 100 && exists; i++ {
 				latestChangeID = entry.ID()
@@ -255,4 +258,35 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry
 	}
 
 	return hcc, nil
+}
+
+func (cs *ConsensusSet) getSiacoinOutputDiff(tx *bolt.Tx, id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+	// log.Printf("getOrDownloadBlock: %s", id)
+	pb, err := cs.getOrDownloadBlock(tx, id)
+	if err == errNilItem { // assume it is not related block, so not locally exist
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	pbScods := pb.SiacoinOutputDiffs
+	if direction == modules.DiffRevert {
+		for i := len(pbScods) - 1; i >= 0; i-- {
+			pbScod := pbScods[i]
+			pbScod.Direction = !pbScod.Direction
+			scods = append(scods, pbScod)
+		}
+	} else {
+		scods = pbScods
+	}
+	return
+}
+
+func (cs *ConsensusSet) getBlockByID(tx *bolt.Tx, id types.BlockID) (types.Block, bool) {
+	pb, err := getBlockMap(tx, id)
+	if err == errNilItem { // assume it is not related block, so not locally exist
+		return types.Block{}, false
+	} else if err != nil {
+		panic(err)
+	}
+	return pb.Block, true
 }

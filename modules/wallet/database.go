@@ -110,7 +110,6 @@ func (w *Wallet) syncDB() error {
 	}
 
 	// commit the current tx
-	log.Println("Commit")
 	err := w.dbTx.Commit()
 	if err != nil {
 		log.Println("ERROR: failed to apply database update:", err)
