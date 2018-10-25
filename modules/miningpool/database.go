@@ -105,6 +105,11 @@ func (p *Pool) FindClientDB(name string) (*Client, error) {
 	var Name, Wallet string
 	var coinid int
 
+	c := p.Client(Name)
+	// if it's in memory, just return a pointer to the copy in memory
+	if c != nil {
+		return c, nil
+	}
 	p.yiilog.Debugf("Searching for %s in existing accounts\n", name)
 	err := p.sqldb.QueryRow("SELECT id, username, username, coinid FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet, &coinid)
 	if err != nil {
@@ -118,11 +123,12 @@ func (p *Pool) FindClientDB(name string) (*Client, error) {
 	}
 	// if we're here, we found the client in the database
 	// try looking for the client in memory
-	c := p.Client(Name)
+	c = p.Client(Name)
 	// if it's in memory, just return a pointer to the copy in memory
 	if c != nil {
 		return c, nil
 	}
+
 	// client was in database but not in memory -
 	// find workers and connect them to the in memory copy
 	c, err = newClient(p, name)

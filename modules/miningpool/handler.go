@@ -302,8 +302,16 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 // we need to make sure the action is atomic
 func (h *Handler) setupClient(client, worker string) (*Client, error) {
 	var err error
-	h.p.clientSetupMutex.Lock()
-	defer h.p.clientSetupMutex.Unlock()
+	h.p.mu.Lock()
+	lock, exists := h.p.clientSetupMutex[client]
+	if !exists {
+		lock = &deadlock.Mutex{}
+		h.p.clientSetupMutex[client] = lock
+	}
+	h.p.mu.Unlock()
+
+	lock.Lock()
+	defer lock.Unlock()
 	c, err := h.p.FindClientDB(client)
 	if err != ErrNoUsernameInDatabase {
 		return c, err
