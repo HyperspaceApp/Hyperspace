@@ -16,9 +16,9 @@ type SeedScanner interface {
 }
 
 func newSeedScanner(seed modules.Seed, addressGapLimit uint64,
-	cs modules.ConsensusSet, log *persist.Logger, scanAirdrop bool) SeedScanner {
+	cs modules.ConsensusSet, w *Wallet, log *persist.Logger, scanAirdrop bool) SeedScanner {
 	if scanAirdrop {
-		return newSlowSeedScanner(seed, addressGapLimit, cs, log)
+		return newSlowSeedScanner(seed, addressGapLimit, cs, w, log)
 	}
-	return newFastSeedScanner(seed, addressGapLimit, cs, log)
+	return newFastSeedScanner(seed, addressGapLimit, cs, w, log)
 }

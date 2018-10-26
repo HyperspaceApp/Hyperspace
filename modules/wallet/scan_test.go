@@ -65,7 +65,7 @@ func TestScanLargeIndex(t *testing.T) {
 
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.cs, wt.wallet.log)
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.cs, wt.wallet, wt.wallet.log)
 	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
@@ -124,7 +124,7 @@ func TestScanLoop(t *testing.T) {
 
 	// create seed scanner and scan the block
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet, wt.wallet.log)
 	err = ss.scan(wt.wallet.tg.StopChan())
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +196,7 @@ func TestSlowScan(t *testing.T) {
 		seed, _, _ := wt.wallet.PrimarySeed()
 		dustThreshold, err := wt.wallet.DustThreshold()
 
-		ss := newSlowSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+		ss := newSlowSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet, wt.wallet.log)
 		err = ss.scan(wt.wallet.tg.StopChan())
 		if err != nil {
 			t.Fatal(err)
@@ -211,7 +211,7 @@ func TestSlowScan(t *testing.T) {
 			}
 		}
 
-		nss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+		nss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet, wt.wallet.log)
 		err = nss.scan(wt.wallet.tg.StopChan())
 		if err != nil {
 			t.Fatal(err)
@@ -249,7 +249,7 @@ func TestScannerGenerateKeys(t *testing.T) {
 	}
 	defer wt.closeWt()
 	seed, _, _ := wt.wallet.PrimarySeed()
-	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet.log)
+	ss := newFastSeedScanner(seed, wt.wallet.addressGapLimit, wt.wallet.cs, wt.wallet, wt.wallet.log)
 	numKeys := uint64(100)
 	ss.generateKeys(numKeys)
 	if ss.minimumIndex != 0 {

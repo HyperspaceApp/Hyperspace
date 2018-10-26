@@ -141,7 +141,6 @@ func (cs *ConsensusSet) generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlo
 	// Add the block to the current path and block map.
 	bid := pb.Block.ID()
 	blockMap := tx.Bucket(BlockMap)
-	// updateCurrentPath(tx, pb, modules.DiffApply)
 	blockHeaderMap := tx.Bucket(BlockHeaderMap)
 	err := blockHeaderMap.Put(bid[:], encoding.Marshal(*pbh))
 	if err != nil {

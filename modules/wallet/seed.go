@@ -276,7 +276,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.CipherKey, seed modules.Seed) error {
 	w.mu.RUnlock()
 
 	// scan blockchain to determine how many keys to generate for the seed
-	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w, w.log, w.scanAirdrop)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
@@ -385,7 +385,7 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 
 	// scan blockchain for outputs, filtering out 'dust' (outputs that cost
 	// more in fees than they are worth)
-	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w, w.log, w.scanAirdrop)
 	_, maxFee := w.tpool.FeeEstimation()
 	const outputSize = 350 // approx. size in bytes of an output and accompanying signature
 	const maxOutputs = 50  // approx. number of outputs that a transaction can handle
