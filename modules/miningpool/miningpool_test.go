@@ -72,7 +72,7 @@ func newPoolTester(name string, port int) (*poolTester, error) {
 	fmt.Printf("temp path: %s\n", testdir)
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}

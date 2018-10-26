@@ -21,7 +21,7 @@ func spvConsensusSetTester(name string, deps modules.Dependencies) (*consensusSe
 	log.Printf("path: %s", testdir)
 
 	// Create modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +321,7 @@ func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cst3.Close()
+	defer cst3.CloseSPV()
 
 	err = cst3.gateway.Connect(cst2.gateway.Address())
 	if err != nil {

@@ -75,7 +75,7 @@ func newHDBTesterDeps(name string, deps modules.Dependencies) (*hdbTester, error
 	}
 	testDir := build.TempDir("HostDB", name)
 
-	g, err := gateway.New("localhost:0", false, filepath.Join(testDir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testDir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +167,7 @@ func TestNew(t *testing.T) {
 		t.SkipNow()
 	}
 	testDir := build.TempDir("HostDB", t.Name())
-	g, err := gateway.New("localhost:0", false, filepath.Join(testDir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testDir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
