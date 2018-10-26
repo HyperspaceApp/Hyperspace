@@ -80,6 +80,10 @@ func (w *Wallet) initEncryption(masterKey crypto.CipherKey, seed modules.Seed, i
 	if err != nil {
 		return modules.Seed{}, err
 	}
+	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, internalIndex)
+	if err != nil {
+		return modules.Seed{}, err
+	}
 
 	// Establish the encryption verification using the masterKey. After this
 	// point, the wallet is encrypted.

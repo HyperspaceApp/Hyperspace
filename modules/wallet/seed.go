@@ -306,7 +306,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.CipherKey, seed modules.Seed) error {
 		}
 
 		// load the seed's keys
-		w.integrateSeed(seed, uint64(s.getMaximumExternalIndex()))
+		w.integrateSeed(seed, s.getMaximumExternalIndex())
 		w.seeds = append(w.seeds, seed)
 
 		// delete the set of processed transactions; they will be recreated
