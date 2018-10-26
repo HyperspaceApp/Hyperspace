@@ -152,7 +152,17 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 			}
 		}
 	}
-
+	for _, diff := range siacoinOutputDiffs {
+		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
+		if exists {
+			s.log.Debugln("Seed scanner found a key used at index", index)
+			log.Println("Slow Seed scanner found a key used at index", index)
+			if index > s.maximumExternalIndex {
+				log.Println("Update maximumExternalIndex: ", index)
+				s.maximumExternalIndex = index
+			}
+		}
+	}
 	s.lastConsensusChange = hcc.ID
 }
 
@@ -179,11 +189,9 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	s.cs.HeaderUnsubscribe(s)
 
 	// log.Printf("end fist part slow scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
-	s.gapScanner.minimumIndex = 0
 	s.gapScanner.maximumExternalIndex = s.maximumExternalIndex
 	s.gapScanner.siacoinOutputs = s.siacoinOutputs
-	numKeys := s.gapScanner.maximumInternalIndex + uint64(s.addressGapLimit)
-	s.gapScanner.maximumInternalIndex = 0
+	numKeys := s.maximumExternalIndex + s.addressGapLimit
 	s.gapScanner.generateKeys(numKeys) // this will update s.gapScanner.maximumInternalIndex
 	log.Printf("slowscan maximumExternalIndex: %d, numKeys: %d", s.maximumExternalIndex, numKeys)
 	if err := s.gapScanner.cs.HeaderConsensusSetSubscribe(s.gapScanner, s.lastConsensusChange, cancel); err != nil {
@@ -204,6 +212,7 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 // newSlowSeedScanner returns a new slowSeedScanner.
 func newSlowSeedScanner(seed modules.Seed, addressGapLimit uint64,
 	cs modules.ConsensusSet, log *persist.Logger) *slowSeedScanner {
+	log.Printf("addressGapLimit: %d", addressGapLimit)
 	return &slowSeedScanner{
 		seed:                 seed,
 		addressGapLimit:      addressGapLimit,
