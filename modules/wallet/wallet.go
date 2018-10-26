@@ -4,9 +4,7 @@ package wallet
 // multisig, but there are no automated tests to verify that.
 
 import (
-	"bytes"
 	"fmt"
-	"sort"
 
 	"github.com/coreos/bbolt"
 	deadlock "github.com/sasha-s/go-deadlock"
@@ -239,6 +237,23 @@ func (w *Wallet) Close() error {
 	return build.JoinErrors(errs, "; ")
 }
 
+// func (w *Wallet) allAddressesInIndex() ([]types.UnlockHash, error) {
+// 	if err := w.tg.Add(); err != nil {
+// 		return []types.UnlockHash, modules.ErrWalletShutdown
+// 	}
+// 	defer w.tg.Done()
+
+// 	w.mu.RLock()
+// 	defer w.mu.RUnlock()
+
+// 	var keyArray []types.UnlockHash
+// 	// TODO: maybe cache this somewhere
+// 	for u := range w.keys {
+// 		keyArray = append(keyArray, u[:])
+// 	}
+// 	return keyArray, nil
+// }
+
 func (w *Wallet) allAddressesInByteArray() ([][]byte, error) {
 	if err := w.tg.Add(); err != nil {
 		return [][]byte{}, modules.ErrWalletShutdown
@@ -305,9 +320,9 @@ func (w *Wallet) AllAddresses() ([]types.UnlockHash, error) {
 	for addr := range w.keys {
 		addrs = append(addrs, addr)
 	}
-	sort.Slice(addrs, func(i, j int) bool {
-		return bytes.Compare(addrs[i][:], addrs[j][:]) < 0
-	})
+	// sort.Slice(addrs, func(i, j int) bool {
+	// 	return bytes.Compare(addrs[i][:], addrs[j][:]) < 0
+	// })
 	return addrs, nil
 }
 

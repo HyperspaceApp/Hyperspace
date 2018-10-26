@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"math/big"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -33,6 +34,7 @@ func validSiacoins(tx *bolt.Tx, t types.Transaction) error {
 	for _, sci := range t.SiacoinInputs {
 		// Check that the input spends an existing output.
 		scoBytes := scoBucket.Get(sci.ParentID[:])
+		log.Printf("errMissingSiacoinOutput: %s", sci.ParentID.String())
 		if scoBytes == nil {
 			return errMissingSiacoinOutput
 		}

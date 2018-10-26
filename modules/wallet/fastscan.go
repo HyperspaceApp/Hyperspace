@@ -136,9 +136,9 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		if exists {
 			s.log.Debugln("Seed scanner found a key used at index", index)
 			log.Println("Fast Seed scanner found a key used at index", index)
-			if index > s.maximumExternalIndex {
-				log.Println("Update maximumExternalIndex: ", index)
-				s.maximumExternalIndex = index
+			if index >= s.maximumExternalIndex {
+				s.maximumExternalIndex = index + 1
+				log.Println("Update maximumExternalIndex: ", s.maximumExternalIndex)
 			}
 		}
 	}
