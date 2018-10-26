@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -146,13 +145,13 @@ func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 		}
 
 		externalIndex, err = dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
-		log.Println("unlock externalIndex:", externalIndex)
+		// log.Println("unlock externalIndex:", externalIndex)
 		if err != nil {
 			return err
 		}
 
 		internalIndex, err = dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
-		log.Println("unlock internalIndex:", internalIndex)
+		// log.Println("unlock internalIndex:", internalIndex)
 		if err != nil {
 			return err
 		}

@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"log"
 	"math"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -33,7 +32,7 @@ func (w *Wallet) advanceSeedLookahead(newExternalIndex uint64) error {
 	} else {
 		newInternalIndex = internalIndex
 	}
-	log.Printf("old internal index %v, new internal index: %v, advanceSeedLookahead to index %v\n", internalIndex, newInternalIndex, externalIndex)
+	// log.Printf("advanceSeedLookahead old internal index %v, new internal index: %v, externalIndex %v\n", internalIndex, newInternalIndex, externalIndex)
 
 	// Retrieve numKeys from the lookup buffer while replenishing it
 	spendableKeys := w.lookahead.Advance(numKeys)

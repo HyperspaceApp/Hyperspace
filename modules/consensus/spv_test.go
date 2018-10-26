@@ -343,14 +343,28 @@ func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// _, err = cst2.miner.AddBlockWithAddress(types.UnlockHash{})
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	time.Sleep(20 * time.Millisecond)
+
+	unconfirmed, err := isTxnUnconfirmed(cst1, txns[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !unconfirmed {
+		t.Fatal(fmt.Errorf("txn should be unconfirmed: %s", txns[0].ID()))
+	}
+
 	cst2.mineSiacoins()
 
 	waitTillSync(cst1, cst2, t)
 	waitTillSync(cst3, cst2, t)
+
+	unconfirmed, err = isTxnUnconfirmed(cst1, txns[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if unconfirmed {
+		t.Fatal(fmt.Errorf("txn should be not unconfirmed: %s", txns[0].ID()))
+	}
 
 	balanceAfter1, err := cst1.wallet.ConfirmedBalance()
 	if err != nil {
@@ -375,4 +389,17 @@ func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
 		t.Fatal(fmt.Printf("balanceAfter1 not match, %s = %s + %s\n",
 			balanceBefore1, balanceAfter1, types.SiacoinPrecision.Add(totalFee)))
 	}
+}
+
+func isTxnUnconfirmed(cst *consensusSetTester, txn types.Transaction) (bool, error) {
+	unconfirmedTxns, err := cst.wallet.UnconfirmedTransactions()
+	if err != nil {
+		return true, err
+	}
+	for _, unconfirmedTxn := range unconfirmedTxns {
+		if txn.ID() == unconfirmedTxn.TransactionID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
