@@ -49,7 +49,7 @@ type seedScanner struct {
 	addressGapLimit      uint64
 	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
 	cs                   modules.ConsensusSet
-	w                    *Wallet
+	walletStopChan       <-chan struct{}
 	log                  *persist.Logger
 }
 
@@ -57,9 +57,9 @@ func (s seedScanner) getMaximumExternalIndex() uint64 {
 	return s.maximumExternalIndex
 }
 
-func (s seedScanner) getMaximumInternalIndex() uint64 {
-	return s.maximumInternalIndex
-}
+// func (s seedScanner) getMaximumInternalIndex() uint64 {
+// 	return s.maximumInternalIndex
+// }
 
 func (s *seedScanner) setDustThreshold(d types.Currency) {
 	s.dustThreshold = d
@@ -100,12 +100,12 @@ func (s *seedScanner) generateKeys(n uint64) {
 func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	for err != nil {
-		s.w.log.Severe("ERROR: failed to fetch space cash outputs:", err)
+		s.log.Severe("ERROR: failed to fetch space cash outputs:", err)
 		select {
-		case <-time.After(2 * time.Minute):
-			break
-		case <-s.w.tg.StopChan():
-			break
+		case <-time.After(50 * time.Millisecond):
+			break // will not go out of forloop
+		case <-s.walletStopChan:
+			return
 		}
 		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	}
@@ -152,6 +152,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 // to s's seed. If scan returns errMaxKeys, additional keys may need to be
 // generated to find all the addresses.
 func (s *seedScanner) scan(cancel <-chan struct{}) error {
+	s.walletStopChan = cancel
 	numKeys := uint64(s.addressGapLimit)
 	s.generateKeys(numKeys)
 	if err := s.cs.HeaderConsensusSetSubscribe(s, modules.ConsensusChangeBeginning, cancel); err != nil {
@@ -170,7 +171,7 @@ func (s *seedScanner) scan(cancel <-chan struct{}) error {
 
 // newSeedScanner returns a new seedScanner.
 func newFastSeedScanner(seed modules.Seed, addressGapLimit uint64,
-	cs modules.ConsensusSet, w *Wallet, log *persist.Logger) *seedScanner {
+	cs modules.ConsensusSet, log *persist.Logger) *seedScanner {
 	return &seedScanner{
 		seed:                 seed,
 		addressGapLimit:      addressGapLimit,
@@ -180,7 +181,6 @@ func newFastSeedScanner(seed modules.Seed, addressGapLimit uint64,
 		keys:                 make(map[types.UnlockHash]uint64, numInitialKeys),
 		siacoinOutputs:       make(map[types.SiacoinOutputID]scannedOutput),
 		cs:                   cs,
-		w:                    w,
 		log:                  log,
 	}
 }

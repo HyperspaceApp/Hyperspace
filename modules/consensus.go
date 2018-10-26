@@ -439,9 +439,9 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
-		log.Printf("Apply: %d %s", pbh.Height, blockID)
+		// log.Printf("Appling: %d %s", pbh.Height, blockID)
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
-			log.Printf("Match: %d %s", pbh.Height, blockID)
+			log.Printf("Matched: %d %s", pbh.Height, blockID)
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, DiffApply)

@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -41,7 +42,7 @@ type slowSeedScanner struct {
 	addressGapLimit      uint64
 	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
 	cs                   modules.ConsensusSet
-	w                    *Wallet
+	walletStopChan       <-chan struct{}
 	gapScanner           *seedScanner
 	lastConsensusChange  modules.ConsensusChangeID
 	cancel               chan struct{}
@@ -53,9 +54,9 @@ func (s slowSeedScanner) getMaximumExternalIndex() uint64 {
 	return s.maximumExternalIndex
 }
 
-func (s slowSeedScanner) getMaximumInternalIndex() uint64 {
-	return s.gapScanner.maximumInternalIndex
-}
+// func (s slowSeedScanner) getMaximumInternalIndex() uint64 {
+// 	return s.gapScanner.maximumInternalIndex
+// }
 
 func (s *slowSeedScanner) setDustThreshold(d types.Currency) {
 	s.dustThreshold = d
@@ -120,12 +121,13 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 
 	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	for err != nil {
-		s.w.log.Severe("ERROR: failed to fetch space cash outputs:", err)
+		s.log.Severe("ERROR: failed to fetch space cash outputs:", err)
 		select {
-		case <-time.After(2 * time.Minute):
-			break
-		case <-s.w.tg.StopChan():
-			break
+		case <-time.After(50 * time.Millisecond):
+			break // will not go out of forloop
+		case <-s.walletStopChan:
+			close(s.cancel)
+			return
 		}
 		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	}
@@ -165,7 +167,8 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	//
 	// NOTE: since scanning is very slow, we aim to only scan once, which
 	// means generating many keys.
-	s.gapScanner = newFastSeedScanner(s.seed, s.addressGapLimit, s.cs, s.w, s.log)
+	s.walletStopChan = cancel
+	s.gapScanner = newFastSeedScanner(s.seed, s.addressGapLimit, s.cs, s.log)
 
 	s.generateKeys(numInitialKeys)
 	s.cancel = make(chan struct{}) // this will disturbe thread stop to stop scan
@@ -176,12 +179,13 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	s.cs.HeaderUnsubscribe(s)
 
 	// log.Printf("end fist part slow scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
-	s.gapScanner.minimumIndex = s.maximumExternalIndex
-	s.gapScanner.maximumInternalIndex = s.maximumExternalIndex
+	s.gapScanner.minimumIndex = 0
 	s.gapScanner.maximumExternalIndex = s.maximumExternalIndex
 	s.gapScanner.siacoinOutputs = s.siacoinOutputs
-	s.gapScanner.generateKeys(uint64(s.addressGapLimit))
-
+	numKeys := s.gapScanner.maximumInternalIndex + uint64(s.addressGapLimit)
+	s.gapScanner.maximumInternalIndex = 0
+	s.gapScanner.generateKeys(numKeys) // this will update s.gapScanner.maximumInternalIndex
+	log.Printf("slowscan maximumExternalIndex: %d, numKeys: %d", s.maximumExternalIndex, numKeys)
 	if err := s.gapScanner.cs.HeaderConsensusSetSubscribe(s.gapScanner, s.lastConsensusChange, cancel); err != nil {
 		return err
 	}
@@ -199,7 +203,7 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 
 // newSlowSeedScanner returns a new slowSeedScanner.
 func newSlowSeedScanner(seed modules.Seed, addressGapLimit uint64,
-	cs modules.ConsensusSet, w *Wallet, log *persist.Logger) *slowSeedScanner {
+	cs modules.ConsensusSet, log *persist.Logger) *slowSeedScanner {
 	return &slowSeedScanner{
 		seed:                 seed,
 		addressGapLimit:      addressGapLimit,
@@ -207,7 +211,6 @@ func newSlowSeedScanner(seed modules.Seed, addressGapLimit uint64,
 		keys:                 make(map[types.UnlockHash]uint64, numInitialKeys),
 		siacoinOutputs:       make(map[types.SiacoinOutputID]scannedOutput),
 		cs:                   cs,
-		w:                    w,
 		log:                  log,
 	}
 }

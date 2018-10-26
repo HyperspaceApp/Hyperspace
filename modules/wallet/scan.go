@@ -10,15 +10,15 @@ import (
 type SeedScanner interface {
 	scan(<-chan struct{}) error
 	getMaximumExternalIndex() uint64
-	getMaximumInternalIndex() uint64
+	// getMaximumInternalIndex() uint64
 	setDustThreshold(d types.Currency)
 	getSiacoinOutputs() map[types.SiacoinOutputID]scannedOutput
 }
 
 func newSeedScanner(seed modules.Seed, addressGapLimit uint64,
-	cs modules.ConsensusSet, w *Wallet, log *persist.Logger, scanAirdrop bool) SeedScanner {
+	cs modules.ConsensusSet, log *persist.Logger, scanAirdrop bool) SeedScanner {
 	if scanAirdrop {
-		return newSlowSeedScanner(seed, addressGapLimit, cs, w, log)
+		return newSlowSeedScanner(seed, addressGapLimit, cs, log)
 	}
-	return newFastSeedScanner(seed, addressGapLimit, cs, w, log)
+	return newFastSeedScanner(seed, addressGapLimit, cs, log)
 }

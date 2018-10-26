@@ -478,10 +478,10 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	for err != nil {
 		w.log.Severe("ERROR: failed to fetch space cash outputs:", err)
 		select {
-		case <-time.After(2 * time.Second):
-			break
+		case <-time.After(50 * time.Millisecond):
+			break // will not go out of forloop
 		case <-w.tg.StopChan():
-			break
+			return
 		}
 		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(keysArray)
 	}

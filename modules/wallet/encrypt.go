@@ -423,7 +423,7 @@ func (w *Wallet) InitFromSeed(masterKey crypto.CipherKey, seed modules.Seed) err
 	defer w.scanLock.Unlock()
 
 	// estimate the primarySeedProgress by scanning the blockchain
-	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w, w.log, w.scanAirdrop)
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
 	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
@@ -432,7 +432,7 @@ func (w *Wallet) InitFromSeed(masterKey crypto.CipherKey, seed modules.Seed) err
 	// initialize the wallet with the appropriate seed progress
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, err = w.initEncryption(masterKey, seed, s.getMaximumInternalIndex())
+	_, err = w.initEncryption(masterKey, seed, s.getMaximumExternalIndex())
 	return err
 }
 

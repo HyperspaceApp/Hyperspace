@@ -68,6 +68,25 @@ var (
 		},
 		Testing: []NetAddress(nil),
 	}).([]NetAddress)
+
+	// SPVBootstrapPeers is the bootstrap nodes for spv
+	SPVBootstrapPeers = build.Select(build.Var{
+		Standard: []NetAddress{
+			"47.75.72.189:5581",
+			"47.75.72.189:25581",
+			"139.162.118.62:5581",
+			"139.162.198.80:5581",
+			"50.116.37.123:5581", // ver 0.2.1
+		},
+		Dev: []NetAddress{
+			"47.75.72.189:5581",
+			"47.75.72.189:25581",
+			"139.162.118.62:5581",
+			"139.162.198.80:5581",
+			"50.116.37.123:5581", // ver 0.2.1
+		},
+		Testing: []NetAddress(nil),
+	}).([]NetAddress)
 )
 
 type (
