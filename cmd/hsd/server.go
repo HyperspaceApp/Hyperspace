@@ -490,7 +490,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "g") {
 		i++
 		fmt.Printf("(%d/%d) Loading gateway...\n", i, len(srv.config.Siad.Modules))
-		g, err = gateway.New(srv.config.Siad.RPCaddr, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.GatewayDir))
+		g, err = gateway.New(srv.config.Siad.RPCaddr, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.GatewayDir), srv.config.Siad.Spv)
 		if err != nil {
 			return err
 		}
