@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -701,9 +700,9 @@ func (cs *ConsensusSet) downloadSingleBlock(tx *bolt.Tx, id types.BlockID, ppb *
 		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return
 		}
-		log.Printf("before downloadSingleBlock: %s", id)
+		// log.Printf("before downloadSingleBlock: %s", id)
 		*ppb, err = cs.managedAcceptSingleBlock(tx, block)
-		log.Printf("after downloadSingleBlock: %s", id)
+		// log.Printf("after downloadSingleBlock: %s", id)
 		if err != nil {
 			cs.log.Printf("err when download single block: %s", err)
 			return

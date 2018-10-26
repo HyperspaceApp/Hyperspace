@@ -123,11 +123,11 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 	for err != nil {
 		s.log.Severe("ERROR: failed to fetch space cash outputs:", err)
 		select {
-		case <-time.After(50 * time.Millisecond):
-			break // will not go out of forloop
 		case <-s.walletStopChan:
 			close(s.cancel)
 			return
+		case <-time.After(50 * time.Millisecond):
+			break // will not go out of forloop
 		}
 		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	}
@@ -136,7 +136,7 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 	for _, diff := range siacoinOutputDiffs {
 		if diff.Direction == modules.DiffApply {
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-				// log.Printf("slow DiffApply %d: %s\n", index, diff.SiacoinOutput.Value.String())
+				log.Printf("slow DiffApply %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash(), diff.SiacoinOutput.Value.HumanString())
 				s.siacoinOutputs[diff.ID] = scannedOutput{
 					id:        types.OutputID(diff.ID),
 					value:     diff.SiacoinOutput.Value,
@@ -146,8 +146,8 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 		} else if diff.Direction == modules.DiffRevert {
 			// NOTE: DiffRevert means the output was either spent or was in a
 			// block that was reverted.
-			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-				// log.Printf("slow DiffRevert %d: %s\n", index, diff.SiacoinOutput.Value.String())
+			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+				log.Printf("slow DiffRevert %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash(), diff.SiacoinOutput.Value.HumanString())
 				delete(s.siacoinOutputs, diff.ID)
 			}
 		}

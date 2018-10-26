@@ -57,9 +57,9 @@ func (cs *ConsensusSet) addSingleBlock(tx *bolt.Tx, b types.Block,
 	// Fork the blockchain and put the new heaviest block at the tip of the
 	// chain.
 	// revertedBlocks, appliedBlocks, err = cs.forkBlockchain(tx, newNode, newNodeHeader)
-	log.Printf("before applySingleBlock: %s", b.ID())
+	// log.Printf("before applySingleBlock: %s", b.ID())
 	cs.applySingleBlock(tx, newNode)
-	log.Printf("after applySingleBlock: %s", b.ID())
+	// log.Printf("after applySingleBlock: %s", b.ID())
 
 	return
 }
@@ -109,7 +109,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 	// }
 	var pb *processedBlock
 	if setErr == nil {
-		log.Printf("before add single block: %s", block.ID())
+		// log.Printf("before add single block: %s", block.ID())
 		// Try adding the block to consensus.
 		pb, setErr = cs.addSingleBlock(tx, block, parentHeader)
 		// TODO: still have tryTransactionSet deadlock
@@ -118,7 +118,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 		// 	pb, errAddSingleBlock = cs.addSingleBlock(updateTx, block, parentHeader)
 		// 	return errAddSingleBlock
 		// })
-		log.Printf("after add single block: %s", block.ID())
+		// log.Printf("after add single block: %s", block.ID())
 	}
 
 	if _, ok := setErr.(bolt.MmapError); ok {
@@ -131,7 +131,6 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 		cs.log.Println("Consensus received an invalid single block:", setErr)
 		return nil, setErr
 	}
-	log.Printf("after invalid single block")
 
 	return pb, nil
 }
