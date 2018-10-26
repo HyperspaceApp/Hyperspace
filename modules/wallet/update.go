@@ -181,7 +181,7 @@ func (w *Wallet) revertHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusCha
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(hcc.ConsensusDBTx, pbh.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}
@@ -389,7 +389,7 @@ func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChan
 			}
 		}
 
-		block, exists := hcc.GetBlockByID(hcc.ConsensusDBTx, pbh.BlockHeader.ID())
+		block, exists := hcc.GetBlockByID(pbh.BlockHeader.ID())
 		if !exists {
 			continue
 		}

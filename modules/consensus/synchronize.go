@@ -691,7 +691,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 	return nil
 }
 
-func (cs *ConsensusSet) downloadSingleBlock(tx *bolt.Tx, id types.BlockID, ppb **processedBlock) modules.RPCFunc {
+func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlock) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
@@ -701,7 +701,11 @@ func (cs *ConsensusSet) downloadSingleBlock(tx *bolt.Tx, id types.BlockID, ppb *
 			return
 		}
 		// log.Printf("before downloadSingleBlock: %s", id)
-		*ppb, err = cs.managedAcceptSingleBlock(tx, block)
+		err = cs.db.Update(func(tx *bolt.Tx) error {
+			var errAcceptSingleBlock error
+			*ppb, errAcceptSingleBlock = cs.managedAcceptSingleBlock(tx, block)
+			return errAcceptSingleBlock
+		})
 		// log.Printf("after downloadSingleBlock: %s", id)
 		if err != nil {
 			cs.log.Printf("err when download single block: %s", err)
@@ -711,15 +715,28 @@ func (cs *ConsensusSet) downloadSingleBlock(tx *bolt.Tx, id types.BlockID, ppb *
 	}
 }
 
-func (cs *ConsensusSet) getOrDownloadBlock(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
-	pb, err := getBlockMap(tx, id)
+// dbGetBlockMap is a convenience function allowing getBlockMap to be called
+// without a bolt.Tx.
+func (cs *ConsensusSet) dbGetBlockMap(id types.BlockID) (pb *processedBlock, err error) {
+	dbErr := cs.db.View(func(tx *bolt.Tx) error {
+		pb, err = getBlockMap(tx, id)
+		return nil
+	})
+	if dbErr != nil {
+		panic(dbErr)
+	}
+	return pb, err
+}
+
+func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, error) {
+	pb, err := cs.dbGetBlockMap(id)
 	if err == errNilItem {
 		// TODO: add retry download when fail to download from one peer (could be spv)
 		peer, err := cs.gateway.RandomPeer()
 		if err != nil {
 			return nil, err
 		}
-		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(tx, id, &pb))
+		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, &pb))
 		// log.Printf("cs.gateway.RPC: %s", (*pb).Block.ID())
 		if err != nil {
 			return nil, err

@@ -114,7 +114,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	for _, diff := range siacoinOutputDiffs {
 		if diff.Direction == modules.DiffApply {
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-				log.Printf("slow DiffApply %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash(), diff.SiacoinOutput.Value.HumanString())
+				log.Printf("slow DiffApply %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
 				s.siacoinOutputs[diff.ID] = scannedOutput{
 					id:        types.OutputID(diff.ID),
 					value:     diff.SiacoinOutput.Value,
@@ -125,7 +125,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 			// NOTE: DiffRevert means the output was either spent or was in a
 			// block that was reverted.
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-				log.Printf("slow DiffRevert %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash(), diff.SiacoinOutput.Value.HumanString())
+				log.Printf("slow DiffRevert %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
 				delete(s.siacoinOutputs, diff.ID)
 			}
 		}

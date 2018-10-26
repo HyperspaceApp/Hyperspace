@@ -16,28 +16,25 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 	if len(cs.headerSubscribers) == 0 {
 		return
 	}
-	// err := cs.db.View(func(tx *bolt.Tx) error {
-	err := cs.db.Update(func(tx *bolt.Tx) error {
-		// Get the consensus change and send it to all subscribers.
-		var hcc modules.HeaderConsensusChange
-		// Compute the consensus change so it can be sent to subscribers.
-		var err error
-		hcc, err = cs.computeHeaderConsensusChange(tx, ce)
-		if err != nil {
-			cs.log.Critical("computeConsensusChange failed:", err)
-			return err
-		}
-		hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
-		hcc.GetBlockByID = cs.getBlockByID
-		hcc.TryTransactionSet = cs.tryTransactionSet
 
-		for _, subscriber := range cs.headerSubscribers {
-			subscriber.ProcessHeaderConsensusChange(hcc)
-		}
-		return nil
+	// Get the consensus change and send it to all subscribers.
+	var hcc modules.HeaderConsensusChange
+	// Compute the consensus change so it can be sent to subscribers.
+	err := cs.db.View(func(tx *bolt.Tx) error {
+		var errHeaderConsensusChange error
+		hcc, errHeaderConsensusChange = cs.computeHeaderConsensusChange(tx, ce)
+		return errHeaderConsensusChange
 	})
 	if err != nil {
-		panic(err)
+		cs.log.Critical("computeConsensusChange failed:", err)
+		return
+	}
+	hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+	hcc.GetBlockByID = cs.getBlockByID
+	hcc.TryTransactionSet = cs.tryTransactionSet
+
+	for _, subscriber := range cs.headerSubscribers {
+		subscriber.ProcessHeaderConsensusChange(hcc)
 	}
 }
 
@@ -177,38 +174,45 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 		// lock for too long.
 		cs.mu.RLock()
 		// err := cs.db.View(func(tx *bolt.Tx) error {
-		err := cs.db.Update(func(tx *bolt.Tx) error {
-			for i := 0; i < 100 && exists; i++ {
-				latestChangeID = entry.ID()
-				select {
-				case <-cancel:
-					return siasync.ErrStopped
-				default:
-				}
-				hcc, err := cs.computeHeaderConsensusChange(tx, entry)
-				if err != nil {
-					return err
-				}
-				hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
-				hcc.GetBlockByID = cs.getBlockByID
-				hcc.TryTransactionSet = cs.tryTransactionSet
-				subscriber.ProcessHeaderConsensusChange(hcc)
-				entry, exists = entry.NextEntry(tx)
+		for i := 0; i < 100 && exists; i++ {
+			latestChangeID = entry.ID()
+			select {
+			case <-cancel:
+				cs.mu.RUnlock()
+				return modules.ConsensusChangeID{}, siasync.ErrStopped
+			default:
 			}
-			return nil
-		})
-		cs.mu.RUnlock()
-		if err != nil {
-			return modules.ConsensusChangeID{}, err
+			var hcc modules.HeaderConsensusChange
+			err := cs.db.View(func(tx *bolt.Tx) error {
+				var errHeaderConsensusChange error
+				hcc, errHeaderConsensusChange = cs.computeHeaderConsensusChange(tx, entry)
+				return errHeaderConsensusChange
+			})
+			if err != nil {
+				cs.mu.RUnlock()
+				return modules.ConsensusChangeID{}, err
+			}
+			hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+			hcc.GetBlockByID = cs.getBlockByID
+			hcc.TryTransactionSet = cs.tryTransactionSet
+			subscriber.ProcessHeaderConsensusChange(hcc)
+			err = cs.db.View(func(tx *bolt.Tx) error {
+				entry, exists = entry.NextEntry(tx)
+				return nil
+			})
+			if err != nil {
+				cs.mu.RUnlock()
+				return modules.ConsensusChangeID{}, err
+			}
 		}
+		cs.mu.RUnlock()
 	}
 	return latestChangeID, nil
 }
 
 func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry) (modules.HeaderConsensusChange, error) {
 	hcc := modules.HeaderConsensusChange{
-		ID:            ce.ID(),
-		ConsensusDBTx: tx,
+		ID: ce.ID(),
 	}
 	for _, revertedBlockID := range ce.RevertedBlocks {
 		revertedBlockHeader, exist := cs.processedBlockHeaders[revertedBlockID]
@@ -260,9 +264,9 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry
 	return hcc, nil
 }
 
-func (cs *ConsensusSet) getSiacoinOutputDiff(tx *bolt.Tx, id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
 	// log.Printf("getOrDownloadBlock: %s", id)
-	pb, err := cs.getOrDownloadBlock(tx, id)
+	pb, err := cs.getOrDownloadBlock(id)
 	if err == errNilItem { // assume it is not related block, so not locally exist
 		return nil, nil
 	} else if err != nil {
@@ -281,8 +285,8 @@ func (cs *ConsensusSet) getSiacoinOutputDiff(tx *bolt.Tx, id types.BlockID, dire
 	return
 }
 
-func (cs *ConsensusSet) getBlockByID(tx *bolt.Tx, id types.BlockID) (types.Block, bool) {
-	pb, err := getBlockMap(tx, id)
+func (cs *ConsensusSet) getBlockByID(id types.BlockID) (types.Block, bool) {
+	pb, err := cs.dbGetBlockMap(id)
 	if err == errNilItem { // assume it is not related block, so not locally exist
 		return types.Block{}, false
 	} else if err != nil {

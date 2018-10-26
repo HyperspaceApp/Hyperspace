@@ -10,7 +10,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	bolt "github.com/coreos/bbolt"
 )
 
 const (
@@ -115,10 +114,10 @@ type (
 		Synced bool
 
 		// GetSiacoinOutputDiff will return the outputdiffs requested
-		GetSiacoinOutputDiff func(*bolt.Tx, types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
+		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
 
 		// GetBlockByID will return the block requested
-		GetBlockByID func(*bolt.Tx, types.BlockID) (types.Block, bool)
+		GetBlockByID func(types.BlockID) (types.Block, bool)
 
 		// TryTransactionSet is an unlocked version of
 		// ConsensusSet.TryTransactionSet. This allows the TryTransactionSet
@@ -127,7 +126,7 @@ type (
 		TryTransactionSet func([]types.Transaction) (ConsensusChange, error)
 
 		// ConsensusDBTx is the update cursor of consensus.db
-		ConsensusDBTx *bolt.Tx
+		// ConsensusDBTx *bolt.Tx
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
@@ -444,7 +443,7 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 			log.Printf("Matched: %d %s", pbh.Height, blockID)
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, DiffApply)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffApply)
 			if err != nil {
 				return nil, err
 			}
@@ -457,7 +456,7 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 		blockID := pbh.BlockHeader.ID()
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
 			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(hcc.ConsensusDBTx, blockID, DiffRevert)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffRevert)
 			if err != nil {
 				return nil, err
 			}
