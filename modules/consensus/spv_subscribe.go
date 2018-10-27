@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
@@ -17,14 +18,7 @@ func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
 		return
 	}
 
-	// Get the consensus change and send it to all subscribers.
-	var hcc modules.HeaderConsensusChange
-	// Compute the consensus change so it can be sent to subscribers.
-	err := cs.db.View(func(tx *bolt.Tx) error {
-		var errHeaderConsensusChange error
-		hcc, errHeaderConsensusChange = cs.computeHeaderConsensusChange(tx, ce)
-		return errHeaderConsensusChange
-	})
+	hcc, err := cs.matureHeaderAndComputeHeaderConsensusChange(ce)
 	if err != nil {
 		cs.log.Critical("computeConsensusChange failed:", err)
 		return
@@ -182,12 +176,7 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 				return modules.ConsensusChangeID{}, siasync.ErrStopped
 			default:
 			}
-			var hcc modules.HeaderConsensusChange
-			err := cs.db.View(func(tx *bolt.Tx) error {
-				var errHeaderConsensusChange error
-				hcc, errHeaderConsensusChange = cs.computeHeaderConsensusChange(tx, entry)
-				return errHeaderConsensusChange
-			})
+			hcc, err := cs.matureHeaderAndComputeHeaderConsensusChange(entry)
 			if err != nil {
 				cs.mu.RUnlock()
 				return modules.ConsensusChangeID{}, err
@@ -208,6 +197,48 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 		cs.mu.RUnlock()
 	}
 	return latestChangeID, nil
+}
+
+// matureAndApplyHeader this is intend for single block downloaded
+// after first mature of header in header accept
+func (cs *ConsensusSet) matureAndApplyHeader(tx *bolt.Tx, ce changeEntry) error {
+	for _, appliedBlockID := range ce.AppliedBlocks {
+		appliedBlockHeader, exist := cs.processedBlockHeaders[appliedBlockID]
+		if exist {
+			oldSCOLen := len(appliedBlockHeader.SiacoinOutputDiffs)
+			applyMaturedSiacoinOutputsForHeader(tx, appliedBlockHeader)
+			if oldSCOLen == len(appliedBlockHeader.SiacoinOutputDiffs) {
+				headerMap := tx.Bucket(BlockHeaderMap)
+				id := appliedBlockHeader.BlockHeader.ID()
+				err := headerMap.Put(id[:], encoding.Marshal(*appliedBlockHeader))
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			return fmt.Errorf("applied block header does not exist in the consensus set processed block headers: %s", appliedBlockID.String())
+		}
+	}
+	return nil
+}
+
+func (cs *ConsensusSet) matureHeaderAndComputeHeaderConsensusChange(ce changeEntry) (modules.HeaderConsensusChange, error) {
+	err := cs.db.Update(func(tx *bolt.Tx) error {
+		return cs.matureAndApplyHeader(tx, ce)
+	})
+	if err != nil {
+		return modules.HeaderConsensusChange{}, err
+	}
+	var hcc modules.HeaderConsensusChange
+	err = cs.db.View(func(tx *bolt.Tx) error {
+		var errHeaderConsensusChange error
+		hcc, errHeaderConsensusChange = cs.computeHeaderConsensusChange(tx, ce)
+		return errHeaderConsensusChange
+	})
+	if err != nil {
+		return modules.HeaderConsensusChange{}, err
+	}
+	return hcc, nil
 }
 
 func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry) (modules.HeaderConsensusChange, error) {
