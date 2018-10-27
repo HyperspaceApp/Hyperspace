@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -114,7 +113,7 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	for _, diff := range siacoinOutputDiffs {
 		if diff.Direction == modules.DiffApply {
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-				log.Printf("fast DiffApply %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
+				// log.Printf("fast DiffApply %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
 				s.siacoinOutputs[diff.ID] = scannedOutput{
 					id:        types.OutputID(diff.ID),
 					value:     diff.SiacoinOutput.Value,
@@ -124,8 +123,8 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		} else if diff.Direction == modules.DiffRevert {
 			// NOTE: DiffRevert means the output was either spent or was in a
 			// block that was reverted.
-			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-				log.Printf("fast DiffRevert %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
+			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+				// log.Printf("fast DiffRevert %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
 				delete(s.siacoinOutputs, diff.ID)
 			}
 		}
@@ -135,18 +134,22 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
 		if exists {
 			s.log.Debugln("Seed scanner found a key used at index", index)
-			log.Println("Fast Seed scanner found a key used at index", index)
+			// log.Println("Fast Seed scanner found a key used at index", index)
 			if index >= s.maximumExternalIndex {
 				s.maximumExternalIndex = index + 1
-				log.Println("Update maximumExternalIndex: ", s.maximumExternalIndex)
+				s.adjustKeys()
 			}
 		}
 	}
+}
+
+func (s *seedScanner) adjustKeys() {
 	gap := s.maximumInternalIndex - s.maximumExternalIndex
 	if gap > 0 {
 		toGrow := s.addressGapLimit - gap
-		s.generateKeys(uint64(toGrow))
+		s.generateKeys(toGrow)
 	}
+	// log.Printf("Update maximumExternalIndex: %d,maximumInternalIndex: %d, totalKeys: %d", s.maximumExternalIndex, s.maximumInternalIndex, len(s.keys))
 }
 
 // scan subscribes s to cs and scans the blockchain for addresses that belong

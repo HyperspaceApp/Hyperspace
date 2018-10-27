@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/coreos/bbolt"
@@ -145,13 +146,12 @@ func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 		}
 
 		externalIndex, err = dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
-		// log.Println("unlock externalIndex:", externalIndex)
 		if err != nil {
 			return err
 		}
 
 		internalIndex, err = dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
-		// log.Println("unlock internalIndex:", internalIndex)
+		log.Printf("unlock internalIndex: %d,externalIndex: %d", internalIndex, externalIndex)
 		if err != nil {
 			return err
 		}
@@ -296,10 +296,10 @@ func (w *Wallet) rescanMessage(done chan struct{}) {
 	}
 
 	for {
-		w.mu.Lock()
-		height, _ := dbGetConsensusHeight(w.dbTx)
-		w.mu.Unlock()
-		print("\rWallet: scanned to height ", height, "...")
+		// w.mu.Lock()
+		// height, _ := dbGetConsensusHeight(w.dbTx)
+		// w.mu.Unlock()
+		// print("\rWallet: scanned to height ", height, "...")
 
 		select {
 		case <-done:

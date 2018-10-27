@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"log"
 	"math"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -66,18 +67,19 @@ func (w *Wallet) isWalletAddress(uh types.UnlockHash) bool {
 // contains an unlock hash of the lookahead set. Returns true if a blockchain rescan is required
 func (w *Wallet) updateLookahead(tx *bolt.Tx, sods []modules.SiacoinOutputDiff) error {
 	externalIndex, err := dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
+	oldExternalIndex := externalIndex
 	if err != nil {
 		return err
 	}
 	for _, diff := range sods {
-		//fmt.Printf("scanning %v\n", diff.SiacoinOutput.UnlockHash)
 		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
 			if index >= externalIndex {
+				log.Printf("scanning %s, new index: %d", diff.SiacoinOutput.UnlockHash, index)
 				externalIndex = index + 1
 			}
 		}
 	}
-	if externalIndex > 0 {
+	if externalIndex > 0 && externalIndex != oldExternalIndex {
 		return w.advanceSeedLookahead(externalIndex)
 	}
 

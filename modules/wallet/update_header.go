@@ -33,6 +33,7 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 		panic(err)
 	}
 	keysArray = append(keysArray, lookaheadKeysArray...)
+	// log.Printf("lookaheadKeysArray: %d, keysArray: %d", len(lookaheadKeysArray), len(keysArray))
 
 	// This is probably not the best way to handle this. Here is the dilemma:
 	// We're updating our lookahead with each block. We don't know how to
