@@ -95,7 +95,7 @@ func (w *Wallet) initEncryption(masterKey crypto.CipherKey, seed modules.Seed, i
 		return modules.Seed{}, err
 	}
 
-	w.lookahead.Initialize(seed, 0)
+	w.lookahead.Initialize(seed, internalIndex)
 
 	// on future startups, this field will be set by w.initPersist
 	w.encrypted = true

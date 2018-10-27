@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"log"
 	"math"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -74,7 +73,6 @@ func (w *Wallet) updateLookahead(tx *bolt.Tx, sods []modules.SiacoinOutputDiff) 
 	for _, diff := range sods {
 		if index, ok := w.lookahead.GetIndex(diff.SiacoinOutput.UnlockHash); ok {
 			if index >= externalIndex {
-				log.Printf("scanning %s, new index: %d", diff.SiacoinOutput.UnlockHash, index)
 				externalIndex = index + 1
 			}
 		}

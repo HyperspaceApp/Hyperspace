@@ -100,7 +100,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 	// deal the lock outside to avoid lock twice
 	// cs.mu.Lock()
 	// defer cs.mu.Unlock()
-	log.Printf("managedAcceptSingleBlock: %s", block.ID())
+	// log.Printf("managedAcceptSingleBlock: %s", block.ID())
 
 	parentHeader, setErr := cs.validateSingleHeaderAndBlockForSPV(boltTxWrapper{tx}, block, block.ID())
 	// if err == errFutureTimestamp { // header should already downloaded
