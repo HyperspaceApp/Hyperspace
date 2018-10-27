@@ -31,7 +31,7 @@ func (la *lookahead) AppendKey(key spendableKey) {
 func (la *lookahead) GetKeyByIndex(index uint64) spendableKey {
 	// log.Printf("GetKeyByIndex(%v): startingIndex: %v, len(la.keys): %v\n",
 	// 	index, la.startingIndex, uint64(len(la.keys)))
-	if (index - la.startingIndex) > uint64(len(la.keys)) {
+	if (index-la.startingIndex) > uint64(len(la.keys)) || (index-la.startingIndex) < 0 {
 		panic("GetKeyByIndex out of bounds")
 	}
 	return la.keys[index-la.startingIndex]
