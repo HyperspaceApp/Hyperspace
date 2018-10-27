@@ -20,7 +20,7 @@ func newTestingGateway(t *testing.T) *Gateway {
 		panic("newTestingGateway called during short test")
 	}
 
-	g, err := New("localhost:0", false, build.TempDir("gateway", t.Name()))
+	g, err := New("localhost:0", false, build.TempDir("gateway", t.Name()), false)
 	if err != nil {
 		panic(err)
 	}
@@ -34,7 +34,7 @@ func newNamedTestingGateway(t *testing.T, suffix string) *Gateway {
 		panic("newTestingGateway called during short test")
 	}
 
-	g, err := New("localhost:0", false, build.TempDir("gateway", t.Name()+suffix))
+	g, err := New("localhost:0", false, build.TempDir("gateway", t.Name()+suffix), false)
 	if err != nil {
 		panic(err)
 	}
@@ -127,13 +127,13 @@ func TestNew(t *testing.T) {
 	}
 	t.Parallel()
 
-	if _, err := New("", false, ""); err == nil {
+	if _, err := New("", false, "", false); err == nil {
 		t.Fatal("expecting persistDir error, got nil")
 	}
-	if _, err := New("localhost:0", false, ""); err == nil {
+	if _, err := New("localhost:0", false, "", false); err == nil {
 		t.Fatal("expecting persistDir error, got nil")
 	}
-	if g, err := New("foo", false, build.TempDir("gateway", t.Name()+"1")); err == nil {
+	if g, err := New("foo", false, build.TempDir("gateway", t.Name()+"1"), false); err == nil {
 		t.Fatal("expecting listener error, got nil", g.myAddr)
 	}
 	// create corrupted nodes.json
@@ -143,7 +143,7 @@ func TestNew(t *testing.T) {
 	if err != nil {
 		t.Fatal("couldn't create corrupted file:", err)
 	}
-	if _, err := New("localhost:0", false, dir); err == nil {
+	if _, err := New("localhost:0", false, dir, false); err == nil {
 		t.Fatal("expected load error, got nil")
 	}
 }
