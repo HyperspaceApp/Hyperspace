@@ -205,9 +205,13 @@ func (cs *ConsensusSet) matureAndApplyHeader(tx *bolt.Tx, ce changeEntry) error 
 	for _, appliedBlockID := range ce.AppliedBlocks {
 		appliedBlockHeader, exist := cs.processedBlockHeaders[appliedBlockID]
 		if exist {
-			oldSCOLen := len(appliedBlockHeader.SiacoinOutputDiffs)
+			// because it is part of ProcessHeaderConsensus, can happen a lot of times
+			// so if already matured, won't do it again
+			if len(appliedBlockHeader.SiacoinOutputDiffs) > 0 {
+				continue
+			}
 			applyMaturedSiacoinOutputsForHeader(tx, appliedBlockHeader)
-			if oldSCOLen == len(appliedBlockHeader.SiacoinOutputDiffs) {
+			if len(appliedBlockHeader.SiacoinOutputDiffs) > 0 { // if we got some matured scod, save it to boltdb
 				headerMap := tx.Bucket(BlockHeaderMap)
 				id := appliedBlockHeader.BlockHeader.ID()
 				err := headerMap.Put(id[:], encoding.Marshal(*appliedBlockHeader))

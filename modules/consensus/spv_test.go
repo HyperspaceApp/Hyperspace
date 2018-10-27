@@ -16,7 +16,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
-func spvConsensusSetTester(name string, deps modules.Dependencies) (*consensusSetTester, error) {
+func spvConsensusSetTester(name string, seedStr string, unlock bool, deps modules.Dependencies) (*consensusSetTester, error) {
 	testdir := build.TempDir(modules.ConsensusDir, name)
 	log.Printf("path: %s", testdir)
 
@@ -37,22 +37,44 @@ func spvConsensusSetTester(name string, deps modules.Dependencies) (*consensusSe
 	if err != nil {
 		return nil, err
 	}
-	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
-	_, err = w.Encrypt(key)
-	if err != nil {
-		return nil, err
+	var seed modules.Seed
+	var masterKey crypto.CipherKey
+	if seedStr == "" {
+		seed, err = w.Encrypt(nil)
+		if err != nil {
+			return nil, err
+		}
+		seedStr, err = modules.SeedToString(seed, "english")
+		if err != nil {
+			return nil, err
+		}
+		masterKey = crypto.NewWalletKey(crypto.HashObject(seed))
+	} else {
+		seed, err = modules.StringToSeed(seedStr, "english")
+		if err != nil {
+			return nil, err
+		}
+		masterKey = crypto.NewWalletKey(crypto.HashObject(seed))
+		err = w.InitFromSeed(masterKey, seed)
+		if err != nil {
+			return nil, err
+		}
 	}
-	err = w.Unlock(key)
-	if err != nil {
-		return nil, err
+	masterKey = crypto.NewWalletKey(crypto.HashObject(seed))
+	if unlock {
+		err = w.Unlock(masterKey)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Assemble all objects into a consensusSetTester.
 	cst := &consensusSetTester{
-		gateway:   g,
-		tpool:     tp,
-		wallet:    w,
-		walletKey: key,
+		gateway:       g,
+		tpool:         tp,
+		wallet:        w,
+		walletKey:     masterKey,
+		walletSeedStr: seedStr,
 
 		cs: cs,
 
@@ -73,7 +95,15 @@ func (cst *consensusSetTester) CloseSPV() error {
 }
 
 func createSPVConsensusSetTester(name string) (*consensusSetTester, error) {
-	cst, err := spvConsensusSetTester(name, modules.ProdDependencies)
+	cst, err := spvConsensusSetTester(name, "", true, modules.ProdDependencies)
+	if err != nil {
+		return nil, err
+	}
+	return cst, nil
+}
+
+func createSPVConsensusSetTesterWithSeed(name string, seedStr string) (*consensusSetTester, error) {
+	cst, err := spvConsensusSetTester(name, seedStr, false, modules.ProdDependencies)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +212,6 @@ func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
 
 // TestSPVBalance test txn detection
 func TestSPVBalance(t *testing.T) {
-	log.Printf("TestSPVBalance start!")
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -402,4 +431,53 @@ func isTxnUnconfirmed(cst *consensusSetTester, txn types.Transaction) (bool, err
 		}
 	}
 	return false, nil
+}
+
+func TestSPVMatureDSCO(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	cst1, err := createSPVConsensusSetTester(t.Name() + "1") // unlocked
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst1.CloseSPV()
+	cst2, err := createConsensusSetTester(t.Name() + "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst2.Close()
+
+	cst3, err := createSPVConsensusSetTesterWithSeed(t.Name()+"3", cst1.walletSeedStr) // locked
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst3.CloseSPV()
+
+	uc, err := cst1.wallet.NextAddress() // address for both cst1 and cst3
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	block, err := cst2.miner.AddBlockWithAddress(uc.UnlockHash())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cst2.mineSiacoins()
+	err = cst3.gateway.Connect(cst2.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitTillSync(cst3, cst2, t)
+
+	err = cst3.wallet.Unlock(cst3.walletKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// unlock now and we got block miner payout balance
+	balance, err := cst3.wallet.ConfirmedBalance()
+	if !balance.Equals(block.MinerPayouts[0].Value) {
+		t.Fatal(fmt.Printf("balance not match, %s = %s\n", balance, block.MinerPayouts[0].Value))
+	}
 }

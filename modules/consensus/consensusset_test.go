@@ -19,11 +19,12 @@ import (
 // including helper modules and methods for controlling synchronization between
 // the tester and the modules.
 type consensusSetTester struct {
-	gateway   modules.Gateway
-	miner     modules.TestMiner
-	tpool     modules.TransactionPool
-	wallet    modules.Wallet
-	walletKey crypto.CipherKey
+	gateway       modules.Gateway
+	miner         modules.TestMiner
+	tpool         modules.TransactionPool
+	wallet        modules.Wallet
+	walletKey     crypto.CipherKey
+	walletSeedStr string
 
 	cs *ConsensusSet
 

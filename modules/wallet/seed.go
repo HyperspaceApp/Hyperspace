@@ -1,7 +1,7 @@
 package wallet
 
 import (
-	"log"
+
 	//"fmt"
 	"runtime"
 	"sync"
@@ -225,8 +225,6 @@ func (w *Wallet) NextAddresses(n uint64) ([]types.UnlockConditions, error) {
 	if err != nil {
 		return []types.UnlockConditions{}, err
 	}
-	log.Printf("NextAddress:%d %s", n, ucs[0].UnlockHash())
-
 	return ucs, err
 }
 
