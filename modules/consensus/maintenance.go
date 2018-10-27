@@ -121,9 +121,13 @@ func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBloc
 	// scan is complete.
 	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
 	// log.Printf("applyMaturedSiacoinOutputsForHeader dsco for %d", pbh.Height)
+	bucket := tx.Bucket(bucketID)
+	if bucket == nil {
+		return
+	}
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
-	dbErr := tx.Bucket(bucketID).ForEach(func(idBytes, scoBytes []byte) error {
+	dbErr := bucket.ForEach(func(idBytes, scoBytes []byte) error {
 		// Decode the key-value pair into an id and a siacoin output.
 		var id types.SiacoinOutputID
 		var sco types.SiacoinOutput
