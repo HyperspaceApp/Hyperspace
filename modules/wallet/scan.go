@@ -10,7 +10,7 @@ import (
 type SeedScanner interface {
 	scan(<-chan struct{}) error
 	getMaximumExternalIndex() uint64
-	getMaximumInternalIndex() uint64
+	// getMaximumInternalIndex() uint64
 	setDustThreshold(d types.Currency)
 	getSiacoinOutputs() map[types.SiacoinOutputID]scannedOutput
 }

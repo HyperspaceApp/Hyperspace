@@ -185,8 +185,9 @@ func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.Proces
 	}
 	// Use the difficulty adjustment algorithm to set the target of the child
 	// header and put the new processed header into the database.
-	headerMap := tx.Bucket(BlockHeaderMap)
 	childHeader.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, parentHeader.ChildTarget, parentHeader.Height, parentHeader.BlockHeader.Timestamp)
+
+	headerMap := tx.Bucket(BlockHeaderMap)
 	err = headerMap.Put(childID[:], encoding.Marshal(*childHeader))
 	if build.DEBUG && err != nil {
 		panic(err)

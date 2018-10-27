@@ -73,19 +73,6 @@ func (cs *ConsensusSet) dbPushPath(bid types.BlockID) {
 	}
 }
 
-// dbGetBlockMap is a convenience function allowing getBlockMap to be called
-// without a bolt.Tx.
-func (cs *ConsensusSet) dbGetBlockMap(id types.BlockID) (pb *processedBlock, err error) {
-	dbErr := cs.db.View(func(tx *bolt.Tx) error {
-		pb, err = getBlockMap(tx, id)
-		return nil
-	})
-	if dbErr != nil {
-		panic(dbErr)
-	}
-	return pb, err
-}
-
 func (cs *ConsensusSet) dbGetBlockHeaderMap(id types.BlockID) (pbh *modules.ProcessedBlockHeader, err error) {
 	dbErr := cs.db.View(func(tx *bolt.Tx) error {
 		pbh, err = getBlockHeaderMap(tx, id)

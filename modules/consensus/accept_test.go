@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"errors"
-	"log"
 	"testing"
 	"time"
 
@@ -485,18 +484,18 @@ func TestUnitValidateHeader(t *testing.T) {
 			},
 			processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 		}
-		log.Printf("\nitem: %s\n", tt.msg)
+		// log.Printf("\nitem: %s\n", tt.msg)
 		// Initialize the blockmap in the tx.
 		blockBucket := mockDbBucket{map[string][]byte{}}
 		for _, mapPair := range tt.blockMapPairs {
 			var id types.BlockID
 			copy(id[:], mapPair.key[:])
 			blockBucket.Set(mapPair.key, mapPair.val)
-			log.Printf("set block id: %s", id)
+			// log.Printf("set block id: %s", id)
 			var b processedBlock
 			err := tt.marshaler.Unmarshal(mapPair.val, &b)
 			if err == nil {
-				log.Printf("set parent id: %s", id)
+				// log.Printf("set parent id: %s", id)
 				cs.processedBlockHeaders[id] = &modules.ProcessedBlockHeader{
 					BlockHeader: b.Block.Header(),
 					ChildTarget: b.ChildTarget,
@@ -519,7 +518,7 @@ func TestUnitValidateHeader(t *testing.T) {
 		// parentHeaderMap[mockValidBlock.ParentID] = &parentProcessedBlockHeader
 
 		_, err := cs.validateHeader(tx, tt.header)
-		log.Printf("header parent id: %s", tt.header.ParentID)
+		// log.Printf("header parent id: %s", tt.header.ParentID)
 
 		if err != tt.errWant {
 			t.Errorf("%s: expected to fail with `%v', got: `%v'", tt.msg, tt.errWant, err)

@@ -167,7 +167,7 @@ type Pool struct {
 	shiftTimestamp time.Time
 	clients        map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex deadlock.Mutex
+	clientSetupMutex map[string]*deadlock.Mutex
 	runningMutex     deadlock.RWMutex
 	running          bool
 }
@@ -328,9 +328,10 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			minHeap:  false,
 		},
 
-		persistDir: persistDir,
-		stratumID:  rand.Uint64(),
-		clients:    make(map[string]*Client),
+		persistDir:       persistDir,
+		stratumID:        rand.Uint64(),
+		clients:          make(map[string]*Client),
+		clientSetupMutex: make(map[string]*deadlock.Mutex),
 	}
 	var err error
 
@@ -341,7 +342,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	}
 
 	// TODO: need to investigate why it's down when 30 second and is clientSetupMutex local necessary
-	deadlock.Opts.DeadlockTimeout = time.Minute * 2
+	deadlock.Opts.DeadlockTimeout = time.Minute * 1
 
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.

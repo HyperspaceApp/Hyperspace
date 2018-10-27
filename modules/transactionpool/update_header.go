@@ -191,7 +191,7 @@ func (tp *TransactionPool) ProcessHeaderConsensusChange(hcc modules.HeaderConsen
 
 	// // Inform subscribers that an update has executed.
 	tp.mu.Demote()
-	// tp.updateSubscribersTransactions()
+	tp.updateSubscribersTransactions()
 	tp.mu.DemotedUnlock()
 }
 

@@ -434,7 +434,11 @@ func (g *Gateway) managedConnect(addr modules.NetAddress) error {
 	remoteVersion, err := connectVersionHandshake(conn, build.Version)
 	if err != nil {
 		conn.Close()
-		return err
+	}
+
+	if g.spv && (build.VersionCmp(remoteVersion, minimumSPVAcceptablePeerVersion) < 0) {
+		conn.Close()
+		return fmt.Errorf("spv require higher version: %s < %s", remoteVersion, minimumSPVAcceptablePeerVersion)
 	}
 
 	if build.VersionCmp(remoteVersion, minimumAcceptablePeerVersion) >= 0 {

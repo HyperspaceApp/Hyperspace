@@ -248,10 +248,33 @@ func (w *Wallet) allAddressesInByteArray() ([][]byte, error) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 
-	var keyArray [][]byte
+	keyArray := make([][]byte, 0, len(w.keys))
 	// TODO: maybe cache this somewhere
 	for u := range w.keys {
-		keyArray = append(keyArray, u[:])
+		byteArray := make([]byte, len(u[:]))
+		copy(byteArray, u[:])
+		keyArray = append(keyArray, byteArray)
+	}
+
+	return keyArray, nil
+}
+
+func (w *Wallet) lookaheadAddressesInByteArray() ([][]byte, error) {
+	if err := w.tg.Add(); err != nil {
+		return [][]byte{}, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	addresses := w.lookahead.Addresses()
+	keyArray := make([][]byte, 0, len(addresses))
+	// TODO: maybe cache this somewhere
+	for _, u := range addresses {
+		byteArray := make([]byte, len(u[:]))
+		copy(byteArray, u[:])
+		keyArray = append(keyArray, byteArray)
 	}
 	return keyArray, nil
 }

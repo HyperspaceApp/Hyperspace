@@ -1,6 +1,7 @@
 package wallet
 
 import (
+
 	//"fmt"
 	"runtime"
 	"sync"
@@ -224,7 +225,6 @@ func (w *Wallet) NextAddresses(n uint64) ([]types.UnlockConditions, error) {
 	if err != nil {
 		return []types.UnlockConditions{}, err
 	}
-
 	return ucs, err
 }
 
@@ -304,7 +304,7 @@ func (w *Wallet) LoadSeed(masterKey crypto.CipherKey, seed modules.Seed) error {
 		}
 
 		// load the seed's keys
-		w.integrateSeed(seed, uint64(s.getMaximumInternalIndex()))
+		w.integrateSeed(seed, s.getMaximumExternalIndex())
 		w.seeds = append(w.seeds, seed)
 
 		// delete the set of processed transactions; they will be recreated

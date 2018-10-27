@@ -123,6 +123,9 @@ type (
 		// function to be called by a subscriber during
 		// ProcessConsensusChange.
 		TryTransactionSet func([]types.Transaction) (ConsensusChange, error)
+
+		// ConsensusDBTx is the update cursor of consensus.db
+		// ConsensusDBTx *bolt.Tx
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
@@ -264,6 +267,9 @@ type (
 		// CurrentBlock returns the latest block in the heaviest known
 		// blockchain.
 		CurrentBlock() types.Block
+
+		// CurrentHeader returns the latest header in the heaviest known blockchain
+		CurrentHeader() types.BlockHeader
 
 		// Flush will cause the consensus set to finish all in-progress
 		// routines.
@@ -431,7 +437,9 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
+		// log.Printf("Appling: %d %s", pbh.Height, blockID)
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
+			// log.Printf("Matched: %d %s", pbh.Height, blockID)
 			// log.Printf("apply block: %d", pbh.Height)
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffApply)

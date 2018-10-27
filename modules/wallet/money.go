@@ -189,6 +189,14 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 	if w.deps.Disrupt("SendSiacoinsInterrupted") {
 		return nil, errors.New("failed to accept transaction set (SendSiacoinsInterrupted)")
 	}
+	// for _, txn := range txnSet {
+	// 	for _, in := range txn.SiacoinInputs {
+	// 		log.Printf("in: %s %s", in.UnlockConditions.UnlockHash(), in.ParentID)
+	// 	}
+	// 	for _, out := range txn.SiacoinOutputs {
+	// 		log.Printf("out: %s %s", out.UnlockHash, out.Value)
+	// 	}
+	// }
 	err = w.tpool.AcceptTransactionSet(txnSet)
 	if err != nil {
 		w.log.Println("Attempt to send coins has failed - transaction pool rejected transaction:", err)

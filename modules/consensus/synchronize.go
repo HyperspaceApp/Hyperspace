@@ -299,23 +299,23 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	err = cs.db.View(func(tx *bolt.Tx) error {
 		csHeight = blockHeight(tx)
 		for _, id := range knownBlocks {
-			ph, exist := cs.processedBlockHeaders[id]
-			if !exist {
-				continue
-			}
-			pathID, err := getPath(tx, ph.Height)
+			pb, err := getBlockMap(tx, id)
 			if err != nil {
 				continue
 			}
-			if pathID != ph.BlockHeader.ID() {
+			pathID, err := getPath(tx, pb.Height)
+			if err != nil {
 				continue
 			}
-			if ph.Height == csHeight {
+			if pathID != pb.Block.ID() {
+				continue
+			}
+			if pb.Height == csHeight {
 				break
 			}
 			found = true
 			// Start from the child of the common block.
-			start = ph.Height + 1
+			start = pb.Height + 1
 			break
 		}
 		return nil
@@ -329,12 +329,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	// don't send any blocks.
 	if !found {
 		// Send 0 blocks.
-		if remoteSupportsSPVHeader(conn.Version()) {
-			// processed block header for send
-			err = encoding.WriteObject(conn, []modules.TransmittedBlockHeader{})
-		} else {
-			err = encoding.WriteObject(conn, []types.Block{})
-		}
+		err = encoding.WriteObject(conn, []types.Block{})
 		if err != nil {
 			return err
 		}
@@ -346,8 +341,7 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 	moreAvailable := true
 	for moreAvailable {
 		// Get the set of blocks to send.
-		var blockHeaders []types.BlockHeader
-		var blockHeadersForSend []modules.TransmittedBlockHeader
+		var blocks []types.Block
 		cs.mu.RLock()
 		err = cs.db.View(func(tx *bolt.Tx) error {
 			height := blockHeight(tx)
@@ -357,20 +351,16 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 					cs.log.Critical("Unable to get path: height", height, ":: request", i)
 					return err
 				}
-				ph, exist := cs.processedBlockHeaders[id]
-				if !exist {
-					cs.log.Critical("Unable to get block header from headers: height", height, ":: request", i, ":: id", id)
+				pb, err := getBlockMap(tx, id)
+				if err != nil {
+					cs.log.Critical("Unable to get block from block map: height", height, ":: request", i, ":: id", id)
 					return err
 				}
-				if ph == nil {
-					cs.log.Critical("getBlock Header yielded 'nil' block header:", height, ":: request", i, ":: id", id)
+				if pb == nil {
+					cs.log.Critical("getBlockMap yielded 'nil' block:", height, ":: request", i, ":: id", id)
 					return errNilProcBlock
 				}
-				if remoteSupportsSPVHeader(conn.Version()) {
-					blockHeadersForSend = append(blockHeadersForSend, *ph.ForSend())
-				} else {
-					blockHeaders = append(blockHeaders, ph.BlockHeader)
-				}
+				blocks = append(blocks, pb.Block)
 			}
 			moreAvailable = start+MaxCatchUpBlocks <= height
 			start += MaxCatchUpBlocks
@@ -383,18 +373,14 @@ func (cs *ConsensusSet) rpcSendBlocks(conn modules.PeerConn) error {
 
 		// Send a set of blocks to the caller + a flag indicating whether more
 		// are available.
-		if remoteSupportsSPVHeader(conn.Version()) {
-			err = encoding.WriteObject(conn, blockHeadersForSend)
-		} else {
-			err = encoding.WriteObject(conn, blockHeaders)
-		}
-		if err != nil {
+		if err = encoding.WriteObject(conn, blocks); err != nil {
 			return err
 		}
 		if err = encoding.WriteObject(conn, moreAvailable); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -486,25 +472,9 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 			if !remoteSupportsSPVHeader(conn.Version()) {
 				return
 			}
-			chainExtend, changes, _ := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
-			if chainExtend {
-				if cs.getWalletKeysFunc == nil {
-					cs.log.Printf("wallet not loaded, won't check gcs")
-					return
-				}
-				id := h.ID()
-				keysArray, err := cs.getWalletKeysFunc()
-				if err != nil {
-					cs.log.Debugln("WARN: failed to get addresses from wallet:", err)
-				}
-				if len(keysArray) > 0 { // unlocked
-					if phfs.GCSFilter.MatchUnlockHash(id[:], keysArray) {
-						err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveSingleBlock(h.ID(), changes))
-						if err != nil {
-							cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
-						}
-					}
-				}
+			_, _, err := cs.managedAcceptHeaders([]modules.TransmittedBlockHeader{phfs})
+			if err != nil {
+				cs.log.Debugln("WARN: failed to get header's corresponding block:", err)
 			}
 		} else {
 			err = cs.gateway.RPC(conn.RPCAddr(), modules.SendBlockCmd, cs.managedReceiveBlock(h.ID()))
@@ -721,7 +691,7 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 	return nil
 }
 
-func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pb *processedBlock) modules.RPCFunc {
+func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlock) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
@@ -730,22 +700,44 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pb *processedBlock
 		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 			return
 		}
-		pb, err = cs.managedAcceptSingleBlock(block, nil)
+		// log.Printf("before downloadSingleBlock: %s", id)
+		err = cs.db.Update(func(tx *bolt.Tx) error {
+			var errAcceptSingleBlock error
+			*ppb, errAcceptSingleBlock = cs.managedAcceptSingleBlock(tx, block)
+			return errAcceptSingleBlock
+		})
+		// log.Printf("after downloadSingleBlock: %s", id)
 		if err != nil {
+			cs.log.Printf("err when download single block: %s", err)
 			return
 		}
 		return nil
 	}
 }
 
-func (cs *ConsensusSet) getOrDownloadBlock(tx *bolt.Tx, id types.BlockID) (*processedBlock, error) {
-	pb, err := getBlockMap(tx, id)
+// dbGetBlockMap is a convenience function allowing getBlockMap to be called
+// without a bolt.Tx.
+func (cs *ConsensusSet) dbGetBlockMap(id types.BlockID) (pb *processedBlock, err error) {
+	dbErr := cs.db.View(func(tx *bolt.Tx) error {
+		pb, err = getBlockMap(tx, id)
+		return nil
+	})
+	if dbErr != nil {
+		panic(dbErr)
+	}
+	return pb, err
+}
+
+func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, error) {
+	pb, err := cs.dbGetBlockMap(id)
 	if err == errNilItem {
+		// TODO: add retry download when fail to download from one peer (could be spv)
 		peer, err := cs.gateway.RandomPeer()
 		if err != nil {
 			return nil, err
 		}
-		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pb))
+		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, &pb))
+		// log.Printf("cs.gateway.RPC: %s", (*pb).Block.ID())
 		if err != nil {
 			return nil, err
 		}

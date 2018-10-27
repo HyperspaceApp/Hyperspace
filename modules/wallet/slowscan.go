@@ -1,6 +1,9 @@
 package wallet
 
 import (
+	"log"
+	"time"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -20,7 +23,7 @@ var numInitialKeys = func() uint64 {
 	case "dev":
 		return 10e3
 	case "standard":
-		return 10e6
+		return 1e6
 	case "testing":
 		return 10e3
 	default:
@@ -39,6 +42,7 @@ type slowSeedScanner struct {
 	addressGapLimit      uint64
 	siacoinOutputs       map[types.SiacoinOutputID]scannedOutput
 	cs                   modules.ConsensusSet
+	walletStopChan       <-chan struct{}
 	gapScanner           *seedScanner
 	lastConsensusChange  modules.ConsensusChangeID
 	cancel               chan struct{}
@@ -50,9 +54,9 @@ func (s slowSeedScanner) getMaximumExternalIndex() uint64 {
 	return s.maximumExternalIndex
 }
 
-func (s slowSeedScanner) getMaximumInternalIndex() uint64 {
-	return s.gapScanner.maximumInternalIndex
-}
+// func (s slowSeedScanner) getMaximumInternalIndex() uint64 {
+// 	return s.gapScanner.maximumInternalIndex
+// }
 
 func (s *slowSeedScanner) setDustThreshold(d types.Currency) {
 	s.dustThreshold = d
@@ -106,10 +110,6 @@ func (s *slowSeedScanner) adjustMinimumIndex(siacoinOutputDiffs []modules.Siacoi
 // In a full node, we read the block directly from the consensus db and grab the
 // outputs from the block output diff.
 func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
-	var siacoinOutputDiffs []modules.SiacoinOutputDiff
-
-	// grab matured outputs
-	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
 
 	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
@@ -117,38 +117,26 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 			close(s.cancel)
 			return
 		}
-		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
-			// log.Printf("apply block: %d", pbh.Height)
-			// read the block, process the output
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffApply)
-			if err != nil {
-				panic(err)
-			}
-			s.adjustMinimumIndex(blockSiacoinOutputDiffs)
-			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
-		}
 	}
 
-	// grab reverted active outputs from full blocks
-	for _, pbh := range hcc.RevertedBlockHeaders {
-		blockID := pbh.BlockHeader.ID()
-		if pbh.GCSFilter.MatchUnlockHash(blockID[:], s.keysArray) {
-			// log.Printf("revert block: %d", pbh.Height)
-			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, modules.DiffRevert)
-			if err != nil {
-				panic(err)
-			}
-			s.adjustMinimumIndex(blockSiacoinOutputDiffs)
-			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(s.keysArray)
+	for err != nil {
+		s.log.Severe("ERROR: failed to fetch space cash outputs:", err)
+		select {
+		case <-s.walletStopChan:
+			close(s.cancel)
+			return
+		case <-time.After(50 * time.Millisecond):
+			break // will not go out of forloop
 		}
+		siacoinOutputDiffs, err = hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	}
 
 	// apply the aggregated output diffs
 	for _, diff := range siacoinOutputDiffs {
 		if diff.Direction == modules.DiffApply {
 			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists && diff.SiacoinOutput.Value.Cmp(s.dustThreshold) > 0 {
-				// log.Printf("slow DiffApply %d: %s\n", index, diff.SiacoinOutput.Value.String())
+				log.Printf("slow DiffApply %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
 				s.siacoinOutputs[diff.ID] = scannedOutput{
 					id:        types.OutputID(diff.ID),
 					value:     diff.SiacoinOutput.Value,
@@ -158,13 +146,23 @@ func (s *slowSeedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsens
 		} else if diff.Direction == modules.DiffRevert {
 			// NOTE: DiffRevert means the output was either spent or was in a
 			// block that was reverted.
-			if _, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
-				// log.Printf("slow DiffRevert %d: %s\n", index, diff.SiacoinOutput.Value.String())
+			if index, exists := s.keys[diff.SiacoinOutput.UnlockHash]; exists {
+				log.Printf("slow DiffRevert %d: %s %s\n", index, diff.SiacoinOutput.UnlockHash, diff.SiacoinOutput.Value.HumanString())
 				delete(s.siacoinOutputs, diff.ID)
 			}
 		}
 	}
-
+	for _, diff := range siacoinOutputDiffs {
+		index, exists := s.keys[diff.SiacoinOutput.UnlockHash]
+		if exists {
+			s.log.Debugln("Seed scanner found a key used at index", index)
+			log.Println("Slow Seed scanner found a key used at index", index)
+			if index >= s.maximumExternalIndex {
+				s.maximumExternalIndex = index + 1
+				log.Println("Update maximumExternalIndex: ", s.maximumExternalIndex)
+			}
+		}
+	}
 	s.lastConsensusChange = hcc.ID
 }
 
@@ -179,6 +177,7 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	//
 	// NOTE: since scanning is very slow, we aim to only scan once, which
 	// means generating many keys.
+	s.walletStopChan = cancel
 	s.gapScanner = newFastSeedScanner(s.seed, s.addressGapLimit, s.cs, s.log)
 
 	s.generateKeys(numInitialKeys)
@@ -190,12 +189,10 @@ func (s *slowSeedScanner) scan(cancel <-chan struct{}) error {
 	s.cs.HeaderUnsubscribe(s)
 
 	// log.Printf("end fist part slow scan s.maximumExternalIndex %d\n", s.maximumExternalIndex)
-	s.gapScanner.minimumIndex = s.maximumExternalIndex
-	s.gapScanner.maximumInternalIndex = s.maximumExternalIndex
 	s.gapScanner.maximumExternalIndex = s.maximumExternalIndex
 	s.gapScanner.siacoinOutputs = s.siacoinOutputs
-	s.gapScanner.generateKeys(uint64(s.addressGapLimit))
-
+	numKeys := s.maximumExternalIndex + s.addressGapLimit
+	s.gapScanner.generateKeys(numKeys) // this will update s.gapScanner.maximumInternalIndex
 	if err := s.gapScanner.cs.HeaderConsensusSetSubscribe(s.gapScanner, s.lastConsensusChange, cancel); err != nil {
 		return err
 	}

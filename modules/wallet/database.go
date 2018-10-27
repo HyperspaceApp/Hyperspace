@@ -3,6 +3,7 @@ package wallet
 import (
 	"encoding/binary"
 	"fmt"
+	"log"
 	"reflect"
 	"time"
 
@@ -111,6 +112,7 @@ func (w *Wallet) syncDB() error {
 	// commit the current tx
 	err := w.dbTx.Commit()
 	if err != nil {
+		log.Println("ERROR: failed to apply database update:", err)
 		w.log.Severe("ERROR: failed to apply database update:", err)
 		err = errors.Compose(err, w.dbTx.Rollback())
 		return errors.AddContext(err, "unable to commit dbTx in syncDB")

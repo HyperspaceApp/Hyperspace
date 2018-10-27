@@ -46,7 +46,7 @@ func (rt *contractorTester) Close() error {
 func newContractorTester(name string) (*contractorTester, error) {
 	// Create the modules.
 	testdir := build.TempDir("contractor", name)
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}

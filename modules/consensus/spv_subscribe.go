@@ -5,35 +5,31 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/coreos/bbolt"
 )
 
 func (cs *ConsensusSet) updateHeaderSubscribers(ce changeEntry) {
-	if len(cs.subscribers) == 0 {
+	if len(cs.headerSubscribers) == 0 {
 		return
 	}
-	// Get the consensus change and send it to all subscribers.
-	var hcc modules.HeaderConsensusChange
-	cs.db.View(func(tx *bolt.Tx) error {
-		// Compute the consensus change so it can be sent to subscribers.
-		var err error
-		hcc, err = cs.computeHeaderConsensusChange(ce)
-		if err != nil {
-			cs.log.Critical("computeConsensusChange failed:", err)
-			return nil
-		}
-		hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
-		hcc.GetBlockByID = cs.buildBlockGetter(tx)
-		hcc.TryTransactionSet = cs.tryTransactionSet
 
-		for _, subscriber := range cs.headerSubscribers {
-			subscriber.ProcessHeaderConsensusChange(hcc)
-		}
-		return nil
-	})
+	hcc, err := cs.matureHeaderAndComputeHeaderConsensusChange(ce)
+	if err != nil {
+		cs.log.Critical("computeConsensusChange failed:", err)
+		return
+	}
+	hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+	hcc.GetBlockByID = cs.getBlockByID
+	hcc.TryTransactionSet = cs.tryTransactionSet
+
+	for _, subscriber := range cs.headerSubscribers {
+		subscriber.ProcessHeaderConsensusChange(hcc)
+	}
 }
 
 // HeaderConsensusSetSubscribe will send change to subscriber from start
@@ -171,35 +167,85 @@ func (cs *ConsensusSet) managedInitializeHeaderSubscribe(subscriber modules.Head
 		// Send changes in batches of 100 so that we don't hold the
 		// lock for too long.
 		cs.mu.RLock()
-		err := cs.db.View(func(tx *bolt.Tx) error {
-			for i := 0; i < 100 && exists; i++ {
-				latestChangeID = entry.ID()
-				select {
-				case <-cancel:
-					return siasync.ErrStopped
-				default:
-				}
-				hcc, err := cs.computeHeaderConsensusChange(entry)
-				if err != nil {
-					return err
-				}
-				hcc.GetSiacoinOutputDiff = cs.buildDiffGetter(tx)
-				hcc.GetBlockByID = cs.buildBlockGetter(tx)
-				hcc.TryTransactionSet = cs.tryTransactionSet
-				subscriber.ProcessHeaderConsensusChange(hcc)
-				entry, exists = entry.NextEntry(tx)
+		// err := cs.db.View(func(tx *bolt.Tx) error {
+		for i := 0; i < 100 && exists; i++ {
+			latestChangeID = entry.ID()
+			select {
+			case <-cancel:
+				cs.mu.RUnlock()
+				return modules.ConsensusChangeID{}, siasync.ErrStopped
+			default:
 			}
-			return nil
-		})
-		cs.mu.RUnlock()
-		if err != nil {
-			return modules.ConsensusChangeID{}, err
+			hcc, err := cs.matureHeaderAndComputeHeaderConsensusChange(entry)
+			if err != nil {
+				cs.mu.RUnlock()
+				return modules.ConsensusChangeID{}, err
+			}
+			hcc.GetSiacoinOutputDiff = cs.getSiacoinOutputDiff
+			hcc.GetBlockByID = cs.getBlockByID
+			hcc.TryTransactionSet = cs.tryTransactionSet
+			subscriber.ProcessHeaderConsensusChange(hcc)
+			err = cs.db.View(func(tx *bolt.Tx) error {
+				entry, exists = entry.NextEntry(tx)
+				return nil
+			})
+			if err != nil {
+				cs.mu.RUnlock()
+				return modules.ConsensusChangeID{}, err
+			}
 		}
+		cs.mu.RUnlock()
 	}
 	return latestChangeID, nil
 }
 
-func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.HeaderConsensusChange, error) {
+// matureAndApplyHeader this is intend for single block downloaded
+// after first mature of header in header accept
+func (cs *ConsensusSet) matureAndApplyHeader(tx *bolt.Tx, ce changeEntry) error {
+	for _, appliedBlockID := range ce.AppliedBlocks {
+		appliedBlockHeader, exist := cs.processedBlockHeaders[appliedBlockID]
+		if exist {
+			// because it is part of ProcessHeaderConsensus, can happen a lot of times
+			// so if already matured, won't do it again
+			if len(appliedBlockHeader.SiacoinOutputDiffs) > 0 {
+				continue
+			}
+			applyMaturedSiacoinOutputsForHeader(tx, appliedBlockHeader)
+			if len(appliedBlockHeader.SiacoinOutputDiffs) > 0 { // if we got some matured scod, save it to boltdb
+				headerMap := tx.Bucket(BlockHeaderMap)
+				id := appliedBlockHeader.BlockHeader.ID()
+				err := headerMap.Put(id[:], encoding.Marshal(*appliedBlockHeader))
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			return fmt.Errorf("applied block header does not exist in the consensus set processed block headers: %s", appliedBlockID.String())
+		}
+	}
+	return nil
+}
+
+func (cs *ConsensusSet) matureHeaderAndComputeHeaderConsensusChange(ce changeEntry) (modules.HeaderConsensusChange, error) {
+	err := cs.db.Update(func(tx *bolt.Tx) error {
+		return cs.matureAndApplyHeader(tx, ce)
+	})
+	if err != nil {
+		return modules.HeaderConsensusChange{}, err
+	}
+	var hcc modules.HeaderConsensusChange
+	err = cs.db.View(func(tx *bolt.Tx) error {
+		var errHeaderConsensusChange error
+		hcc, errHeaderConsensusChange = cs.computeHeaderConsensusChange(tx, ce)
+		return errHeaderConsensusChange
+	})
+	if err != nil {
+		return modules.HeaderConsensusChange{}, err
+	}
+	return hcc, nil
+}
+
+func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry) (modules.HeaderConsensusChange, error) {
 	hcc := modules.HeaderConsensusChange{
 		ID: ce.ID(),
 	}
@@ -245,10 +291,41 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(ce changeEntry) (modules.He
 	// hcc.ChildTarget = pbh.ChildTarget
 	// hcc.MinimumValidChildTimestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb.Block.ParentID, pb.Block.Timestamp)
 
-	currentBlock := cs.dbCurrentBlockID()
+	currentBlock := currentBlockID(tx)
 	if cs.synced && recentBlock == currentBlock {
 		hcc.Synced = true
 	}
 
 	return hcc, nil
+}
+
+func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
+	// log.Printf("getOrDownloadBlock: %s", id)
+	pb, err := cs.getOrDownloadBlock(id)
+	if err == errNilItem { // assume it is not related block, so not locally exist
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	pbScods := pb.SiacoinOutputDiffs
+	if direction == modules.DiffRevert {
+		for i := len(pbScods) - 1; i >= 0; i-- {
+			pbScod := pbScods[i]
+			pbScod.Direction = !pbScod.Direction
+			scods = append(scods, pbScod)
+		}
+	} else {
+		scods = pbScods
+	}
+	return
+}
+
+func (cs *ConsensusSet) getBlockByID(id types.BlockID) (types.Block, bool) {
+	pb, err := cs.dbGetBlockMap(id)
+	if err == errNilItem { // assume it is not related block, so not locally exist
+		return types.Block{}, false
+	} else if err != nil {
+		panic(err)
+	}
+	return pb.Block, true
 }

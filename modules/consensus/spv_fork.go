@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"fmt"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -65,12 +67,25 @@ func (cs *ConsensusSet) revertToHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHe
 		// Sanity check - after removing a block, check that the consensus set
 		// has maintained consistency.
 		if build.Release == "testing" {
-			cs.checkConsistency(tx)
+			cs.checkHeaderConsistency(tx)
 		} else {
-			cs.maybeCheckConsistency(tx)
+			cs.maybeCheckHeaderConsistency(tx)
 		}
 	}
 	return revertedHeaders
+}
+
+func (cs *ConsensusSet) checkSingleBlockApplyConsistency(tx *bolt.Tx, block *processedBlock) {
+	scoBucket := tx.Bucket(SiacoinOutputs)
+	for _, txn := range block.Block.Transactions {
+		for i := range txn.SiacoinOutputs {
+			scoid := txn.SiacoinOutputID(uint64(i))
+			scoBytes := scoBucket.Get(scoid[:])
+			if scoBytes == nil {
+				panic(fmt.Errorf("checkSingleBlockApplyConsistency fail: %s", scoid))
+			}
+		}
+	}
 }
 
 func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (err error) {
@@ -79,7 +94,9 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 	if block.DiffsGenerated {
 		commitSingleBlockDiffSet(tx, block, modules.DiffApply)
 	} else {
-		err := generateAndApplyDiffForSPV(tx, block)
+		// log.Printf("before generateAndApplyDiffForSPV: %s", block.Block.ID())
+		err := cs.generateAndApplyDiffForSPV(tx, block)
+		// log.Printf("after generateAndApplyDiffForSPV: %s", block.Block.ID())
 		if err != nil {
 			// Mark the block as invalid.
 			cs.dosBlocks[block.Block.ID()] = struct{}{}
@@ -90,9 +107,10 @@ func (cs *ConsensusSet) applySingleBlock(tx *bolt.Tx, block *processedBlock) (er
 	// Sanity check - after applying a block, check that the consensus set
 	// has maintained consistency.
 	if build.Release == "testing" {
-		cs.checkConsistency(tx)
+		cs.checkHeaderConsistency(tx)
+		cs.checkSingleBlockApplyConsistency(tx, block)
 	} else {
-		cs.maybeCheckConsistency(tx)
+		cs.maybeCheckHeaderConsistency(tx)
 	}
 
 	return nil
@@ -110,6 +128,15 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 
 		headerMap := tx.Bucket(BlockHeaderMap)
 		id := header.BlockHeader.ID()
+
+		block, err := getBlockMap(tx, id)
+		if err == nil {
+			commitSingleBlockDiffSet(tx, block, modules.DiffApply)
+		} else {
+			if err != errNilItem {
+				panic(err)
+			}
+		}
 		updateCurrentPath(tx, id, modules.DiffApply)
 
 		headerMap.Put(id[:], encoding.Marshal(*header))
@@ -120,6 +147,8 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 		// NOTE: no every block payout info, no totally supply, no parent block, so won't check consistency in spv
 		if build.Release == "testing" {
 			cs.checkHeaderConsistency(tx)
+		} else {
+			cs.maybeCheckHeaderConsistency(tx)
 		}
 	}
 	return headers, nil

@@ -187,7 +187,7 @@ func New(params NodeParams) (*Node, error) {
 			gateway.NewDeps(...
 		}
 		*/
-		return gateway.New("localhost:0", false, filepath.Join(dir, modules.GatewayDir))
+		return gateway.New("localhost:0", false, filepath.Join(dir, modules.GatewayDir), false)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create gateway"))

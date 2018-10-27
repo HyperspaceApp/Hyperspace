@@ -302,14 +302,23 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 // we need to make sure the action is atomic
 func (h *Handler) setupClient(client, worker string) (*Client, error) {
 	var err error
-	h.p.clientSetupMutex.Lock()
-	defer h.p.clientSetupMutex.Unlock()
-	c, err := h.p.FindClientDB(client)
-	if err != ErrNoUsernameInDatabase {
-		return c, err
+	h.p.mu.Lock()
+	lock, exists := h.p.clientSetupMutex[client]
+	if !exists {
+		lock = &deadlock.Mutex{}
+		h.p.clientSetupMutex[client] = lock
 	}
-	if c == nil {
-		//fmt.Printf("Unable to find client in db: %s\n", client)
+	h.p.mu.Unlock()
+
+	// start := time.Now()
+	// log.Println("lock: ", client, " ", worker)
+	lock.Lock()
+	defer func() {
+		lock.Unlock()
+		// log.Printf("unlock: %s %s %f", client, worker, time.Now().Sub(start).Seconds())
+	}()
+	c, err := h.p.FindClientDB(client)
+	if err == ErrNoUsernameInDatabase {
 		c, err = newClient(h.p, client)
 		if err != nil {
 			//fmt.Println("Failed to create a new Client")
@@ -321,8 +330,6 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 			h.p.log.Printf("Failed to add client to DB: %s\n", err)
 			return nil, err
 		}
-	} else {
-		//fmt.Printf("Found client: %s\n", client)
 	}
 	if h.p.Client(client) == nil {
 		h.p.log.Printf("Adding client in memory: %s\n", client)

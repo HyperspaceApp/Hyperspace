@@ -19,11 +19,12 @@ import (
 // including helper modules and methods for controlling synchronization between
 // the tester and the modules.
 type consensusSetTester struct {
-	gateway   modules.Gateway
-	miner     modules.TestMiner
-	tpool     modules.TransactionPool
-	wallet    modules.Wallet
-	walletKey crypto.CipherKey
+	gateway       modules.Gateway
+	miner         modules.TestMiner
+	tpool         modules.TransactionPool
+	wallet        modules.Wallet
+	walletKey     crypto.CipherKey
+	walletSeedStr string
 
 	cs *ConsensusSet
 
@@ -57,7 +58,7 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	testdir := build.TempDir(modules.ConsensusDir, name)
 
 	// Create modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +151,7 @@ func TestDatabaseClosing(t *testing.T) {
 	testdir := build.TempDir(modules.ConsensusDir, t.Name())
 
 	// Create the gateway.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}

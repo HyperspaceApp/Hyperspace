@@ -6,7 +6,6 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/types"
 
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/coreos/bbolt"
@@ -104,40 +103,6 @@ func (cs *ConsensusSet) updateSubscribers(ce changeEntry) {
 	}
 	for _, subscriber := range cs.subscribers {
 		subscriber.ProcessConsensusChange(cc)
-	}
-}
-
-func (cs *ConsensusSet) buildDiffGetter(tx *bolt.Tx) func(types.BlockID, modules.DiffDirection) ([]modules.SiacoinOutputDiff, error) {
-	return func(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
-		pb, err := cs.getOrDownloadBlock(tx, id)
-		if err == errNilItem { // assume it is not related block, so not locally exist
-			return nil, nil
-		} else if err != nil {
-			return nil, err
-		}
-		pbScods := pb.SiacoinOutputDiffs
-		if direction == modules.DiffRevert {
-			for i := len(pbScods) - 1; i >= 0; i-- {
-				pbScod := pbScods[i]
-				pbScod.Direction = !pbScod.Direction
-				scods = append(scods, pbScod)
-			}
-		} else {
-			scods = pbScods
-		}
-		return
-	}
-}
-
-func (cs *ConsensusSet) buildBlockGetter(tx *bolt.Tx) func(types.BlockID) (types.Block, bool) {
-	return func(id types.BlockID) (types.Block, bool) {
-		pb, err := getBlockMap(tx, id)
-		if err == errNilItem { // assume it is not related block, so not locally exist
-			return types.Block{}, false
-		} else if err != nil {
-			panic(err)
-		}
-		return pb.Block, true
 	}
 }
 

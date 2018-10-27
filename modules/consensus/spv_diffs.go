@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"fmt"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -32,42 +34,35 @@ func commitHeaderDiffSetSanity(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, d
 	}
 }
 
-func commitSingleBlockDiffSetSanity(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
-	// This function is purely sanity checks.
-	if !build.DEBUG {
-		return
-	}
-
-	// Diffs should have already been generated for this node.
-	if !pb.DiffsGenerated {
-		panic(errDiffsNotGenerated)
-	}
-
-	// Current node must be the input node's parent if applying, and
-	// current node must be the input node if reverting.
+func commitSingleNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
-		parent, err := getBlockMap(tx, pb.Block.ParentID)
-		if build.DEBUG && err != nil {
-			panic(err)
+		for _, scod := range pb.SiacoinOutputDiffs {
+			// log.Printf("scod: %s %v %s", scod.SiacoinOutput.UnlockHash, scod.Direction, scod.SiacoinOutput.Value.HumanString())
+			commitSiacoinOutputDiff(tx, scod, dir)
 		}
-		if parent.Block.ID() != currentBlockID(tx) {
-			panic(errWrongAppliedDiffSet)
-		}
+		// for _, fcd := range pb.FileContractDiffs {
+		// 	commitFileContractDiff(tx, fcd, dir)
+		// }
 	} else {
-		if pb.Block.ID() != currentBlockID(tx) {
-			panic(errWrongRevertDiffSet)
+		for i := len(pb.SiacoinOutputDiffs) - 1; i >= 0; i-- {
+			// log.Printf("scod: %s %v %s", pb.SiacoinOutputDiffs[i].SiacoinOutput.UnlockHash, !pb.SiacoinOutputDiffs[i].Direction, pb.SiacoinOutputDiffs[i].SiacoinOutput.Value.HumanString())
+			commitSiacoinOutputDiff(tx, pb.SiacoinOutputDiffs[i], dir)
 		}
+		// for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
+		// 	commitFileContractDiff(tx, pb.FileContractDiffs[i], dir)
+		// }
 	}
 }
 
 func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	// Sanity checks - there are a few so they were moved to another function.
 	// TODO: add back check
-	if build.DEBUG {
-		commitSingleBlockDiffSetSanity(tx, pb, dir)
-	}
+	// can't check block with currentBlockID, cause currentBlockID is current header id
+	// if build.DEBUG {
+	// 	commitSingleBlockDiffSetSanity(tx, pb, dir)
+	// }
 
-	commitNodeDiffs(tx, pb, dir)
+	commitSingleNodeDiffs(tx, pb, dir)
 }
 
 func commitHeaderDiffs(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
@@ -101,17 +96,17 @@ func commitHeaderDiffSet(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir mod
 	updateCurrentPath(tx, pbh.BlockHeader.ID(), dir)
 }
 
-func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
+func (cs *ConsensusSet) generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// Sanity check - the block being applied should have the current block as
 	// a parent.
-	if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
-		panic(errInvalidSuccessor)
-	}
+	// if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
+	// 	panic(errInvalidSuccessor)
+	// }
 
 	// Create the bucket to hold all of the delayed siacoin outputs created by
 	// transactions this block. Needs to happen before any transactions are
 	// applied.
-	createDSCOBucket(tx, pb.Height+types.MaturityDelay)
+	createDSCOBucketIfNotExist(tx, pb.Height+types.MaturityDelay) // have done this in header
 
 	// Validate and apply each transaction in the block. They cannot be
 	// validated all at once because some transactions may not be valid until
@@ -125,11 +120,16 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 		applyTransactionForSPV(tx, pb, txn)
 	}
 
+	pbh, exists := cs.processedBlockHeaders[pb.Block.ID()]
+	if !exists {
+		panic(fmt.Errorf("generateAndApplyDiffForSPV: header not exists %s", pb.Block.ID()))
+	}
+
 	// After all of the transactions have been applied, 'maintenance' is
 	// applied on the block. This includes adding any outputs that have reached
 	// maturity, applying any contracts with missed storage proofs, and adding
 	// the miner payouts to the list of delayed outputs.
-	applyMaintenanceForSPV(tx, pb, nil)
+	applyMaintenanceForSPV(tx, pb, pbh)
 
 	// DiffsGenerated are only set to true after the block has been fully
 	// validated and integrated. This is required to prevent later blocks from
@@ -143,7 +143,11 @@ func generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlock) error {
 	// Add the block to the current path and block map.
 	bid := pb.Block.ID()
 	blockMap := tx.Bucket(BlockMap)
-	// updateCurrentPath(tx, pb, modules.DiffApply)
+	blockHeaderMap := tx.Bucket(BlockHeaderMap)
+	err := blockHeaderMap.Put(bid[:], encoding.Marshal(*pbh))
+	if err != nil {
+		return err
+	}
 
 	// Sanity check preparation - set the consensus hash at this height so that
 	// during reverting a check can be performed to assure consistency when

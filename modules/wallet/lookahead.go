@@ -29,8 +29,9 @@ func (la *lookahead) AppendKey(key spendableKey) {
 }
 
 func (la *lookahead) GetKeyByIndex(index uint64) spendableKey {
-	//fmt.Printf("GetKeyByIndex(%v): startingIndex: %v\n", index, la.startingIndex)
-	if (index - la.startingIndex) > uint64(len(la.keys)) {
+	// log.Printf("GetKeyByIndex(%v): startingIndex: %v, len(la.keys): %v\n",
+	// 	index, la.startingIndex, uint64(len(la.keys)))
+	if (index-la.startingIndex) > uint64(len(la.keys)) || (index-la.startingIndex) < 0 {
 		panic("GetKeyByIndex out of bounds")
 	}
 	return la.keys[index-la.startingIndex]
@@ -55,12 +56,20 @@ func (la *lookahead) PopNextKeys(n uint64) []spendableKey {
 	return keys
 }
 
+func (la *lookahead) Addresses() []types.UnlockHash {
+	hashes := make([]types.UnlockHash, 0, len(la.hashIndexMap))
+	for h := range la.hashIndexMap {
+		hashes = append(hashes, h)
+	}
+	return hashes
+}
+
 func (la *lookahead) Length() uint64 {
 	return uint64(len(la.keys))
 }
 
 func (la *lookahead) Advance(numKeys uint64) []spendableKey {
-	//fmt.Printf("Advanced %v keys\n", numKeys)
+	// log.Printf("Advanced %v keys\n", numKeys)
 	newIndex := la.startingIndex + uint64(len(la.keys))
 	retKeys := []spendableKey{}
 
@@ -79,6 +88,7 @@ func (la *lookahead) Initialize(seed modules.Seed, startingIndex uint64) {
 	la.seed = seed
 	la.startingIndex = startingIndex
 	// do the initial growing of the buffer
+	// log.Printf("Initialize: %d", startingIndex)
 	for _, k := range generateKeys(la.seed, startingIndex, la.addressGapLimit) {
 		la.AppendKey(k)
 	}

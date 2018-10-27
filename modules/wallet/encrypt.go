@@ -79,6 +79,10 @@ func (w *Wallet) initEncryption(masterKey crypto.CipherKey, seed modules.Seed, i
 	if err != nil {
 		return modules.Seed{}, err
 	}
+	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, internalIndex)
+	if err != nil {
+		return modules.Seed{}, err
+	}
 
 	// Establish the encryption verification using the masterKey. After this
 	// point, the wallet is encrypted.
@@ -91,7 +95,7 @@ func (w *Wallet) initEncryption(masterKey crypto.CipherKey, seed modules.Seed, i
 		return modules.Seed{}, err
 	}
 
-	w.lookahead.Initialize(seed, 0)
+	w.lookahead.Initialize(seed, internalIndex)
 
 	// on future startups, this field will be set by w.initPersist
 	w.encrypted = true
@@ -146,6 +150,7 @@ func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 		}
 
 		internalIndex, err = dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
+		// log.Printf("unlock internalIndex: %d,externalIndex: %d", internalIndex, externalIndex)
 		if err != nil {
 			return err
 		}
@@ -432,7 +437,7 @@ func (w *Wallet) InitFromSeed(masterKey crypto.CipherKey, seed modules.Seed) err
 	// initialize the wallet with the appropriate seed progress
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, err = w.initEncryption(masterKey, seed, s.getMaximumInternalIndex())
+	_, err = w.initEncryption(masterKey, seed, s.getMaximumExternalIndex())
 	return err
 }
 
