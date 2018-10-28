@@ -341,9 +341,6 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 		return nil, err
 	}
 
-	// TODO: need to investigate why it's down when 30 second and is clientSetupMutex local necessary
-	deadlock.Opts.DeadlockTimeout = time.Minute * 1
-
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.
 	// fmt.Println("log path:", filepath.Join(p.persistDir, logFile))

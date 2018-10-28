@@ -14,8 +14,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/NebulousLabs/demotemutex"
 
-	"github.com/HyperspaceApp/demotemutex"
 	"github.com/coreos/bbolt"
 )
 
@@ -97,6 +97,7 @@ type ConsensusSet struct {
 	staticDeps modules.Dependencies
 	log        *persist.Logger
 	mu         demotemutex.DemoteMutex
+	// mu         deadlock.RWMutex
 	persistDir string
 	tg         siasync.ThreadGroup
 

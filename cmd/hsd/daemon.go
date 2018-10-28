@@ -16,6 +16,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/profile"
 	mnemonics "github.com/HyperspaceApp/entropy-mnemonics"
+	deadlock "github.com/sasha-s/go-deadlock"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -234,6 +235,9 @@ func startDaemon(config Config) (err error) {
 	} else {
 		fmt.Println("Git Revision " + build.GitRevision)
 	}
+
+	// longer timeout time for locks
+	deadlock.Opts.DeadlockTimeout = time.Minute * 2
 
 	// Install a signal handler that will catch exceptions thrown by mmap'd
 	// files.

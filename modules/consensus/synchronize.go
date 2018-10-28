@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -141,6 +142,7 @@ func (cs *ConsensusSet) managedReceiveBlocks(conn modules.PeerConn) (returnErr e
 	if err != nil {
 		return err
 	}
+	// cs.log.Printf("managedReceiveBlocks: %s", conn.RemoteAddr().String())
 	finishedChan := make(chan struct{})
 	defer close(finishedChan)
 	go func() {
@@ -218,6 +220,7 @@ func (cs *ConsensusSet) managedReceiveBlocks(conn modules.PeerConn) (returnErr e
 			continue
 		}
 		stalled = false
+		// log.Printf("newBlocks: %d %s", len(newBlocks), conn.RemoteAddr().String())
 
 		// Call managedAcceptBlock instead of AcceptBlock so as not to broadcast
 		// every block.
@@ -241,6 +244,7 @@ func (cs *ConsensusSet) threadedReceiveBlocks(conn modules.PeerConn) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("threadedReceiveBlocks: %s", conn.RemoteAddr().String())
 	finishedChan := make(chan struct{})
 	defer close(finishedChan)
 	go func() {
@@ -450,6 +454,9 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	// deadlocks, and we also have to be concerned every time the code in
 	// managedReceiveBlock is adjusted.
 	if err == errOrphan { // WARN: orphan multithreading logic case #1
+		if spv { //spv dont want to fetch blocks from remote
+			return nil
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -530,47 +537,6 @@ func (cs *ConsensusSet) rpcSendBlk(conn modules.PeerConn) error {
 	}
 	// Encode and send the block to the caller.
 	err = encoding.WriteObject(conn, b)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// rpcSendHeader is an RPC that sends a single requested header to the requesting peer.
-func (cs *ConsensusSet) rpcSendHeader(conn modules.PeerConn) error {
-	err := conn.SetDeadline(time.Now().Add(sendHeadersTimeout))
-	if err != nil {
-		return err
-	}
-	finishedChan := make(chan struct{})
-	defer close(finishedChan)
-	go func() {
-		select {
-		case <-cs.tg.StopChan():
-		case <-finishedChan:
-		}
-		conn.Close()
-	}()
-	err = cs.tg.Add()
-	if err != nil {
-		return err
-	}
-	defer cs.tg.Done()
-	// Decode the requested header id from the connection.
-	var id types.BlockID
-	err = encoding.ReadObject(conn, &id, crypto.HashSize)
-	if err != nil {
-		return err
-	}
-	// Lookup the corresponding processed header
-	cs.mu.RLock()
-	ph, exist := cs.processedBlockHeaders[id]
-	cs.mu.RUnlock()
-	if !exist {
-		return errHeaderNotExist
-	}
-	// Encode and send the header to the caller.
-	err = encoding.WriteObject(conn, ph.ForSend())
 	if err != nil {
 		return err
 	}

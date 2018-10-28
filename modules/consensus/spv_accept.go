@@ -118,7 +118,6 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 		// 	pb, errAddSingleBlock = cs.addSingleBlock(updateTx, block, parentHeader)
 		// 	return errAddSingleBlock
 		// })
-		// log.Printf("after add single block: %s", block.ID())
 	}
 
 	if _, ok := setErr.(bolt.MmapError); ok {
@@ -131,6 +130,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 		cs.log.Println("Consensus received an invalid single block:", setErr)
 		return nil, setErr
 	}
+	cs.log.Printf("after add single block: %d %s", pb.Height, block.ID())
 
 	return pb, nil
 }
