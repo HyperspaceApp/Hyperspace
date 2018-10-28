@@ -3,6 +3,11 @@ Version History
 
 Oct 28, 2018:
 
+v0.2.2
+- SPV bug fixes
+
+Oct 28, 2018:
+
 v0.2.1
 - Functional SPV nodes
 - Wallet bug fixes
