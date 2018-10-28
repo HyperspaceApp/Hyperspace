@@ -454,7 +454,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	// deadlocks, and we also have to be concerned every time the code in
 	// managedReceiveBlock is adjusted.
 	if err == errOrphan { // WARN: orphan multithreading logic case #1
-		if spv { //spv dont want to fetch blocks from remote
+		if cs.spv { //spv dont want to fetch blocks from remote
 			return nil
 		}
 		wg.Add(1)
