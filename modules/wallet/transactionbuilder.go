@@ -230,6 +230,7 @@ func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, refund type
 	amount := output.Value
 
 	// NOTE: miner fee is caller responsibility in this context
+	// TODO: better to use refund if provided
 
 	so, err := tb.wallet.getSortedOutputs()
 	if err != nil {

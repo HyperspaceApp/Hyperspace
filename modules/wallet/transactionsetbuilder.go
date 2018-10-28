@@ -221,3 +221,12 @@ func (tb *transactionSetBuilder) View() (types.Transaction, []types.Transaction)
 	}
 	return ret[len(ret)-1], ret[:len(ret)-1]
 }
+
+func (tb *transactionSetBuilder) Size() (size int) {
+	var ret int
+	for i := range tb.builders {
+		tx, _ := tb.builders[i].View()
+		ret += tx.MarshalSiaSize()
+	}
+	return ret
+}

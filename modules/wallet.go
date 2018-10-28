@@ -241,6 +241,8 @@ type (
 		// parents.
 		View() (txn types.Transaction, parents []types.Transaction)
 
+		// Return the encoded size. TODO: Does it really belong here?
+		Size() (size int)
 	}
 
 
