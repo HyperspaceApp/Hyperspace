@@ -563,7 +563,7 @@ func TestUnconfirmedParents(t *testing.T) {
 	}
 }
 
-func TestFundSiacoinsForOutputs(t *testing.T) {
+func TestFundOutputs(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -600,7 +600,7 @@ func TestFundSiacoinsForOutputs(t *testing.T) {
 
 	// Wallet starts off with large inputs from mining blocks, larger than our
 	// combined outputs and miner fees
-	err = b.FundSiacoinsForOutputs([]types.SiacoinOutput{output1, output2}, minerFee)
+	err = b.FundOutputs([]types.SiacoinOutput{output1, output2}, minerFee)
 	if err != nil {
 		t.Fatal(err)
 	}

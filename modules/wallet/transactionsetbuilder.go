@@ -102,7 +102,7 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 	if (err != nil) {
 		return err
 	} else if (ret == false) {
-		return tb.currentBuilder().FundSiacoinsForOutputs(outputs, fee)
+		return tb.currentBuilder().FundOutputs(outputs, fee)
 	}
 
 	// If that's not the case, then we will try to fill a txnset up

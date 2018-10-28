@@ -104,7 +104,7 @@ func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currenc
 	return amount
 }
 
-// FundSiacoinsForOutputs will add enough inputs to cover the outputs to be
+// FundOutputs will add enough inputs to cover the outputs to be
 // sent in the transaction. In contrast to FundSiacoins, FundSiacoinsForOutputs
 // does not aggregate inputs into one output equaling 'amount' - with a refund,
 // potentially - for later use by an output or other transaction fee. Rather,
@@ -112,7 +112,7 @@ func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currenc
 // to the transaction, and also generates a refund output if necessary. A miner
 // fee of 0 or greater is also taken into account in the input aggregation and
 // added to the transaction if necessary.
-func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
+func (tb *transactionBuilder) FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
 	// dustThreshold has to be obtained separate from the lock
 	dustThreshold, err := tb.wallet.DustThreshold()
 	if err != nil {
@@ -705,7 +705,7 @@ func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currenc
 			tb.Drop()
 		}
 	}()
-	err = tb.FundSiacoinsForOutputs(outputs, fee)
+	err = tb.FundOutputs(outputs, fee)
 	if err != nil {
 		return
 	}
@@ -713,7 +713,7 @@ func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currenc
 	if err != nil {
 		return
 	}
-	// NOTE: for now, we assume FundSiacoinsForOutputs returns a set with only one tx
+	// NOTE: for now, we assume FundOutputs returns a set with only one tx
 	// the transaction builder code is due for an overhaul
 	tx = txnSet[0]
 	return
