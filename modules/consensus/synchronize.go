@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -244,7 +243,7 @@ func (cs *ConsensusSet) threadedReceiveBlocks(conn modules.PeerConn) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("threadedReceiveBlocks: %s", conn.RemoteAddr().String())
+	// log.Printf("threadedReceiveBlocks: %s", conn.RemoteAddr().String())
 	finishedChan := make(chan struct{})
 	defer close(finishedChan)
 	go func() {
