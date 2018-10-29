@@ -120,7 +120,7 @@ func (s *Session) addJob(j *Job) {
 func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.log.Printf("submit id:%d, before pop len:%d\n", jobID, len(s.CurrentJobs))
+	// s.log.Printf("submit id:%d, before pop len:%d\n", jobID, len(s.CurrentJobs))
 	for _, j := range s.CurrentJobs {
 		// s.log.Printf("i: %d, array id: %d\n", i, j.JobID)
 		if jobID == j.JobID {
@@ -183,9 +183,9 @@ func (s *Session) SetLastShareTimestamp(t time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.log != nil {
-		s.log.Printf("Shares index: %d %s\n", s.lastShareSpot, t)
-	}
+	// if s.log != nil {
+	// 	s.log.Printf("Shares index: %d %s\n", s.lastShareSpot, t)
+	// }
 	s.shareTimes[s.lastShareSpot] = t
 	s.lastShareSpot++
 	if s.lastShareSpot == s.vardiff.bufSize {
