@@ -57,17 +57,17 @@ func (s *Session) checkDiffOnNewShare() bool {
 	if time.Now().Sub(s.lastVardiffRetarget).Seconds() < retargetDuration {
 		return false
 	}
-	if s.log != nil {
-		s.log.Printf("------------------------\n\n")
-		s.log.Printf("Retargeted Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
-	}
+	// if s.log != nil {
+	// 	s.log.Printf("------------------------\n\n")
+	// 	s.log.Printf("Retargeted Duration: %f\n", time.Now().Sub(s.lastVardiffRetarget).Seconds())
+	// }
 	s.lastVardiffRetarget = time.Now()
 
 	unsubmitDuration, historyDuration := s.ShareDurationAverage()
 	if s.disableVarDiff {
-		if s.log != nil {
-			s.log.Printf("HistoryDuration: %f, var diff disabled, current diff: %f\n", historyDuration, s.currentDifficulty)
-		}
+		// if s.log != nil {
+		// 	s.log.Printf("HistoryDuration: %f, var diff disabled, current diff: %f\n", historyDuration, s.currentDifficulty)
+		// }
 		return false
 	}
 

@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -105,16 +104,16 @@ func (s *Session) addJob(j *Job) {
 	}
 
 	s.CurrentJobs = append(s.CurrentJobs, j)
-	if s.log != nil && s.CurrentJobs != nil {
-		if j != nil {
-			s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
-		}
-		l := ""
-		for i, j := range s.CurrentJobs {
-			l += fmt.Sprintf("%d,%d;", i, j.JobID)
-		}
-		s.log.Println(l)
-	}
+	// if s.log != nil && s.CurrentJobs != nil {
+	// if j != nil {
+	// 	s.log.Printf("after new job len:%d, (id: %d)\n", len(s.CurrentJobs), j.JobID)
+	// }
+	// l := ""
+	// for i, j := range s.CurrentJobs {
+	// 	l += fmt.Sprintf("%d,%d;", i, j.JobID)
+	// }
+	// s.log.Println(l)
+	// }
 	s.lastJobTimestamp = time.Now()
 }
 
@@ -125,7 +124,7 @@ func (s *Session) getJob(jobID uint64, nonce string) (*Job, error) {
 	for _, j := range s.CurrentJobs {
 		// s.log.Printf("i: %d, array id: %d\n", i, j.JobID)
 		if jobID == j.JobID {
-			s.log.Printf("get job len:%d\n", len(s.CurrentJobs))
+			// s.log.Printf("get job len:%d\n", len(s.CurrentJobs))
 			if _, ok := j.SubmitedNonce[nonce]; ok {
 				return nil, errors.New("already submited nonce for this job")
 			}
@@ -146,9 +145,9 @@ func (s *Session) clearJobs() {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.log != nil && s.CurrentJobs != nil {
-		s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
-	}
+	// if s.log != nil && s.CurrentJobs != nil {
+	// 	s.log.Printf("Before job clear:%d\n-----------Job clear---------\n", len(s.CurrentJobs))
+	// }
 	s.CurrentJobs = nil
 }
 
