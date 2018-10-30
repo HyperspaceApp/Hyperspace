@@ -338,6 +338,11 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 			h.p.log.Printf("Failed to add client to DB: %s\n", err)
 			return nil, err
 		}
+	} else {
+		if err != nil {
+			h.p.log.Printf("Failed to get client from DB: %s\n", err)
+			return nil, err
+		}
 	}
 	if h.p.Client(client) == nil {
 		h.p.log.Printf("Adding client in memory: %s\n", client)
