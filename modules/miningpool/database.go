@@ -42,7 +42,9 @@ func (p *Pool) newDbConnection() error {
 	}
 
 	for i := 0; i < sqlReconnectRetry; i++ {
-		fmt.Printf("try to connect mysql: %d\n", i)
+		if i != 0 {
+			fmt.Printf("try to connect mysql: %d\n", i)
+		}
 		p.sqldb, err = sql.Open("mysql", dbc)
 		if err != nil {
 			time.Sleep(sqlRetryDelay * time.Second)
@@ -54,7 +56,9 @@ func (p *Pool) newDbConnection() error {
 			time.Sleep(sqlRetryDelay * time.Second)
 			continue
 		}
-		fmt.Printf("success\n")
+		if i != 0 {
+			fmt.Printf("success\n")
+		}
 		return nil
 	}
 

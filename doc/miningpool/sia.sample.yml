@@ -10,3 +10,7 @@ miningpool:
   dbport: 23306
   luck: false
   networkport: 6666
+  difficulty:
+    sgminer/4.4.2: 11500 # S11
+    cgminer/4.9.0: 1024 # A3
+    cgminer/4.10.0: 700 #obelisk

@@ -67,9 +67,9 @@ func GetFreePort() (int, error) {
 }
 
 func newPoolTester(name string, port int) (*poolTester, error) {
-	fmt.Printf("newPoolTester: %s, port %d\n", name, port)
+	// fmt.Printf("newPoolTester: %s, port %d\n", name, port)
 	testdir := build.TempDir(modules.PoolDir, name)
-	fmt.Printf("temp path: %s\n", testdir)
+	// fmt.Printf("temp path: %s\n", testdir)
 
 	// Create the modules.
 	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)

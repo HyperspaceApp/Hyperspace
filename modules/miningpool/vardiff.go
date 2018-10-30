@@ -77,23 +77,23 @@ func (s *Session) checkDiffOnNewShare() bool {
 		} else {
 			s.SetCurrentDifficulty(s.CurrentDifficulty() * 1 / 2)
 		}
-		if s.log != nil {
-			s.log.Printf("UnsubmitDuration too long: %f, Set new difficulty to: %v\n", unsubmitDuration, s.currentDifficulty)
-		}
+		// if s.log != nil {
+		// 	s.log.Printf("UnsubmitDuration too long: %f, Set new difficulty to: %v\n", unsubmitDuration, s.currentDifficulty)
+		// }
 		return true
 	}
 
 	if historyDuration == 0 {
-		if s.log != nil {
-			s.log.Printf("No historyDuration yet\n")
-		}
+		// if s.log != nil {
+		// 	s.log.Printf("No historyDuration yet\n")
+		// }
 		return false
 	}
 
 	if historyDuration < s.vardiff.tmax && historyDuration > s.vardiff.tmin { // close enough
-		if s.log != nil {
-			s.log.Printf("HistoryDuration: %f is inside range\n", historyDuration)
-		}
+		// if s.log != nil {
+		// 	s.log.Printf("HistoryDuration: %f is inside range\n", historyDuration)
+		// }
 		return false
 	}
 
@@ -112,13 +112,13 @@ func (s *Session) checkDiffOnNewShare() bool {
 		deltaDiff = 0.5
 	}
 
-	if s.log != nil {
-		s.log.Printf("HistoryDuration: %f Delta %f\n", historyDuration, deltaDiff)
-	}
+	// if s.log != nil {
+	// 	s.log.Printf("HistoryDuration: %f Delta %f\n", historyDuration, deltaDiff)
+	// }
 
-	if s.log != nil {
-		s.log.Printf("Old difficulty was %v\n", s.currentDifficulty)
-	}
+	// if s.log != nil {
+	// 	s.log.Printf("Old difficulty was %v\n", s.currentDifficulty)
+	// }
 	s.SetCurrentDifficulty(s.CurrentDifficulty() * deltaDiff)
 	if s.log != nil {
 		s.log.Printf("Set new difficulty to %v\n", s.currentDifficulty)
