@@ -396,8 +396,7 @@ func (p *Pool) logLuckState() {
 		totalSumDiff := sumHistoryDiff.Float64 + poolDifficulty.Float64
 
 		blockTarget, _ := p.cs.ChildTarget(preBlock.ID())
-		blockTargetDifficulty, _ := blockTarget.Difficulty().Uint64()
-		blockPoolDifficulty := float64(blockTargetDifficulty) / float64(poolDiffToBlockDiff)
+		blockPoolDifficulty, _ := blockTarget.Difficulty().Div(types.NewCurrency64(poolDiffToBlockDiff)).Uint64()
 
 		tx, err := p.sqldb.Begin()
 		if err != nil {
@@ -417,7 +416,7 @@ func (p *Pool) logLuckState() {
 		defer stmt.Close()
 
 		rs, err := stmt.Exec(i, CoinID, poolDifficulty, totalSumDiff,
-			blockPoolDifficulty, totalSumDiff/blockPoolDifficulty)
+			blockPoolDifficulty, totalSumDiff/float64(blockPoolDifficulty))
 		if err != nil {
 			p.yiilog.Printf("logLuckState failed: %s\n", err)
 			return
@@ -428,6 +427,6 @@ func (p *Pool) logLuckState() {
 			return
 		}
 		id, err := rs.LastInsertId()
-		p.yiilog.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d", id, i, CoinID)
+		p.yiilog.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d, blockPoolDifficulty: %d", id, i, SiaCoinID, blockPoolDifficulty)
 	}
 }

@@ -4,7 +4,7 @@ CREATE TABLE `luck` (
   `coinid` int(11) DEFAULT NULL,
   `diff` double DEFAULT NULL,
   `sumdiff` double DEFAULT NULL,
-  `blockdiff` double DEFAULT NULL,
+  `blockdiff` DECIMAL(40,20) DEFAULT NULL,
   `luck` double DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id_UNIQUE` (`id`)
