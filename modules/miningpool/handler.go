@@ -255,10 +255,7 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 		case "gominer":
 			diff = 0.03
 		case "NiceHash/1.0.0":
-			r := types.StratumResponse{ID: m.ID}
-			r.Result = false
-			r.Error = interfaceify([]string{"NiceHash client is not supported"})
-			return h.sendResponse(r)
+			diff = 1024 * 10000 // block nice hash by setup a very high diff
 		}
 
 		if diffString, exists := h.p.InternalSettings().Difficulty[clientVersion]; exists {
@@ -277,7 +274,6 @@ func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 			h.s.SetCurrentDifficulty(diff)
 			h.s.SetDisableVarDiff(true)
 		}
-
 	}
 
 	r := types.StratumResponse{ID: m.ID}
