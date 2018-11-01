@@ -427,6 +427,6 @@ func (p *Pool) logLuckState() {
 			return
 		}
 		id, err := rs.LastInsertId()
-		p.yiilog.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d, blockPoolDifficulty: %d", id, i, SiaCoinID, blockPoolDifficulty)
+		p.yiilog.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d, blockPoolDifficulty: %d", id, i, CoinID, blockPoolDifficulty)
 	}
 }
