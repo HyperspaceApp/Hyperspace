@@ -148,7 +148,7 @@ func (h *Handler) handleRequest(m *types.StratumRequest) error {
 	case "mining.submit":
 		return h.handleStratumSubmit(m)
 	case "mining.notify":
-		h.log.Printf("mining.notify:New block to mine on\n")
+		// h.log.Printf("mining.notify:New block to mine on\n")
 		return h.sendStratumNotify(true)
 	default:
 		h.log.Debugln("Unknown stratum method: ", m.Method)
@@ -556,7 +556,7 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	// printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		// h.s.CurrentWorker.log.Printf("Block hash is greater than block target\n")
-		h.s.CurrentWorker.log.Printf("Share Accepted\n")
+		// h.s.CurrentWorker.log.Printf("Share Accepted\n")
 		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty(), currencyToAmount(b.MinerPayouts[0].Value))
 		h.s.CurrentWorker.SetLastShareTime(time.Now())
 		return h.sendResponse(r)

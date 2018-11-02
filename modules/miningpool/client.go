@@ -1,8 +1,6 @@
 package pool
 
 import (
-	"path/filepath"
-
 	"github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -31,13 +29,13 @@ type Client struct {
 
 // newClient creates a new Client record
 func newClient(p *Pool, name string) (*Client, error) {
-	var err error
 	// id := p.newStratumID()
 	c := &Client{
 		cr: ClientRecord{
 			name: name,
 		},
 		pool: p,
+		log:  p.clientLog,
 	}
 	c.cr.wallet.LoadString(name)
 	// check if this worker instance is an original or copy
@@ -47,21 +45,7 @@ func newClient(p *Pool, name string) (*Client, error) {
 		return p.Client(name), nil
 	}
 
-	// Create the perist directory if it does not yet exist.
-	dirname := filepath.Join(p.persistDir, "clients", name)
-	err = p.dependencies.mkdirAll(dirname, 0700)
-	if err != nil {
-		return nil, err
-	}
-
-	// Initialize the logger, and set up the stop call that will close the
-	// logger.
-	c.log, err = p.dependencies.newLogger(filepath.Join(dirname, "client.log"))
-	if err != nil {
-		return nil, err
-	}
-
-	return c, err
+	return c, nil
 }
 
 // Name returns the client's name, which is usually the wallet address

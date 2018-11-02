@@ -9,10 +9,10 @@ import (
 
 const (
 	// Names of the various persistent files in the pool.
-	dbFilename   = modules.PoolDir + ".db"
-	logFile      = modules.PoolDir + ".log"
-	yiilogFile   = "yii.log"
-	settingsFile = modules.PoolDir + ".json"
+	dbFilename    = modules.PoolDir + ".db"
+	logFile       = modules.PoolDir + ".log"
+	clientLogFile = "client.log"
+	settingsFile  = modules.PoolDir + ".json"
 	// MajorVersion is the significant version of the pool module
 	MajorVersion = 0
 	// MinorVersion is the minor version of the pool module

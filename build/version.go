@@ -14,7 +14,7 @@ const (
 	MaxEncodedVersionLength = 100
 
 	// Version is the current version of hsd.
-	Version = "0.2.2"
+	Version = "0.2.3"
 )
 
 // IsVersion returns whether str is a valid version number.
