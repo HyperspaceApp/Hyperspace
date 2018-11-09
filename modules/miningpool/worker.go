@@ -49,7 +49,11 @@ func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 
 	// Initialize the logger, and set up the stop call that will close the
 	// logger.
-	w.log, err = p.dependencies.newLogger(filepath.Join(dirname, name+".log"))
+	namelen := len(name)
+	w.log, err = p.dependencies.newLogger(filepath.Join(dirname, "defaultworker.log"))
+	if namelen > 0 {
+		w.log, err = p.dependencies.newLogger(filepath.Join(dirname, name+".log"))
+	}
 
 	return w, err
 }
