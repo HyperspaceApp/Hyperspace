@@ -13,6 +13,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
@@ -21,7 +22,8 @@ import (
 const (
 	// minNumOutbound is the minimum number of outbound peers required before ibd
 	// is confident we are synced.
-	minNumOutbound                 = 5
+	minNumOutbound = 5
+	// MaxDownloadSingleBlockDuration is the timeout time for each download go routine
 	MaxDownloadSingleBlockDuration = 5 * time.Minute
 )
 
@@ -82,7 +84,7 @@ var (
 
 	// MaxDownloadSingleBlockRequest is the node count we concurrently try to fetch
 	MaxDownloadSingleBlockRequest = build.Select(build.Var{
-		Standard: int(5),
+		Standard: int(2),
 		Dev:      int(1),
 		Testing:  int(1),
 	}).(int)
@@ -429,7 +431,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	var h types.BlockHeader
 	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
-	log.Printf("remote version: %s", conn.Version())
+	// log.Printf("remote version: %s", conn.Version())
 	if remoteSupportsSPVHeader(conn.Version()) {
 		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 		if err != nil {
@@ -731,6 +733,7 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 	if err == errNilItem {
 		// TODO: add retry download when fail to download from one peer (could be spv)
 		pbChan := make(chan *processedBlock, 1)
+		// finishedChan := make(chan bool, MaxDownloadSingleBlockRequest)
 		var count int
 		var acceptLock deadlock.Mutex
 		peerMap := make(map[modules.Peer]bool)
@@ -757,7 +760,9 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 		}
 		select {
 		case <-cs.tg.StopChan():
-			return nil, nil
+			return nil, siasync.ErrStopped
+		case <-time.After(MaxDownloadSingleBlockDuration): // all download fail
+			return nil, errors.New("download block timeout")
 		case pb = <-pbChan:
 			log.Printf("got block %d from channel", pb.Height)
 		}

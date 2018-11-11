@@ -3,7 +3,6 @@ package modules
 import (
 	"bytes"
 	"errors"
-	"log"
 	"math/big"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -438,10 +437,9 @@ func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) 
 	// grab applied active outputs from full blocks
 	for _, pbh := range hcc.AppliedBlockHeaders {
 		blockID := pbh.BlockHeader.ID()
-		log.Printf("Appling: %d %s", pbh.Height, blockID)
+		// log.Printf("Appling: %d %s", pbh.Height, blockID)
 		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
-			log.Printf("Matched: %d %s", pbh.Height, blockID)
-			log.Printf("apply block: %d", pbh.Height)
+			// log.Printf("Matched: %d %s", pbh.Height, blockID)
 			// read the block, process the output
 			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffApply)
 			if err != nil {
