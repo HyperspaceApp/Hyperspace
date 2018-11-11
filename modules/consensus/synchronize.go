@@ -2,9 +2,12 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -18,7 +21,8 @@ import (
 const (
 	// minNumOutbound is the minimum number of outbound peers required before ibd
 	// is confident we are synced.
-	minNumOutbound = 5
+	minNumOutbound                 = 5
+	MaxDownloadSingleBlockDuration = 5 * time.Minute
 )
 
 var (
@@ -75,6 +79,13 @@ var (
 		Dev:      40 * time.Second,
 		Testing:  5 * time.Second,
 	}).(time.Duration)
+
+	// MaxDownloadSingleBlockRequest is the node count we concurrently try to fetch
+	MaxDownloadSingleBlockRequest = build.Select(build.Var{
+		Standard: int(5),
+		Dev:      int(1),
+		Testing:  int(1),
+	}).(int)
 )
 
 // isTimeoutErr is a helper function that returns true if err was caused by a
@@ -418,7 +429,7 @@ func (cs *ConsensusSet) threadedRPCRelayHeader(conn modules.PeerConn) error {
 	var h types.BlockHeader
 	var phfs modules.TransmittedBlockHeader
 	// TODO: processed header's size is not fixed,but should not larger than block limit
-	// log.Printf("remote version: %s", conn.Version())
+	log.Printf("remote version: %s", conn.Version())
 	if remoteSupportsSPVHeader(conn.Version()) {
 		err = encoding.ReadObject(conn, &phfs, types.BlockSizeLimit)
 		if err != nil {
@@ -656,19 +667,39 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 	return nil
 }
 
-func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, ppb **processedBlock) modules.RPCFunc {
+func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pbChan chan *processedBlock, acceptLockPtr *deadlock.Mutex) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
 		}
+		doneChan := make(chan struct{})
 		var block types.Block
-		if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
+		go func() {
+			if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
+				cs.log.Printf("err when download single block:ReadObject: %s", err)
+				return
+			}
+			close(doneChan)
+		}()
+		select {
+		case <-time.After(MaxDownloadSingleBlockDuration):
 			return
+		case <-pbChan: // block from other peer accepted, return to close this connection
+			return
+		case <-doneChan:
 		}
+		// all downloaded single accept by sequence,
+		// 1. the first one accepted, second one will be reject by check
+		// 2. the first one failed, second one try again
+		acceptLockPtr.Lock()
+		defer acceptLockPtr.Unlock()
 		// log.Printf("before downloadSingleBlock: %s", id)
+		var pb *processedBlock
 		err = cs.db.Update(func(tx *bolt.Tx) error {
 			var errAcceptSingleBlock error
-			*ppb, errAcceptSingleBlock = cs.managedAcceptSingleBlock(tx, block)
+			pb, errAcceptSingleBlock = cs.managedAcceptSingleBlock(tx, block)
+			pbChan <- pb // pass the processed block and stop other connection
+			close(pbChan)
 			return errAcceptSingleBlock
 		})
 		// log.Printf("after downloadSingleBlock: %s", id)
@@ -697,14 +728,36 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 	pb, err := cs.dbGetBlockMap(id)
 	if err == errNilItem {
 		// TODO: add retry download when fail to download from one peer (could be spv)
-		peer, err := cs.gateway.RandomPeer()
-		if err != nil {
-			return nil, err
+		pbChan := make(chan *processedBlock, 1)
+		var count int
+		var acceptLock deadlock.Mutex
+		peerMap := make(map[modules.Peer]bool)
+		for {
+			peer, err := cs.gateway.RandomPeer()
+			if err != nil {
+				return nil, err
+			}
+			_, exists := peerMap[peer]
+			if exists { // don't fetch from same server
+				continue
+			}
+			peerMap[peer] = true
+			count++
+			go func() {
+				err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pbChan, &acceptLock))
+				if err != nil {
+					log.Printf("cs.gateway.RPC err: %s", err)
+				}
+			}()
+			if count >= MaxDownloadSingleBlockRequest {
+				break
+			}
 		}
-		err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, &pb))
-		// log.Printf("cs.gateway.RPC: %s", (*pb).Block.ID())
-		if err != nil {
-			return nil, err
+		select {
+		case <-cs.tg.StopChan():
+			return nil, nil
+		case pb = <-pbChan:
+			log.Printf("got block %d from channel", pb.Height)
 		}
 	} else {
 		if err == nil {

@@ -204,6 +204,7 @@ func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
 			time.Sleep(250 * time.Millisecond)
 		}
 	}
+	log.Printf("cst1 %d, cst2 %d", cst1.cs.dbBlockHeight(), cst2.cs.dbBlockHeight())
 
 	if cst1.cs.dbCurrentBlockID() != cst2.cs.dbCurrentBlockID() {
 		t.Fatal("Synchronize failed")
@@ -231,7 +232,6 @@ func TestSPVBalance(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cst2.Close()
-	// 2 wallet with same seed
 
 	cst2.wallet.SendSiacoins(types.SiacoinPrecision, uc.UnlockHash())
 	cst2.mineSiacoins()
@@ -275,8 +275,6 @@ func TestSPVBalance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	time.Sleep(2 * time.Millisecond)
-
 	cst2.mineSiacoins()
 
 	waitTillSync(cst1, cst2, t)
@@ -342,6 +340,7 @@ func TestSPVDelayedOutputDiff(t *testing.T) {
 }
 
 func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
+	log.Printf("testSendFromSPV")
 	balanceBefore1, err := cst1.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)
@@ -384,8 +383,8 @@ func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
 
 	cst2.mineSiacoins()
 
-	waitTillSync(cst1, cst2, t)
 	waitTillSync(cst3, cst2, t)
+	waitTillSync(cst1, cst2, t)
 
 	unconfirmed, err = isTxnUnconfirmed(cst1, txns[0])
 	if err != nil {

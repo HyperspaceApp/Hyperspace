@@ -3,6 +3,7 @@ package consensus
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -39,6 +40,7 @@ func randAddress() (uh types.UnlockHash) {
 
 // mineCoins mines blocks until there are siacoins in the wallet.
 func (cst *consensusSetTester) mineSiacoins() {
+	time.Sleep(20 * time.Millisecond)
 	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
 		b, err := cst.miner.FindBlock()
 		if err != nil {
