@@ -126,7 +126,7 @@ func (cs *ConsensusSet) managedAcceptSingleBlock(tx *bolt.Tx, block types.Block)
 		os.Exit(1)
 	}
 	if setErr != nil {
-		fmt.Println("Received an invalid single block.")
+		// fmt.Println("Received an invalid single block.")
 		cs.log.Println("Consensus received an invalid single block:", setErr)
 		return nil, setErr
 	}

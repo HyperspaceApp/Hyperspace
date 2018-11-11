@@ -29,7 +29,6 @@ type Client struct {
 
 // newClient creates a new Client record
 func newClient(p *Pool, name string) (*Client, error) {
-	// id := p.newStratumID()
 	c := &Client{
 		cr: ClientRecord{
 			name: name,
@@ -38,10 +37,8 @@ func newClient(p *Pool, name string) (*Client, error) {
 		log:  p.clientLog,
 	}
 	c.cr.wallet.LoadString(name)
-	// check if this worker instance is an original or copy
-	// TODO why do we need to make a copy instead of the original?
+
 	if p.Client(name) != nil {
-		//return c, nil
 		return p.Client(name), nil
 	}
 

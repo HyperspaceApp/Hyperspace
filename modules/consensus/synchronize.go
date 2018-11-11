@@ -698,8 +698,10 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pbChan chan *proce
 		err = cs.db.Update(func(tx *bolt.Tx) error {
 			var errAcceptSingleBlock error
 			pb, errAcceptSingleBlock = cs.managedAcceptSingleBlock(tx, block)
-			pbChan <- pb // pass the processed block and stop other connection
-			close(pbChan)
+			if errAcceptSingleBlock == nil {
+				pbChan <- pb // pass the processed block and stop other connection
+				close(pbChan)
+			}
 			return errAcceptSingleBlock
 		})
 		// log.Printf("after downloadSingleBlock: %s", id)
