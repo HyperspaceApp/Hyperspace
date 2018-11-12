@@ -665,12 +665,14 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 		}
 	}
 
-	cs.log.Printf("INFO: IBD done, synced with %v peers", numOutboundSynced)
+	cs.log.Severe("INFO: IHD done, synced with %v peers", numOutboundSynced)
 	return nil
 }
 
-func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pbChan chan *processedBlock, acceptLockPtr *deadlock.Mutex) modules.RPCFunc {
+func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pbChan chan *processedBlock,
+	acceptLockPtr *deadlock.Mutex, wg *sync.WaitGroup) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
+		defer wg.Done()
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
 		}
@@ -733,6 +735,8 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 	if err == errNilItem {
 		// TODO: add retry download when fail to download from one peer (could be spv)
 		pbChan := make(chan *processedBlock, 1)
+		waitChan := make(chan bool, 1)
+		var wg sync.WaitGroup
 		// finishedChan := make(chan bool, MaxDownloadSingleBlockRequest)
 		var count int
 		var acceptLock deadlock.Mutex
@@ -748,8 +752,9 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 			}
 			peerMap[peer] = true
 			count++
+			wg.Add(1) // add this out of go routine to prevent wg.Wait get pass before add(1)
 			go func() {
-				err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pbChan, &acceptLock))
+				err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pbChan, &acceptLock, &wg))
 				if err != nil {
 					log.Printf("cs.gateway.RPC err: %s", err)
 				}
@@ -758,11 +763,17 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 				break
 			}
 		}
+		go func() {
+			wg.Wait()
+			close(waitChan)
+		}()
 		select {
 		case <-cs.tg.StopChan():
 			return nil, siasync.ErrStopped
 		case <-time.After(MaxDownloadSingleBlockDuration): // all download fail
 			return nil, errors.New("download block timeout")
+		case <-waitChan: // all download fail
+			return nil, errors.New("all download failed")
 		case pb = <-pbChan:
 			log.Printf("got block %d from channel", pb.Height)
 		}

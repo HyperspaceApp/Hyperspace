@@ -403,7 +403,6 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 			time.Sleep(ibdLoopDelay)
 		}
 	}
-
-	cs.log.Printf("INFO: IHD done, synced with %v peers", numOutboundSynced)
+	cs.log.Severe("INFO: IHD done, synced with %v peers", numOutboundSynced)
 	return nil
 }
