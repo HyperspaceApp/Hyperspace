@@ -29,10 +29,10 @@ func (p *Pool) blockForWork() types.Block {
 	height := p.persist.BlockHeight + 1
 	minerPayoutVal, devPayoutVal := b.CalculateSubsidies(height)
 	p.log.Printf("building a new source block, block id is: %s\n", b.ID())
-	p.log.Printf("miner fees cost: %s", b.CalculateMinerFees().String())
+	// p.log.Printf("miner fees cost: %s", b.CalculateMinerFees().String())
 	p.log.Printf("# transactions: %d", len(b.Transactions))
-	p.log.Printf("miner payout value is: %s", minerPayoutVal.String())
-	p.log.Printf("dev payout value is  : %s", devPayoutVal.String())
+	// p.log.Printf("miner payout value is: %s", minerPayoutVal.String())
+	// p.log.Printf("dev payout value is  : %s", devPayoutVal.String())
 	if height <= 2 {
 		b.MinerPayouts = []types.SiacoinOutput{{
 			Value:      minerPayoutVal,

@@ -1,0 +1,16 @@
+# put this file in the same folder as consensus/transactionpool/wallet etc.
+miningpool:
+  name: siaTestPool
+  id: 10
+  poolwallet: 6f24f36a94c052ea0f706e03914c693dc8c668bd1bf844690c221e98439b5e8b0a11711977da
+  dbaddress: 127.0.0.1
+  dbuser: root
+  dbpass: root
+  dbname: default
+  dbport: 23306
+  luck: false
+  networkport: 6666
+  difficulty:
+    sgminer/4.4.2: 11500 # S11
+    cgminer/4.9.0: 1024 # A3
+    cgminer/4.10.0: 700 #obelisk

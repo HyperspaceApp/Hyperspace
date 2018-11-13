@@ -151,7 +151,7 @@ type Pool struct {
 	sqldb          *sql.DB
 	listener       net.Listener
 	log            *persist.Logger
-	yiilog         *persist.Logger
+	clientLog      *persist.Logger
 	mu             deadlock.RWMutex
 	dbConnectionMu deadlock.RWMutex
 	lucklock       deadlock.RWMutex
@@ -348,7 +348,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, err
 	}
-	p.yiilog, err = dependencies.newLogger(filepath.Join(p.persistDir, yiilogFile))
+	p.clientLog, err = dependencies.newLogger(filepath.Join(p.persistDir, clientLogFile))
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +425,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 
 	p.runningMutex.Lock()
 	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: deadlock.RWMutex{}, p: p}
-	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
+	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "dispatcher.log"))
 	p.running = true
 	p.runningMutex.Unlock()
 

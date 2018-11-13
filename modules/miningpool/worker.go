@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"path/filepath"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -35,7 +34,8 @@ func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 			name:   name,
 			parent: c,
 		},
-		s: s,
+		s:   s,
+		log: p.clientLog,
 	}
 
 	var err error

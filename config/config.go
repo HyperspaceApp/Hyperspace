@@ -8,6 +8,7 @@ type MiningPoolConfig struct {
 	PoolDBConnection string
 	PoolWallet       string
 	Luck             bool
+	Difficulty       map[string]string
 }
 
 // IndexConfig is config for index

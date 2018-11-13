@@ -148,7 +148,7 @@ func (h *Handler) handleRequest(m *types.StratumRequest) error {
 	case "mining.submit":
 		return h.handleStratumSubmit(m)
 	case "mining.notify":
-		h.log.Printf("mining.notify:New block to mine on\n")
+		// h.log.Printf("mining.notify:New block to mine on\n")
 		return h.sendStratumNotify(true)
 	default:
 		h.log.Debugln("Unknown stratum method: ", m.Method)
@@ -241,35 +241,39 @@ func (h *Handler) sendRequest(r types.StratumRequest) error {
 // TODO: Pull the appropriate data from either in memory or persistent store as required
 func (h *Handler) handleStratumSubscribe(m *types.StratumRequest) error {
 	if len(m.Params) > 0 {
-		h.log.Printf("Client subscribe name:%s", m.Params[0].(string))
-		h.s.SetClientVersion(m.Params[0].(string))
-	}
+		clientVersion := m.Params[0].(string)
+		h.log.Printf("Client subscribe name:%s", clientVersion)
+		h.s.SetClientVersion(clientVersion)
+		var diff float64
+		switch clientVersion {
+		case "sgminer/4.4.2":
+			diff = 11500
+		case "cgminer/4.9.0":
+			diff = 1024
+		case "cgminer/4.10.0":
+			diff = 700
+		case "gominer":
+			diff = 0.03
+		case "NiceHash/1.0.0":
+			diff = 1024 * 10000 // block nice hash by setup a very high diff
+		}
 
-	if len(m.Params) > 0 && m.Params[0].(string) == "sgminer/4.4.2" {
-		h.s.SetHighestDifficulty(11500)
-		h.s.SetCurrentDifficulty(11500)
-		h.s.SetDisableVarDiff(true)
-	}
-	if len(m.Params) > 0 && m.Params[0].(string) == "cgminer/4.9.0" {
-		h.s.SetHighestDifficulty(1024)
-		h.s.SetCurrentDifficulty(1024)
-		h.s.SetDisableVarDiff(true)
-	}
-	if len(m.Params) > 0 && m.Params[0].(string) == "cgminer/4.10.0" {
-		h.s.SetHighestDifficulty(700)
-		h.s.SetCurrentDifficulty(700)
-		h.s.SetDisableVarDiff(true)
-	}
-	if len(m.Params) > 0 && m.Params[0].(string) == "gominer" {
-		h.s.SetHighestDifficulty(0.03)
-		h.s.SetCurrentDifficulty(0.03)
-		h.s.SetDisableVarDiff(true)
-	}
-	if len(m.Params) > 0 && m.Params[0].(string) == "NiceHash/1.0.0" {
-		r := types.StratumResponse{ID: m.ID}
-		r.Result = false
-		r.Error = interfaceify([]string{"NiceHash client is not supported"})
-		return h.sendResponse(r)
+		if diffString, exists := h.p.InternalSettings().Difficulty[clientVersion]; exists {
+			var err error
+			diff, err = strconv.ParseFloat(diffString, 64)
+			if err != nil {
+				r := types.StratumResponse{ID: m.ID}
+				r.Result = false
+				r.Error = interfaceify([]string{"parse version diff error"})
+				return err
+			}
+		}
+
+		if diff != 0 {
+			h.s.SetHighestDifficulty(diff)
+			h.s.SetCurrentDifficulty(diff)
+			h.s.SetDisableVarDiff(true)
+		}
 	}
 
 	r := types.StratumResponse{ID: m.ID}
@@ -328,6 +332,11 @@ func (h *Handler) setupClient(client, worker string) (*Client, error) {
 		err = h.p.AddClientDB(c)
 		if err != nil {
 			h.p.log.Printf("Failed to add client to DB: %s\n", err)
+			return nil, err
+		}
+	} else {
+		if err != nil {
+			h.p.log.Printf("Failed to get client from DB: %s\n", err)
 			return nil, err
 		}
 	}
@@ -541,13 +550,13 @@ func (h *Handler) handleStratumSubmit(m *types.StratumRequest) error {
 	}
 
 	t := h.p.persist.GetTarget()
-	h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
-	h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
-	h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
-		printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
+	// h.s.CurrentWorker.log.Printf("Submit block hash is   %064x\n", bh)
+	// h.s.CurrentWorker.log.Printf("Chain block target is  %064x\n", t.Int())
+	// h.s.CurrentWorker.log.Printf("Difficulty %s/%s\n",
+	// printWithSuffix(types.IntToTarget(bh).Difficulty()), printWithSuffix(t.Difficulty()))
 	if bytes.Compare(t[:], blockHash[:]) < 0 {
 		// h.s.CurrentWorker.log.Printf("Block hash is greater than block target\n")
-		h.s.CurrentWorker.log.Printf("Share Accepted\n")
+		// h.s.CurrentWorker.log.Printf("Share Accepted\n")
 		h.s.CurrentWorker.IncrementShares(h.s.CurrentDifficulty(), currencyToAmount(b.MinerPayouts[0].Value))
 		h.s.CurrentWorker.SetLastShareTime(time.Now())
 		return h.sendResponse(r)

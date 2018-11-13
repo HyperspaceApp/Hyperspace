@@ -155,6 +155,7 @@ func readFileConfig(config Config) error {
 		poolViper.SetDefault("dbaddress", "127.0.0.1")
 		poolViper.SetDefault("dbname", "miningpool")
 		poolViper.SetDefault("dbport", "3306")
+		poolViper.SetDefault("difficulty", map[string]string{"nil": "nil"})
 		if !poolViper.IsSet("poolwallet") {
 			return errors.New("Must specify a poolwallet")
 		}
@@ -174,6 +175,8 @@ func readFileConfig(config Config) error {
 		if poolViper.IsSet("dbsocket") {
 			dbConnection = fmt.Sprintf("%s:%s@unix(%s)/%s", dbUser, dbPass, dbSocket, dbName)
 		}
+		difficulty := poolViper.GetStringMapString("difficulty")
+
 		poolConfig := fileConfig.MiningPoolConfig{
 			PoolNetworkPort:  int(poolViper.GetInt("networkport")),
 			PoolName:         poolViper.GetString("name"),
@@ -181,6 +184,7 @@ func readFileConfig(config Config) error {
 			PoolDBConnection: dbConnection,
 			PoolWallet:       poolViper.GetString("poolwallet"),
 			Luck:             poolViper.GetBool("luck"),
+			Difficulty:       difficulty,
 		}
 		globalConfig.MiningPoolConfig = poolConfig
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
@@ -100,6 +101,9 @@ func (s *seedScanner) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusCh
 	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(s.keysArray)
 	for err != nil {
 		s.log.Severe("ERROR: failed to fetch space cash outputs:", err)
+		if err == siasync.ErrStopped {
+			return
+		}
 		select {
 		case <-s.walletStopChan:
 			return

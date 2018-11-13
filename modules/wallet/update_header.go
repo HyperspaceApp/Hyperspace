@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/errors"
 
@@ -44,6 +45,9 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 	siacoinOutputDiffs, err := hcc.FetchSpaceCashOutputDiffs(keysArray)
 	for err != nil {
 		w.log.Severe("ERROR: failed to fetch space cash outputs:", err)
+		if err == siasync.ErrStopped {
+			return
+		}
 		select {
 		case <-w.tg.StopChan():
 			return

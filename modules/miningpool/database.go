@@ -42,7 +42,9 @@ func (p *Pool) newDbConnection() error {
 	}
 
 	for i := 0; i < sqlReconnectRetry; i++ {
-		fmt.Printf("try to connect mysql: %d\n", i)
+		if i != 0 {
+			fmt.Printf("try to connect mysql: %d\n", i)
+		}
 		p.sqldb, err = sql.Open("mysql", dbc)
 		if err != nil {
 			time.Sleep(sqlRetryDelay * time.Second)
@@ -54,7 +56,9 @@ func (p *Pool) newDbConnection() error {
 			time.Sleep(sqlRetryDelay * time.Second)
 			continue
 		}
-		fmt.Printf("success\n")
+		if i != 0 {
+			fmt.Printf("success\n")
+		}
 		return nil
 	}
 
@@ -68,7 +72,7 @@ func (p *Pool) AddClientDB(c *Client) error {
 		p.mu.Unlock()
 	}()
 
-	p.yiilog.Printf("Adding user %s to yiimp account\n", c.Name())
+	p.log.Printf("Adding user %s to yiimp account\n", c.Name())
 	tx, err := p.sqldb.Begin()
 	if err != nil {
 		return err
@@ -93,7 +97,7 @@ func (p *Pool) AddClientDB(c *Client) error {
 		return err
 	}
 	id, err := rs.LastInsertId()
-	p.yiilog.Printf("User %s account id is %d\n", c.Name(), id)
+	p.log.Printf("User %s account id is %d\n", c.Name(), id)
 	c.cr.clientID = id
 
 	return nil
@@ -112,15 +116,15 @@ func (p *Pool) FindClientDB(name string) (*Client, error) {
 	var Name, Wallet string
 	var coinid int
 
-	p.yiilog.Debugf("Searching for %s in existing accounts\n", name)
+	p.log.Debugf("Searching for %s in existing accounts\n", name)
 	err := p.sqldb.QueryRow("SELECT id, username, username, coinid FROM accounts WHERE username = ?", name).Scan(&clientID, &Name, &Wallet, &coinid)
 	if err != nil {
-		p.yiilog.Debugf("Search failed: %s\n", err)
+		p.log.Debugf("Search failed: %s\n", err)
 		return nil, ErrNoUsernameInDatabase
 	}
-	p.yiilog.Debugf("Account %s found: %d \n", Name, clientID)
+	p.log.Debugf("Account %s found: %d \n", Name, clientID)
 	if coinid != CoinID {
-		p.yiilog.Debugf(ErrDuplicateUserInDifferentCoin.Error())
+		p.log.Debugf(ErrDuplicateUserInDifferentCoin.Error())
 		return nil, ErrDuplicateUserInDifferentCoin
 	}
 
@@ -339,22 +343,22 @@ func (p *Pool) logLuckState() {
 	err := p.sqldb.QueryRow("SELECT max(height) as maxheight FROM luck WHERE coinid = ?",
 		CoinID).Scan(&lastLogHeight)
 	if err != nil && err != sql.ErrNoRows {
-		p.yiilog.Printf("logLuckState failed: %s\n", err)
+		p.log.Printf("logLuckState failed: %s\n", err)
 		return
 	}
-	p.yiilog.Printf("logLuckState lastLogHeight: %d\n", lastLogHeight.Int64)
+	p.log.Printf("logLuckState lastLogHeight: %d\n", lastLogHeight.Int64)
 
 	for i := lastLogHeight.Int64 + 1; i <= int64(p.cs.Height()); i++ {
 		// if time over 24h, skip
-		p.yiilog.Printf("logLuckState Start for: %d\n", i)
+		p.log.Printf("logLuckState Start for: %d\n", i)
 		preBlock, ok := p.cs.BlockAtHeight(types.BlockHeight(i - 1))
 		if !ok {
-			p.yiilog.Printf("logLuckState can't fetch block: %d\n", i-1)
+			p.log.Printf("logLuckState can't fetch block: %d\n", i-1)
 			continue
 		}
 		startTime := preBlock.Timestamp
 		if time.Now().Unix()-int64(startTime) > 86400 { // we only have 24h shares
-			p.yiilog.Printf("logLuckState skip block, block too old: %d\n", i)
+			p.log.Printf("logLuckState skip block, block too old: %d\n", i)
 			continue
 		}
 
@@ -363,41 +367,40 @@ func (p *Pool) logLuckState() {
 		err := p.sqldb.QueryRow("SELECT sum(difficulty), count(*) FROM shares WHERE coinid = ? AND height = ? AND valid=1",
 			CoinID, i).Scan(&poolDifficulty, &poolDiffShareCount)
 		if err != nil && err != sql.ErrNoRows {
-			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			p.log.Printf("logLuckState failed: %s\n", err)
 			return
 		}
 		if poolDiffShareCount == 0 {
-			p.yiilog.Printf("logLuckState no share for this block\n", err)
+			p.log.Printf("logLuckState no share for this block\n", err)
 			continue
 		}
 
-		p.yiilog.Printf("logLuckState poolDifficulty: %f\n", poolDifficulty.Float64)
+		p.log.Printf("logLuckState poolDifficulty: %f\n", poolDifficulty.Float64)
 
 		var lastMineBlock sql.NullInt64 // search our pool block just before current height
 		err = p.sqldb.QueryRow("SELECT max(height) as height FROM blocks WHERE coin_id = ? AND height < ?",
 			CoinID, i).Scan(&lastMineBlock)
 		if err != nil && err != sql.ErrNoRows {
-			p.yiilog.Printf("logLuckState lastMineBlock failed: %s\n", err)
+			p.log.Printf("logLuckState lastMineBlock failed: %s\n", err)
 			return
 		}
-		p.yiilog.Printf("logLuckState lastMineBlock: %d\n", lastMineBlock.Int64)
+		p.log.Printf("logLuckState lastMineBlock: %d\n", lastMineBlock.Int64)
 
 		var sumHistoryDiff sql.NullFloat64
 		err = p.sqldb.QueryRow("SELECT sum(diff) FROM luck WHERE coinid = ? AND height > ?",
 			CoinID, lastMineBlock.Int64).Scan(&sumHistoryDiff)
 		if err != nil && err != sql.ErrNoRows {
-			p.yiilog.Printf("logLuckState sumHistoryDiff failed: %s\n", err)
+			p.log.Printf("logLuckState sumHistoryDiff failed: %s\n", err)
 			return
 		}
 		totalSumDiff := sumHistoryDiff.Float64 + poolDifficulty.Float64
 
 		blockTarget, _ := p.cs.ChildTarget(preBlock.ID())
-		blockTargetDifficulty, _ := blockTarget.Difficulty().Uint64()
-		blockPoolDifficulty := float64(blockTargetDifficulty) / float64(poolDiffToBlockDiff)
+		blockPoolDifficulty, _ := blockTarget.Difficulty().Div(types.NewCurrency64(poolDiffToBlockDiff)).Uint64()
 
 		tx, err := p.sqldb.Begin()
 		if err != nil {
-			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			p.log.Printf("logLuckState failed: %s\n", err)
 			return
 		}
 		defer tx.Rollback()
@@ -407,23 +410,23 @@ func (p *Pool) logLuckState() {
 			VALUES (?, ?, ?, ?, ?, ?);
 		`)
 		if err != nil {
-			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			p.log.Printf("logLuckState failed: %s\n", err)
 			return
 		}
 		defer stmt.Close()
 
 		rs, err := stmt.Exec(i, CoinID, poolDifficulty, totalSumDiff,
-			blockPoolDifficulty, totalSumDiff/blockPoolDifficulty)
+			blockPoolDifficulty, totalSumDiff/float64(blockPoolDifficulty))
 		if err != nil {
-			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			p.log.Printf("logLuckState failed: %s\n", err)
 			return
 		}
 		err = tx.Commit()
 		if err != nil {
-			p.yiilog.Printf("logLuckState failed: %s\n", err)
+			p.log.Printf("logLuckState failed: %s\n", err)
 			return
 		}
 		id, err := rs.LastInsertId()
-		p.yiilog.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d", id, i, CoinID)
+		p.log.Printf("logLuckState inserted luck log: %d, height: %d, coin: %d, blockPoolDifficulty: %d", id, i, CoinID, blockPoolDifficulty)
 	}
 }

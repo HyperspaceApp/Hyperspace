@@ -50,6 +50,7 @@ func (cs *ConsensusSet) managedBroadcastBlock(bh types.BlockHeader) {
 	}
 	if len(pbhPeers) > 0 {
 		pbh, exist := cs.processedBlockHeaders[bh.ID()]
+		cs.log.Printf("broadcast header %d", pbh.Height)
 		if !exist {
 			cs.log.Printf("broadcast header don't have related processed header")
 		}
@@ -162,6 +163,8 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 	// We do not check if the header is in the near future here, because we want
 	// to get the corresponding block as soon as possible, even if the block is in
 	// the near future.
+
+	cs.log.Debugf("validated block header at height %v", parentHeader.Height+1)
 
 	return parentHeader, nil
 }

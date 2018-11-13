@@ -5,6 +5,7 @@ package consensus
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -403,7 +404,7 @@ func (cs *ConsensusSet) threadedInitialHeadersDownload() error {
 			time.Sleep(ibdLoopDelay)
 		}
 	}
-
+	log.Printf("INFO: IHD done, synced with %v peers", numOutboundSynced)
 	cs.log.Printf("INFO: IHD done, synced with %v peers", numOutboundSynced)
 	return nil
 }
