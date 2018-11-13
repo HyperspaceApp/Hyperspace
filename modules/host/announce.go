@@ -2,6 +2,7 @@ package host
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -25,6 +26,22 @@ func differentTypeIPs(ip1, ip2 net.IP) bool {
 	return (ip1.To4() == nil) != (ip2.To4() == nil)
 }
 
+func removeDuplicatesIP(s []net.IP) []net.IP {
+	m := make(map[string]net.IP)
+	for _, item := range s {
+		if _, ok := m[string(item.To16())]; ok { // duplicate
+		} else {
+			m[string(item.To16())] = item
+		}
+	}
+
+	var result []net.IP
+	for _, v := range m {
+		result = append(result, v)
+	}
+	return result
+}
+
 // staticVerifyAnnouncementAddress checks that the address is sane and not local.
 func (h *Host) staticVerifyAnnouncementAddress(addr modules.NetAddress) error {
 	// Check that the address is sane, and that the address is also not local.
@@ -37,6 +54,7 @@ func (h *Host) staticVerifyAnnouncementAddress(addr modules.NetAddress) error {
 	// Make sure that the host resolves to 1 or 2 IPs and if it resolves to 2
 	// the type should be different.
 	ips, err := h.dependencies.LookupIP(addr.Host())
+	ips = removeDuplicatesIP(ips)
 	if err != nil {
 		return errors.AddContext(err, "failed to lookup hostname "+addr.Host())
 	}
@@ -47,6 +65,9 @@ func (h *Host) staticVerifyAnnouncementAddress(addr modules.NetAddress) error {
 		return fmt.Errorf("host %s resolves to 2 IPs of the same type", addr.Host())
 	}
 	if len(ips) > 2 {
+		for i, ip := range ips {
+			log.Printf("%d: %v %v", i, ip, addr.Host())
+		}
 		return fmt.Errorf("host %s resolves to more than 2 IP addresses", addr.Host())
 	}
 	return nil
