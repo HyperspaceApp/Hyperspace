@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"errors"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -759,7 +758,7 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 			go func() {
 				err = cs.gateway.RPC(peer.NetAddress, modules.SendBlockCmd, cs.downloadSingleBlock(id, pbChan, &acceptLock, &wg))
 				if err != nil {
-					log.Printf("cs.gateway.RPC err: %s", err)
+					cs.log.Printf("cs.gateway.RPC err: %s", err)
 				}
 			}()
 			if count >= MaxDownloadSingleBlockRequest {
