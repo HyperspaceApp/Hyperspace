@@ -84,7 +84,7 @@ var (
 
 	// MaxDownloadSingleBlockRequest is the node count we concurrently try to fetch
 	MaxDownloadSingleBlockRequest = build.Select(build.Var{
-		Standard: int(2),
+		Standard: int(1),
 		Dev:      int(1),
 		Testing:  int(1),
 	}).(int)
@@ -665,25 +665,28 @@ func (cs *ConsensusSet) threadedInitialBlockchainDownload() error {
 		}
 	}
 
-	cs.log.Severe("INFO: IHD done, synced with %v peers", numOutboundSynced)
+	cs.log.Printf("INFO: IBD done, synced with ", numOutboundSynced, "peers")
 	return nil
 }
 
 func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pbChan chan *processedBlock,
 	acceptLockPtr *deadlock.Mutex, wg *sync.WaitGroup) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
-		defer wg.Done()
+		defer func() {
+			log.Printf("downloadSingleBlock done: %v", conn.RPCAddr())
+			wg.Done()
+		}()
+		log.Printf("downloadSingleBlock start: %v", conn.RPCAddr())
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
 		}
 		doneChan := make(chan struct{})
 		var block types.Block
 		go func() {
+			defer close(doneChan)
 			if err = encoding.ReadObject(conn, &block, types.BlockSizeLimit); err != nil {
 				cs.log.Printf("err when download single block:ReadObject: %s", err)
-				return
 			}
-			close(doneChan)
 		}()
 		select {
 		case <-time.After(MaxDownloadSingleBlockDuration):
