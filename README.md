@@ -1,4 +1,4 @@
-# [![Hyperspace Logo](http://i.imgur.com/9rxi9UV.png)](http://hspace.app) v0.2.0 (Rye)
+# [![Hyperspace Logo](http://i.imgur.com/9rxi9UV.png)](http://hspace.app) v0.2.3 (Rye)
 ----------------------------
 
 [![Build Status](https://travis-ci.org/HyperspaceApp/Hyperspace.svg?branch=master)](https://travis-ci.org/HyperspaceApp/Hyperspace)
