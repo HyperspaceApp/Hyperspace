@@ -163,8 +163,9 @@ func (cs *ConsensusSet) validateHeader(tx dbTx, h types.BlockHeader) (parentHead
 	// We do not check if the header is in the near future here, because we want
 	// to get the corresponding block as soon as possible, even if the block is in
 	// the near future.
-
-	cs.log.Debugf("validated block header at height %v", parentHeader.Height+1)
+	if cs.log != nil {
+		cs.log.Debugf("validated block header at height %v", parentHeader.Height+1)
+	}
 
 	return parentHeader, nil
 }

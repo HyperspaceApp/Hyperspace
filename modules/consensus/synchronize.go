@@ -84,7 +84,7 @@ var (
 
 	// MaxDownloadSingleBlockRequest is the node count we concurrently try to fetch
 	MaxDownloadSingleBlockRequest = build.Select(build.Var{
-		Standard: int(1),
+		Standard: int(3),
 		Dev:      int(1),
 		Testing:  int(1),
 	}).(int)
@@ -673,10 +673,10 @@ func (cs *ConsensusSet) downloadSingleBlock(id types.BlockID, pbChan chan *proce
 	acceptLockPtr *deadlock.Mutex, wg *sync.WaitGroup) modules.RPCFunc {
 	return func(conn modules.PeerConn) (err error) {
 		defer func() {
-			log.Printf("downloadSingleBlock done: %v", conn.RPCAddr())
+			// log.Printf("downloadSingleBlock done: %v", conn.RPCAddr())
 			wg.Done()
 		}()
-		log.Printf("downloadSingleBlock start: %v", conn.RPCAddr())
+		// log.Printf("downloadSingleBlock start: %v", conn.RPCAddr())
 		if err = encoding.WriteObject(conn, id); err != nil {
 			return
 		}
@@ -778,7 +778,7 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 		case <-waitChan: // all download fail
 			return nil, errors.New("all download failed")
 		case pb = <-pbChan:
-			log.Printf("got block %d from channel", pb.Height)
+			cs.log.Printf("got block %d from channel", pb.Height)
 		}
 	} else {
 		if err == nil {
