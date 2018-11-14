@@ -227,7 +227,7 @@ func (tb *transactionSetBuilder) Size() (size int) {
 	var ret int
 	for i := range tb.builders {
 		tx, _ := tb.builders[i].View()
-		ret += tx.MarshalSiaSize()
+		ret += len(encoding.Marshal(tx))
 	}
 	return ret
 }
