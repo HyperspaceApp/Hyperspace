@@ -187,9 +187,6 @@ func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transactio
 		return nil, errBuilderAlreadySigned
 	}
 
-	tb.wallet.mu.RLock()
-	defer tb.wallet.mu.RUnlock()
-
 	// Sign the first builder
 	txSet, err := tb.builders[0].Sign(wholeTransaction)
 	if (err != nil) {
