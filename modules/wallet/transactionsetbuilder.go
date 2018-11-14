@@ -138,7 +138,8 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 			return err
 		}
 
-		totalFund.Add(addedFunds)
+		totalFund = totalFund.Add(addedFunds)
+
 		tx, _ := builder.View()
 
 		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
