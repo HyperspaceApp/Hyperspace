@@ -215,7 +215,7 @@ func (tb *transactionBuilder) FundOutputs(outputs []types.SiacoinOutput, fee typ
 	return nil
 }
 
-func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, refund types.SiacoinOutput) (types.Currency, []types.SiacoinOutputID, error) {
+func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, so sortedOutputs) (types.Currency, []types.SiacoinOutputID, error) {
 	dustThreshold, err := tb.wallet.DustThreshold()
 	if err != nil {
 		return types.Currency{}, nil, err
@@ -231,11 +231,6 @@ func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, refund type
 
 	// NOTE: miner fee is caller responsibility in this context
 	// TODO: better to use refund if provided
-
-	so, err := tb.wallet.getSortedOutputs()
-	if err != nil {
-		return fund, nil, err
-	}
 
 	// potentialFund tracks the balance of the wallet including outputs that
 	// have been spent in other unconfirmed transactions recently. This is to
