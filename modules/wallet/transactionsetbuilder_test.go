@@ -8,6 +8,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
+//TODO test Drop()
+
 func TestFundOutputTransactionSet(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
@@ -135,7 +137,7 @@ func TestFundOutputsTransactionSet(t *testing.T) {
 
 // TestTransactionsFillWallet mines many blocks and checks that the wallet's
 // outputs are built in a manner to fill the txset
-func TestTransactionsFillWallet(t *testing.T) {
+func TestTransactionSetInputFillWallet(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -145,30 +147,39 @@ func TestTransactionsFillWallet(t *testing.T) {
 	}
 	defer wt.closeWt()
 
-	dustOutputValue := types.NewCurrency64(10000)
-	noutputs := defragThreshold*15 + 1
-
 	tbuilder, err := wt.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	uc1, err := wt.wallet.NextAddress()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	i := 0
 	// Mine blocks and overload the txset
 	for {
 		_, err := wt.miner.AddBlock()
 		if err != nil {
 			t.Fatal(err)
 		}
-		so, err := wt.wallet.getSortedOutputs()
-		if err != nil {
-			t.Fatal(err)
+
+		amount1 := types.NewCurrency64(1000)
+
+		output1 := types.SiacoinOutput{
+			Value:      amount1,
+			UnlockHash: uc1.UnlockHash(),
 		}
-		tbuilder.FundOutput(so.outputs[0],
+
+		tbuilder.FundOutput(output1,
 			types.NewCurrency64(25).Mul(types.SiacoinPrecision))
 
-		if (tbuilder.Size() >= modules.TransactionSizeLimit - 2e3) {
+		// TODO single tx
+		if (tbuilder.Size() >= modules.TransactionSizeLimit - 25e3) {
 			break
 		}
+		i++
 	}
 
 	// Add another block to push the number of outputs over the threshold
@@ -183,26 +194,6 @@ func TestTransactionsFillWallet(t *testing.T) {
 	_, err = wt.miner.AddBlock()
 	if err != nil {
 		t.Fatal(err)
-	}
-
-	wt.wallet.mu.Lock()
-	var dest types.UnlockHash
-	for k := range wt.wallet.keys {
-		dest = k
-		break
-	}
-	wt.wallet.mu.Unlock()
-
-	t.Log(unsafe.Sizeof(types.SiacoinOutput{
-		Value:      dustOutputValue,
-		UnlockHash: dest,
-	}))
-
-	for i := 0; i < noutputs; i++ {
-		tbuilder.AddOutput(types.SiacoinOutput{
-			Value:      dustOutputValue,
-			UnlockHash: dest,
-		})
 	}
 
 	txns, err := tbuilder.Sign(true)
