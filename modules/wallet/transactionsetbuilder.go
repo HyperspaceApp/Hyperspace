@@ -50,32 +50,6 @@ func (w *Wallet) registerTransactionSet(t types.Transaction, parents []types.Tra
 	return &ret
 }
 
-// Wallet need to be locked before calling this
-func (tb *transactionSetBuilder) checkDefragCondition(dustThreshold types.Currency) (bool, error) {
-	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
-	if err != nil {
-		return false, err
-	}
-
-	// Collect a value-sorted set of siacoin outputs.
-	var so sortedOutputs
-	err = dbForEachSiacoinOutput(tb.wallet.dbTx, func(scoid types.SiacoinOutputID, sco types.SiacoinOutput) {
-		if tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, scoid, sco, dustThreshold) == nil {
-			so.ids = append(so.ids, scoid)
-			so.outputs = append(so.outputs, sco)
-		}
-	})
-	if err != nil {
-		return false, err
-	}
-
-	// Only defrag if there are enough outputs to merit defragging.
-	if len(so.ids) <= defragThreshold {
-		return false, nil
-	}
-	return true, nil
-}
-
 func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee types.Currency) error {
 	var outputs []types.SiacoinOutput
 	return tb.FundOutputs(append(outputs, output), fee)
@@ -90,13 +64,17 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 	tb.wallet.mu.Lock()
 	defer tb.wallet.mu.Unlock()
 
-	var totalFund types.Currency
-	amount := calculateAmountFromOutputs(outputs, fee)
-	var rest types.Currency
+	var scoids []types.SiacoinOutputID
 
-	addFee := true
+	amount := fee
+	totalFund := types.NewCurrency64(0)
+	rest := types.NewCurrency64(0)
+	addedFunds := types.NewCurrency64(0)
+
+	// We need this to avoid the side case of
+	// adding two refunds at the end of a new
+	// txset.
 	needRefund := true
-	txFilled := false
 
 	// Gather outputs
 	so, err := tb.wallet.getSortedOutputs()
@@ -104,7 +82,27 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 		return err
 	}
 
+	tb.currentBuilder().AddMinerFee(fee)
+
 	for i := range outputs {
+		needRefund = true
+		tx, _ := tb.currentBuilder().View()
+		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
+			_, err = tb.currentBuilder().checkRefund(amount, totalFund)
+			if (err != nil) {
+				return err
+			}
+			amount = fee
+			rest = types.NewCurrency64(0)
+			totalFund = types.NewCurrency64(0)
+
+			// Add a new fresh builder for the next outputs
+			newBuilder := tb.wallet.registerTransaction(types.Transaction{}, nil)
+			tb.builders = append(tb.builders, *newBuilder)
+			tb.currentBuilder().AddMinerFee(fee)
+			needRefund = false
+		}
+
 		// We already have enough funds?
 		// Do not seek for inputs, just add the output.
 		if (rest.Cmp(outputs[i].Value) >= 0) {
@@ -112,46 +110,16 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 			// to totalFund in the previous fundOutput call!
 			rest = rest.Sub(outputs[i].Value)
 			tb.currentBuilder().AddSiacoinOutput(outputs[i])
-			continue;
-		}
-
-		needRefund = true
-		builder := tb.currentBuilder()
-
-		if (txFilled) {
-			// Add a new fresh builder for the next outputs
-			newBuilder := tb.wallet.registerTransaction(types.Transaction{}, nil)
+		} else {
+			addedFunds, scoids, err = tb.currentBuilder().fundOutput(outputs[i], so)
 			if (err != nil) {
 				return err
 			}
-			tb.builders = append(tb.builders, *newBuilder)
-			txFilled = false
+			rest = addedFunds.Sub(outputs[i].Value)
+			totalFund = totalFund.Add(addedFunds)
 		}
+		amount = amount.Add(outputs[i].Value)
 
-		if (addFee) {
-			builder.AddMinerFee(fee)
-			addFee = false;
-		}
-
-		addedFunds, scoids, err := builder.fundOutput(outputs[i], so)
-		if (err != nil) {
-			return err
-		}
-
-		rest = addedFunds.Sub(outputs[i].Value)
-		totalFund = totalFund.Add(addedFunds)
-
-		tx, _ := builder.View()
-		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
-			_, err = builder.checkRefund(amount, totalFund)
-			if (err != nil) {
-				return err
-			}
-			needRefund = false
-			// We will add a fee to each builder
-			addFee = true
-			txFilled = true
-		}
 		// Mark all outputs that were spent as spent
 		for _, scoid := range scoids {
 			err := dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(scoid), consensusHeight)
@@ -162,14 +130,12 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 	}
 
 	// Check if the last transaction need a refund
-	if (needRefund == true) {
+	if (needRefund) {
 		_, err = tb.currentBuilder().checkRefund(amount, totalFund)
 		if (err != nil) {
 			return err
 		}
 	}
-
-	// TODO: check size
 	return nil
 }
 
