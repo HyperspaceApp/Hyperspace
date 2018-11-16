@@ -172,6 +172,8 @@ func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transactio
 		return nil, err
 	}
 
+	tb.signed = true
+
 	// Let's see if there are more tx to be added in this set
 	// otherwise return just a set with one transaction.
 	for i := 1; i < len(tb.builders); i++ {
@@ -180,7 +182,6 @@ func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transactio
 		if (err != nil) {
 			return nil, err
 		}
-		tb.signed = true
 		txSet = tx
 	}
 
