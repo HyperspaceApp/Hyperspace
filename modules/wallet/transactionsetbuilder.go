@@ -99,6 +99,14 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 			so.ids = append([]types.SiacoinOutputID{refundID}, so.ids...)
 			so.outputs = append([]types.SiacoinOutput{refund}, so.outputs...)
 
+			// Spend the refund output so that it can be coherent
+			// with consensus rules.
+			err = dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(refundID),
+				consensusHeight)
+			if err != nil {
+				return err
+			}
+
 			amount = fee
 			rest = types.NewCurrency64(0)
 			totalFund = types.NewCurrency64(0)
