@@ -147,18 +147,34 @@ func NewCustomHostDB(g modules.Gateway, cs modules.ConsensusSet, persistDir stri
 		return hdb, nil
 	}
 
-	err = cs.ConsensusSetSubscribe(hdb, hdb.lastChange, hdb.tg.StopChan())
-	if err == modules.ErrInvalidConsensusChangeID {
-		// Subscribe again using the new ID. This will cause a triggered scan
-		// on all of the hosts, but that should be acceptable.
-		hdb.mu.Lock()
-		hdb.blockHeight = 0
-		hdb.lastChange = modules.ConsensusChangeBeginning
-		hdb.mu.Unlock()
+	if hdb.cs.SpvMode() {
+		err = cs.HeaderConsensusSetSubscribe(hdb, hdb.lastChange, hdb.tg.StopChan())
+		if err == modules.ErrInvalidConsensusChangeID {
+			// Subscribe again using the new ID. This will cause a triggered scan
+			// on all of the hosts, but that should be acceptable.
+			hdb.mu.Lock()
+			hdb.blockHeight = 0
+			hdb.lastChange = modules.ConsensusChangeBeginning
+			hdb.mu.Unlock()
+			err = cs.HeaderConsensusSetSubscribe(hdb, hdb.lastChange, hdb.tg.StopChan())
+		}
+		if err != nil {
+			return nil, errors.New("hostdb header consensus subscription failed: " + err.Error())
+		}
+	} else {
 		err = cs.ConsensusSetSubscribe(hdb, hdb.lastChange, hdb.tg.StopChan())
-	}
-	if err != nil {
-		return nil, errors.New("hostdb subscription failed: " + err.Error())
+		if err == modules.ErrInvalidConsensusChangeID {
+			// Subscribe again using the new ID. This will cause a triggered scan
+			// on all of the hosts, but that should be acceptable.
+			hdb.mu.Lock()
+			hdb.blockHeight = 0
+			hdb.lastChange = modules.ConsensusChangeBeginning
+			hdb.mu.Unlock()
+			err = cs.ConsensusSetSubscribe(hdb, hdb.lastChange, hdb.tg.StopChan())
+		}
+		if err != nil {
+			return nil, errors.New("hostdb subscription failed: " + err.Error())
+		}
 	}
 	err = hdb.tg.OnStop(func() error {
 		cs.Unsubscribe(hdb)

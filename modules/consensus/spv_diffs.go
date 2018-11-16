@@ -40,17 +40,17 @@ func commitSingleNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDire
 			// log.Printf("scod: %s %v %s", scod.SiacoinOutput.UnlockHash, scod.Direction, scod.SiacoinOutput.Value.HumanString())
 			commitSiacoinOutputDiff(tx, scod, dir)
 		}
-		// for _, fcd := range pb.FileContractDiffs {
-		// 	commitFileContractDiff(tx, fcd, dir)
-		// }
+		for _, fcd := range pb.FileContractDiffs {
+			commitFileContractDiff(tx, fcd, dir)
+		}
 	} else {
 		for i := len(pb.SiacoinOutputDiffs) - 1; i >= 0; i-- {
 			// log.Printf("scod: %s %v %s", pb.SiacoinOutputDiffs[i].SiacoinOutput.UnlockHash, !pb.SiacoinOutputDiffs[i].Direction, pb.SiacoinOutputDiffs[i].SiacoinOutput.Value.HumanString())
 			commitSiacoinOutputDiff(tx, pb.SiacoinOutputDiffs[i], dir)
 		}
-		// for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
-		// 	commitFileContractDiff(tx, pb.FileContractDiffs[i], dir)
-		// }
+		for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
+			commitFileContractDiff(tx, pb.FileContractDiffs[i], dir)
+		}
 	}
 }
 

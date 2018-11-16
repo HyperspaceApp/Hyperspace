@@ -114,3 +114,49 @@ func (hdb *HostDB) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 	hdb.lastChange = cc.ID
 }
+
+// ProcessHeaderConsensusChange will be called by the consensus set every time there
+// is a change in the blockchain. Updates will always be called in order.
+func (hdb *HostDB) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
+	hdb.mu.Lock()
+	defer hdb.mu.Unlock()
+
+	// Update the hostdb's understanding of the block height.
+	for _, header := range hcc.RevertedBlockHeaders {
+		// Only doing the block check if the height is above zero saves hashing
+		// and saves a nontrivial amount of time during IBD.
+		if hdb.blockHeight > 0 || header.BlockHeader.ID() != types.GenesisID {
+			hdb.blockHeight--
+		} else if hdb.blockHeight != 0 {
+			// Sanity check - if the current block is the genesis block, the
+			// hostdb height should be set to zero.
+			hdb.log.Critical("Hostdb has detected a genesis block, but the height of the hostdb is set to ", hdb.blockHeight)
+			hdb.blockHeight = 0
+		}
+	}
+	for _, header := range hcc.AppliedBlockHeaders {
+		// Only doing the block check if the height is above zero saves hashing
+		// and saves a nontrivial amount of time during IBD.
+		if hdb.blockHeight > 0 || header.BlockHeader.ID() != types.GenesisID {
+			hdb.blockHeight++
+		} else if hdb.blockHeight != 0 {
+			// Sanity check - if the current block is the genesis block, the
+			// hostdb height should be set to zero.
+			hdb.log.Critical("Hostdb has detected a genesis block, but the height of the hostdb is set to ", hdb.blockHeight)
+			hdb.blockHeight = 0
+		}
+	}
+
+	// Add hosts announced in blocks that were applied.
+	for _, header := range hcc.AppliedBlockHeaders {
+		for _, announcement := range header.Announcements {
+			var entry modules.HostDBEntry
+			entry.NetAddress = announcement.NetAddress
+			entry.PublicKey = announcement.PublicKey
+			hdb.log.Debugln("Found a host in a host announcement:", entry.NetAddress, entry.PublicKey)
+			hdb.insertBlockchainHost(entry)
+		}
+	}
+
+	hdb.lastChange = hcc.ID
+}

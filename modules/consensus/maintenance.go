@@ -271,7 +271,7 @@ func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.Proces
 	applyMinerPayoutsForHeader(tx, pb, pbh)
 	// TODO: add matured for each gap block
 	// applyMaturedSiacoinOutputsForHeader(tx, pbh)
-	// applyFileContractMaintenance(tx, pb) // not deal with filecontracts in spv for now
+	applyFileContractMaintenanceForHeader(tx, pb, pbh) // not deal with filecontracts in spv for now
 }
 
 func applyMinerPayoutsForHeader(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {
@@ -285,5 +285,41 @@ func applyMinerPayoutsForHeader(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 		}
 		pbh.DelayedSiacoinOutputDiffs = append(pbh.DelayedSiacoinOutputDiffs, dscod)
 		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
+	}
+}
+
+func applyFileContractMaintenanceForHeader(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {
+	// Get the bucket pointing to all of the expiring file contracts.
+	fceBucketID := append(prefixFCEX, encoding.Marshal(pb.Height)...)
+	fceBucket := tx.Bucket(fceBucketID)
+	// Finish if there are no expiring file contracts.
+	if fceBucket == nil {
+		return
+	}
+
+	var dscods []modules.DelayedSiacoinOutputDiff
+	var fcds []modules.FileContractDiff
+	err := fceBucket.ForEach(func(keyBytes, valBytes []byte) error {
+		var id types.FileContractID
+		copy(id[:], keyBytes)
+		amspDSCODS, fcd := applyMissedStorageProof(tx, pb, id)
+		fcds = append(fcds, fcd)
+		dscods = append(dscods, amspDSCODS...)
+		return nil
+	})
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	for _, dscod := range dscods {
+		pbh.DelayedSiacoinOutputDiffs = append(pbh.DelayedSiacoinOutputDiffs, dscod)
+		commitDelayedSiacoinOutputDiff(tx, dscod, modules.DiffApply)
+	}
+	for _, fcd := range fcds {
+		pb.FileContractDiffs = append(pb.FileContractDiffs, fcd) // TODO: not sure to put this to header to or not
+		commitFileContractDiff(tx, fcd, modules.DiffApply)
+	}
+	err = tx.DeleteBucket(fceBucketID)
+	if build.DEBUG && err != nil {
+		panic(err)
 	}
 }

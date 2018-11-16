@@ -196,7 +196,6 @@ func TestSPVConsensusSync(t *testing.T) {
 }
 
 // test miner payout detection (delayed diffs)
-
 func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
 	// blockchains should now match
 	for i := 0; i < 50; i++ {

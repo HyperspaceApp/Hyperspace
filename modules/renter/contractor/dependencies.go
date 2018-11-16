@@ -13,8 +13,10 @@ import (
 type (
 	consensusSet interface {
 		ConsensusSetSubscribe(modules.ConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error
+		HeaderConsensusSetSubscribe(modules.HeaderConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error
 		Synced() bool
 		Unsubscribe(modules.ConsensusSetSubscriber)
+		SpvMode() bool
 	}
 	// In order to restrict the modules.TransactionBuilder interface, we must
 	// provide a shim to bridge the gap between modules.Wallet and

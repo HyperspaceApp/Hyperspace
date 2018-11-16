@@ -51,6 +51,10 @@ func (h *Host) staticVerifyAnnouncementAddress(addr modules.NetAddress) error {
 	if addr.IsLocal() && build.Release != "testing" {
 		return errors.New("announcement requested with local net address")
 	}
+	if addr.IsLocal() && build.Release == "testing" {
+		// mac os will resolve 1 ipv4, 2 ipv6 by default, no need to check when test
+		return nil
+	}
 	// Make sure that the host resolves to 1 or 2 IPs and if it resolves to 2
 	// the type should be different.
 	ips, err := h.dependencies.LookupIP(addr.Host())

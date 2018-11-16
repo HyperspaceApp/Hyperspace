@@ -40,7 +40,7 @@ func randAddress() (uh types.UnlockHash) {
 
 // mineCoins mines blocks until there are siacoins in the wallet.
 func (cst *consensusSetTester) mineSiacoins() {
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond) // wait for tpool sync
 	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
 		b, err := cst.miner.FindBlock()
 		if err != nil {

@@ -462,6 +462,13 @@ func (r *Renter) ProcessConsensusChange(cc modules.ConsensusChange) {
 	r.mu.Unlock(id)
 }
 
+// ProcessHeaderConsensusChange will reset the lastEstimation
+func (r *Renter) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
+	id := r.mu.Lock()
+	r.lastEstimation = modules.RenterPriceEstimation{}
+	r.mu.Unlock(id)
+}
+
 // validateSiapath checks that a Siapath is a legal filename.
 // ../ is disallowed to prevent directory traversal, and paths must not begin
 // with / or be empty.
@@ -566,10 +573,18 @@ func NewCustomRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.T
 	// Initialize the streaming cache.
 	r.staticStreamCache = newStreamCache(r.persist.StreamCacheSize)
 
-	// Subscribe to the consensus set.
-	err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
-	if err != nil {
-		return nil, err
+	if cs.SpvMode() {
+		// Subscribe to the consensus set.
+		err = cs.HeaderConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Subscribe to the consensus set.
+		err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Spin up the workers for the work pool.

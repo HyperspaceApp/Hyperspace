@@ -265,7 +265,7 @@ func (h *Host) threadedHandleConn(conn net.Conn) {
 	var id types.Specifier
 	if err := encoding.ReadObject(conn, &id, 16); err != nil {
 		atomic.AddUint64(&h.atomicUnrecognizedCalls, 1)
-		h.log.Debugf("WARN: incoming conn %v was malformed: %v", conn.RemoteAddr(), err)
+		h.log.Debugf("WARN: incoming conn %v was malformed: %v\n", conn.RemoteAddr(), err)
 		return
 	}
 
