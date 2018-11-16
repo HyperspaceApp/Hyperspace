@@ -88,14 +88,20 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 		needRefund = true
 		tx, _ := tb.currentBuilder().View()
 		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
-			_, err = tb.currentBuilder().checkRefund(amount, totalFund)
+			refund, err := tb.currentBuilder().checkRefund(amount, totalFund)
 			if (err != nil) {
 				return err
 			}
+
+			// Prepend the refund to the outputs so that the next builder
+			// can use it.
+			refundID := tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)
+			so.ids = append([]types.SiacoinOutputID{refundID}, so.ids...)
+			so.outputs = append([]types.SiacoinOutput{refund}, so.outputs...)
+
 			amount = fee
 			rest = types.NewCurrency64(0)
 			totalFund = types.NewCurrency64(0)
-
 			// Add a new fresh builder for the next outputs
 			newBuilder := tb.wallet.registerTransaction(types.Transaction{}, nil)
 			tb.builders = append(tb.builders, *newBuilder)
