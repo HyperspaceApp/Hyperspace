@@ -120,6 +120,8 @@ test-pool:
 	go test -short -parallel=1 -tags='testing debug pool' -timeout=120s ./modules/miningpool -run=$(run)
 test-spv:
 	go test -v -tags='testing debug pool spv long' -timeout=1200s ./modules/consensus/ -run=^TestSPV.*$
+test-module:
+	go test -v -tags='debug testing netgo' $(package) -run=$(test)
 bench: clean fmt
 	go test -tags='debug testing netgo' -timeout=500s -run=XXX -bench=$(run) $(pkgs)
 cover: clean
