@@ -44,7 +44,7 @@ func TestFundOutputTransactionSet(t *testing.T) {
 	}
 	unfinishedTxn, _ := b.View()
 
-	// Here we should have 3 outputs, the two specified plus a refund
+	// Here we should have 2 outputs, the one specified plus a refund
 	if len(unfinishedTxn.SiacoinOutputs) != 2 {
 		t.Fatal("incorrect number of outputs generated")
 	}
@@ -137,7 +137,7 @@ func TestFundOutputsTransactionSet(t *testing.T) {
 
 // TestTransactionsFillWallet mines many blocks and checks that the wallet's
 // outputs are built in a manner to fill the txset
-func TestTransactionSetInputFillWallet(t *testing.T) {
+func TestTransactionSetOutputFillWallet(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
@@ -157,40 +157,32 @@ func TestTransactionSetInputFillWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	i := 0
+	numBlocks := 25
+	var outputs []types.SiacoinOutput
+
 	// Mine blocks and overload the txset
-	for {
+	for i := 0; i < numBlocks; i++ {
 		_, err := wt.miner.AddBlock()
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		amount1 := types.NewCurrency64(1000)
-
-		output1 := types.SiacoinOutput{
-			Value:      amount1,
-			UnlockHash: uc1.UnlockHash(),
-		}
-
-		tbuilder.FundOutput(output1,
-			types.NewCurrency64(25).Mul(types.SiacoinPrecision))
-
-		// TODO single tx
-		if (tbuilder.Size() >= modules.TransactionSizeLimit - 25e3) {
-			break
-		}
-		i++
 	}
 
-	// Add another block to push the number of outputs over the threshold
-	_, err = wt.miner.AddBlock()
-	if err != nil {
+	for i := 0; i < 5000; i++ {
+		amount := types.NewCurrency64(100000000)
+		output := types.SiacoinOutput{
+			Value:      amount,
+			UnlockHash: uc1.UnlockHash(),
+		}
+		outputs = append(outputs, output)
+	}
+
+	err = tbuilder.FundOutputs(outputs, types.NewCurrency64(10))
+	if (err != nil) {
 		t.Fatal(err)
 	}
 
-	// Wait some time, then mine another block
-	time.Sleep(time.Second * 5)
-
+	// Add another block
 	_, err = wt.miner.AddBlock()
 	if err != nil {
 		t.Fatal(err)
