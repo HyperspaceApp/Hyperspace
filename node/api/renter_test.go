@@ -93,7 +93,7 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 			var rf RenterFiles
 			st.getAPI("/renter/files", &rf)
 			if len(rf.Files) != 1 || !rf.Files[0].Available {
-				return fmt.Errorf("the uploading is not succeeding for some reason: %v\n", rf.Files[0])
+				return fmt.Errorf("the uploading is not succeeding for some reason: %v", rf.Files[0])
 			}
 			return nil
 		})

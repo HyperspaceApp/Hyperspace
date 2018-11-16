@@ -51,6 +51,9 @@ func announceAllHosts(sts []*serverTester) error {
 
 	// Announce each host.
 	for _, st := range sts {
+		if st.host == nil {
+			continue
+		}
 		// Set the host to be accepting contracts.
 		acceptingContractsValues := url.Values{}
 		acceptingContractsValues.Set("acceptingcontracts", "true")
