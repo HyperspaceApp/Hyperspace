@@ -565,7 +565,7 @@ func TestSPVRenterPricesHandler(t *testing.T) {
 	defer stHost2.panicClose()
 
 	// Connect all the nodes and announce all of the hosts.
-	sts := []*serverTester{st, hostTester, stHost1, stHost2}
+	sts := []*serverTester{hostTester, stHost1, stHost2}
 	err = fullyConnectNodes(sts)
 	if err != nil {
 		t.Fatal(err)
@@ -578,6 +578,16 @@ func TestSPVRenterPricesHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// connect and wait till sync
+	err = st.gateway.Connect(hostTester.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	st.fundRenter(t, hostTester)
+
+	waitTillTesterSync(hostTester, st, t)
 
 	// Grab the price estimates for when there are a bunch of hosts with the
 	// same stats.
