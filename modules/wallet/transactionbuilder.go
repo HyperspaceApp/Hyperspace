@@ -276,17 +276,23 @@ func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, so sortedOu
 	return fund, spentScoids, nil
 }
 
-func (tb *transactionBuilder) checkRefund(amount types.Currency, fund types.Currency) (types.SiacoinOutput, error) {
+func (tb *transactionBuilder) checkRefund(amount types.Currency, totalFundAdded types.Currency) (types.SiacoinOutput, error) {
 	// Create a refund output if needed.
-	if !amount.Equals(fund) {
+	if !amount.Equals(totalFundAdded) {
 		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
 		if err != nil {
 			return types.SiacoinOutput{}, err
 		}
 		refundOutput := types.SiacoinOutput{
-			Value:      fund.Sub(amount),
+			Value:      totalFundAdded.Sub(amount),
 			UnlockHash: refundUnlockConditions.UnlockHash(),
 		}
+
+		tx, _ := tb.View()
+		if (amount.Cmp(tx.SiacoinOutputSum()) != 0) {
+			panic("transactionBuilder::checkRefund: amount != tx.SiacoinOutputSum()")
+		}
+
 		tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
 		return refundOutput, nil
 	}
