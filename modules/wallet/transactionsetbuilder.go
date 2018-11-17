@@ -156,6 +156,14 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 		if (err != nil) {
 			return err
 		}
+		// Spend it
+		tx := tb.currentBuilder().transaction
+		err = dbPutSpentOutput(tb.wallet.dbTx,
+			types.OutputID(tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)),
+				consensusHeight)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Mark all outputs that were spent as spent
