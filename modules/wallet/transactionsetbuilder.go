@@ -20,6 +20,8 @@ func (tb *transactionSetBuilder) currentBuilder() *transactionBuilder {
 	return &tb.builders[len(tb.builders)-1]
 }
 
+// StartTransaction is a convenience function that calls
+// RegisterTransactionSet(types.Transaction{}, nil).
 func (w *Wallet) StartTransactionSet() (modules.TransactionSetBuilder, error) {
 	if err := w.tg.Add(); err != nil {
 		return nil, err
@@ -28,6 +30,10 @@ func (w *Wallet) StartTransactionSet() (modules.TransactionSetBuilder, error) {
 	return w.RegisterTransactionSet(types.Transaction{}, nil)
 }
 
+// RegisterTransactionSet takes a transaction and its parents and returns a
+// modules.TransactionSetBuilder which can be used to expand the transaction. The
+// most typical call is 'RegisterTransactionSet(types.Transaction{}, nil)', which
+// registers a new transaction without parents.
 func (w *Wallet) RegisterTransactionSet(t types.Transaction, parents []types.Transaction) (modules.TransactionSetBuilder, error) {
 	if err := w.tg.Add(); err != nil {
 		return nil, err
@@ -50,11 +56,22 @@ func (w *Wallet) registerTransactionSet(t types.Transaction, parents []types.Tra
 	return &ret
 }
 
+// FundOutput is a convenience function that does the same as FundOutputs
+// but for just one output. Beware, it creates a refund transaction for
+// each call!
 func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee types.Currency) error {
 	var outputs []types.SiacoinOutput
 	return tb.FundOutputs(append(outputs, output), fee)
 }
 
+// FundOutputs will add enough inputs to cover the outputs to be
+// sent in the transaction. In contrast to FundSiacoins, FundOutputs
+// does not aggregate inputs into one output equaling 'amount' - with a refund,
+// potentially - for later use by an output or other transaction fee. Rather,
+// it aggregates enough inputs to cover the outputs, adds the inputs and outputs
+// to the transaction, and also generates a refund output if necessary. A miner
+// fee of 0 or greater is also taken into account in the input aggregation and
+// added to the transaction if necessary.
 func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
 	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
 	if err != nil {
@@ -177,14 +194,33 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 	return nil
 }
 
+// AddOutput adds a hyperspace output to the transaction, returning the
+// index of the output within the transaction.
 func (tb *transactionSetBuilder) AddOutput(output types.SiacoinOutput) uint64 {
 	return tb.currentBuilder().AddSiacoinOutput(output)
 }
 
+// AddInput adds a hyperspace input to the current transaction, returning the index
+// of the input within the transaction. When 'Sign' gets called, this
+// input will be left unsigned.
 func (tb *transactionSetBuilder) AddInput(output types.SiacoinInput) uint64 {
+	// TODO what about returning also the index of the transaction inside the set?
 	return tb.currentBuilder().AddSiacoinInput(output)
 }
 
+// Sign will sign any inputs added by 'FundOutputs' and
+// return a transaction set that contains all parents prepended to the
+// transaction. If more fields need to be added, a new transaction builder will
+// need to be created.
+//
+// If the whole transaction flag is set to true, then the whole transaction
+// flag will be set in the covered fields object. If the whole transaction flag
+// is set to false, then the covered fields object will cover all fields that
+// have already been added to the transaction, but will also leave room for
+// more fields to be added.
+//
+// Sign should not be called more than once. If, for some reason, there is an
+// error while calling Sign, the builder should be dropped.
 func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transaction, error) {
 	if tb.signed {
 		return nil, errBuilderAlreadySigned
@@ -212,6 +248,10 @@ func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transactio
 	return txSet, nil
 }
 
+// View returns a transaction-in-progress along with all of its
+// parents, specified by id. An error is returned if the id is invalid.  Note
+// that ids become invalid for a transaction after 'Sign' has been
+// called because the transaction gets deleted.
 func (tb *transactionSetBuilder) View() (types.Transaction, []types.Transaction) {
 	// The last builder, is the actual transaction
 	// other builders will be returned as parents.
@@ -223,6 +263,9 @@ func (tb *transactionSetBuilder) View() (types.Transaction, []types.Transaction)
 	return ret[len(ret)-1], ret[:len(ret)-1]
 }
 
+// Drop discards all of the outputs in a transaction, returning them to the
+// pool so that other transactions may use them. 'Drop' should only be called
+// if a transaction is both unsigned and will not be used any further.
 func (tb *transactionSetBuilder) Drop() {
 	for i := range tb.builders {
 		tb.builders[i].Drop()
@@ -233,6 +276,7 @@ func (tb *transactionSetBuilder) Drop() {
 	tb.signed = false;
 }
 
+// Size return the encoded size of the whole transaction set.
 func (tb *transactionSetBuilder) Size() (size int) {
 	var ret int
 	for i := range tb.builders {

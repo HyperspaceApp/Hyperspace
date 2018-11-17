@@ -105,7 +105,7 @@ func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currenc
 }
 
 // FundOutputs will add enough inputs to cover the outputs to be
-// sent in the transaction. In contrast to FundSiacoins, FundSiacoinsForOutputs
+// sent in the transaction. In contrast to FundSiacoins, FundOutputs
 // does not aggregate inputs into one output equaling 'amount' - with a refund,
 // potentially - for later use by an output or other transaction fee. Rather,
 // it aggregates enough inputs to cover the outputs, adds the inputs and outputs

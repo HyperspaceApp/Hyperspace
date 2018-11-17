@@ -229,21 +229,52 @@ type (
 	}
 
 	TransactionSetBuilder interface {
+		// FundOutputs will aggregate enough inputs to cover the
+		// total value of the outputs and the miner fee if any. A refund
+		// output will be generated if necessary. All the outputs will be
+		// added to the transaction being built along with a miner fee if
+		// one is passed. The transaction will not be signed.
 		FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
+		// FundOutput is a convenience function that does the same as FundOutputs
+		// but for just one output. Beware, it creates a refund transaction for
+		// each call!
 		FundOutput(output types.SiacoinOutput, fee types.Currency) error
 
+		// AddOutput adds a siacoin output to the transaction, returning
+		// the index of the siacoin output within the transaction.
 		AddOutput(types.SiacoinOutput) uint64
+		// AddInput adds a siacoin input to the transaction, returning
+		// the index of the siacoin input within the transaction. When 'Sign'
+		// gets called, this input will be left unsigned.
 		AddInput(types.SiacoinInput) uint64
 
+		// Sign will sign any inputs added by 'FundOutputs' and return a
+		// transaction set that contains all parents prepended to
+		// the transaction. If more fields need to be added, a new transaction
+		// builder will need to be created.
+		//
+		// If the whole transaction flag is set to true, then the whole
+		// transaction flag will be set in the covered fields object. If the
+		// whole transaction flag is set to false, then the covered fields
+		// object will cover all fields that have already been added to the
+		// transaction, but will also leave room for more fields to be added.
+		//
+		// An error will be returned if there are multiple calls to 'Sign',
+		// sometimes even if the first call to Sign has failed. Sign should
+		// only ever be called once, and if the first signing fails, the
+		// transaction should be dropped.
 		Sign(wholeTransaction bool) ([]types.Transaction, error)
 
 		// View returns the incomplete transaction along with all of its
 		// parents.
 		View() (txn types.Transaction, parents []types.Transaction)
 
+		// Drop indicates that a transaction is no longer useful and will not be
+		// broadcast, and that all of the outputs can be reclaimed. 'Drop'
+		// should only be used before signatures are added.
 		Drop()
 
-		// Return the encoded size. TODO: Does it really belong here?
+		// Size return the encoded size of the whole transaction set.
 		Size() (size int)
 	}
 
