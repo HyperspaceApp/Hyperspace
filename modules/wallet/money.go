@@ -167,7 +167,7 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 		UnlockHash: dest,
 	}
 
-	txnBuilder, err := w.StartTransaction()
+	txnBuilder, err := w.StartTransactionSet()
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (w *Wallet) SendSiacoinsMulti(outputs []types.SiacoinOutput) (txns []types.
 		return nil, modules.ErrLockedWallet
 	}
 
-	txnBuilder, err := w.StartTransaction()
+	txnBuilder, err := w.StartTransactionSet()
 	if err != nil {
 		return nil, err
 	}
