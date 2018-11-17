@@ -542,6 +542,14 @@ func TestSPVRenterPricesHandler(t *testing.T) {
 	defer st.server.panicClose()
 	defer hostTester.server.panicClose()
 
+	// connect and wait till sync
+	err = st.gateway.Connect(hostTester.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	waitTillTesterSync(hostTester, st, t)
+
 	// Announce the host and then get the calculated prices for when there is a
 	// single host.
 	var rpeSingle modules.RenterPriceEstimation
@@ -578,16 +586,6 @@ func TestSPVRenterPricesHandler(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// connect and wait till sync
-	err = st.gateway.Connect(hostTester.gateway.Address())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	st.fundRenter(t, hostTester)
-
-	waitTillTesterSync(hostTester, st, t)
 
 	// Grab the price estimates for when there are a bunch of hosts with the
 	// same stats.
