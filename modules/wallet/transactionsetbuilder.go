@@ -220,6 +220,16 @@ func (tb *transactionSetBuilder) View() (types.Transaction, []types.Transaction)
 	return ret[len(ret)-1], ret[:len(ret)-1]
 }
 
+func (tb *transactionSetBuilder) Drop() {
+	for i := range tb.builders {
+		tb.builders[i].Drop()
+	}
+
+	// Discard any subsequent builder
+	tb.builders = []transactionBuilder{tb.builders[0]}
+	tb.signed = false;
+}
+
 func (tb *transactionSetBuilder) Size() (size int) {
 	var ret int
 	for i := range tb.builders {
