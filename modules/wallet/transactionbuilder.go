@@ -288,8 +288,7 @@ func (tb *transactionBuilder) checkRefund(amount types.Currency, totalFundAdded 
 			UnlockHash: refundUnlockConditions.UnlockHash(),
 		}
 
-		tx, _ := tb.View()
-		if (amount.Cmp(tx.SiacoinOutputSum()) != 0) {
+		if (amount.Cmp(tb.transaction.SiacoinOutputSum()) != 0) {
 			panic("transactionBuilder::checkRefund: amount != tx.SiacoinOutputSum()")
 		}
 

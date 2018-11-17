@@ -64,7 +64,7 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 	tb.wallet.mu.Lock()
 	defer tb.wallet.mu.Unlock()
 
-	var scoids []types.SiacoinOutputID
+	var finalScoids []types.SiacoinOutputID
 
 	amount := fee
 	totalFund := types.NewCurrency64(0)
@@ -86,7 +86,7 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 
 	for i := range outputs {
 		needRefund = true
-		tx, _ := tb.currentBuilder().View()
+		tx := tb.currentBuilder().transaction
 		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
 			refund, err := tb.currentBuilder().checkRefund(amount, totalFund)
 			if (err != nil) {
@@ -125,22 +125,29 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 			rest = rest.Sub(outputs[i].Value)
 			tb.currentBuilder().AddSiacoinOutput(outputs[i])
 		} else {
-			addedFunds, scoids, err = tb.currentBuilder().fundOutput(outputs[i], so)
+			var tempScoids []types.SiacoinOutputID
+			addedFunds, tempScoids, err = tb.currentBuilder().fundOutput(outputs[i], so)
 			if (err != nil) {
 				return err
 			}
 			rest = addedFunds.Sub(outputs[i].Value)
 			totalFund = totalFund.Add(addedFunds)
-		}
-		amount = amount.Add(outputs[i].Value)
 
-		// Mark all outputs that were spent as spent
-		for _, scoid := range scoids {
-			err := dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(scoid), consensusHeight)
-			if err != nil {
-				return err
+			// We need to keep track of scoids to spend.
+			finalScoids = append(finalScoids, tempScoids...)
+
+			// Remove used outputs, so that those don't get respent
+			for _, scoid := range tempScoids {
+				for j := len(so.ids) - 1; j >= 0; j-- {
+					if (scoid == so.ids[j]) {
+						so.ids = append(so.ids[:j], so.ids[j+1:]...)
+						so.outputs = append(so.outputs[:j], so.outputs[j+1:]...)
+						j -= 1;
+					}
+				}
 			}
 		}
+		amount = amount.Add(outputs[i].Value)
 	}
 
 	// Check if the last transaction need a refund
@@ -150,6 +157,15 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 			return err
 		}
 	}
+
+	// Mark all outputs that were spent as spent
+	for _, scoid := range finalScoids {
+		err := dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(scoid), consensusHeight)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
