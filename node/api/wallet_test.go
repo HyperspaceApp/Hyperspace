@@ -1476,11 +1476,6 @@ func TestWalletManyTransactions(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Disable defrag for the wallet
-	st.wallet.SetSettings(modules.WalletSettings{
-		NoDefrag: true,
-	})
-
 	// Mining blocks should have created transactions for the wallet containing
 	// miner payouts. Get the list of transactions.
 	var wtg WalletTransactionsGET
@@ -1654,11 +1649,6 @@ func TestFilteredTransactionsGET(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// Disable defrag for the wallet
-	st.wallet.SetSettings(modules.WalletSettings{
-		NoDefrag: true,
-	})
 
 	// Mining blocks should have created transactions for the wallet containing
 	// miner payouts. Get the list of transactions.
