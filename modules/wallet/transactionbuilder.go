@@ -694,31 +694,6 @@ func (w *Wallet) StartTransaction() (modules.TransactionBuilder, error) {
 	return w.RegisterTransaction(types.Transaction{}, nil)
 }
 
-// NewTransaction build a new transaction and return it
-func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
-	tb, err := w.StartTransaction()
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err != nil {
-			tb.Drop()
-		}
-	}()
-	err = tb.FundOutputs(outputs, fee)
-	if err != nil {
-		return
-	}
-	txnSet, err := tb.Sign(true)
-	if err != nil {
-		return
-	}
-	// NOTE: for now, we assume FundOutputs returns a set with only one tx
-	// the transaction builder code is due for an overhaul
-	tx = txnSet[0]
-	return
-}
-
 // NewTransactionForAddress build a new transaction with specified unlockhash and return it
 func (w *Wallet) NewTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (tx types.Transaction, err error) {
 	output := types.SiacoinOutput{

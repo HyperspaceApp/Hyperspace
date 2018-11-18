@@ -285,3 +285,28 @@ func (tb *transactionSetBuilder) Size() (size int) {
 	}
 	return ret
 }
+
+// NewTransaction build a new transaction set and return it
+func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
+	tb, err := w.StartTransactionSet()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err != nil {
+			tb.Drop()
+		}
+	}()
+	err = tb.FundOutputs(outputs, fee)
+	if err != nil {
+		return
+	}
+	txnSet, err := tb.Sign(true)
+	if err != nil {
+		return
+	}
+	// NOTE: for now, we assume FundOutputs returns a set with only one tx
+	// the transaction builder code is due for an overhaul
+	tx = txnSet[0]
+	return
+}
