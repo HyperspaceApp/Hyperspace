@@ -665,7 +665,6 @@ func createWalletSPVTester(name string, deps modules.Dependencies) (*walletTeste
 	if err != nil {
 		return nil, err
 	}
-	w.defragDisabled = true
 	var entropy [crypto.EntropySize]byte
 	fastrand.Read(entropy[:])
 	masterKey, _ := crypto.NewSiaKey(crypto.TypeTwofish, entropy[:])

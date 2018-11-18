@@ -123,10 +123,6 @@ type Wallet struct {
 	// blocks until they have all exited before returning from Close.
 	tg threadgroup.ThreadGroup
 
-	// defragDisabled determines if the wallet is set to defrag outputs once it
-	// reaches a certain threshold
-	defragDisabled bool
-
 	// addressGapLimit is by default set to 20. If the software hits 20 unused
 	// addresses in a row, it expects there are no used addresses beyond this
 	// point and stops searching the address chain. We scan just the external
@@ -338,9 +334,7 @@ func (w *Wallet) Settings() (modules.WalletSettings, error) {
 		return modules.WalletSettings{}, modules.ErrWalletShutdown
 	}
 	defer w.tg.Done()
-	return modules.WalletSettings{
-		NoDefrag: w.defragDisabled,
-	}, nil
+	return modules.WalletSettings{}, nil
 }
 
 // SetSettings will update the settings for the wallet.
@@ -351,7 +345,6 @@ func (w *Wallet) SetSettings(s modules.WalletSettings) error {
 	defer w.tg.Done()
 
 	w.mu.Lock()
-	w.defragDisabled = s.NoDefrag
 	w.mu.Unlock()
 	return nil
 }
