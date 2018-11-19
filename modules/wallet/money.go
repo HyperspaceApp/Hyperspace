@@ -122,7 +122,6 @@ func (w *Wallet) getSortedOutputs() (so sortedOutputs, err error) {
 }
 
 // checkOutput is a helper function used to determine if an output is usable.
-// TODO this doesn't thrown an error on old spent outputs, but it should
 func (w *Wallet) checkOutput(tx *bolt.Tx, currentHeight types.BlockHeight, id types.SiacoinOutputID, output types.SiacoinOutput, dustThreshold types.Currency) error {
 	// Check that an output is not dust
 	if output.Value.Cmp(dustThreshold) < 0 {
@@ -133,6 +132,9 @@ func (w *Wallet) checkOutput(tx *bolt.Tx, currentHeight types.BlockHeight, id ty
 	if err == nil {
 		if spendHeight+RespendTimeout > currentHeight {
 			return errSpendHeightTooHigh
+		}
+		if spendHeight+RespendTimeout <= currentHeight {
+			return errors.New("output already spent")
 		}
 	}
 	outputUnlockConditions := w.keys[output.UnlockHash].UnlockConditions
