@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -72,49 +71,52 @@ func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee type
 // to the transaction, and also generates a refund output if necessary. A miner
 // fee of 0 or greater is also taken into account in the input aggregation and
 // added to the transaction if necessary.
-func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
+func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, fee types.Currency) error {
 	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
 	if err != nil {
 		return err
 	}
 
+	tot := types.NewCurrency64(0)
+
 	tb.wallet.mu.Lock()
 	defer tb.wallet.mu.Unlock()
 
 	var finalScoids []types.SiacoinOutputID
+	var refundID types.SiacoinOutputID
 
-	amount := fee
-	totalFund := types.NewCurrency64(0)
+	// Current funded amount within the currentBuilder()
+	curFundAmount := fee
+	addFee := true
+
+	// Remaining sum since the last funded outOutput
 	rest := types.NewCurrency64(0)
-	addedFunds := types.NewCurrency64(0)
 
-	// We need this to avoid the side case of
-	// adding two refunds at the end of a new
-	// txset.
-	needRefund := true
-
-	// Gather outputs
-	so, err := tb.wallet.getSortedOutputs()
+	// Gather outputs used to fund the transaction
+	inOutputs, err := tb.wallet.getSortedOutputs()
 	if err != nil {
 		return err
 	}
 
 	tb.currentBuilder().AddMinerFee(fee)
 
-	for i := range outputs {
-		needRefund = true
+	for i := range outOutputs {
+		currentOutput := outOutputs[i]
+		tot = tot.Add(currentOutput.Value)
+
 		tx := tb.currentBuilder().transaction
-		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
-			refund, err := tb.currentBuilder().checkRefund(amount, totalFund)
+		// NOTE: 2 kb limit to ease testing, to be removed before merge
+		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 30e3) {
+			refundOutput, err := tb.currentBuilder().addRefund(rest)
 			if (err != nil) {
 				return err
 			}
 
 			// Prepend the refund to the outputs so that the next builder
 			// can use it.
-			refundID := tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)
-			so.ids = append([]types.SiacoinOutputID{refundID}, so.ids...)
-			so.outputs = append([]types.SiacoinOutput{refund}, so.outputs...)
+			refundID = tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)
+			inOutputs.ids = append([]types.SiacoinOutputID{refundID}, inOutputs.ids...)
+			inOutputs.outputs = append([]types.SiacoinOutput{refundOutput}, inOutputs.outputs...)
 
 			// Spend the refund output so that it can be coherent
 			// with consensus rules.
@@ -124,52 +126,69 @@ func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee 
 				return err
 			}
 
-			amount = fee
-			rest = types.NewCurrency64(0)
-			totalFund = types.NewCurrency64(0)
 			// Add a new fresh builder for the next outputs
 			newBuilder := tb.wallet.registerTransaction(types.Transaction{}, nil)
 			tb.builders = append(tb.builders, *newBuilder)
 			tb.currentBuilder().AddMinerFee(fee)
-			needRefund = false
+
+			// Reset stuff
+			rest = types.NewCurrency64(0)
+			curFundAmount = fee
+			addFee = true
 		}
 
 		// We already have enough funds?
 		// Do not seek for inputs, just add the output.
-		if (rest.Cmp(outputs[i].Value) >= 0) {
-			// NOTE: The amount has been already added
-			// to totalFund in the previous fundOutput call!
-			rest = rest.Sub(outputs[i].Value)
-			tb.currentBuilder().AddSiacoinOutput(outputs[i])
+		if (rest.Cmp(currentOutput.Value) >= 0) {
+			tb.currentBuilder().AddSiacoinOutput(currentOutput)
+			rest = rest.Sub(currentOutput.Value)
+
+			curFundAmount = curFundAmount.Add(currentOutput.Value)
 		} else {
-			var tempScoids []types.SiacoinOutputID
-			addedFunds, tempScoids, err = tb.currentBuilder().fundOutput(outputs[i], so)
+			var spentInOutputs []types.SiacoinOutputID
+			fundedAmount := types.NewCurrency64(0)
+
+			valueToFund := currentOutput.Value
+			if (rest.Cmp64(0) > 0) {
+				valueToFund = valueToFund.Sub(rest)
+				rest = types.NewCurrency64(0)
+			}
+
+			if (addFee) {
+				valueToFund = valueToFund.Add(fee)
+				addFee = false
+			}
+
+			fundedAmount, spentInOutputs, err = tb.currentBuilder().fund(valueToFund, refundID, inOutputs)
 			if (err != nil) {
 				return err
 			}
-			rest = addedFunds.Sub(outputs[i].Value)
-			totalFund = totalFund.Add(addedFunds)
+			refundID = types.SiacoinOutputID{}
 
 			// We need to keep track of scoids to spend.
-			finalScoids = append(finalScoids, tempScoids...)
+			finalScoids = append(finalScoids, spentInOutputs...)
+
+			curFundAmount = curFundAmount.Add(valueToFund)
+			// Calculate rest
+			rest = fundedAmount.Sub(valueToFund)
+			// Add the output to the transction
+			tb.currentBuilder().AddSiacoinOutput(currentOutput)
 
 			// Remove used outputs, so that those don't get respent
-			for _, scoid := range tempScoids {
-				for j := len(so.ids) - 1; j >= 0; j-- {
-					if (scoid == so.ids[j]) {
-						so.ids = append(so.ids[:j], so.ids[j+1:]...)
-						so.outputs = append(so.outputs[:j], so.outputs[j+1:]...)
+			for _, scoid := range spentInOutputs {
+				for j := len(inOutputs.ids) - 1; j >= 0; j-- {
+					if (scoid == inOutputs.ids[j]) {
+						inOutputs.ids = append(inOutputs.ids[:j], inOutputs.ids[j+1:]...)
+						inOutputs.outputs = append(inOutputs.outputs[:j], inOutputs.outputs[j+1:]...)
 						j -= 1;
 					}
 				}
 			}
 		}
-		amount = amount.Add(outputs[i].Value)
 	}
 
-	// Check if the last transaction need a refund
-	if (needRefund) {
-		_, err = tb.currentBuilder().checkRefund(amount, totalFund)
+	if (rest.Cmp64(0) > 0) {
+		_, err = tb.currentBuilder().addRefund(rest)
 		if (err != nil) {
 			return err
 		}
@@ -281,7 +300,7 @@ func (tb *transactionSetBuilder) Size() (size int) {
 	var ret int
 	for i := range tb.builders {
 		tx, _ := tb.builders[i].View()
-		ret += len(encoding.Marshal(tx))
+		ret += tx.MarshalSiaSize()
 	}
 	return ret
 }
