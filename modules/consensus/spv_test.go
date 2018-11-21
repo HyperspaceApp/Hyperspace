@@ -203,7 +203,7 @@ func waitTillSync(cst1, cst2 *consensusSetTester, t *testing.T) {
 			time.Sleep(250 * time.Millisecond)
 		}
 	}
-	log.Printf("cst1 %d, cst2 %d", cst1.cs.dbBlockHeight(), cst2.cs.dbBlockHeight())
+	// log.Printf("cst1 %d, cst2 %d", cst1.cs.dbBlockHeight(), cst2.cs.dbBlockHeight())
 
 	if cst1.cs.dbCurrentBlockID() != cst2.cs.dbCurrentBlockID() {
 		t.Fatal("Synchronize failed")
@@ -339,7 +339,6 @@ func TestSPVDelayedOutputDiff(t *testing.T) {
 }
 
 func testSendFromSPV(cst1, cst2 *consensusSetTester, t *testing.T) {
-	log.Printf("testSendFromSPV")
 	balanceBefore1, err := cst1.wallet.ConfirmedBalance()
 	if err != nil {
 		t.Fatal(err)

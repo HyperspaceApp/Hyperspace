@@ -108,6 +108,11 @@ func (cs *ConsensusSet) generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlo
 	// applied.
 	createDSCOBucketIfNotExist(tx, pb.Height+types.MaturityDelay) // have done this in header
 
+	pbh, exists := cs.processedBlockHeaders[pb.Block.ID()]
+	if !exists {
+		panic(fmt.Errorf("generateAndApplyDiffForSPV: header not exists %s", pb.Block.ID()))
+	}
+
 	// Validate and apply each transaction in the block. They cannot be
 	// validated all at once because some transactions may not be valid until
 	// previous transactions have been applied.
@@ -117,12 +122,7 @@ func (cs *ConsensusSet) generateAndApplyDiffForSPV(tx *bolt.Tx, pb *processedBlo
 		if err != nil {
 			return err
 		}
-		applyTransactionForSPV(tx, pb, txn)
-	}
-
-	pbh, exists := cs.processedBlockHeaders[pb.Block.ID()]
-	if !exists {
-		panic(fmt.Errorf("generateAndApplyDiffForSPV: header not exists %s", pb.Block.ID()))
+		applyTransactionForSPV(tx, pb, pbh, txn)
 	}
 
 	// After all of the transactions have been applied, 'maintenance' is

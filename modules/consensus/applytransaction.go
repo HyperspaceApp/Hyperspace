@@ -148,32 +148,3 @@ func applyTransaction(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
 	applyFileContractRevisions(tx, pb, t)
 	applyStorageProofs(tx, pb, t)
 }
-
-func applyTransactionForSPV(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
-	applySiacoinInputsForSPV(tx, pb, t)
-	applySiacoinOutputs(tx, pb, t)
-	// disable file in spv for now
-	// applyFileContracts(tx, pb, t)
-	// applyFileContractRevisions(tx, pb, t)
-	// applyStorageProofs(tx, pb, t)
-}
-
-func applySiacoinInputsForSPV(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
-	// Remove all siacoin inputs from the unspent siacoin outputs list.
-	for _, sci := range t.SiacoinInputs {
-		sco, err := getSiacoinOutput(tx, sci.ParentID)
-		if err == errNilItem {
-			// not related inputs
-			return
-		}
-		scod := modules.SiacoinOutputDiff{
-			Direction:     modules.DiffRevert,
-			ID:            sci.ParentID,
-			SiacoinOutput: sco,
-		}
-		pb.SiacoinOutputDiffs = append(pb.SiacoinOutputDiffs, scod)
-		// log.Printf("applySiacoinInputsForSPV: %s %s %v %s", scod.SiacoinOutput.UnlockHash,
-		// 	scod.SiacoinOutput.Value, scod.Direction, scod.ID)
-		commitSiacoinOutputDiff(tx, scod, modules.DiffApply)
-	}
-}
