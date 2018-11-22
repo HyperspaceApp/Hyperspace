@@ -1,8 +1,6 @@
 package wallet
 
 import (
-	"fmt"
-
 	"bytes"
 	"errors"
 
@@ -174,8 +172,8 @@ func (tb *transactionBuilder) addRefund(rest types.Currency) (types.SiacoinOutpu
 		Value:      rest,
 		UnlockHash: refundUnlockConditions.UnlockHash(),
 	}
-
 	tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
+	//fmt.Println("refundID",tb.transaction.SiacoinOutputID(uint64(len(tb.transaction.SiacoinOutputs)-1)))
 	return refundOutput, nil
 }
 

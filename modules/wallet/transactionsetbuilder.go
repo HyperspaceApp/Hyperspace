@@ -104,9 +104,8 @@ func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, f
 		currentOutput := outOutputs[i]
 		tot = tot.Add(currentOutput.Value)
 
-		tx := tb.currentBuilder().transaction
 		// NOTE: 2 kb limit to ease testing, to be removed before merge
-		if (tx.MarshalSiaSize() >= modules.TransactionSizeLimit - 30e3) {
+		if (tb.currentBuilder().transaction.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
 			refundOutput, err := tb.currentBuilder().addRefund(rest)
 			if (err != nil) {
 				return err
@@ -114,7 +113,9 @@ func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, f
 
 			// Prepend the refund to the outputs so that the next builder
 			// can use it.
+			tx := tb.currentBuilder().transaction
 			refundID = tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)
+			//fmt.Println("refundid", refundID)
 			inOutputs.ids = append([]types.SiacoinOutputID{refundID}, inOutputs.ids...)
 			inOutputs.outputs = append([]types.SiacoinOutput{refundOutput}, inOutputs.outputs...)
 
