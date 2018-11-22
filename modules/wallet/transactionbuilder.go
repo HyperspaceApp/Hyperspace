@@ -121,11 +121,6 @@ func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, so sortedOu
 	// NOTE: miner fee is caller responsibility in this context
 	// TODO: better to use refund if provided
 
-	so, err := tb.wallet.getSortedOutputs()
-	if err != nil {
-		return fund, nil, err
-	}
-
 	// potentialFund tracks the balance of the wallet including outputs that
 	// have been spent in other unconfirmed transactions recently. This is to
 	// provide the user with a more useful error message in the event that they
@@ -170,17 +165,22 @@ func (tb *transactionBuilder) fundOutput(output types.SiacoinOutput, so sortedOu
 	return fund, spentScoids, nil
 }
 
-func (tb *transactionBuilder) checkRefund(amount types.Currency, fund types.Currency) (types.SiacoinOutput, error) {
+func (tb *transactionBuilder) checkRefund(amount types.Currency, totalFundAdded types.Currency) (types.SiacoinOutput, error) {
 	// Create a refund output if needed.
-	if !amount.Equals(fund) {
+	if !amount.Equals(totalFundAdded) {
 		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
 		if err != nil {
 			return types.SiacoinOutput{}, err
 		}
 		refundOutput := types.SiacoinOutput{
-			Value:      fund.Sub(amount),
+			Value:      totalFundAdded.Sub(amount),
 			UnlockHash: refundUnlockConditions.UnlockHash(),
 		}
+
+		if (amount.Cmp(tb.transaction.SiacoinOutputSum()) != 0) {
+			panic("transactionBuilder::checkRefund: amount != tx.SiacoinOutputSum()")
+		}
+
 		tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
 		return refundOutput, nil
 	}

@@ -138,7 +138,7 @@ func TestFundOutputsTransactionSet(t *testing.T) {
 
 // TestTransactionsFillWallet mines many blocks and checks that the wallet's
 // outputs are built in a manner to fill the txset
-func TestTransactionSetOutputFillWallet(t *testing.T) {
+func TestFundOutputsFillWalletTransactionSet(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}

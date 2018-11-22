@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -9,7 +10,6 @@ import (
 
 type transactionSetBuilder struct {
 	signed   bool
-	outputs  []types.SiacoinOutput
 
 	builders []transactionBuilder
 
@@ -73,12 +73,6 @@ func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee type
 // fee of 0 or greater is also taken into account in the input aggregation and
 // added to the transaction if necessary.
 func (tb *transactionSetBuilder) FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
-	// dustThreshold has to be obtained separate from the lock
-	dustThreshold, err := tb.wallet.DustThreshold()
-	if err != nil {
-		return err
-	}
-
 	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
 	if err != nil {
 		return err
