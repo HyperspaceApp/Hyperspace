@@ -304,10 +304,10 @@ func (tb *transactionSetBuilder) Size() (size int) {
 }
 
 // NewTransaction build a new transaction set and return it
-func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
+func (w *Wallet) NewTransactionSet(outputs []types.SiacoinOutput, fee types.Currency) ([]types.Transaction, error) {
 	tb, err := w.StartTransactionSet()
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer func() {
 		if err != nil {
@@ -316,14 +316,20 @@ func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currenc
 	}()
 	err = tb.FundOutputs(outputs, fee)
 	if err != nil {
-		return
+		return nil, err
 	}
 	txnSet, err := tb.Sign(true)
 	if err != nil {
-		return
+		return nil, err
 	}
-	// NOTE: for now, we assume FundOutputs returns a set with only one tx
-	// the transaction builder code is due for an overhaul
-	tx = txnSet[0]
-	return
+	return txnSet, nil
+}
+
+// NewTransactionForAddress build a new transaction with specified unlockhash and return it
+func (w *Wallet) NewTransactionSetForAddress(dest types.UnlockHash, amount, fee types.Currency) ([]types.Transaction, error) {
+	output := types.SiacoinOutput{
+		Value:      amount,
+		UnlockHash: dest,
+	}
+	return w.NewTransactionSet([]types.SiacoinOutput{output}, fee)
 }

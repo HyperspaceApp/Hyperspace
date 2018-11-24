@@ -467,15 +467,15 @@ type (
 		// a TransactionBuilder which can be used to expand the transaction.
 		RegisterTransaction(t types.Transaction, parents []types.Transaction) (TransactionBuilder, error)
 
-		// NewTransaction takes a list of outputs and a tx fee and
-		// returns an unsigned transaction constructed from the wallet's
+		// NewTransactionSet takes a list of outputs and a tx fee and
+		// returns an unsigned transaction set constructed from the wallet's
 		// unspent outputs
-		NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (types.Transaction, error)
+		NewTransactionSet(outputs []types.SiacoinOutput, fee types.Currency) ([]types.Transaction, error)
 
-		// NewTransaction takes a destination unlock hash, transfer amount,
-		// and a tx fee, and returns an unsigned transaction constructed from the
+		// NewTransactionSetForAddress takes a destination unlock hash, transfer amount,
+		// and a tx fee, and returns an unsigned transaction set constructed from the
 		// wallet's unspent outputs
-		NewTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (types.Transaction, error)
+		NewTransactionSetForAddress(dest types.UnlockHash, amount, fee types.Currency) ([]types.Transaction, error)
 
 		// RemoveWatchAddresses instructs the wallet to stop tracking a set of
 		// addresses and delete their associated transactions. If none of the

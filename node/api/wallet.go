@@ -698,13 +698,19 @@ func (api *API) walletBuildTransactionHandler(w http.ResponseWriter, req *http.R
 	}
 	var fee types.Currency
 
-	txn, err := api.wallet.NewTransactionForAddress(dest, amount, fee)
+	txnSet, err := api.wallet.NewTransactionSetForAddress(dest, amount, fee)
 	if err != nil {
 		WriteError(w, Error{"error when calling /wallet/build/transaction:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
+
+	if (len(txnSet) > 1) {
+		WriteError(w, Error{"error when calling /wallet/build/transaction: could not fit the desired amount into a single transaction, try sending a smaller amount"}, http.StatusBadRequest)
+		return
+	}
+
 	WriteJSON(w, WalletBuildTransactionGET{
-		Transaction: txn,
+		Transaction: txnSet[0],
 	})
 }
 
