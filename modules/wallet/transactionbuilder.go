@@ -104,115 +104,81 @@ func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currenc
 	return amount
 }
 
-// FundSiacoinsForOutputs will add enough inputs to cover the outputs to be
-// sent in the transaction. In contrast to FundSiacoins, FundSiacoinsForOutputs
-// does not aggregate inputs into one output equaling 'amount' - with a refund,
-// potentially - for later use by an output or other transaction fee. Rather,
-// it aggregates enough inputs to cover the outputs, adds the inputs and outputs
-// to the transaction, and also generates a refund output if necessary. A miner
-// fee of 0 or greater is also taken into account in the input aggregation and
-// added to the transaction if necessary.
-func (tb *transactionBuilder) FundSiacoinsForOutputs(outputs []types.SiacoinOutput, fee types.Currency) error {
-	// dustThreshold has to be obtained separate from the lock
+// fund gather enough inputs to satisfy amountToFund, return
+// the outputs so that the caller can decide to spend them or
+// discard it eventually.
+func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.SiacoinOutputID, spendableOutputs sortedOutputs) (types.Currency, []types.SiacoinOutputID, error) {
 	dustThreshold, err := tb.wallet.DustThreshold()
 	if err != nil {
-		return err
+		return types.Currency{}, nil, err
 	}
-
-	tb.wallet.mu.Lock()
-	defer tb.wallet.mu.Unlock()
 
 	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
 	if err != nil {
-		return err
+		return types.Currency{}, nil, err
 	}
 
-	amount := calculateAmountFromOutputs(outputs, fee)
-
-	// Add a miner fee if the passed fee was greater than 0. The fee also
-	// needs to be added to the input amount we need to aggregate.
-	if fee.Cmp64(0) > 0 {
-		tb.transaction.MinerFees = append(tb.transaction.MinerFees, fee)
-	}
-
-	so, err := tb.wallet.getSortedOutputs()
-	if err != nil {
-		return err
-	}
-
-	var fund types.Currency
 	// potentialFund tracks the balance of the wallet including outputs that
 	// have been spent in other unconfirmed transactions recently. This is to
 	// provide the user with a more useful error message in the event that they
 	// are overspending.
 	var potentialFund types.Currency
-	var spentScoids []types.SiacoinOutputID
-	for i := range so.ids {
-		scoid := so.ids[i]
-		sco := so.outputs[i]
+	// Those are needed to the caller, to spend the outputs
+	var selectedOutputs []types.SiacoinOutputID
+	// Represent the total inOutput fund
+	var fundedAmount types.Currency
+
+	for i := range spendableOutputs.ids {
+		inOutputID := spendableOutputs.ids[i]
+		inOutput := spendableOutputs.outputs[i]
+
 		// Check that the output can be spent.
-		if err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, scoid, sco, dustThreshold); err != nil {
+		err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, inOutputID, inOutput, dustThreshold)
+		// Avoid to discard the output due to spend height being too high
+		if (err != nil && refundID != inOutputID) {
 			if err == errSpendHeightTooHigh {
-				potentialFund = potentialFund.Add(sco.Value)
+				potentialFund = potentialFund.Add(inOutput.Value)
 			}
 			continue
 		}
 
-		key, ok := tb.wallet.keys[sco.UnlockHash]
-		if !ok {
-			return errMissingOutputKey
-		}
-
 		// Add a siacoin input for this output.
-		sci := types.SiacoinInput{
-			ParentID:         scoid,
-			UnlockConditions: key.UnlockConditions,
+		spendInput := types.SiacoinInput{
+			ParentID:         inOutputID,
+			UnlockConditions: tb.wallet.keys[inOutput.UnlockHash].UnlockConditions,
 		}
 		tb.siacoinInputs = append(tb.siacoinInputs, len(tb.transaction.SiacoinInputs))
-		tb.transaction.SiacoinInputs = append(tb.transaction.SiacoinInputs, sci)
-		spentScoids = append(spentScoids, scoid)
+		tb.transaction.SiacoinInputs = append(tb.transaction.SiacoinInputs, spendInput)
+		selectedOutputs = append(selectedOutputs, inOutputID)
 
-		// Add the output to the total fund
-		fund = fund.Add(sco.Value)
-		potentialFund = potentialFund.Add(sco.Value)
-		if fund.Cmp(amount) >= 0 {
+		fundedAmount = fundedAmount.Add(inOutput.Value)
+		potentialFund = potentialFund.Add(inOutput.Value)
+		if fundedAmount.Cmp(amountToFund) >= 0 {
 			break
 		}
 	}
-	if potentialFund.Cmp(amount) >= 0 && fund.Cmp(amount) < 0 {
-		return modules.ErrIncompleteTransactions
+	// TODO: Move this check to the caller?
+	if potentialFund.Cmp(amountToFund) >= 0 && fundedAmount.Cmp(amountToFund) < 0 {
+		return fundedAmount, selectedOutputs, modules.ErrIncompleteTransactions
 	}
-	if fund.Cmp(amount) < 0 {
-		return modules.ErrLowBalance
+	if fundedAmount.Cmp(amountToFund) < 0 {
+		return fundedAmount, selectedOutputs, modules.ErrLowBalance
 	}
+	return fundedAmount, selectedOutputs, nil
+}
 
-	// Add the outputs to the transaction
-	for i := range outputs {
-		output := outputs[i]
-		tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, output)
+func (tb *transactionBuilder) addRefund(refundAmount types.Currency) (types.SiacoinOutput, error) {
+	refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
+	if err != nil {
+		return types.SiacoinOutput{}, err
 	}
-
-	// Create a refund output if needed.
-	if !amount.Equals(fund) {
-		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
-		if err != nil {
-			return err
-		}
-		refundOutput := types.SiacoinOutput{
-			Value:      fund.Sub(amount),
-			UnlockHash: refundUnlockConditions.UnlockHash(),
-		}
-		tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
+	refundOutput := types.SiacoinOutput{
+		Value:      refundAmount,
+		UnlockHash: refundUnlockConditions.UnlockHash(),
 	}
-
-	// Mark all outputs that were spent as spent.
-	for _, scoid := range spentScoids {
-		err = dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(scoid), consensusHeight)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
+	//fmt.Println("refundID",tb.transaction.SiacoinOutputID(uint64(len(tb.transaction.SiacoinOutputs)-1)))
+	return refundOutput, nil
 }
 
 // FundSiacoins will add a siacoin input of exactly 'amount' to the
@@ -610,36 +576,3 @@ func (w *Wallet) StartTransaction() (modules.TransactionBuilder, error) {
 	return w.RegisterTransaction(types.Transaction{}, nil)
 }
 
-// NewTransaction build a new transaction and return it
-func (w *Wallet) NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (tx types.Transaction, err error) {
-	tb, err := w.StartTransaction()
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err != nil {
-			tb.Drop()
-		}
-	}()
-	err = tb.FundSiacoinsForOutputs(outputs, fee)
-	if err != nil {
-		return
-	}
-	txnSet, err := tb.Sign(true)
-	if err != nil {
-		return
-	}
-	// NOTE: for now, we assume FundSiacoinsForOutputs returns a set with only one tx
-	// the transaction builder code is due for an overhaul
-	tx = txnSet[0]
-	return
-}
-
-// NewTransactionForAddress build a new transaction with specified unlockhash and return it
-func (w *Wallet) NewTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (tx types.Transaction, err error) {
-	output := types.SiacoinOutput{
-		Value:      amount,
-		UnlockHash: dest,
-	}
-	return w.NewTransaction([]types.SiacoinOutput{output}, fee)
-}

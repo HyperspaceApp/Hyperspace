@@ -167,7 +167,7 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 		UnlockHash: dest,
 	}
 
-	txnBuilder, err := w.StartTransaction()
+	txnBuilder, err := w.StartTransactionSet()
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 			txnBuilder.Drop()
 		}
 	}()
-	err = txnBuilder.FundSiacoinsForOutputs([]types.SiacoinOutput{output}, tpoolFee)
+	err = txnBuilder.FundOutputs([]types.SiacoinOutput{output}, tpoolFee)
 	if err != nil {
 		w.log.Println("Attempt to send coins has failed - failed to fund transaction:", err)
 		return nil, build.ExtendErr("unable to fund transaction", err)
@@ -227,7 +227,7 @@ func (w *Wallet) SendSiacoinsMulti(outputs []types.SiacoinOutput) (txns []types.
 		return nil, modules.ErrLockedWallet
 	}
 
-	txnBuilder, err := w.StartTransaction()
+	txnBuilder, err := w.StartTransactionSet()
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (w *Wallet) SendSiacoinsMulti(outputs []types.SiacoinOutput) (txns []types.
 	tpoolFee = tpoolFee.Mul64(2)                              // We don't want send-to-many transactions to fail.
 	tpoolFee = tpoolFee.Mul64(1000 + 60*uint64(len(outputs))) // Estimated transaction size in bytes
 
-	err = txnBuilder.FundSiacoinsForOutputs(outputs, tpoolFee)
+	err = txnBuilder.FundOutputs(outputs, tpoolFee)
 	if err != nil {
 		return nil, build.ExtendErr("unable to fund transaction", err)
 	}

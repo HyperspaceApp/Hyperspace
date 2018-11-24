@@ -341,10 +341,6 @@ func (w *Wallet) ProcessConsensusChange(cc modules.ConsensusChange) {
 		w.log.Severe("ERROR: failed to update consensus change ID:", err)
 		w.dbRollback = true
 	}
-
-	if cc.Synced {
-		go w.threadedDefragWallet()
-	}
 }
 
 // ReceiveUpdatedUnconfirmedTransactions updates the wallet's unconfirmed
