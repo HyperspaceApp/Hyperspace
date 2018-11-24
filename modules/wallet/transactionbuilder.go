@@ -104,7 +104,10 @@ func calculateAmountFromOutputs(outputs []types.SiacoinOutput, fee types.Currenc
 	return amount
 }
 
-func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.SiacoinOutputID, inOutputs sortedOutputs) (types.Currency, []types.SiacoinOutputID, error) {
+// fund gather enough inputs to satisfy amountToFund, return
+// the outputs so that the caller can decide to spend them or
+// discard it eventually.
+func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.SiacoinOutputID, spendableOutputs sortedOutputs) (types.Currency, []types.SiacoinOutputID, error) {
 	dustThreshold, err := tb.wallet.DustThreshold()
 	if err != nil {
 		return types.Currency{}, nil, err
@@ -121,16 +124,17 @@ func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.S
 	// are overspending.
 	var potentialFund types.Currency
 	// Those are needed to the caller, to spend the outputs
-	var spentInOutputs []types.SiacoinOutputID
+	var selectedOutputs []types.SiacoinOutputID
 	// Represent the total inOutput fund
 	var fundedAmount types.Currency
 
-	for i := range inOutputs.ids {
-		inOutputID := inOutputs.ids[i]
-		inOutput := inOutputs.outputs[i]
+	for i := range spendableOutputs.ids {
+		inOutputID := spendableOutputs.ids[i]
+		inOutput := spendableOutputs.outputs[i]
 
 		// Check that the output can be spent.
 		err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, inOutputID, inOutput, dustThreshold)
+		// Avoid to discard the output due to spend height being too high
 		if (err != nil && refundID != inOutputID) {
 			if err == errSpendHeightTooHigh {
 				potentialFund = potentialFund.Add(inOutput.Value)
@@ -145,7 +149,7 @@ func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.S
 		}
 		tb.siacoinInputs = append(tb.siacoinInputs, len(tb.transaction.SiacoinInputs))
 		tb.transaction.SiacoinInputs = append(tb.transaction.SiacoinInputs, spendInput)
-		spentInOutputs = append(spentInOutputs, inOutputID)
+		selectedOutputs = append(selectedOutputs, inOutputID)
 
 		fundedAmount = fundedAmount.Add(inOutput.Value)
 		potentialFund = potentialFund.Add(inOutput.Value)
@@ -155,21 +159,21 @@ func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.S
 	}
 	// TODO: Move this check to the caller?
 	if potentialFund.Cmp(amountToFund) >= 0 && fundedAmount.Cmp(amountToFund) < 0 {
-		return fundedAmount, spentInOutputs, modules.ErrIncompleteTransactions
+		return fundedAmount, selectedOutputs, modules.ErrIncompleteTransactions
 	}
 	if fundedAmount.Cmp(amountToFund) < 0 {
-		return fundedAmount, spentInOutputs, modules.ErrLowBalance
+		return fundedAmount, selectedOutputs, modules.ErrLowBalance
 	}
-	return fundedAmount, spentInOutputs, nil
+	return fundedAmount, selectedOutputs, nil
 }
 
-func (tb *transactionBuilder) addRefund(rest types.Currency) (types.SiacoinOutput, error) {
+func (tb *transactionBuilder) addRefund(refundAmount types.Currency) (types.SiacoinOutput, error) {
 	refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
 	if err != nil {
 		return types.SiacoinOutput{}, err
 	}
 	refundOutput := types.SiacoinOutput{
-		Value:      rest,
+		Value:      refundAmount,
 		UnlockHash: refundUnlockConditions.UnlockHash(),
 	}
 	tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)

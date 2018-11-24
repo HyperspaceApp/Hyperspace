@@ -5,8 +5,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
-//TODO: Document it
-
 type transactionSetBuilder struct {
 	signed   bool
 
@@ -71,7 +69,7 @@ func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee type
 // to the transaction, and also generates a refund output if necessary. A miner
 // fee of 0 or greater is also taken into account in the input aggregation and
 // added to the transaction if necessary.
-func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, fee types.Currency) error {
+func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, fee types.Currency) error {
 	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
 	if err != nil {
 		return err
@@ -93,18 +91,17 @@ func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, f
 	rest := types.NewCurrency64(0)
 
 	// Gather outputs used to fund the transaction
-	inOutputs, err := tb.wallet.getSortedOutputs()
+	spendableOutputs, err := tb.wallet.getSortedOutputs()
 	if err != nil {
 		return err
 	}
 
 	tb.currentBuilder().AddMinerFee(fee)
 
-	for i := range outOutputs {
-		currentOutput := outOutputs[i]
+	for i := range newOutputs {
+		currentOutput := newOutputs[i]
 		tot = tot.Add(currentOutput.Value)
 
-		// NOTE: 2 kb limit to ease testing, to be removed before merge
 		if (tb.currentBuilder().transaction.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
 			refundOutput, err := tb.currentBuilder().addRefund(rest)
 			if (err != nil) {
@@ -116,8 +113,8 @@ func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, f
 			tx := tb.currentBuilder().transaction
 			refundID = tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)
 			//fmt.Println("refundid", refundID)
-			inOutputs.ids = append([]types.SiacoinOutputID{refundID}, inOutputs.ids...)
-			inOutputs.outputs = append([]types.SiacoinOutput{refundOutput}, inOutputs.outputs...)
+			spendableOutputs.ids = append([]types.SiacoinOutputID{refundID}, spendableOutputs.ids...)
+			spendableOutputs.outputs = append([]types.SiacoinOutput{refundOutput}, spendableOutputs.outputs...)
 
 			// Spend the refund output so that it can be coherent
 			// with consensus rules.
@@ -160,7 +157,7 @@ func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, f
 				addFee = false
 			}
 
-			fundedAmount, spentInOutputs, err = tb.currentBuilder().fund(valueToFund, refundID, inOutputs)
+			fundedAmount, spentInOutputs, err = tb.currentBuilder().fund(valueToFund, refundID, spendableOutputs)
 			if (err != nil) {
 				return err
 			}
@@ -177,10 +174,10 @@ func (tb *transactionSetBuilder) FundOutputs(outOutputs []types.SiacoinOutput, f
 
 			// Remove used outputs, so that those don't get respent
 			for _, scoid := range spentInOutputs {
-				for j := len(inOutputs.ids) - 1; j >= 0; j-- {
-					if (scoid == inOutputs.ids[j]) {
-						inOutputs.ids = append(inOutputs.ids[:j], inOutputs.ids[j+1:]...)
-						inOutputs.outputs = append(inOutputs.outputs[:j], inOutputs.outputs[j+1:]...)
+				for j := len(spendableOutputs.ids) - 1; j >= 0; j-- {
+					if (scoid == spendableOutputs.ids[j]) {
+						spendableOutputs.ids = append(spendableOutputs.ids[:j], spendableOutputs.ids[j+1:]...)
+						spendableOutputs.outputs = append(spendableOutputs.outputs[:j], spendableOutputs.outputs[j+1:]...)
 						j -= 1;
 					}
 				}
