@@ -271,7 +271,7 @@ func applyMaintenanceForSPV(tx *bolt.Tx, pb *processedBlock, pbh *modules.Proces
 	applyMinerPayoutsForHeader(tx, pb, pbh)
 	// TODO: add matured for each gap block
 	// applyMaturedSiacoinOutputsForHeader(tx, pbh)
-	applyFileContractMaintenanceForHeader(tx, pb, pbh) // not deal with filecontracts in spv for now
+	applyFileContractMaintenanceForHeader(tx, pb, pbh)
 }
 
 func applyMinerPayoutsForHeader(tx *bolt.Tx, pb *processedBlock, pbh *modules.ProcessedBlockHeader) {

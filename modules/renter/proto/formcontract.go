@@ -79,7 +79,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 
 	// Build transaction containing fc, e.g. the File Contract.
-	err = txnBuilder.FundSiacoins(funding)
+	_, err = txnBuilder.FundContract(funding)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}
@@ -151,17 +151,19 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 	// Host now sends any new parent transactions, inputs and outputs that
 	// were added to the transaction.
-	var newParents []types.Transaction
+	var newRefundOutputs []types.SiacoinOutput
 	var newInputs []types.SiacoinInput
-	if err = encoding.ReadObject(conn, &newParents, types.BlockSizeLimit); err != nil {
-		return modules.RenterContract{}, errors.New("couldn't read the host's added parents: " + err.Error())
+	if err = encoding.ReadObject(conn, &newRefundOutputs, types.BlockSizeLimit); err != nil {
+		return modules.RenterContract{}, errors.New("couldn't read the host's added newRefundOutputs: " + err.Error())
 	}
 	if err = encoding.ReadObject(conn, &newInputs, types.BlockSizeLimit); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't read the host's added inputs: " + err.Error())
 	}
 
 	// Merge txnAdditions with txnSet.
-	txnBuilder.AddParents(newParents)
+	for _, output := range newRefundOutputs {
+		txnBuilder.AddSiacoinOutput(output)
+	}
 	for _, input := range newInputs {
 		txnBuilder.AddSiacoinInput(input)
 	}

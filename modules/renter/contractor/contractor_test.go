@@ -20,8 +20,12 @@ type newStub struct{}
 func (newStub) ConsensusSetSubscribe(modules.ConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error {
 	return nil
 }
+func (newStub) HeaderConsensusSetSubscribe(modules.HeaderConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error {
+	return nil
+}
 func (newStub) Synced() bool                               { return true }
 func (newStub) Unsubscribe(modules.ConsensusSetSubscriber) { return }
+func (newStub) SpvMode() bool                              { return false }
 
 // wallet stubs
 func (newStub) NextAddress() (uc types.UnlockConditions, err error)          { return }

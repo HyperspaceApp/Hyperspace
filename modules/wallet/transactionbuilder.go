@@ -70,7 +70,7 @@ func addSignatures(txn *types.Transaction, cf types.CoveredFields, uc types.Unlo
 			}
 			newSigIndices = append(newSigIndices, len(txn.TransactionSignatures))
 			txn.TransactionSignatures = append(txn.TransactionSignatures, sig)
-			sigIndex := len(txn.TransactionSignatures) - 1
+			sigIndex := len(txn.TransactionSignatures) - 1 // the one just added
 			sigHash := txn.SigHash(sigIndex)
 			encodedSig := crypto.SignHash(sigHash, spendKey.SecretKeys[j])
 			txn.TransactionSignatures[sigIndex].Signature = encodedSig[:]
@@ -342,6 +342,98 @@ func (tb *transactionBuilder) FundSiacoins(amount types.Currency) error {
 		}
 	}
 	return nil
+}
+
+// FundContracts will add enough inputs to cover the outputs to be
+// sent in the transaction. It will try to use get address when new address failed
+func (tb *transactionBuilder) FundContract(amount types.Currency) ([]types.SiacoinOutput, error) {
+	// dustThreshold has to be obtained separate from the lock
+	dustThreshold, err := tb.wallet.DustThreshold()
+	if err != nil {
+		return nil, err
+	}
+
+	tb.wallet.mu.Lock()
+	defer tb.wallet.mu.Unlock()
+
+	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
+	if err != nil {
+		return nil, err
+	}
+
+	so, err := tb.wallet.getSortedOutputs()
+	if err != nil {
+		return nil, err
+	}
+
+	var fund types.Currency
+	// potentialFund tracks the balance of the wallet including outputs that
+	// have been spent in other unconfirmed transactions recently. This is to
+	// provide the user with a more useful error message in the event that they
+	// are overspending.
+	var potentialFund types.Currency
+	var spentScoids []types.SiacoinOutputID
+	for i := range so.ids {
+		scoid := so.ids[i]
+		sco := so.outputs[i]
+		// Check that the output can be spent.
+		if err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, scoid, sco, dustThreshold); err != nil {
+			if err == errSpendHeightTooHigh {
+				potentialFund = potentialFund.Add(sco.Value)
+			}
+			continue
+		}
+
+		key, ok := tb.wallet.keys[sco.UnlockHash]
+		if !ok {
+			return nil, errMissingOutputKey
+		}
+
+		// Add a siacoin input for this output.
+		sci := types.SiacoinInput{
+			ParentID:         scoid,
+			UnlockConditions: key.UnlockConditions,
+		}
+		tb.siacoinInputs = append(tb.siacoinInputs, len(tb.transaction.SiacoinInputs))
+		tb.transaction.SiacoinInputs = append(tb.transaction.SiacoinInputs, sci)
+		spentScoids = append(spentScoids, scoid)
+
+		// Add the output to the total fund
+		fund = fund.Add(sco.Value)
+		potentialFund = potentialFund.Add(sco.Value)
+		if fund.Cmp(amount) >= 0 {
+			break
+		}
+	}
+	if potentialFund.Cmp(amount) >= 0 && fund.Cmp(amount) < 0 {
+		return nil, modules.ErrIncompleteTransactions
+	}
+	if fund.Cmp(amount) < 0 {
+		return nil, modules.ErrLowBalance
+	}
+	var refundOutput types.SiacoinOutput
+
+	// Create a refund output if needed.
+	if !amount.Equals(fund) {
+		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
+		if err != nil {
+			return nil, err
+		}
+		refundOutput = types.SiacoinOutput{
+			Value:      fund.Sub(amount),
+			UnlockHash: refundUnlockConditions.UnlockHash(),
+		}
+		tb.transaction.SiacoinOutputs = append(tb.transaction.SiacoinOutputs, refundOutput)
+	}
+
+	// Mark all outputs that were spent as spent.
+	for _, scoid := range spentScoids {
+		err = dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(scoid), consensusHeight)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return []types.SiacoinOutput{refundOutput}, nil
 }
 
 // UnconfirmedParents returns the unconfirmed parents of the transaction set

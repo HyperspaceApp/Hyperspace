@@ -152,6 +152,8 @@ type (
 		// transaction failed.
 		FundSiacoins(amount types.Currency) error
 
+		FundContract(amount types.Currency) ([]types.SiacoinOutput, error)
+
 		// AddParents adds a set of parents to the transaction.
 		AddParents([]types.Transaction)
 

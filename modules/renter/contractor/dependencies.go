@@ -39,6 +39,7 @@ type (
 		AddTransactionSignature(types.TransactionSignature) uint64
 		Drop()
 		FundSiacoins(types.Currency) error
+		FundContract(types.Currency) ([]types.SiacoinOutput, error)
 		Sign(bool) ([]types.Transaction, error)
 		UnconfirmedParents() ([]types.Transaction, error)
 		View() (types.Transaction, []types.Transaction)
