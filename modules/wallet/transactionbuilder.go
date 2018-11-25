@@ -417,7 +417,10 @@ func (tb *transactionBuilder) FundContract(amount types.Currency) ([]types.Siaco
 	if !amount.Equals(fund) {
 		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
 		if err != nil {
-			return nil, err
+			refundUnlockConditions, err = tb.wallet.GetAddress() // try get address if generate address failed when funding contracts
+			if err != nil {
+				return nil, err
+			}
 		}
 		refundOutput = types.SiacoinOutput{
 			Value:      fund.Sub(amount),
