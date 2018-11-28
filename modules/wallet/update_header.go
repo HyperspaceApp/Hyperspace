@@ -86,13 +86,6 @@ func (w *Wallet) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange)
 		w.log.Severe("ERROR: failed to update consensus change ID:", err)
 		w.dbRollback = true
 	}
-
-	// defrag should also be removed in next version
-	/*
-		if hcc.Synced {
-			go w.threadedDefragWallet()
-		}
-	*/
 }
 
 func (w *Wallet) applyHistoryForSPV(tx *bolt.Tx, hcc modules.HeaderConsensusChange,
