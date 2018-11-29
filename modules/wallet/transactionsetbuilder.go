@@ -116,14 +116,6 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 			spendableOutputs.ids = append([]types.SiacoinOutputID{refundID}, spendableOutputs.ids...)
 			spendableOutputs.outputs = append([]types.SiacoinOutput{refundOutput}, spendableOutputs.outputs...)
 
-			// Spend the refund output so that it can be coherent
-			// with consensus rules.
-			err = dbPutSpentOutput(tb.wallet.dbTx, types.OutputID(refundID),
-				consensusHeight)
-			if err != nil {
-				return err
-			}
-
 			// Add a new fresh builder for the next outputs
 			newBuilder := tb.wallet.registerTransaction(types.Transaction{}, nil)
 			tb.builders = append(tb.builders, *newBuilder)
@@ -188,14 +180,6 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 	if (rest.Cmp64(0) > 0) {
 		_, err = tb.currentBuilder().addRefund(rest)
 		if (err != nil) {
-			return err
-		}
-		// Spend it
-		tx := tb.currentBuilder().transaction
-		err = dbPutSpentOutput(tb.wallet.dbTx,
-			types.OutputID(tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)),
-				consensusHeight)
-		if err != nil {
 			return err
 		}
 	}
