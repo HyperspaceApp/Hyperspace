@@ -80,7 +80,7 @@ type hostDB interface {
 
 	// ScoreBreakdown returns a detailed explanation of the various properties
 	// of the host.
-	ScoreBreakdown(modules.HostDBEntry, modules.Allowance) modules.HostScoreBreakdown
+	ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown
 
 	// EstimateHostScore returns the estimated score breakdown of a host with the
 	// provided settings.
@@ -505,12 +505,16 @@ func (r *Renter) InitialScanComplete() (bool, error) { return r.hostDB.InitialSc
 
 // ScoreBreakdown returns the score breakdown
 func (r *Renter) ScoreBreakdown(e modules.HostDBEntry) modules.HostScoreBreakdown {
-	return r.hostDB.ScoreBreakdown(e, r.Settings().Allowance)
+	return r.hostDB.ScoreBreakdown(e)
 }
 
 // EstimateHostScore returns the estimated host score
 func (r *Renter) EstimateHostScore(e modules.HostDBEntry) modules.HostScoreBreakdown {
-	return r.hostDB.EstimateHostScore(e)
+	a := r.Settings().Allowance
+	if reflect.DeepEqual(a, modules.Allowance{}) {
+		a = modules.DefaultAllowance
+	}
+	return r.hostDB.EstimateHostScore(e, a)
 }
 
 // CancelContract cancels a renter's contract by ID by setting goodForRenew and goodForUpload to false

@@ -266,26 +266,29 @@ func (hdb *HostDB) lifetimeAdjustments(entry modules.HostDBEntry) float64 {
 	base := float64(1)
 	if hdb.blockHeight >= entry.FirstSeen {
 		age := hdb.blockHeight - entry.FirstSeen
+		if age < 12000 {
+			base = base * 2 / 3 // 1.5x total
+		}
 		if age < 6000 {
-			base = base / 2 // 2x total
+			base = base / 2 // 3x total
 		}
 		if age < 4000 {
-			base = base / 2 // 4x total
+			base = base / 2 // 6x total
 		}
 		if age < 2000 {
-			base = base / 2 // 8x total
+			base = base / 2 // 12x total
 		}
 		if age < 1000 {
-			base = base / 2 // 16x total
+			base = base / 3 // 36x total
 		}
 		if age < 576 {
-			base = base / 2 // 32x total
+			base = base / 3 // 108x total
 		}
 		if age < 288 {
-			base = base / 2 // 64x total
+			base = base / 3 // 324x total
 		}
 		if age < 144 {
-			base = base / 2 // 128x total
+			base = base / 3 // 972x total
 		}
 	}
 	return base
@@ -430,7 +433,7 @@ func (hdb *HostDB) calculateHostWeightFn(allowance modules.Allowance) hosttree.W
 func (hdb *HostDB) calculateConversionRate(score types.Currency) float64 {
 	var totalScore types.Currency
 	for _, h := range hdb.ActiveHosts() {
-		totalScore = totalScore.Add(hdb.calculateHostWeight(h))
+		totalScore = totalScore.Add(hdb.weightFunc(h))
 	}
 	if totalScore.IsZero() {
 		totalScore = types.NewCurrency64(1)
@@ -497,7 +500,7 @@ func (hdb *HostDB) EstimateHostScore(entry modules.HostDBEntry, allowance module
 
 // ScoreBreakdown provdes a detailed set of scalars and bools indicating
 // elements of the host's overall score.
-func (hdb *HostDB) ScoreBreakdown(entry modules.HostDBEntry, allowance modules.Allowance) modules.HostScoreBreakdown {
+func (hdb *HostDB) ScoreBreakdown(entry modules.HostDBEntry) modules.HostScoreBreakdown {
 	// TODO: Pass these in as input instead of fixing them.
 	//
 	// expectedStorage is the amount of data that we expect to have in a
@@ -521,16 +524,16 @@ func (hdb *HostDB) ScoreBreakdown(entry modules.HostDBEntry, allowance modules.A
 	hdb.mu.Lock()
 	defer hdb.mu.Unlock()
 
-	score := hdb.calculateHostWeight(entry)
+	score := hdb.weightFunc(entry)
 	return modules.HostScoreBreakdown{
 		Score:          score,
 		ConversionRate: hdb.calculateConversionRate(score),
 
 		AgeAdjustment:              hdb.lifetimeAdjustments(entry),
 		BurnAdjustment:             1,
-		CollateralAdjustment:       hdb.collateralAdjustments(entry, allowance, expectedStorage),
+		CollateralAdjustment:       hdb.collateralAdjustments(entry, hdb.allowance, expectedStorage),
 		InteractionAdjustment:      hdb.interactionAdjustments(entry),
-		PriceAdjustment:            hdb.priceAdjustments(entry, allowance, expectedStorage, expectedUploadFrequency, expectedDownloadFrequency),
+		PriceAdjustment:            hdb.priceAdjustments(entry, hdb.allowance, expectedStorage, expectedUploadFrequency, expectedDownloadFrequency),
 		StorageRemainingAdjustment: storageRemainingAdjustments(entry),
 		UptimeAdjustment:           hdb.uptimeAdjustments(entry),
 		VersionAdjustment:          versionAdjustments(entry),
