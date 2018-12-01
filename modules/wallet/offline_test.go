@@ -33,34 +33,19 @@ func TestSignTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var sco, sfo modules.UnspentOutput
+	var sco modules.UnspentOutput
 	for _, o := range outputs {
 		if o.FundType == types.SpecifierSiacoinOutput {
 			sco = o
-		} else if o.FundType == types.SpecifierSiafundOutput {
-			sfo = o
 		}
 	}
 	scuc, err := wt.wallet.UnlockConditions(sco.UnlockHash)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sfuc, err := wt.wallet.UnlockConditions(sfo.UnlockHash)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// create a transaction that sends both outputs to the void
 	txn := types.Transaction{
-		SiafundInputs: []types.SiafundInput{{
-			ParentID:         types.SiafundOutputID(sfo.ID),
-			UnlockConditions: sfuc,
-		}},
-		SiafundOutputs: []types.SiafundOutput{{
-			Value:      sfo.Value,
-			UnlockHash: types.UnlockHash{},
-		}},
-
 		SiacoinInputs: []types.SiacoinInput{{
 			ParentID:         types.SiacoinOutputID(sco.ID),
 			UnlockConditions: scuc,
@@ -72,10 +57,6 @@ func TestSignTransaction(t *testing.T) {
 		TransactionSignatures: []types.TransactionSignature{
 			{
 				ParentID:      crypto.Hash(sco.ID),
-				CoveredFields: types.CoveredFields{WholeTransaction: true},
-			},
-			{
-				ParentID:      crypto.Hash(sfo.ID),
 				CoveredFields: types.CoveredFields{WholeTransaction: true},
 			},
 		},
@@ -113,7 +94,7 @@ func TestSignTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, o := range outputs {
-		if o.ID == sco.ID || o.ID == sfo.ID {
+		if o.ID == sco.ID {
 			t.Fatal("spent output still listed as spendable")
 		}
 	}
@@ -136,14 +117,6 @@ func TestSignTransactionNoWallet(t *testing.T) {
 			UnlockConditions: sk.UnlockConditions,
 		}},
 		SiacoinOutputs: []types.SiacoinOutput{{
-			Value:      types.NewCurrency64(1),
-			UnlockHash: types.UnlockHash{},
-		}},
-		SiafundInputs: []types.SiafundInput{{
-			ParentID:         types.SiafundOutputID{2}, // doesn't need to actually exist
-			UnlockConditions: sk.UnlockConditions,
-		}},
-		SiafundOutputs: []types.SiafundOutput{{
 			Value:      types.NewCurrency64(1),
 			UnlockHash: types.UnlockHash{},
 		}},
