@@ -63,7 +63,7 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", renewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	err = st.stdPostAPI("/renter", allowanceValues)
 	if err != nil {
 		t.Fatal(err)
@@ -621,7 +621,7 @@ func TestRenterHandlerContracts(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -697,7 +697,7 @@ func TestRenterHandlerGetAndPost(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -785,7 +785,7 @@ func TestRenterLoadNonexistent(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -854,7 +854,7 @@ func TestRenterHandlerRename(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -962,7 +962,7 @@ func TestRenterHandlerDelete(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1029,7 +1029,7 @@ func TestRenterRelativePathErrorUpload(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1092,7 +1092,7 @@ func TestRenterRelativePathErrorDownload(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1714,111 +1714,6 @@ func TestContractorHostRemoval(t *testing.T) {
 	}
 	if !bytes.Equal(downloadBytes3, origBytes) {
 		t.Error("downloaded file and uploaded file do not match")
-	}
-}
-
-// TestExhaustedContracts verifies that the contractor renews contracts which
-// run out of funds before the period elapses.
-func TestExhaustedContracts(t *testing.T) {
-	if testing.Short() || !build.VLONG {
-		t.SkipNow()
-	}
-	t.Parallel()
-	st, err := createServerTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.server.panicClose()
-
-	// set a very high price for the host so we use up the entire funds of the
-	// contract
-	err = st.acceptContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = st.setHostStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Increase the storage and bandwidth prices to drain the allowance faster.
-	settings := st.host.InternalSettings()
-	settings.MinUploadBandwidthPrice = settings.MinUploadBandwidthPrice.Mul64(2)
-	settings.MinStoragePrice = settings.MinUploadBandwidthPrice.Mul64(2)
-	settings.MaxDuration = 1e6 // set a high max duration to allow an expensive storage price
-	err = st.host.SetInternalSettings(settings)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = st.announceHost()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Set an allowance for the renter, allowing a contract to be formed.
-	allowanceValues := url.Values{}
-	testPeriod := "950000" // large period to cause an expensive test, exhausting the allowance faster
-	allowanceValues.Set("funds", types.SiacoinPrecision.Mul64(10).String())
-	allowanceValues.Set("period", testPeriod)
-	err = st.stdPostAPI("/renter", allowanceValues)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wait until we have a contract
-	err = build.Retry(500, time.Millisecond*50, func() error {
-		if len(st.renter.Contracts()) >= 1 {
-			return nil
-		}
-		return errors.New("no renter contracts")
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	initialContract := st.renter.Contracts()[0]
-
-	// upload a file. the high upload cost will cause the underlying contract to
-	// require premature renewal. If premature renewal never happens, the upload
-	// will never complete.
-	path := filepath.Join(st.dir, "randUploadFile")
-	size := int(modules.SectorSize * 75)
-	err = createRandFile(path, size)
-	if err != nil {
-		t.Fatal(err)
-	}
-	uploadValues := url.Values{}
-	uploadValues.Set("source", path)
-	uploadValues.Set("renew", "true")
-	uploadValues.Set("datapieces", "1")
-	uploadValues.Set("paritypieces", "1")
-	err = st.stdPostAPI("/renter/upload/"+filepath.Base(path), uploadValues)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = build.Retry(100, time.Millisecond*500, func() error {
-		// mine blocks each iteration to trigger contract maintenance
-		_, err = st.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		st.miner.AddBlock()
-		if !st.renter.FileList()[0].Available {
-			return errors.New("file did not complete uploading")
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// verify that the window did not change and the contract ID did change
-	newContract := st.renter.Contracts()[0]
-	endHeight := newContract.EndHeight
-	if newContract.ID == initialContract.ID {
-		t.Error("renew did not occur")
-	}
-	if endHeight != initialContract.EndHeight {
-		t.Error("contract end height changed, wanted", initialContract.EndHeight, "got", endHeight)
 	}
 }
 

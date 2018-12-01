@@ -360,7 +360,7 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 		// the txnFee was zero. It doesn't matter since RenterPayoutsPreTax
 		// simply subtracts both values from the funding.
 		host.ContractPrice = contractCostPerHost
-		expectedStorage := modules.DefaultUsageGuideLines.ExpectedStorage
+		expectedStorage := allowance.ExpectedStorage / uint64(len(hosts))
 		_, _, collateral, err := modules.RenterPayouts(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
 		if err != nil {
 			continue
@@ -369,6 +369,13 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 		numHosts++
 	}
 
+	// Divide by zero check. The only way to get 0 numHosts is if
+	// RenterPayoutsPreTax errors for every host. This would happend if the
+	// funding of the allowance is not enough as that would cause the
+	// fundingPerHost to be less than the contract price
+	if numHosts == 0 {
+		return modules.RenterPriceEstimation{}, allowance, errors.New("funding insufficient for number of hosts")
+	}
 	// Calculate average collateral and determine collateral for allowance
 	hostCollateral = hostCollateral.Div64(numHosts)
 	hostCollateral = hostCollateral.Mul64(allowance.Hosts)
