@@ -147,6 +147,7 @@ type pricesStub struct {
 }
 
 func (pricesStub) InitialScanComplete() (bool, error) { return true, nil }
+func (pricesStub) IPViolationsCheck() bool            { return true }
 
 func (ps pricesStub) RandomHosts(_ int, _, _ []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
 	return ps.dbEntries, nil
@@ -154,6 +155,7 @@ func (ps pricesStub) RandomHosts(_ int, _, _ []types.SiaPublicKey) ([]modules.Ho
 func (ps pricesStub) RandomHostsWithAllowance(_ int, _, _ []types.SiaPublicKey, _ modules.Allowance) ([]modules.HostDBEntry, error) {
 	return ps.dbEntries, nil
 }
+func (ps pricesStub) SetIPViolationCheck(enabled bool) { return }
 
 // TestRenterPricesVolatility verifies that the renter caches its price
 // estimation, and subsequent calls result in non-volatile results.
