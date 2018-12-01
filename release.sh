@@ -3,6 +3,7 @@ set -e
 
 # version and keys are supplied as arguments
 version="$1"
+rc=`echo $version | awk -F - '{print $2}'`
 keyfile="$2"
 pubkeyfile="$3" # optional
 if [[ -z $version || -z $keyfile ]]; then
@@ -25,7 +26,7 @@ if [ $keysum != "ba364a945d57c48621aa9cb6a9c62be86b98939e3e3dd057708efa72590ff52
 fi
 
 # setup build-time vars
-ldflags="-s -w -X 'github.com/HyperspaceApp/Hyperspace/build.GitRevision=`git rev-parse --short HEAD`' -X 'github.com/HyperspaceApp/Hyperspace/build.BuildTime=`date`'"
+ldflags="-s -w -X 'github.com/HyperspaceApp/Hyperspace/build.GitRevision=`git rev-parse --short HEAD`' -X 'github.com/HyperspaceApp/Hyperspace/build.BuildTime=`date`' -X 'github.com/HyperspaceApp/Hyperspace/build.ReleaseTag=${rc}'"
 
 for arch in amd64 arm; do
 	for os in darwin linux windows; do

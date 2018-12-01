@@ -66,15 +66,19 @@ func die(args ...interface{}) {
 
 // versionCmd is a cobra command that prints the version of hsd.
 func versionCmd(*cobra.Command, []string) {
+	version := build.Version
+	if build.ReleaseTag != "" {
+		version += "-" + build.ReleaseTag
+	}
 	switch build.Release {
 	case "dev":
-		fmt.Println("Hyperspace Daemon v" + build.Version + "-dev")
+		fmt.Println("Hyperspace Daemon v" + version + "-dev")
 	case "standard":
-		fmt.Println("Hyperspace Daemon v" + build.Version)
+		fmt.Println("Hyperspace Daemon v" + version)
 	case "testing":
-		fmt.Println("Hyperspace Daemon v" + build.Version + "-testing")
+		fmt.Println("Hyperspace Daemon v" + version + "-testing")
 	default:
-		fmt.Println("Hyperspace Daemon v" + build.Version + "-???")
+		fmt.Println("Hyperspace Daemon v" + version + "-???")
 	}
 }
 
