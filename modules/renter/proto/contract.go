@@ -445,7 +445,7 @@ func (cs *ContractSet) loadSafeContract(filename string, walTxns []*writeaheadlo
 	}
 
 	// read merkleRoots
-	merkleRoots, err := loadExistingMerkleRoots(rootsSection)
+	merkleRoots, applyTxns, err := loadExistingMerkleRoots(rootsSection)
 	if err != nil {
 		return err
 	}
@@ -483,6 +483,13 @@ func (cs *ContractSet) loadSafeContract(filename string, walTxns []*writeaheadlo
 		unappliedTxns: unappliedTxns,
 		headerFile:    headerSection,
 		wal:           cs.wal,
+	}
+
+	// apply the wal txns if necessary.
+	if applyTxns {
+		if err := sc.commitTxns(); err != nil {
+			return err
+		}
 	}
 	cs.contracts[sc.header.ID()] = sc
 	cs.pubKeys[string(header.HostPublicKey().Key)] = sc.header.ID()

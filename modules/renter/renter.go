@@ -358,7 +358,7 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 		// simply subtracts both values from the funding.
 		host.ContractPrice = contractCostPerHost
 		expectedStorage := modules.DefaultUsageGuideLines.ExpectedStorage
-		_, _, collateral, err := modules.RenterPayouts(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
+		_, _, collateral, err := modules.RenterPayouts(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
 		if err != nil {
 			continue
 		}

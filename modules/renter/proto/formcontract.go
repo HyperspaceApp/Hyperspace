@@ -35,7 +35,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 
 	period := endHeight - startHeight
 	expectedStorage := modules.DefaultUsageGuideLines.ExpectedStorage
-	renterPayout, hostPayout, _, err := modules.RenterPayouts(host, funding, txnFee, types.ZeroCurrency, period, expectedStorage)
+	renterPayout, hostPayout, _, err := modules.RenterPayouts(host, funding, txnFee, types.ZeroCurrency, types.ZeroCurrency, period, expectedStorage)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}
