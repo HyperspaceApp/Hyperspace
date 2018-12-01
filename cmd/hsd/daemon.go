@@ -224,9 +224,9 @@ func readFileConfig(config Config) error {
 // stdin.
 func apiPassword(siaDir string) (string, error) {
 	// Check the environment variable.
-	pw := os.Getenv("SIA_API_PASSWORD")
+	pw := os.Getenv("HYPERSPACE_API_PASSWORD")
 	if pw != "" {
-		fmt.Println("Using SIA_API_PASSWORD environment variable")
+		fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
 		return pw, nil
 	}
 
