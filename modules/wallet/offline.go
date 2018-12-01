@@ -89,6 +89,12 @@ outer:
 		}
 	}
 
+	// mark the watch-only outputs
+	for i, o := range outputs {
+		_, ok := w.watchedAddrs[o.UnlockHash]
+		outputs[i].IsWatchOnly = ok
+	}
+
 	return outputs, nil
 }
 
@@ -269,6 +275,10 @@ func (w *Wallet) AddWatchAddresses(addrs []types.UnlockHash, unused bool) error 
 	err := func() error {
 		w.mu.Lock()
 		defer w.mu.Unlock()
+		if !w.unlocked {
+			return modules.ErrLockedWallet
+		}
+
 		// update in-memory map
 		for _, addr := range addrs {
 			w.watchedAddrs[addr] = struct{}{}
@@ -335,6 +345,10 @@ func (w *Wallet) RemoveWatchAddresses(addrs []types.UnlockHash, unused bool) err
 	err := func() error {
 		w.mu.Lock()
 		defer w.mu.Unlock()
+		if !w.unlocked {
+			return modules.ErrLockedWallet
+		}
+
 		// update in-memory map
 		for _, addr := range addrs {
 			delete(w.watchedAddrs, addr)
