@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +15,7 @@ import (
 
 var (
 	// Flags.
+	dictionaryLanguage     string // dictionary for seed utils
 	hostContractOutputType string // output type for host contracts
 	hostVerbose            bool   // display additional host info
 	initForce              bool   // destroy and re-encrypt the wallet on init if it already exists
@@ -21,6 +24,7 @@ var (
 	renterDownloadAsync    bool   // Downloads files asynchronously
 	renterListVerbose      bool   // Show additional info about uploaded files.
 	renterShowHistory      bool   // Show download history in addition to download queue.
+	siaDir                 string // Path to sia data dir
 	walletRawTxn           bool   // Encode/decode transactions in base64-encoded binary.
 )
 
@@ -146,19 +150,32 @@ func main() {
 
 	root.AddCommand(consensusCmd)
 
-	root.AddCommand(bashcomplCmd)
-	root.AddCommand(mangenCmd)
+	utilsCmd.AddCommand(bashcomplCmd, mangenCmd, utilsHastingsCmd, utilsEncodeRawTxnCmd, utilsDecodeRawTxnCmd,
+		utilsSigHashCmd, utilsCheckSigCmd, utilsVerifySeedCmd)
+	utilsVerifySeedCmd.Flags().StringVarP(&dictionaryLanguage, "language", "l", "english", "which dictionary you want to use")
+	root.AddCommand(utilsCmd)
 
 	// initialize client
 	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", "localhost:5580", "which host/port to communicate with (i.e. the host/port hsd is listening on)")
 	root.PersistentFlags().StringVarP(&httpClient.Password, "apipassword", "", "", "the password for the API's http authentication")
 	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by hsc to connect to the daemon's API")
+	root.PersistentFlags().StringVarP(&siaDir, "hyperspace-directory", "d", build.DefaultSiaDir(), "location of the hyperspace directory")
 
 	// Check if the api password environment variable is set.
 	apiPassword := os.Getenv("HYPERSPACE_API_PASSWORD")
 	if apiPassword != "" {
 		httpClient.Password = apiPassword
 		fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
+	}
+
+	// If the API password wasn't set we try to read it from the file. If
+	// reading fails, continue silently; but in the next release, this will
+	// be an error.
+	if httpClient.Password == "" {
+		pw, err := ioutil.ReadFile(build.APIPasswordFile(siaDir))
+		if err == nil {
+			httpClient.Password = strings.TrimSpace(string(pw))
+		}
 	}
 
 	// run

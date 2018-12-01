@@ -1,6 +1,8 @@
 package hostdb
 
 import (
+	"time"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -56,7 +58,15 @@ func (hdb *HostDB) insertBlockchainHost(host modules.HostDBEntry) {
 		if oldEntry.FirstSeen == 0 {
 			oldEntry.FirstSeen = hdb.blockHeight
 		}
-		err := hdb.hostTree.Modify(oldEntry)
+		// Resolve the host's used subnets and update the timestamp if they
+		// changed. We only update the timestamp if resolving the ipNets was
+		// successful.
+		ipNets, err := hdb.managedLookupIPNets(oldEntry.NetAddress)
+		if err == nil && !equalIPNets(ipNets, oldEntry.IPNets) {
+			oldEntry.IPNets = ipNets
+			oldEntry.LastIPNetChange = time.Now()
+		}
+		err = hdb.hostTree.Modify(oldEntry)
 		if err != nil {
 			hdb.log.Println("ERROR: unable to modify host entry of host tree after a blockchain scan:", err)
 		}

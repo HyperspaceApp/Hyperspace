@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -164,9 +165,10 @@ A dynamic transaction fee is applied depending on the size of the transaction an
 seed, and the signing key(s) will be regenerated.
 
 txn may be either JSON, base64, or a file containing either.
-tosign is an optional JSON array of TransactionSignature ParentIDs to sign. If
-tosign is not provided, the wallet will sign every TransactionSignature it has
-keys for.`,
+
+tosign is an optional list of indices. Each index corresponds to a
+TransactionSignature in the txn that will be filled in. If no indices are
+provided, the wallet will fill in every TransactionSignature it has keys for.`,
 		Run: walletsigncmd,
 	}
 
@@ -460,7 +462,7 @@ func walletbroadcastcmd(txnStr string) {
 	if err != nil {
 		die("Could not broadcast transaction:", err)
 	}
-	fmt.Println("Transaction broadcast successfully")
+	fmt.Println("Transaction has been broadcast successfully")
 }
 
 // walletsweepcmd sweeps coins and funds from a seed.
@@ -479,7 +481,7 @@ func walletsweepcmd() {
 
 // walletsigncmd signs a transaction.
 func walletsigncmd(cmd *cobra.Command, args []string) {
-	if len(args) < 1 || len(args) > 2 {
+	if len(args) < 1 {
 		cmd.UsageFunc()(cmd)
 		os.Exit(exitCodeUsage)
 	}
@@ -490,11 +492,14 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 	}
 
 	var toSign []crypto.Hash
-	if len(args) == 2 {
-		err = json.Unmarshal([]byte(args[1]), &toSign)
+	for _, arg := range args[1:] {
+		index, err := strconv.ParseUint(arg, 10, 32)
 		if err != nil {
-			die("Invalid signature request:", err)
+			die("Invalid signature index", index, "(must be an non-negative integer)")
+		} else if index >= uint64(len(txn.TransactionSignatures)) {
+			die("Invalid signature index", index, "(transaction only has", len(txn.TransactionSignatures), "signatures)")
 		}
+		toSign = append(toSign, txn.TransactionSignatures[index].ParentID)
 	}
 
 	// try API first
@@ -509,31 +514,7 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 		}
 
 		// siad is not running; fallback to offline keygen
-		fmt.Println("Enter your wallet seed to generate the signing key(s) now and sign without siad.")
-		seedString, err := passwordPrompt("Seed: ")
-		if err != nil {
-			die("Reading seed failed:", err)
-		}
-		seed, err := modules.StringToSeed(seedString, mnemonics.English)
-		if err != nil {
-			die("Invalid seed:", err)
-		}
-		// signing via seed may take a while, since we need to regenerate
-		// keys. If it takes longer than a second, print a message to assure
-		// the user that this is normal.
-		done := make(chan struct{})
-		go func() {
-			select {
-			case <-time.After(time.Second):
-				fmt.Println("Generating keys; this may take a few seconds...")
-			case <-done:
-			}
-		}()
-		err = wallet.SignTransaction(&txn, seed, toSign)
-		if err != nil {
-			die("Failed to sign transaction:", err)
-		}
-		close(done)
+		walletsigncmdoffline(&txn, toSign)
 	}
 
 	if walletRawTxn {
@@ -542,6 +523,36 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 		json.NewEncoder(os.Stdout).Encode(txn)
 	}
 	fmt.Println()
+}
+
+// walletsigncmdoffline is a helper for walletsigncmd that handles signing
+// transactions without siad.
+func walletsigncmdoffline(txn *types.Transaction, toSign []crypto.Hash) {
+	fmt.Println("Enter your wallet seed to generate the signing key(s) now and sign without siad.")
+	seedString, err := passwordPrompt("Seed: ")
+	if err != nil {
+		die("Reading seed failed:", err)
+	}
+	seed, err := modules.StringToSeed(seedString, mnemonics.English)
+	if err != nil {
+		die("Invalid seed:", err)
+	}
+	// signing via seed may take a while, since we need to regenerate
+	// keys. If it takes longer than a second, print a message to assure
+	// the user that this is normal.
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-time.After(time.Second):
+			fmt.Println("Generating keys; this may take a few seconds...")
+		case <-done:
+		}
+	}()
+	err = wallet.SignTransaction(txn, seed, toSign)
+	if err != nil {
+		die("Failed to sign transaction:", err)
+	}
+	close(done)
 }
 
 // wallettransactionscmd lists all of the transactions related to the wallet,

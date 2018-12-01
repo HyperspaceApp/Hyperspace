@@ -1291,8 +1291,8 @@ submits a raw transaction to the transaction pool, broadcasting it to the transa
 ###### Query String Parameters [(with comments)](/doc/api/Transactionpool.md#query-string-parameters)
 
 ```
-parents     string // raw base64 encoded transaction parents
-transaction string // raw base64 encoded transaction
+parents     string // JSON- or base64-encoded transaction parents
+transaction string // JSON- or base64-encoded transaction
 ```
 
 ###### Response
@@ -1563,7 +1563,7 @@ specified.
 ###### Request Body
 ```
 {
-  "transaction": { }, // types.Transaction
+  "transaction": { }, // types.Transaction; see Wallet.md for all fields
   "tosign": [
     "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
@@ -1574,7 +1574,7 @@ specified.
 ###### Response
 ```javascript
 {
-  "transaction": { } // types.Transaction
+  "transaction": { } // types.Transaction; see Wallet.md for all fields
 }
 ```
 
