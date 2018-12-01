@@ -378,7 +378,7 @@ func (w *Wallet) SweepSeed(seed modules.Seed) (coins, funds types.Currency, err 
 	uc, err := w.nextPrimarySeedAddress(w.dbTx)
 	w.mu.Unlock()
 	if err != nil {
-		return
+		return types.Currency{}, types.Currency{}, err
 	}
 
 	// scan blockchain for outputs, filtering out 'dust' (outputs that cost
