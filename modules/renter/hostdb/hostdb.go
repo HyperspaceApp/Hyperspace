@@ -5,10 +5,10 @@
 package hostdb
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -18,6 +18,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/threadgroup"
+
+	"github.com/HyperspaceApp/errors"
 )
 
 var (
@@ -44,8 +46,8 @@ type HostDB struct {
 	// The hostdb gets initialized with an allowance that can be modified. The
 	// allowance is used to build a weightFunc that the hosttree depends on to
 	// determine the weight of a host.
-	allowance           modules.Allowance
-	weightFunc          hosttree.WeightFunc
+	allowance  modules.Allowance
+	weightFunc hosttree.WeightFunc
 
 	// The hostTree is the root node of the tree that organizes hosts by
 	// weight. The tree is necessary for selecting weighted hosts at
@@ -95,8 +97,8 @@ func NewCustomHostDB(g modules.Gateway, cs modules.ConsensusSet, persistDir stri
 	}
 
 	// Set the hostweight function.
-	hdb.allowance = modules.Allowance{}
-	hdb.weightFunc = hdb.calculateHostWeightFn(modules.Allowance{})
+	hdb.allowance = modules.DefaultAllowance
+	hdb.weightFunc = hdb.calculateHostWeightFn(hdb.allowance)
 
 	// Create the persist directory if it does not yet exist.
 	err := os.MkdirAll(persistDir, 0700)
@@ -325,10 +327,10 @@ func (hdb *HostDB) RandomHosts(n int, blacklist, addressBlacklist []types.SiaPub
 	return hdb.hostTree.SelectRandom(n, blacklist, addressBlacklist), nil
 }
 
-// RandomHostsTempAllowance works as RandomHosts but uses a temporary hosttree
+// RandomHostsWithAllowance works as RandomHosts but uses a temporary hosttree
 // created from the specified allowance. This is a very expensive call and
 // should be used with caution.
-func (hdb *HostDB) RandomHostsTempAllowance(n int, blacklist, addressBlacklist []types.SiaPublicKey, allowance modules.Allowance) ([]modules.HostDBEntry, error) {
+func (hdb *HostDB) RandomHostsWithAllowance(n int, blacklist, addressBlacklist []types.SiaPublicKey, allowance modules.Allowance) ([]modules.HostDBEntry, error) {
 	hdb.mu.RLock()
 	initialScanComplete := hdb.initialScanComplete
 	hdb.mu.RUnlock()
@@ -339,21 +341,28 @@ func (hdb *HostDB) RandomHostsTempAllowance(n int, blacklist, addressBlacklist [
 	ht := hosttree.New(hdb.calculateHostWeightFn(allowance), hdb.deps.Resolver())
 
 	// Insert all known hosts.
+	var insertErrs error
 	allHosts := hdb.hostTree.All()
 	for _, host := range allHosts {
 		if err := ht.Insert(host); err != nil {
-			return nil, err
+			insertErrs = errors.Compose(insertErrs, err)
 		}
 	}
 
 	// Select hosts from the temporary hosttree.
-	return ht.SelectRandom(n, blacklist, addressBlacklist), nil
+	return ht.SelectRandom(n, blacklist, addressBlacklist), insertErrs
 }
 
-// UpdateAllowance updates the allowance used by the hostdb for weighing hosts
-// by updating the host weight function.  It will completely rebuild the
-// hosttree so it should be used with care.
-func (hdb *HostDB) UpdateAllowance(allowance modules.Allowance) error {
+// SetAllowance updates the allowance used by the hostdb for weighing hosts by
+// updating the host weight function. It will completely rebuild the hosttree so
+// it should be used with care.
+func (hdb *HostDB) SetAllowance(allowance modules.Allowance) error {
+	// If the allowance is empty, set it to the default allowance. This ensures
+	// that the estimates are at least moderately grounded.
+	if reflect.DeepEqual(allowance, modules.Allowance{}) {
+		allowance = modules.DefaultAllowance
+	}
+
 	// Update the weight function.
 	hdb.mu.Lock()
 	hdb.allowance = allowance
@@ -361,5 +370,5 @@ func (hdb *HostDB) UpdateAllowance(allowance modules.Allowance) error {
 	hdb.mu.Unlock()
 
 	// Update the trees weight function.
-	return hdb.hostTree.UpdateWeightFunction(hdb.calculateHostWeightFn(allowance))
+	return hdb.hostTree.SetWeightFunction(hdb.calculateHostWeightFn(allowance))
 }

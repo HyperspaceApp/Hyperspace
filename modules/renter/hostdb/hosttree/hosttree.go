@@ -1,13 +1,14 @@
 package hosttree
 
 import (
-	"errors"
 	"sort"
 	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/fastrand"
 )
 
@@ -249,9 +250,9 @@ func (ht *HostTree) Modify(hdbe modules.HostDBEntry) error {
 	return nil
 }
 
-// UpdateWeightFunction resets the HostTree and assigns it a new weight
+// SetWeightFunction resets the HostTree and assigns it a new weight
 // function. This resets the tree and reinserts all the hosts.
-func (ht *HostTree) UpdateWeightFunction(wf WeightFunc) error {
+func (ht *HostTree) SetWeightFunction(wf WeightFunc) error {
 	ht.mu.Lock()
 	defer ht.mu.Unlock()
 
@@ -267,13 +268,16 @@ func (ht *HostTree) UpdateWeightFunction(wf WeightFunc) error {
 	// Assign the new weight function.
 	ht.weightFn = wf
 
-	// Reinsert all the hosts.
+	// Reinsert all the hosts. To prevent the host tree from having a
+	// catastrophic failure in the event of an error early on, we tally up all
+	// of the insertion errors and return them all at the end.
+	var insertErrs error
 	for _, hdbe := range allHosts {
 		if err := ht.insert(hdbe); err != nil {
-			return err
+			insertErrs = errors.Compose(err, insertErrs)
 		}
 	}
-	return nil
+	return insertErrs
 }
 
 // Select returns the host with the provided public key, should the host exist.

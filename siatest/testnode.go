@@ -36,10 +36,10 @@ func (tn *TestNode) PrintDebugInfo(t *testing.T, contractInfo, hostInfo bool) {
 		}
 		t.Log("Contracts")
 		for _, c := range rc.ActiveContracts {
-			t.Log("ID", c.ID)
-			t.Log("GoodForUpload", c.GoodForUpload)
-			t.Log("GoodForRenew", c.GoodForRenew)
-			t.Log("HostPublicKey", c.HostPublicKey)
+			t.Log("    ID", c.ID)
+			t.Log("    GoodForUpload", c.GoodForUpload)
+			t.Log("    GoodForRenew", c.GoodForRenew)
+			t.Log("    HostPublicKey", c.HostPublicKey)
 		}
 	}
 
@@ -50,8 +50,14 @@ func (tn *TestNode) PrintDebugInfo(t *testing.T, contractInfo, hostInfo bool) {
 		}
 		t.Log("Active Hosts from HostDB")
 		for _, host := range hdbag.Hosts {
-			t.Log("pk", host.PublicKey)
-			t.Log("Accepting Contracts", host.HostExternalSettings.AcceptingContracts)
+			t.Log("    Host:", host.NetAddress)
+			t.Log("        pk", host.PublicKey)
+			t.Log("        Accepting Contracts", host.HostExternalSettings.AcceptingContracts)
+			t.Log("        LastIPNetChange", host.LastIPNetChange.String())
+			t.Log("        Subnets")
+			for _, subnet := range host.IPNets {
+				t.Log("            ", subnet)
+			}
 		}
 	}
 }

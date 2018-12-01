@@ -78,6 +78,11 @@ type hostDB interface {
 	// any offline or inactive hosts.
 	RandomHosts(int, []types.SiaPublicKey, []types.SiaPublicKey) ([]modules.HostDBEntry, error)
 
+	// RandomHostsWithAllowance is the same as RandomHosts but accepts an
+	// allowance as an argument to be used instead of the allowance set in the
+	// renter.
+	RandomHostsWithAllowance(int, []types.SiaPublicKey, []types.SiaPublicKey, modules.Allowance) ([]modules.HostDBEntry, error)
+
 	// ScoreBreakdown returns a detailed explanation of the various properties
 	// of the host.
 	ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown
@@ -276,7 +281,7 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 	if len(hosts) < int(allowance.Hosts) {
 		// Grab hosts to perform the estimation.
 		var err error
-		randHosts, err := r.hostDB.RandomHosts(int(allowance.Hosts), nil, nil)
+		randHosts, err := r.hostDB.RandomHostsWithAllowance(int(allowance.Hosts), nil, nil, allowance)
 		if err != nil {
 			return modules.RenterPriceEstimation{}, allowance, errors.AddContext(err, "could not generate estimate, could not get random hosts")
 		}
@@ -340,24 +345,25 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 
 	// Determine host collateral to be added to siafund fee
 	var hostCollateral types.Currency
-	renterPayout := allowance.Funds.Sub(totalContractCost).Div64(uint64(len(hosts))) // renterPayout exclused contract costs
+	contractCostPerHost := totalContractCost.Div64(allowance.Hosts)
+	fundingPerHost := allowance.Funds.Div64(allowance.Hosts)
+	numHosts := uint64(0)
 	for _, host := range hosts {
-		// Divide by zero check.
-		if host.StoragePrice.IsZero() {
-			host.StoragePrice = types.NewCurrency64(1)
-		}
-
-		// Calculate the collateral for the host based on renter payout
-		maxStorageSize := renterPayout.Div(host.StoragePrice)
-		collateral := maxStorageSize.Mul(host.Collateral)
-		if collateral.Cmp(host.MaxCollateral) > 0 {
-			collateral = host.MaxCollateral
+		// Assume that the ContractPrice equals contractCostPerHost and that
+		// the txnFee was zero. It doesn't matter since RenterPayoutsPreTax
+		// simply subtracts both values from the funding.
+		host.ContractPrice = contractCostPerHost
+		expectedStorage := modules.DefaultUsageGuideLines.ExpectedStorage
+		_, _, collateral, err := modules.RenterPayoutsPreTax(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
+		if err != nil {
+			continue
 		}
 		hostCollateral = hostCollateral.Add(collateral)
+		numHosts++
 	}
 
 	// Calculate average collateral and determine collateral for allowance
-	hostCollateral = hostCollateral.Div64(uint64(len(hosts)))
+	hostCollateral = hostCollateral.Div64(numHosts)
 	hostCollateral = hostCollateral.Mul64(allowance.Hosts)
 
 	// Add in siafund fee. which should be around 10%. The 10% siafund fee
@@ -509,8 +515,10 @@ func (r *Renter) ScoreBreakdown(e modules.HostDBEntry) modules.HostScoreBreakdow
 }
 
 // EstimateHostScore returns the estimated host score
-func (r *Renter) EstimateHostScore(e modules.HostDBEntry) modules.HostScoreBreakdown {
-	a := r.Settings().Allowance
+func (r *Renter) EstimateHostScore(e modules.HostDBEntry, a modules.Allowance) modules.HostScoreBreakdown {
+	if reflect.DeepEqual(a, modules.Allowance{}) {
+		a = r.Settings().Allowance
+	}
 	if reflect.DeepEqual(a, modules.Allowance{}) {
 		a = modules.DefaultAllowance
 	}
