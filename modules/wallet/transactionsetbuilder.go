@@ -6,7 +6,7 @@ import (
 )
 
 type transactionSetBuilder struct {
-	signed   bool
+	signed bool
 
 	builders []transactionBuilder
 
@@ -41,8 +41,8 @@ func (w *Wallet) RegisterTransactionSet(t types.Transaction, parents []types.Tra
 	return w.registerTransactionSet(t, parents), nil
 }
 
-func (w *Wallet) registerTransactionSet(t types.Transaction, parents []types.Transaction) (*transactionSetBuilder) {
-	ret := transactionSetBuilder {
+func (w *Wallet) registerTransactionSet(t types.Transaction, parents []types.Transaction) *transactionSetBuilder {
+	ret := transactionSetBuilder{
 		wallet: w,
 	}
 
@@ -102,16 +102,16 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 		currentOutput := newOutputs[i]
 		tot = tot.Add(currentOutput.Value)
 
-		if (tb.currentBuilder().transaction.MarshalSiaSize() >= modules.TransactionSizeLimit - 2e3) {
+		if tb.currentBuilder().transaction.MarshalSiaSize() >= modules.TransactionSizeLimit-2e3 {
 			refundOutput, err := tb.currentBuilder().addRefund(rest)
-			if (err != nil) {
+			if err != nil {
 				return err
 			}
 
 			// Prepend the refund to the outputs so that the next builder
 			// can use it.
 			tx := tb.currentBuilder().transaction
-			refundID = tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs))-1)
+			refundID = tx.SiacoinOutputID(uint64(len(tx.SiacoinOutputs)) - 1)
 			//fmt.Println("refundid", refundID)
 			spendableOutputs.ids = append([]types.SiacoinOutputID{refundID}, spendableOutputs.ids...)
 			spendableOutputs.outputs = append([]types.SiacoinOutput{refundOutput}, spendableOutputs.outputs...)
@@ -129,7 +129,7 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 
 		// We already have enough funds?
 		// Do not seek for inputs, just add the output.
-		if (rest.Cmp(currentOutput.Value) >= 0) {
+		if rest.Cmp(currentOutput.Value) >= 0 {
 			tb.currentBuilder().AddSiacoinOutput(currentOutput)
 			rest = rest.Sub(currentOutput.Value)
 
@@ -139,18 +139,18 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 			fundedAmount := types.NewCurrency64(0)
 
 			valueToFund := currentOutput.Value
-			if (rest.Cmp64(0) > 0) {
+			if rest.Cmp64(0) > 0 {
 				valueToFund = valueToFund.Sub(rest)
 				rest = types.NewCurrency64(0)
 			}
 
-			if (addFee) {
+			if addFee {
 				valueToFund = valueToFund.Add(fee)
 				addFee = false
 			}
 
 			fundedAmount, spentInOutputs, err = tb.currentBuilder().fund(valueToFund, refundID, spendableOutputs)
-			if (err != nil) {
+			if err != nil {
 				return err
 			}
 			refundID = types.SiacoinOutputID{}
@@ -167,19 +167,19 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 			// Remove used outputs, so that those don't get respent
 			for _, scoid := range spentInOutputs {
 				for j := len(spendableOutputs.ids) - 1; j >= 0; j-- {
-					if (scoid == spendableOutputs.ids[j]) {
+					if scoid == spendableOutputs.ids[j] {
 						spendableOutputs.ids = append(spendableOutputs.ids[:j], spendableOutputs.ids[j+1:]...)
 						spendableOutputs.outputs = append(spendableOutputs.outputs[:j], spendableOutputs.outputs[j+1:]...)
-						j -= 1;
+						j -= 1
 					}
 				}
 			}
 		}
 	}
 
-	if (rest.Cmp64(0) > 0) {
+	if rest.Cmp64(0) > 0 {
 		_, err = tb.currentBuilder().addRefund(rest)
-		if (err != nil) {
+		if err != nil {
 			return err
 		}
 	}
@@ -229,7 +229,7 @@ func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transactio
 
 	// Sign the first builder
 	txSet, err := tb.builders[0].Sign(wholeTransaction)
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
@@ -240,7 +240,7 @@ func (tb *transactionSetBuilder) Sign(wholeTransaction bool) ([]types.Transactio
 	for i := 1; i < len(tb.builders); i++ {
 		tb.builders[i].AddParents(txSet)
 		tx, err := tb.builders[i].Sign(wholeTransaction)
-		if (err != nil) {
+		if err != nil {
 			return nil, err
 		}
 		txSet = tx
@@ -259,7 +259,7 @@ func (tb *transactionSetBuilder) View() (types.Transaction, []types.Transaction)
 	var ret []types.Transaction
 	for i := range tb.builders {
 		tx, _ := tb.builders[i].View()
-		ret = append(ret, tx) 
+		ret = append(ret, tx)
 	}
 	return ret[len(ret)-1], ret[:len(ret)-1]
 }
@@ -274,7 +274,7 @@ func (tb *transactionSetBuilder) Drop() {
 
 	// Discard any subsequent builder
 	tb.builders = []transactionBuilder{tb.builders[0]}
-	tb.signed = false;
+	tb.signed = false
 }
 
 // Size return the encoded size of the whole transaction set.

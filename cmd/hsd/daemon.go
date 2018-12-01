@@ -17,9 +17,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/profile"
 	mnemonics "github.com/HyperspaceApp/entropy-mnemonics"
-	deadlock "github.com/sasha-s/go-deadlock"
 	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/fastrand"
+	deadlock "github.com/sasha-s/go-deadlock"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

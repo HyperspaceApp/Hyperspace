@@ -273,7 +273,6 @@ type (
 		Size() (size int)
 	}
 
-
 	// EncryptionManager can encrypt, lock, unlock, and indicate the current
 	// status of the EncryptionManager.
 	EncryptionManager interface {

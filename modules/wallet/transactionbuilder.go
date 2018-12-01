@@ -135,7 +135,7 @@ func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.S
 		// Check that the output can be spent.
 		err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, inOutputID, inOutput, dustThreshold)
 		// Avoid to discard the output due to spend height being too high
-		if (err != nil && refundID != inOutputID) {
+		if err != nil && refundID != inOutputID {
 			if err == errSpendHeightTooHigh {
 				potentialFund = potentialFund.Add(inOutput.Value)
 			}
@@ -670,4 +670,3 @@ func (w *Wallet) StartTransaction() (modules.TransactionBuilder, error) {
 	defer w.tg.Done()
 	return w.RegisterTransaction(types.Transaction{}, nil)
 }
-

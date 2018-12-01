@@ -704,7 +704,7 @@ func (api *API) walletBuildTransactionHandler(w http.ResponseWriter, req *http.R
 		return
 	}
 
-	if (len(txnSet) > 1) {
+	if len(txnSet) > 1 {
 		WriteError(w, Error{"error when calling /wallet/build/transaction: could not fit the desired amount into a single transaction, try sending a smaller amount"}, http.StatusBadRequest)
 		return
 	}

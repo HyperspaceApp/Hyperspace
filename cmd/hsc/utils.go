@@ -10,13 +10,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/cobra/doc"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	mnemonics "github.com/HyperspaceApp/entropy-mnemonics"
+	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
 )
 
 var (

@@ -9,17 +9,17 @@ import (
 // DefaultSiaDir returns the default data directory of siad. The values for
 // supported operating systems are:
 //
-// Linux:   $HOME/.sia
-// MacOS:   $HOME/Library/Application Support/Sia
-// Windows: %LOCALAPPDATA%\Sia
+// Linux:   $HOME/.hyperspace
+// MacOS:   $HOME/Library/Application Support/Hyperspace
+// Windows: %LOCALAPPDATA%\Hyperspace
 func DefaultSiaDir() string {
 	switch runtime.GOOS {
 	case "windows":
-		return filepath.Join(os.Getenv("LOCALAPPDATA"), "Sia")
+		return filepath.Join(os.Getenv("LOCALAPPDATA"), "Hyperspace")
 	case "darwin":
-		return filepath.Join(os.Getenv("HOME"), "Library", "Application Support", "Sia")
+		return filepath.Join(os.Getenv("HOME"), "Library", "Application Support", "Hyperspace")
 	default:
-		return filepath.Join(os.Getenv("HOME"), ".sia")
+		return filepath.Join(os.Getenv("HOME"), ".hyperspace")
 	}
 }
 
