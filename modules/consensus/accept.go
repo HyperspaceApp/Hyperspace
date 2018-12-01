@@ -353,7 +353,6 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 	}
 	if setErr != nil {
 		if len(changes) == 0 {
-			fmt.Println("Received an invalid block set.")
 			cs.log.Println("Consensus received an invalid block:", setErr)
 		} else {
 			fmt.Println("Received a partially valid block set.")
