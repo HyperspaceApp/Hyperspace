@@ -56,7 +56,7 @@ func (tn *TestNode) DownloadToDiskPartial(rf *RemoteFile, lf *LocalFile, async b
 	}
 	// Create a random destination for the download
 	fileName := fmt.Sprintf("%dbytes %s", fi.Filesize, hex.EncodeToString(fastrand.Bytes(4)))
-	dest := filepath.Join(tn.downloadsDir(), fileName)
+	dest := filepath.Join(tn.downloadDir.path, fileName)
 	if err := tn.RenterDownloadGet(rf.siaPath, dest, offset, length, async); err != nil {
 		return nil, errors.AddContext(err, "failed to download file")
 	}
