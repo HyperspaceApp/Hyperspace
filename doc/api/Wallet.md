@@ -49,7 +49,9 @@ Index
 | [/wallet/unlockconditions](#walletunlockconditions-post)                | POST      |
 | [/wallet/unlockconditions/___:addr___](#walletunlockconditionsaddr-get) | GET       |
 | [/wallet/unlock](#walletunlock-post)                                    | POST      |
+| [/wallet/unspent](#walletunspent-get)                                   | GET       |
 | [/wallet/verify/address/:___addr___](#walletverifyaddress-get)          | GET       |
+| [/wallet/watch](#walletwatch-get)                                       | GET       |
 | [/wallet/watch](#walletwatch-post)                                      | POST      |
 
 #### /wallet [GET]
