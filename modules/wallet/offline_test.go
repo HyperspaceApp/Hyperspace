@@ -110,7 +110,7 @@ func TestSignTransactionNoWallet(t *testing.T) {
 	// whether SignTransaction can find it.
 	sk := generateSpendableKey(seed, fastrand.Uint64n(1000))
 
-	// create a transaction that sends 1 SC and 1 SF to the void
+	// create a transaction that sends 1 XSC
 	txn := types.Transaction{
 		SiacoinInputs: []types.SiacoinInput{{
 			ParentID:         types.SiacoinOutputID{1}, // doesn't need to actually exist
@@ -125,10 +125,6 @@ func TestSignTransactionNoWallet(t *testing.T) {
 				ParentID:      crypto.Hash{1},
 				CoveredFields: types.CoveredFields{WholeTransaction: true},
 			},
-			{
-				ParentID:      crypto.Hash{2},
-				CoveredFields: types.CoveredFields{WholeTransaction: true},
-			},
 		},
 	}
 
@@ -140,7 +136,6 @@ func TestSignTransactionNoWallet(t *testing.T) {
 	// sign the transaction
 	toSign := []crypto.Hash{
 		txn.TransactionSignatures[0].ParentID,
-		txn.TransactionSignatures[1].ParentID,
 	}
 	if err := SignTransaction(&txn, seed, toSign); err != nil {
 		t.Fatal(err)
