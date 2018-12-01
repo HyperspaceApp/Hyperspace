@@ -24,7 +24,7 @@ var (
 		Use:   "utils",
 		Short: "various utilities for working with Hyperspace's types",
 		Long: `Various utilities for working with Hyperspace's types.
-These commands do not require siad.`,
+These commands do not require hsd.`,
 		// Run field not provided; utils requires a subcommand.
 	}
 
@@ -34,7 +34,7 @@ These commands do not require siad.`,
 		Long: `Creates a bash completion file at the specified location.
 
 Note: Bash completions will only work with the prefix with which the script
-is created (e.g. ./siac or siac).
+is created (e.g. ./hsc or hsc).
 
 Once created, the file has to be moved to the bash completion script folder,
 usually /etc/bash_completion.d/`,
@@ -112,7 +112,7 @@ func bashcomplcmd(path string) {
 func mangencmd(path string) {
 	doc.GenManTree(rootCmd, &doc.GenManHeader{
 		Section: "1",
-		Manual:  "siac Manual",
+		Manual:  "hsc Manual",
 		Source:  "",
 	}, path)
 }
