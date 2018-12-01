@@ -39,7 +39,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	// Calculate the payouts for the renter, host, and whole contract.
 	period := endHeight - startHeight
 	expectedStorage := modules.DefaultUsageGuideLines.ExpectedStorage
-	renterPayout, hostPayout, hostCollateral, err := modules.RenterPayoutsPreTax(host, funding, txnFee, basePrice, period, expectedStorage)
+	renterPayout, hostPayout, hostCollateral, err := modules.RenterPayouts(host, funding, txnFee, basePrice, period, expectedStorage)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}

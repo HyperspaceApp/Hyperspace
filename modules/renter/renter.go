@@ -354,7 +354,7 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 		// simply subtracts both values from the funding.
 		host.ContractPrice = contractCostPerHost
 		expectedStorage := modules.DefaultUsageGuideLines.ExpectedStorage
-		_, _, collateral, err := modules.RenterPayoutsPreTax(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
+		_, _, collateral, err := modules.RenterPayouts(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
 		if err != nil {
 			continue
 		}
@@ -365,14 +365,6 @@ func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPri
 	// Calculate average collateral and determine collateral for allowance
 	hostCollateral = hostCollateral.Div64(numHosts)
 	hostCollateral = hostCollateral.Mul64(allowance.Hosts)
-
-	// Add in siafund fee. which should be around 10%. The 10% siafund fee
-	// accounts for paying 3.9% siafund on transactions and host collatoral. We
-	// estimate the renter to spend all of it's allowance so the siafund fee
-	// will be calculated on the sum of the allowance and the hosts collateral
-	totalPayout := allowance.Funds.Add(hostCollateral)
-	siafundFee := types.Tax(r.cs.Height(), totalPayout)
-	totalContractCost = totalContractCost.Add(siafundFee)
 
 	// Increase estimates by a factor of safety to account for host churn and
 	// any potential missed additions
@@ -571,7 +563,7 @@ func (r *Renter) ProcessConsensusChange(cc modules.ConsensusChange) {
 // ProcessHeaderConsensusChange will reset the lastEstimation
 func (r *Renter) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	id := r.mu.Lock()
-	r.lastEstimation = modules.RenterPriceEstimation{}
+	r.lastEstimationHosts = []modules.HostDBEntry{}
 	r.mu.Unlock(id)
 }
 
