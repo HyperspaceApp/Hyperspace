@@ -331,11 +331,11 @@ func (ht *HostTree) SelectRandom(n int, blacklist, addressBlacklist []types.SiaP
 	for len(hosts) < n && len(ht.hosts) > 0 {
 		randWeight := fastrand.BigIntn(ht.root.weight.Big())
 		node := ht.root.nodeAtWeight(types.NewCurrency(randWeight))
-
 		if node.entry.AcceptingContracts &&
 			len(node.entry.ScanHistory) > 0 &&
 			node.entry.ScanHistory[len(node.entry.ScanHistory)-1].Success &&
-			!filter.Filtered(node.entry.NetAddress) {
+			!filter.Filtered(node.entry.NetAddress) &&
+			build.VersionCmp(node.entry.Version, "0.2.3") >= 0 { // new renter/host protocol
 			// The host must be online and accepting contracts to be returned
 			// by the random function. It also has to pass the addressFilter
 			// check.
