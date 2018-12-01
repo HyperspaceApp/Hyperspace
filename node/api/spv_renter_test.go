@@ -74,7 +74,7 @@ func setupSPVTestDownload(t *testing.T, size int, name string, waitOnAvailabilit
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", renewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	err = st.stdPostAPI("/renter", allowanceValues)
 	if err != nil {
 		t.Fatal(err)

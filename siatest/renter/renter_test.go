@@ -432,7 +432,7 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	// Upload file
 	dataPieces := uint64(1)
 	parityPieces := uint64(1)
-	_, err = r.Upload(lf, dataPieces, parityPieces)
+	_, err = r.Upload(lf, dataPieces, parityPieces, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1050,7 +1050,7 @@ func testDownloadInterrupted(t *testing.T, tg *siatest.TestGroup, deps *siatest.
 	ct := crypto.TypeDefaultRenter
 	dataPieces := uint64(len(tg.Hosts())) - 1
 	parityPieces := uint64(1)
-	chunkSize := siatest.ChunkSize(uint64(dataPieces))
+	chunkSize := siatest.ChunkSize(uint64(dataPieces), ct)
 	_, remoteFile, err := renter.UploadNewFileBlocking(int(chunkSize), dataPieces, parityPieces, false)
 	if err != nil {
 		t.Fatal(err)
