@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -772,11 +773,14 @@ func (cs *ConsensusSet) getOrDownloadBlock(id types.BlockID) (*processedBlock, e
 		select {
 		case <-cs.tg.StopChan():
 			return nil, siasync.ErrStopped
-		case <-time.After(MaxDownloadSingleBlockDuration): // all download fail
+		case <-time.After(MaxDownloadSingleBlockDuration):
 			return nil, errors.New("download block timeout")
 		case <-waitChan: // all download fail
 			return nil, errors.New("all download failed")
 		case pb = <-pbChan:
+			if pb == nil {
+				return nil, fmt.Errorf("download failed, processed block nil")
+			}
 			cs.log.Printf("got block %d from channel", pb.Height)
 		}
 	} else {

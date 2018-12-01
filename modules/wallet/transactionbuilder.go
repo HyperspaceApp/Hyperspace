@@ -3,6 +3,7 @@ package wallet
 import (
 	"bytes"
 	"errors"
+	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -135,7 +136,7 @@ func (tb *transactionBuilder) fund(amountToFund types.Currency, refundID types.S
 		// Check that the output can be spent.
 		err := tb.wallet.checkOutput(tb.wallet.dbTx, consensusHeight, inOutputID, inOutput, dustThreshold)
 		// Avoid to discard the output due to spend height being too high
-		if (err != nil && refundID != inOutputID) {
+		if err != nil && refundID != inOutputID {
 			if err == errSpendHeightTooHigh {
 				potentialFund = potentialFund.Add(inOutput.Value)
 			}
@@ -383,6 +384,7 @@ func (tb *transactionBuilder) FundContract(amount types.Currency) ([]types.Siaco
 	if !amount.Equals(fund) {
 		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
 		if err != nil {
+			log.Printf("next address failed, try to get an address: %s", err.Error())
 			refundUnlockConditions, err = tb.wallet.GetAddress() // try get address if generate address failed when funding contracts
 			if err != nil {
 				return nil, err
@@ -670,4 +672,3 @@ func (w *Wallet) StartTransaction() (modules.TransactionBuilder, error) {
 	defer w.tg.Done()
 	return w.RegisterTransaction(types.Transaction{}, nil)
 }
-

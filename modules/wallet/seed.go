@@ -111,8 +111,6 @@ func (w *Wallet) GetAddress() (types.UnlockConditions, error) {
 	}
 	defer w.tg.Done()
 
-	w.mu.Lock()
-	defer w.mu.Unlock()
 	if !w.unlocked {
 		return types.UnlockConditions{}, modules.ErrLockedWallet
 	}

@@ -315,7 +315,11 @@ func (c *Contractor) managedNewContract(host modules.HostDBEntry, contractFundin
 	// get an address to use for negotiation
 	uc, err := c.wallet.NextAddress()
 	if err != nil {
-		return types.ZeroCurrency, modules.RenterContract{}, err
+		c.log.Printf("Attempted to form a contract with %v, next address failed: reason: %v, try get address\n", host.NetAddress, err)
+		uc, err = c.wallet.GetAddress()
+		if err != nil {
+			return types.ZeroCurrency, modules.RenterContract{}, err
+		}
 	}
 
 	// create contract params
