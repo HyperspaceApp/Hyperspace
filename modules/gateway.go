@@ -37,8 +37,6 @@ var (
 	// bootstrap point. While the bootstrap point could be a central service,
 	// it can also be a list of peers that are known to be stable. We have
 	// chosen to hardcode known-stable peers.
-	//
-	// These peers have been verified to be v1.3.7 or higher
 	BootstrapPeers = build.Select(build.Var{
 		Standard: []NetAddress{
 			"47.75.72.189:5581",
