@@ -119,10 +119,10 @@ func (cs *ConsensusSet) childTargetOak(parentTotalTime int64, parentTotalTarget,
 	maxNewTarget := currentTarget.MulDifficulty(types.OakMaxRise) // Max = difficulty increase (target decrease)
 	minNewTarget := currentTarget.MulDifficulty(types.OakMaxDrop) // Min = difficulty decrease (target increase)
 	newTarget := types.RatToTarget(new(big.Rat).SetFrac(types.RootDepth.Int(), visibleHashrate.Mul64(uint64(targetBlockTime)).Big()))
-	if newTarget.Cmp(maxNewTarget) < 0 && parentHeight+1 != types.ASICHardforkHeight {
+	if newTarget.Cmp(maxNewTarget) < 0 {
 		newTarget = maxNewTarget
 	}
-	if newTarget.Cmp(minNewTarget) > 0 && parentHeight+1 != types.ASICHardforkHeight {
+	if newTarget.Cmp(minNewTarget) > 0 {
 		// This can only possibly trigger if the BlockFrequency is less than 3
 		// seconds, but during testing it is 1 second.
 		newTarget = minNewTarget
