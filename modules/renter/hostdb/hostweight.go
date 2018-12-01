@@ -1,12 +1,14 @@
 package hostdb
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb/hosttree"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/errors"
 )
 
 const (
@@ -213,9 +215,9 @@ func (hdb *HostDB) priceAdjustments(entry modules.HostDBEntry, allowance modules
 	txnFees := types.SiacoinPrecision
 	_, _, _, err := modules.RenterPayouts(entry, allowance.Funds.Div64(allowance.Hosts), txnFees, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, ug.ExpectedStorage)
 	if err != nil {
-		hdb.log.Debugf("Host %v, ContractPrice %v, TxnFees %v, Funds %v\n",
+		info := fmt.Sprintf("Error while estimating collateral for host: Host %v, ContractPrice %v, TxnFees %v, Funds %v",
 			entry.PublicKey.String(), entry.ContractPrice.HumanString(), txnFees.HumanString(), allowance.Funds.HumanString())
-		hdb.log.Debugln(err)
+		hdb.log.Debugln(errors.AddContext(err, info))
 		return 0
 	}
 
