@@ -18,7 +18,10 @@ func (wt *walletTester) addBlockNoPayout() error {
 	// Clear the miner payout so that the wallet is not getting additional
 	// outputs from these blocks.
 	for i := range block.MinerPayouts {
-		block.MinerPayouts[i].UnlockHash = types.UnlockHash{}
+		// in blocks with devfund payouts, must respect devfund
+		if len(block.MinerPayouts) == 1 || i != len(block.MinerPayouts) - 1 {
+			block.MinerPayouts[i].UnlockHash = types.UnlockHash{}
+		}
 	}
 
 	// Solve and submit the block.

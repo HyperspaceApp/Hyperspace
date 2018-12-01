@@ -28,7 +28,7 @@ func TestSignTransaction(t *testing.T) {
 		t.Error(err)
 	}
 
-	// get a siacoin output and a siafund output
+	// get a siacoin output
 	outputs, err := wt.wallet.UnspentOutputs()
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +68,7 @@ func TestSignTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 	// txn should now have signatures
-	if len(txn.TransactionSignatures[0].Signature) == 0 || len(txn.TransactionSignatures[1].Signature) == 0 {
+	if len(txn.TransactionSignatures[0].Signature) == 0 {
 		t.Fatal("transaction was not signed")
 	}
 
