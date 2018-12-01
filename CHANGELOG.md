@@ -1,7 +1,7 @@
 Version History
 ---------------
 
-Sep 2018:
+Oct 28, 2018:
 
 v0.2.2
 - SPV bug fixes

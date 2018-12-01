@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -135,7 +134,7 @@ func TestMinerHeader(t *testing.T) {
 	copy(header[:], targetAndHeader[32:])
 	headerHash := crypto.HashObject(header)
 	for headerHash[0] >= types.RootTarget[0] {
-		*(*uint64)(unsafe.Pointer(&header[32])) += types.ASICHardforkFactor
+		header[35]++
 		headerHash = crypto.HashObject(header)
 	}
 

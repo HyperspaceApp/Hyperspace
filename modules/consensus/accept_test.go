@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -683,8 +682,8 @@ func TestMissedTarget(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for checkTarget(block, block.ID(), target) {
-		*(*uint64)(unsafe.Pointer(&block.Nonce)) += types.ASICHardforkFactor
+	for checkTarget(block, block.ID(), target) && block.Nonce[0] != 255 {
+		block.Nonce[0]++
 	}
 	if checkTarget(block, block.ID(), target) {
 		t.Fatal("unable to find a failing target")

@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-	"unsafe"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -175,7 +174,7 @@ func TestIntegrationBlocksMined(t *testing.T) {
 	// Solve the header - necessary because the target is very low when
 	// mining.
 	for {
-		*(*uint64)(unsafe.Pointer(&unsolvedHeader.Nonce)) += types.ASICHardforkFactor
+		unsolvedHeader.Nonce[0]++
 		id := crypto.HashObject(unsolvedHeader)
 		if bytes.Compare(target[:], id[:]) < 0 {
 			break

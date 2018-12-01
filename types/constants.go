@@ -222,6 +222,7 @@ func init() {
 	} else if build.Release == "standard" {
 		// 'standard' settings are for the full network. They are slow enough
 		// that the network is secure in a real-world byzantine environment.
+
 		// A block time of 1 block per 10 minutes is chosen to follow Bitcoin's
 		// example. The security lost by lowering the block time is not
 		// insignificant, and the convenience gained by lowering the blocktime
