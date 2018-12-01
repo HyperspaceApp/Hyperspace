@@ -153,10 +153,6 @@ func (w *Wallet) SignTransaction(txn *types.Transaction, toSign []crypto.Hash) e
 	if !w.unlocked {
 		return modules.ErrLockedWallet
 	}
-	consensusHeight, err := dbGetConsensusHeight(w.dbTx)
-	if err != nil {
-		return err
-	}
 
 	// if toSign is empty, sign all inputs that we have keys for
 	if len(toSign) == 0 {
@@ -166,7 +162,7 @@ func (w *Wallet) SignTransaction(txn *types.Transaction, toSign []crypto.Hash) e
 			}
 		}
 	}
-	return signTransaction(txn, w.keys, toSign, consensusHeight)
+	return signTransaction(txn, w.keys, toSign)
 }
 
 // SignTransaction signs txn using secret keys derived from seed. The
@@ -176,7 +172,7 @@ func (w *Wallet) SignTransaction(txn *types.Transaction, toSign []crypto.Hash) e
 // SignTransaction must derive all of the keys from scratch, so it is
 // appreciably slower than calling the Wallet.SignTransaction method. Only the
 // first 1 million keys are derived.
-func SignTransaction(txn *types.Transaction, seed modules.Seed, toSign []crypto.Hash, height types.BlockHeight) error {
+func SignTransaction(txn *types.Transaction, seed modules.Seed, toSign []crypto.Hash) error {
 	if len(toSign) == 0 {
 		// unlike the wallet method, we can't simply "sign all inputs we have
 		// keys for," because without generating all of the keys up front, we
@@ -192,16 +188,16 @@ func SignTransaction(txn *types.Transaction, seed modules.Seed, toSign []crypto.
 			keys[sk.UnlockConditions.UnlockHash()] = sk
 		}
 		keyIndex += keysPerBatch
-		if err := signTransaction(txn, keys, toSign, height); err == nil {
+		if err := signTransaction(txn, keys, toSign); err == nil {
 			return nil
 		}
 	}
-	return signTransaction(txn, keys, toSign, height)
+	return signTransaction(txn, keys, toSign)
 }
 
 // signTransaction signs the specified inputs of txn using the specified keys.
 // It returns an error if any of the specified inputs cannot be signed.
-func signTransaction(txn *types.Transaction, keys map[types.UnlockHash]spendableKey, toSign []crypto.Hash, height types.BlockHeight) error {
+func signTransaction(txn *types.Transaction, keys map[types.UnlockHash]spendableKey, toSign []crypto.Hash) error {
 	// helper function to lookup unlock conditions in the txn associated with
 	// a transaction signature's ParentID
 	findUnlockConditions := func(id crypto.Hash) (types.UnlockConditions, bool) {

@@ -548,7 +548,7 @@ func walletsigncmdoffline(txn *types.Transaction, toSign []crypto.Hash) {
 		case <-done:
 		}
 	}()
-	err = wallet.SignTransaction(txn, seed, toSign, 180e3)
+	err = wallet.SignTransaction(txn, seed, toSign)
 	if err != nil {
 		die("Failed to sign transaction:", err)
 	}

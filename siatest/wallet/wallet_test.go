@@ -306,11 +306,7 @@ func TestWatchOnly(t *testing.T) {
 	}
 
 	// sign the transaction
-	cg, err := testNode.ConsensusGet()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sig := crypto.SignHash(txn.SigHash(0, cg.Height), sk)
+	sig := crypto.SignHash(txn.SigHash(0), sk)
 	txn.TransactionSignatures[0].Signature = sig[:]
 
 	// the resulting transaction should be valid; submit it to the tpool and
