@@ -652,6 +652,10 @@ starts a file upload to the Hyperspace network from the local filesystem.
 // must be non-empty, may not include any path traversal strings ("./", "../"),
 // and may not begin with a forward-slash character.
 *hyperspacepath
+
+// Optional paramater used to overwrite an existing file
+// Default is 'false' if unspecified
+force // bool
 ```
 
 ###### Query String Parameters
