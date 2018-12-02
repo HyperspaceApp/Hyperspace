@@ -24,11 +24,11 @@ func TestIntegrationMinimumValidChildTimestamp(t *testing.T) {
 
 	// Create a custom consensus set to control the blocks.
 	testdir := build.TempDir(modules.ConsensusDir, t.Name())
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,11 +36,11 @@ func TestIntegrationMinimumValidChildTimestamp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		t.Fatal(err)

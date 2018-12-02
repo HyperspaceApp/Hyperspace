@@ -21,12 +21,12 @@ Notes:
 
 Example GET curl call:
 ```
-curl -A "Hyperspace-Agent" "localhost:5580/wallet/transactions?startheight=1&endheight=250"
+curl -A "Hyperspace-Agent" -u "":foobar "localhost:5580/wallet/transactions?startheight=1&endheight=250"
 ```
 
 Example POST curl call:
 ```
-curl -A "Hyperspace-Agent" --data "amount=123&destination=abcd" "localhost:5580/wallet/spacecash"
+curl -A "Hyperspace-Agent" -u "":foobar --data "amount=123&destination=abcd" "localhost:5580/wallet/spacecash"
 ```
 
 Standard responses
@@ -54,7 +54,16 @@ The standard error response indicating the request failed for any reason, is a
 Authentication
 --------------
 
-API authentication can be enabled with the `--authenticate-api` hsd flag.
+API authentication is enabled by default, using a password stored in a flat
+file. The location of this file is:
+
+- Linux:   `$HOME/.hyperspace/apipassword`
+- MacOS:   `$HOME/Library/Application Support/Hyperspace/apipassword`
+- Windows: `%LOCALAPPDATA%\Hyperspace\apipassword`
+
+Note that the file contains a trailing newline, which must be trimmed before
+use.
+
 Authentication is HTTP Basic Authentication as described in
 [RFC 2617](https://tools.ietf.org/html/rfc2617), however, the username is the
 empty string. The flag does not enforce authentication on all API endpoints.
@@ -65,6 +74,11 @@ For example, if the API password is "foobar" the request header should include
 ```
 Authorization: Basic OmZvb2Jhcg==
 ```
+
+Authentication can be disabled by passing the `--authenticate-api=false` flag
+to `hsd`. You can change the password by modifying the password file, setting
+the `HYPERSPACE_API_PASSWORD` environment variable, or passing the `--temp-password`
+flag to `hsd.`
 
 Units
 -----
@@ -129,7 +143,7 @@ returns the set of constants in use.
   "maxtargetadjustmentup":   "5/2",
   "maxtargetadjustmentdown": "2/5",
 
-  "siacoinprecision": "1000000000000000000000000" // hastings per SPACE
+  "spacecashprecision": "1000000000000000000000000" // hastings per SPACE
 }
 ```
 
@@ -219,7 +233,7 @@ The JSON formatted block or a standard error response.
             "filecontracts": [],
             "id": "3c98ec79b990461f353c22bb06bcfb10e702f529ad7d27a43c4448273553d90a",
             "minerfees": [],
-            "siacoininputs": [
+            "spacecashinputs": [
                 {
                     "parentid": "24cbeb9df7eb2d81d0025168fc94bd179909d834f49576e65b51feceaf957a64",
                     "unlockconditions": {
@@ -234,7 +248,7 @@ The JSON formatted block or a standard error response.
                     }
                 }
             ],
-            "siacoinoutputs": [
+            "spacecashoutputs": [
                 {
                     "id": "1f9da81e23522f79590ac67ac0b668828c52b341cbf04df4959bb7040c072f29",
                     "unlockhash": "d54f500f6c1774d518538dbe87114fe6f7e6c76b5bc8373a890b12ce4b8909a336106a4cd6db",
@@ -254,8 +268,8 @@ The JSON formatted block or a standard error response.
                         "filecontractrevisions": [],
                         "filecontracts": [],
                         "minerfees": [],
-                        "siacoininputs": [],
-                        "siacoinoutputs": [],
+                        "spacecashinputs": [],
+                        "spacecashoutputs": [],
                         "storageproofs": [],
                         "transactionsignatures": [],
                         "wholetransaction": true
@@ -648,12 +662,14 @@ minuploadbandwidthprice   // Optional, hastings / byte
 Host DB
 -------
 
-| Route                                                   | HTTP verb |
-| ------------------------------------------------------- | --------- |
-| [/hostdb](#hostdb-get-example)                          | GET       |
-| [/hostdb/active](#hostdbactive-get-example)             | GET       |
-| [/hostdb/all](#hostdball-get-example)                   | GET       |
+| Route                                                         | HTTP verb |
+| ------------------------------------------------------------- | --------- |
+| [/hostdb](#hostdb-get-example)                                | GET       |
+| [/hostdb/active](#hostdbactive-get-example)                   | GET       |
+| [/hostdb/all](#hostdball-get-example)                         | GET       |
 | [/hostdb/hosts/:___pubkey___](#hostdbhostspubkey-get-example) | GET       |
+| [/hostdb/filtermode](#hostdbfiltermode-post)                  | POST      |
+
 
 For examples and detailed descriptions of request and response parameters,
 refer to [HostDB.md](/doc/api/HostDB.md).
@@ -784,6 +800,43 @@ overall.
 }
 ```
 
+#### /hostdb/filtermode [POST] 
+
+lets you enable and disable a filter mode for the hostdb. Currenlty the two
+modes supported are `blacklist` mode and `whitelist` mode. In `blacklist` mode,
+any hosts you identify as being on the `blacklist` will not be used to form
+contracts. In `whitelist` mode, only the hosts identified as being on the
+`whitelist` will be used to form contracts. In both modes, hosts that you are
+blacklisted will be filtered from your hostdb. To enable either mode, set
+`filtermode` to the desired mode and submit a list of host pubkeys as the
+corresponding `blacklist` or `whitelist`. To disable either list, the `host`
+field can be left blank (ie empty slice) and the `filtermode` should be set to
+`disable`.
+
+**NOTE:** Enabling and disabling a filter mode can result in changes with your
+current contracts with can result in an increase in contract fee spending. For
+example, if `blacklist` mode is enabled, any hosts that you currently have
+contracts with that are also on the provide list of `hosts` will have their
+contracts replaced with non-blacklisted hosts. When `whitelist` mode is enabled,
+contracts will be replaced until there are only contracts with whitelisted
+hosts. Even disabling a filter mode can result in a change in contracts if there
+are better scoring hosts in your hostdb that were previously being filtered out.
+
+###### Request Body [(with comments)](/doc/api/HostDB.md#request-body)
+```javascript
+{
+  "filtermode": "whitelist", // can be either whitelist, blacklist, or disable
+  "hosts": [                 // comma separated pubkeys
+    "ed25519:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+    "ed25519:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+  ]
+}
+```
+
+###### Response
+standard success or error response. See
+[#standard-responses](#standard-responses).
+
 
 Miner
 -----
@@ -861,16 +914,17 @@ Renter
 | --------------------------------------------------------------------------| --------- |
 | [/renter](#renter-get)                                                    | GET       |
 | [/renter](#renter-post)                                                   | POST      |
+| [/renter/contract/cancel](#rentercontractcancel-post)                     | POST      |
 | [/renter/contracts](#rentercontracts-get)                                 | GET       |
 | [/renter/downloads](#renterdownloads-get)                                 | GET       |
 | [/renter/downloads/clear](#renterdownloadsclear-post)                     | POST      |
 | [/renter/prices](#renterprices-get)                                       | GET       |
 | [/renter/files](#renterfiles-get)                                         | GET       |
 | [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-get)               | GET       |
+| [/renter/file/*___hyperspacepath___](#renterfile___hyperspacepath___-post)              | POST       |
 | [/renter/delete/*___hyperspacepath___](#renterdeletehyperspacepath-post)                | POST      |
 | [/renter/download/*___hyperspacepath___](#renterdownloadhyperspacepath-get)             | GET       |
 | [/renter/downloadasync/*___hyperspacepath___](#renterdownloadasynchyperspacepath-get)   | GET       |
-| [/renter/rename/*___hyperspacepath___](#renterrenamehyperspacepath-post)                | POST      |
 | [/renter/stream/*___hyperspacepath___](#renterstreamhyperspacepath-get)                 | GET       |
 | [/renter/upload/*___hyperspacepath___](#renteruploadhyperspacepath-post)                | POST      |
 
@@ -914,18 +968,39 @@ modify settings that control the renter's behavior.
 
 ###### Query String Parameters [(with comments)](/doc/api/Renter.md#query-string-parameters)
 ```
-funds             // hastings
+expectedstorage       // bytes expected to be stored on sia (without redundancy)
+expectedupload        // blocks
+expecteddownload      // blocks
+expectedredundancy    // float
+
+funds                 // hastings
 hosts
-period            // block height
-renewwindow       // block height
-maxdownloadspeed  // bytes per second
-maxuploadspeed    // bytes per second
-streamcachesize   // number of data chunks cached when streaming
+period                // block height
+renewwindow           // block height
+maxdownloadspeed      // bytes per second
+maxuploadspeed        // bytes per second
+
+checkforipviolation   // true or false
+streamcachesize       // number of data chunks cached when streaming
 ```
 
 ###### Response
 standard success or error response. See
 [#standard-responses](#standard-responses).
+
+#### /renter/contract/cancel [POST]
+
+cancels a specific contract of the Renter.
+
+###### Query String Parameters [(with comments)](/doc/api/Renter.md#query-string-parameter)
+```
+// ID of the file contract
+id
+```
+
+###### Response
+standard success or error response. See
+[API.md#standard-responses](/doc/API.md#standard-responses).
 
 #### /renter/contracts [GET]
 
@@ -1065,7 +1140,23 @@ lists the status of specified file.
 
 #### /renter/prices [GET]
 
-lists the estimated prices of performing various storage and data operations.
+lists the estimated prices of performing various storage and data operations. An
+allowance can be submitted to provide a more personalized estimate. If no
+allowance is submitted then the current set allowance will be used, if there is
+no allowance set then sane defaults will be used. Submitting an allowance is
+optional, but when submitting an allowance all the components of the allowance
+are required. The allowance used to create the estimate is returned with the
+estimate.
+
+###### Query String Parameters [(with comments)](/doc/api/Renter.md#query-string-parameters-5)
+```
+all optional or all required
+
+funds // hastings
+hosts
+period // block height
+renewwindow // block height
+```
 
 ###### JSON Response [(with comments)](/doc/api/Renter.md#json-response-5)
 ```javascript
@@ -1073,10 +1164,36 @@ lists the estimated prices of performing various storage and data operations.
   "downloadterabyte":      "1234", // hastings
   "formcontracts":         "1234", // hastings
   "storageterabytemonth":  "1234", // hastings
-  "uploadterabyte":        "1234"  // hastings
+  "uploadterabyte":        "1234", // hastings
+  "funds":                 "1234", // hastings
+  "hosts":                     24,
+  "period":                  6048, // blocks
+  "renewwindow":             3024  // blocks
 }
 ```
 
+#### /renter/file/*___hyperspacepath___ [POST]
+
+endpoint for changing file metadata.
+
+###### Path Parameters [(with comments)](/doc/api/Renter.md#path-parameters-3)
+```
+// SiaPath of the file on the network. The path must be non-empty, may not
+// include any path traversal strings ("./", "../"), and may not begin with a
+// forward-slash character.
+*hyperspacepath
+```
+
+###### Query String Parameters [(with comments)](/doc/api/Renter.md#query-string-parameters-3)
+```
+// If provided, this parameter changes the tracking path of a file to the
+// specified path. Useful if moving the file to a different location on disk.
+trackingpath
+```
+
+###### Response
+standard success or error response. See
+[#standard-responses](#standard-responses).
 
 #### /renter/delete/*___hyperspacepath___ [POST]
 
@@ -1158,11 +1275,13 @@ standard success or error response. See
 downloads a file using http streaming. This call blocks until the data is
 received.
 The streaming endpoint also uses caching internally to prevent hsd from
-redownloading the same chunk multiple times when only parts of a file are
+re-downloading the same chunk multiple times when only parts of a file are
 requested at once. This might lead to a substantial increase in ram usage and
 therefore it is not recommended to stream multiple files in parallel at the
 moment. This restriction will be removed together with the caching once partial
-downloads are supported in the future.
+downloads are supported in the future. If you want to stream multiple files you
+should increase the size of the Renter's `streamcachesize` to at least 2x the
+number of files you are steaming.
 
 ###### Path Parameters [(with comments)](/doc/api/Renter.md#path-parameters-1)
 ```
@@ -1187,6 +1306,7 @@ uploads a file to the network from the local filesystem.
 datapieces   // int
 paritypieces // int
 source       // string - a filepath
+force        // bool - (optional) default is 'false'
 ```
 
 ###### Response
@@ -1252,8 +1372,8 @@ submits a raw transaction to the transaction pool, broadcasting it to the transa
 ###### Query String Parameters [(with comments)](/doc/api/Transactionpool.md#query-string-parameters)
 
 ```
-parents     string // raw base64 encoded transaction parents
-transaction string // raw base64 encoded transaction
+parents     string // JSON- or base64-encoded transaction parents
+transaction string // JSON- or base64-encoded transaction
 ```
 
 ###### Response
@@ -1268,6 +1388,7 @@ Wallet
 | ----------------------------------------------------------------------- | --------- |
 | [/wallet](#wallet-get)                                                  | GET       |
 | [/wallet/address](#walletaddress-get)                                   | GET       |
+| [/wallet/address](#walletaddress-post)                                  | POST      |
 | [/wallet/addresses](#walletaddresses-get)                               | GET       |
 | [/wallet/backup](#walletbackup-get)                                     | GET       |
 | [/wallet/changepassword](#walletchangepassword-post)                    | POST      |
@@ -1288,6 +1409,7 @@ Wallet
 | [/wallet/unlockconditions/:___addr___](#walletunlockconditionsaddr-get) | GET       |
 | [/wallet/unspent](#walletunspent-get)                                   | GET       |
 | [/wallet/verify/address/:___addr___](#walletverifyaddressaddr-get)      | GET       |
+| [/wallet/watch](#walletwatch-get)                                       | GET       |
 | [/wallet/watch](#walletwatch-post)                                      | POST      |
 
 For examples and detailed descriptions of request and response parameters,
@@ -1309,7 +1431,7 @@ locked or unlocked.
   "unconfirmedoutgoingspacecash": "0",      // hastings, big int
   "unconfirmedincomingspacecash": "789",    // hastings, big int
 
-  "siacoinclaimbalance": "9001", // hastings, big int
+  "spacecashclaimbalance": "9001", // hastings, big int
 
   "dustthreshold": "1234", // hastings / byte, big int
 }
@@ -1317,8 +1439,24 @@ locked or unlocked.
 
 #### /wallet/address [GET]
 
-gets a new address from the wallet generated by the primary seed. An error will
+gets an unused address from the wallet generated by the primary seed. An error will
 be returned if the wallet is locked.
+
+###### JSON Response [(with comments)](/doc/api/Wallet.md#json-response-1)
+```javascript
+{
+  "address": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab"
+}
+```
+
+#### /wallet/address [POST]
+
+creates a new address from the wallet generated by the primary seed. An error will
+be returned if the wallet is locked. If the wallet has created more addresses than is
+permitted by the wallet's address gap limit (by default this is 20) and not used any of
+them on the blockchain, an error will be returned. The amount of addresses created this
+way before using them on the blockchain can be modified by using the --address-gap-limit
+flag. More information about address gap management can be found in BIP 44.
 
 ###### JSON Response [(with comments)](/doc/api/Wallet.md#json-response-1)
 ```javascript
@@ -1506,7 +1644,7 @@ specified.
 ###### Request Body
 ```
 {
-  "transaction": { }, // types.Transaction
+  "transaction": { }, // types.Transaction; see Wallet.md for all fields
   "tosign": [
     "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
     "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
@@ -1517,7 +1655,7 @@ specified.
 ###### Response
 ```javascript
 {
-  "transaction": { } // types.Transaction
+  "transaction": { } // types.Transaction; see Wallet.md for all fields
 }
 ```
 
@@ -1572,7 +1710,7 @@ gets the transaction associated with a specific transaction id.
     "inputs": [
       {
         "parentid":       "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        "fundtype":       "siacoin input",
+        "fundtype":       "spacecash input",
         "walletaddress":  false,
         "relatedaddress": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
         "value":          "1234", // hastings, big int
@@ -1581,7 +1719,7 @@ gets the transaction associated with a specific transaction id.
     "outputs": [
       {
         "id":             "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-        "fundtype":       "siacoin output",
+        "fundtype":       "spacecash output",
         "maturityheight": 50000,
         "walletaddress":  false,
         "relatedaddress": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -1680,10 +1818,11 @@ returns a list of outputs that the wallet can spend.
   "outputs": [
     {
       "id": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-      "fundtype": "siacoin output",
+      "fundtype": "spacecash output",
       "confirmationheight": 50000,
       "unlockhash": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab",
-      "value": "1234" // big int
+      "value": "1234", // big int
+      "iswatchonly": false
     }
   ]
 }
@@ -1700,17 +1839,36 @@ takes the address specified by :addr and returns a JSON response indicating if t
 }
 ```
 
+#### /wallet/watch [GET]
+
+returns the set of addresses that the wallet is watching.
+
+###### JSON Response [(with comments)](/doc/api/Wallet.md#json-response-12)
+```javascript
+{
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ]
+}
+```
+
 #### /wallet/watch [POST]
 
-Function: Start tracking a set of addresses. Outputs owned by the addresses
-will be reported in /wallet/unspent.
+updates the set of addresses watched by the wallet. Outputs owned by the
+addresses will be reported in /wallet/unspent.
 
 ###### Request Body
 ```
-[
-  "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
-]
+{
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ],
+  "remove": false,
+  "unused": true,
+}
+
 ```
 
 ###### Response

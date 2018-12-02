@@ -569,8 +569,25 @@ func (spk *SiaPublicKey) LoadString(s string) {
 // String defines how to print a SiaPublicKey - hex is used to keep things
 // compact during logging. The key type prefix and lack of a checksum help to
 // separate it from a sia address.
-func (spk *SiaPublicKey) String() string {
+func (spk SiaPublicKey) String() string {
 	return spk.Algorithm.String() + ":" + fmt.Sprintf("%x", spk.Key)
+}
+
+// UnmarshalJSON unmarshals a SiaPublicKey as JSON.
+func (spk *SiaPublicKey) UnmarshalJSON(b []byte) error {
+	spk.LoadString(string(bytes.Trim(b, `"`)))
+	if spk.Key == nil {
+		// fallback to old (base64) encoding
+		var oldSPK struct {
+			Algorithm Specifier
+			Key       []byte
+		}
+		if err := json.Unmarshal(b, &oldSPK); err != nil {
+			return err
+		}
+		spk.Algorithm, spk.Key = oldSPK.Algorithm, oldSPK.Key
+	}
+	return nil
 }
 
 // MarshalJSON marshals a specifier as a string.
@@ -587,7 +604,7 @@ func (s Specifier) MarshalJSON() ([]byte, error) {
 	// TODO: We need to separate the specifier raw representation
 	// from the string representation. Need a review of the code
 	// to avoid breaking the blockchain.
-	if (s == SpecifierSiacoinOutput) {
+	if s == SpecifierSiacoinOutput {
 		return json.Marshal(s.String() + "t")
 	}
 
@@ -613,7 +630,7 @@ func (s *Specifier) UnmarshalJSON(b []byte) error {
 	}
 	// read comment in MarshalJSON.
 	// this method only trim the suffix if it's found.
-	if (*s == SpecifierSiacoinOutput) {
+	if *s == SpecifierSiacoinOutput {
 		strings.TrimSuffix(str, "t")
 	}
 	copy(s[:], str)
@@ -966,4 +983,21 @@ func (uh *UnlockHash) Scan(s fmt.ScanState, ch rune) error {
 		return err
 	}
 	return uh.LoadString(string(tok))
+}
+
+// MarshalSia marshal filter to bytes
+func (f GCSFilter) MarshalSia(w io.Writer) error {
+	e := encoding.NewEncoder(w)
+	e.WritePrefixedBytes(f.filter.NPBytes())
+	return nil
+}
+
+// UnmarshalSia unmarshal filter from bytes
+func (f *GCSFilter) UnmarshalSia(r io.Reader) error {
+	d := encoding.NewDecoder(r)
+	err := f.LoadBytes(d.ReadPrefixedBytes())
+	if err != nil {
+		return err
+	}
+	return nil
 }

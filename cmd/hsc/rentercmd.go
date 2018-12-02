@@ -13,8 +13,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/spf13/cobra"
 	"github.com/HyperspaceApp/errors"
+	"github.com/spf13/cobra"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
@@ -97,32 +97,25 @@ var (
 
 	renterFilesUploadCmd = &cobra.Command{
 		Use:   "upload [source] [path]",
-		Short: "Upload a file",
-		Long:  "Upload a file to [path] on the Sia network.",
+		Short: "Upload a file or folder",
+		Long:  "Upload a file or folder to [path] on the Sia network.",
 		Run:   wrap(renterfilesuploadcmd),
 	}
 
 	renterPricesCmd = &cobra.Command{
-		Use:   "prices",
+		Use:   "prices [amount] [period] [hosts] [renew window]",
 		Short: "Display the price of storage and bandwidth",
-		Long:  "Display the estimated prices of storing files, retrieving files, and creating a set of contracts",
-		Run:   wrap(renterpricescmd),
+		Long: `Display the estimated prices of storing files, retrieving files, and creating a set of contracts.
+
+An allowance can be provided for a more accurate estimate, if no allowance is provided the current set allowance will be used,
+and if no allowance is set an allowance of 500SC, 12w period, 50 hosts, and 4w renew window will be used.`,
+		Run: renterpricescmd,
 	}
 
 	renterSetAllowanceCmd = &cobra.Command{
 		Use:   "setallowance [amount] [period] [hosts] [renew window]",
 		Short: "Set the allowance",
 		Long: `Set the amount of money that can be spent over a given period.
-
-amount is given in currency units (SC, KS, etc.)
-
-period is given in either blocks (b), hours (h), days (d), or weeks (w). A
-block is approximately 10 minutes, so one hour is six blocks, a day is 144
-blocks, and a week is 1008 blocks.
-
-The Sia renter module spreads data across more than one Sia server computer
-or "host". The "hosts" parameter for the setallowance command determines
-how many different hosts the renter will spread the data across.
 
 Allowance can be automatically renewed periodically. If the current
 blockheight + the renew window >= the end height the contract,
@@ -163,16 +156,6 @@ func rentercmd() {
 	fm := rg.FinancialMetrics
 	totalSpent := fm.ContractFees.Add(fm.UploadSpending).
 		Add(fm.DownloadSpending).Add(fm.StorageSpending)
-	// Calculate unspent allocated
-	unspentAllocated := types.ZeroCurrency
-	if fm.TotalAllocated.Cmp(totalSpent) >= 0 {
-		unspentAllocated = fm.TotalAllocated.Sub(totalSpent)
-	}
-	// Calculate unspent unallocated
-	unspentUnallocated := types.ZeroCurrency
-	if fm.Unspent.Cmp(unspentAllocated) >= 0 {
-		unspentUnallocated = fm.Unspent.Sub(unspentAllocated)
-	}
 
 	fmt.Printf(`Renter Info:
   Allowance:`)
@@ -180,31 +163,11 @@ func rentercmd() {
 	if rg.Settings.Allowance.Funds.IsZero() {
 		fmt.Printf("\n    No current allowance.\n")
 	} else {
-		fmt.Printf(`         %v
-    Spent Funds:     %v
-      Storage:       %v
-      Upload:        %v
-      Download:      %v
-      Fees:          %v
-    Unspent Funds:   %v
-      Allocated:     %v
-      Unallocated:   %v
+		fmt.Printf(`       %v
+  Spent Funds:     %v
+  Unspent Funds:   %v
 `, currencyUnits(rg.Settings.Allowance.Funds),
-			currencyUnits(totalSpent), currencyUnits(fm.StorageSpending),
-			currencyUnits(fm.UploadSpending), currencyUnits(fm.DownloadSpending),
-			currencyUnits(fm.ContractFees), currencyUnits(fm.Unspent),
-			currencyUnits(unspentAllocated), currencyUnits(unspentUnallocated))
-	}
-
-	fmt.Printf("\n  Previous Spending:")
-	if fm.PreviousSpending.IsZero() && fm.WithheldFunds.IsZero() {
-		fmt.Printf("\n    No previous spending.\n\n")
-	} else {
-		fmt.Printf(` %v
-    Withheld Funds:  %v
-    Release Block:   %v
-
-`, currencyUnits(fm.PreviousSpending), currencyUnits(fm.WithheldFunds), fm.ReleaseBlock)
+			currencyUnits(totalSpent), currencyUnits(fm.Unspent))
 	}
 
 	// also list files
@@ -252,7 +215,7 @@ func renterdownloadscmd() {
 	// Filter out files that have been downloaded.
 	var downloading []api.DownloadInfo
 	for _, file := range queue.Downloads {
-		if file.Received != file.Filesize {
+		if !file.Completed {
 			downloading = append(downloading, file)
 		}
 	}
@@ -271,7 +234,7 @@ func renterdownloadscmd() {
 	// Filter out files that are downloading.
 	var downloaded []api.DownloadInfo
 	for _, file := range queue.Downloads {
-		if file.Received == file.Filesize {
+		if file.Completed {
 			downloaded = append(downloaded, file)
 		}
 	}
@@ -293,11 +256,72 @@ func renterallowancecmd() {
 	}
 	allowance := rg.Settings.Allowance
 
-	// convert to SC
+	// Normalize the expectations over the period.
+	allowance.ExpectedUpload *= uint64(allowance.Period)
+	allowance.ExpectedDownload *= uint64(allowance.Period)
+
+	// Show allowance info
 	fmt.Printf(`Allowance:
-	Amount: %v
-	Period: %v blocks
-`, currencyUnits(allowance.Funds), allowance.Period)
+	Amount:               %v
+	Period:               %v blocks
+	Renew Window:         %v blocks
+	Hosts:                %v
+
+Expectations for period:
+	Expected Storage:     %v
+	Expected Upload:      %v
+	Expected Download:    %v
+	Expected Redundancy:  %v
+`, currencyUnits(allowance.Funds), allowance.Period, allowance.RenewWindow, allowance.Hosts, filesizeUnits(int64(allowance.ExpectedStorage)),
+		filesizeUnits(int64(allowance.ExpectedUpload)), filesizeUnits(int64(allowance.ExpectedDownload)), allowance.ExpectedRedundancy)
+
+	// Show spending detail
+	fm := rg.FinancialMetrics
+	totalSpent := fm.ContractFees.Add(fm.UploadSpending).
+		Add(fm.DownloadSpending).Add(fm.StorageSpending)
+	// Calculate unspent allocated
+	unspentAllocated := types.ZeroCurrency
+	if fm.TotalAllocated.Cmp(totalSpent) >= 0 {
+		unspentAllocated = fm.TotalAllocated.Sub(totalSpent)
+	}
+	// Calculate unspent unallocated
+	unspentUnallocated := types.ZeroCurrency
+	if fm.Unspent.Cmp(unspentAllocated) >= 0 {
+		unspentUnallocated = fm.Unspent.Sub(unspentAllocated)
+	}
+
+	fmt.Printf(`
+Spending:
+  Current Period Spending:`)
+
+	if rg.Settings.Allowance.Funds.IsZero() {
+		fmt.Printf("\n    No current period spending.\n")
+	} else {
+		fmt.Printf(`
+    Spent Funds:     %v
+      Storage:       %v
+      Upload:        %v
+      Download:      %v
+      Fees:          %v
+    Unspent Funds:   %v
+      Allocated:     %v
+      Unallocated:   %v
+`, currencyUnits(totalSpent), currencyUnits(fm.StorageSpending),
+			currencyUnits(fm.UploadSpending), currencyUnits(fm.DownloadSpending),
+			currencyUnits(fm.ContractFees), currencyUnits(fm.Unspent),
+			currencyUnits(unspentAllocated), currencyUnits(unspentUnallocated))
+	}
+
+	fmt.Printf("\n  Previous Spending:")
+	if fm.PreviousSpending.IsZero() && fm.WithheldFunds.IsZero() {
+		fmt.Printf("\n    No previous spending.\n\n")
+	} else {
+		fmt.Printf(` %v
+    Withheld Funds:  %v
+    Release Block:   %v
+
+`, currencyUnits(fm.PreviousSpending), currencyUnits(fm.WithheldFunds), fm.ReleaseBlock)
+	}
 }
 
 // renterallowancecancelcmd cancels the current allowance.
@@ -324,56 +348,134 @@ again:
 	fmt.Println("Allowance canceled.")
 }
 
-// rentersetallowancecmd allows the user to set the allowance.
-// the first two parameters, amount and period, are required.
-// the second two parameters are optional:
-//    hosts                 integer number of hosts
-//    renewperiod           how many blocks between renewals
+// rentersetallowancecmd allows the user to set the allowance or modify
+// individual fields of it.
 func rentersetallowancecmd(cmd *cobra.Command, args []string) {
-	if len(args) < 2 || len(args) > 4 {
-		cmd.UsageFunc()(cmd)
-		os.Exit(exitCodeUsage)
-	}
-	hastings, err := parseCurrency(args[0])
-	if err != nil {
-		die("Could not parse amount:", err)
-	}
-	blocks, err := parsePeriod(args[1])
-	if err != nil {
-		die("Could not parse period:", err)
-	}
-	allowance := modules.Allowance{}
-	_, err = fmt.Sscan(hastings, &allowance.Funds)
-	if err != nil {
-		die("Could not parse amount:", err)
-	}
+	req := httpClient.RenterPostPartialAllowance()
+	changedFields := 0
 
-	_, err = fmt.Sscan(blocks, &allowance.Period)
+	// Get the current period setting.
+	rg, err := httpClient.RenterGet()
 	if err != nil {
-		die("Could not parse period:", err)
+		die("Could not get renter settings")
 	}
-	if len(args) > 2 {
-		hosts, err := strconv.Atoi(args[2])
+	period := rg.Settings.Allowance.Period
+
+	// parse funds
+	if allowanceFunds != "" {
+		hastings, err := parseCurrency(allowanceFunds)
+		if err != nil {
+			die("Could not parse amount:", err)
+		}
+		var funds types.Currency
+		_, err = fmt.Sscan(hastings, &funds)
+		if err != nil {
+			die("Could not parse amount:", err)
+		}
+		req = req.WithFunds(funds)
+		changedFields++
+	}
+	// parse period
+	if allowancePeriod != "" {
+		blocks, err := parsePeriod(allowancePeriod)
+		if err != nil {
+			die("Could not parse period:", err)
+		}
+		_, err = fmt.Sscan(blocks, &period)
+		if err != nil {
+			die("Could not parse period:", err)
+		}
+		req = req.WithPeriod(period)
+		changedFields++
+	}
+	// parse hosts
+	if allowanceHosts != "" {
+		hosts, err := strconv.Atoi(allowanceHosts)
 		if err != nil {
 			die("Could not parse host count")
 		}
-		allowance.Hosts = uint64(hosts)
+		req = req.WithHosts(uint64(hosts))
+		changedFields++
 	}
-	if len(args) > 3 {
-		renewWindow, err := parsePeriod(args[3])
+	// parse renewWindow
+	if allowanceRenewWindow != "" {
+		rw, err := parsePeriod(allowanceRenewWindow)
 		if err != nil {
 			die("Could not parse renew window")
 		}
-		_, err = fmt.Sscan(renewWindow, &allowance.RenewWindow)
+		var renewWindow types.BlockHeight
+		_, err = fmt.Sscan(rw, &renewWindow)
 		if err != nil {
 			die("Could not parse renew window:", err)
 		}
+		req = req.WithRenewWindow(renewWindow)
+		changedFields++
 	}
-	err = httpClient.RenterPostAllowance(allowance)
-	if err != nil {
+	// parse expectedStorage
+	if allowanceExpectedStorage != "" {
+		es, err := parseFilesize(allowanceExpectedStorage)
+		if err != nil {
+			die("Could not parse expected storage")
+		}
+		var expectedStorage uint64
+		_, err = fmt.Sscan(es, &expectedStorage)
+		if err != nil {
+			die("Could not parse expected storage")
+		}
+		req = req.WithExpectedStorage(expectedStorage)
+		changedFields++
+	}
+	// parse expectedUpload
+	if allowanceExpectedUpload != "" {
+		eu, err := parseFilesize(allowanceExpectedUpload)
+		if err != nil {
+			die("Could not parse expected upload")
+		}
+		var expectedUpload uint64
+		_, err = fmt.Sscan(eu, &expectedUpload)
+		if err != nil {
+			die("Could not parse expected upload")
+		}
+		req = req.WithExpectedUpload(expectedUpload / uint64(period))
+		changedFields++
+	}
+	// parse expectedDownload
+	if allowanceExpectedDownload != "" {
+		ed, err := parseFilesize(allowanceExpectedDownload)
+		if err != nil {
+			die("Could not parse expected download")
+		}
+		var expectedDownload uint64
+		_, err = fmt.Sscan(ed, &expectedDownload)
+		if err != nil {
+			die("Could not parse expected download")
+		}
+		req = req.WithExpectedDownload(expectedDownload / uint64(period))
+		changedFields++
+	}
+	// parse expectedRedundancy
+	if allowanceExpectedRedundancy != "" {
+		er, err := parseFilesize(allowanceExpectedRedundancy)
+		if err != nil {
+			die("Could not parse expected redundancy")
+		}
+		var expectedRedundancy float64
+		_, err = fmt.Sscan(er, &expectedRedundancy)
+		if err != nil {
+			die("Could not parse expected redundancy")
+		}
+		req = req.WithExpectedRedundancy(expectedRedundancy)
+		changedFields++
+	}
+	// check if any fields were updated.
+	if changedFields == 0 {
+		fmt.Println("No flags specified. Allowance not updated.")
+		return
+	}
+	if err := req.Send(); err != nil {
 		die("Could not set allowance:", err)
 	}
-	fmt.Println("Allowance updated.")
+	fmt.Printf("Allowance updated. %v setting(s) changed.\n", changedFields)
 }
 
 // byValue sorts contracts by their value in siacoins, high to low. If two
@@ -622,7 +724,7 @@ func renterfilesdownloadcmd(path, destination string) {
 	if err != nil {
 		die("\nDownload could not be completed:", err)
 	}
-	fmt.Printf("\nDownloaded '%s' to %s.\n", path, abs(destination))
+	fmt.Printf("\nDownloaded '%s' to '%s'.\n", path, abs(destination))
 }
 
 // bandwidthUnit takes bps (bits per second) as an argument and converts
@@ -745,7 +847,7 @@ func renterfileslistcmd() {
 		fmt.Println("No files have been uploaded.")
 		return
 	}
-	fmt.Print("Tracking ", len(rf.Files), " files:")
+	fmt.Print("\nTracking ", len(rf.Files), " files:")
 	var totalStored uint64
 	for _, file := range rf.Files {
 		totalStored += file.Filesize
@@ -766,12 +868,11 @@ func renterfileslistcmd() {
 				redundancyStr = "-"
 			}
 			uploadProgressStr := fmt.Sprintf("%.2f%%", file.UploadProgress)
-			_, err := os.Stat(file.LocalPath)
-			onDiskStr := yesNo(!os.IsNotExist(err))
-			recoverableStr := yesNo(!(file.Redundancy < 1))
 			if file.UploadProgress == -1 {
 				uploadProgressStr = "-"
 			}
+			onDiskStr := yesNo(file.OnDisk)
+			recoverableStr := yesNo(file.Recoverable)
 			fmt.Fprintf(w, "\t%s\t%9s\t%8s\t%10s\t%s\t%s\t%s", availableStr, filesizeUnits(int64(file.UploadedBytes)), uploadProgressStr, redundancyStr, renewingStr, onDiskStr, recoverableStr)
 		}
 		fmt.Fprintf(w, "\t%s", file.SiaPath)
@@ -822,39 +923,93 @@ func renterfilesuploadcmd(source, path string) {
 		} else if len(files) == 0 {
 			die("Nothing to upload.")
 		}
+		failed := 0
 		for _, file := range files {
 			fpath, _ := filepath.Rel(source, file)
 			fpath = filepath.Join(path, fpath)
 			fpath = filepath.ToSlash(fpath)
 			err = httpClient.RenterUploadDefaultPost(abs(file), fpath)
 			if err != nil {
-				die("Could not upload file:", err)
+				failed++
+				fmt.Printf("Could not upload file %s :%v\n", file, err)
 			}
 		}
-		fmt.Printf("Uploaded %d files into '%s'.\n", len(files), path)
+		fmt.Printf("\nUploaded %d of %d files into '%s'.\n", len(files)-failed, len(files), path)
 	} else {
 		// single file
 		err = httpClient.RenterUploadDefaultPost(abs(source), path)
 		if err != nil {
 			die("Could not upload file:", err)
 		}
-		fmt.Printf("Uploaded '%s' as %s.\n", abs(source), path)
+		fmt.Printf("Uploaded '%s' as '%s'.\n", abs(source), path)
 	}
 }
 
 // renterpricescmd is the handler for the command `hsc renter prices`, which
-// displays the prices of various storage operations.
-func renterpricescmd() {
-	rpg, err := httpClient.RenterPricesGet()
+// displays the prices of various storage operations. The user can submit an
+// allowance to have the estimate reflect those settings or the user can submit
+// nothing
+func renterpricescmd(cmd *cobra.Command, args []string) {
+	allowance := modules.Allowance{}
+
+	if len(args) != 0 && len(args) != 4 {
+		cmd.UsageFunc()(cmd)
+		os.Exit(exitCodeUsage)
+	}
+	if len(args) > 0 {
+		hastings, err := parseCurrency(args[0])
+		if err != nil {
+			die("Could not parse amount:", err)
+		}
+		blocks, err := parsePeriod(args[1])
+		if err != nil {
+			die("Could not parse period:", err)
+		}
+		_, err = fmt.Sscan(hastings, &allowance.Funds)
+		if err != nil {
+			die("Could not set allowance funds:", err)
+		}
+
+		_, err = fmt.Sscan(blocks, &allowance.Period)
+		if err != nil {
+			die("Could not set allowance period:", err)
+		}
+		hosts, err := strconv.Atoi(args[2])
+		if err != nil {
+			die("Could not parse host count")
+		}
+		allowance.Hosts = uint64(hosts)
+		renewWindow, err := parsePeriod(args[3])
+		if err != nil {
+			die("Could not parse renew window")
+		}
+		_, err = fmt.Sscan(renewWindow, &allowance.RenewWindow)
+		if err != nil {
+			die("Could not set allowance renew window:", err)
+		}
+	}
+
+	rpg, err := httpClient.RenterPricesGet(allowance)
 	if err != nil {
 		die("Could not read the renter prices:", err)
 	}
+	periodFactor := uint64(rpg.Allowance.Period / types.BlockHeight(4032))
 
+	// Display Estimate
 	fmt.Println("Renter Prices (estimated):")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "\tFees for Creating a Set of Contracts:\t", currencyUnits(rpg.FormContracts))
 	fmt.Fprintln(w, "\tDownload 1 TB:\t", currencyUnits(rpg.DownloadTerabyte))
 	fmt.Fprintln(w, "\tStore 1 TB for 1 Month:\t", currencyUnits(rpg.StorageTerabyteMonth))
+	fmt.Fprintln(w, "\tStore 1 TB for Allowance Period:\t", currencyUnits(rpg.StorageTerabyteMonth.Mul64(periodFactor)))
 	fmt.Fprintln(w, "\tUpload 1 TB:\t", currencyUnits(rpg.UploadTerabyte))
+	w.Flush()
+
+	// Display allowance used for estimate
+	fmt.Println("\nAllowance used for estimate:")
+	fmt.Fprintln(w, "\tFunds:\t", currencyUnits(rpg.Allowance.Funds))
+	fmt.Fprintln(w, "\tPeriod:\t", rpg.Allowance.Period)
+	fmt.Fprintln(w, "\tHosts:\t", rpg.Allowance.Hosts)
+	fmt.Fprintln(w, "\tRenew Window:\t", rpg.Allowance.RenewWindow)
 	w.Flush()
 }

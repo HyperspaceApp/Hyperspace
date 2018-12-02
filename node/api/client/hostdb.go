@@ -1,6 +1,8 @@
 package client
 
 import (
+	"encoding/json"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -20,6 +22,22 @@ func (c *Client) HostDbActiveGet() (hdag api.HostdbActiveGET, err error) {
 // HostDbAllGet requests the /hostdb/all endpoint's resources.
 func (c *Client) HostDbAllGet() (hdag api.HostdbAllGET, err error) {
 	err = c.get("/hostdb/all", &hdag)
+	return
+}
+
+// HostDbFilterModePost requests the /hostdb/filtermode endpoint
+func (c *Client) HostDbFilterModePost(fm modules.FilterMode, hosts []types.SiaPublicKey) (err error) {
+	filterMode := fm.String()
+	hdblp := api.HostdbFilterModePOST{
+		FilterMode: filterMode,
+		Hosts:      hosts,
+	}
+
+	data, err := json.Marshal(hdblp)
+	if err != nil {
+		return err
+	}
+	err = c.post("/hostdb/FilterMode", string(data), nil)
 	return
 }
 

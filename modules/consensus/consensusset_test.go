@@ -3,6 +3,7 @@ package consensus
 import (
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -19,11 +20,12 @@ import (
 // including helper modules and methods for controlling synchronization between
 // the tester and the modules.
 type consensusSetTester struct {
-	gateway   modules.Gateway
-	miner     modules.TestMiner
-	tpool     modules.TransactionPool
-	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	gateway       modules.Gateway
+	miner         modules.TestMiner
+	tpool         modules.TransactionPool
+	wallet        modules.Wallet
+	walletKey     crypto.CipherKey
+	walletSeedStr string
 
 	cs *ConsensusSet
 
@@ -38,9 +40,14 @@ func randAddress() (uh types.UnlockHash) {
 
 // mineCoins mines blocks until there are siacoins in the wallet.
 func (cst *consensusSetTester) mineSiacoins() {
+	time.Sleep(20 * time.Millisecond) // wait for tpool sync
 	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
-		b, _ := cst.miner.FindBlock()
-		err := cst.cs.AcceptBlock(b)
+		b, err := cst.miner.FindBlock()
+		if err != nil {
+			panic(err)
+		}
+		// log.Printf("b:%d %s, %s", i+1, b.ID(), b.ParentID)
+		err = cst.cs.AcceptBlock(b)
 		if err != nil {
 			panic(err)
 		}
@@ -53,11 +60,11 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	testdir := build.TempDir(modules.ConsensusDir, name)
 
 	// Create modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := NewCustomConsensusSet(g, false, filepath.Join(testdir, modules.ConsensusDir), deps)
+	cs, err := NewCustomConsensusSet(g, false, filepath.Join(testdir, modules.ConsensusDir), deps, false)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +72,11 @@ func blankConsensusSetTester(name string, deps modules.Dependencies) (*consensus
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err
@@ -131,7 +138,7 @@ func TestNilInputs(t *testing.T) {
 	}
 	t.Parallel()
 	testdir := build.TempDir(modules.ConsensusDir, t.Name())
-	_, err := New(nil, false, testdir)
+	_, err := New(nil, false, testdir, false)
 	if err != errNilGateway {
 		t.Fatal(err)
 	}
@@ -146,11 +153,11 @@ func TestDatabaseClosing(t *testing.T) {
 	testdir := build.TempDir(modules.ConsensusDir, t.Name())
 
 	// Create the gateway.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := New(g, false, testdir)
+	cs, err := New(g, false, testdir, false)
 	if err != nil {
 		t.Fatal(err)
 	}

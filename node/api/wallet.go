@@ -13,8 +13,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/HyperspaceApp/entropy-mnemonics"
+	"github.com/julienschmidt/httprouter"
 )
 
 type (
@@ -37,6 +37,12 @@ type (
 	// WalletAddressGET contains an address returned by a GET call to
 	// /wallet/address.
 	WalletAddressGET struct {
+		Address types.UnlockHash `json:"address"`
+	}
+
+	// WalletAddressPOST contains an address returned by a POST call to
+	// /wallet/address.
+	WalletAddressPOST struct {
 		Address types.UnlockHash `json:"address"`
 	}
 
@@ -134,24 +140,33 @@ type (
 		Valid bool `json:"valid"`
 	}
 
-	// WalletWatchPOST contains the set of addresses that the wallet should begin tracking.
+	// WalletWatchPOST contains the set of addresses to add or remove from the
+	// watch set.
 	WalletWatchPOST struct {
+		Addresses []types.UnlockHash `json:"addresses"`
+		Remove    bool               `json:"remove"`
+		Unused    bool               `json:"unused"`
+	}
+
+	// WalletWatchGET contains the set of addresses that the wallet is
+	// currently watching.
+	WalletWatchGET struct {
 		Addresses []types.UnlockHash `json:"addresses"`
 	}
 )
 
 // encryptionKeys enumerates the possible encryption keys that can be derived
 // from an input string.
-func encryptionKeys(seedStr string) (validKeys []crypto.TwofishKey) {
+func encryptionKeys(seedStr string) (validKeys []crypto.CipherKey) {
 	dicts := []mnemonics.DictionaryID{"english", "german", "japanese"}
 	for _, dict := range dicts {
 		seed, err := modules.StringToSeed(seedStr, dict)
 		if err != nil {
 			continue
 		}
-		validKeys = append(validKeys, crypto.TwofishKey(crypto.HashObject(seed)))
+		validKeys = append(validKeys, crypto.NewWalletKey(crypto.HashObject(seed)))
 	}
-	validKeys = append(validKeys, crypto.TwofishKey(crypto.HashObject(seedStr)))
+	validKeys = append(validKeys, crypto.NewWalletKey(crypto.HashObject(seedStr)))
 	return validKeys
 }
 
@@ -206,14 +221,26 @@ func (api *API) walletHandler(w http.ResponseWriter, req *http.Request, _ httpro
 	})
 }
 
-// walletAddressHandler handles API calls to /wallet/address.
-func (api *API) walletAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	unlockConditions, err := api.wallet.NextAddress()
+// walletGetAddressHandler handles GET API calls to /wallet/address.
+func (api *API) walletGetAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	unlockConditions, err := api.wallet.GetAddress()
 	if err != nil {
 		WriteError(w, Error{"error when calling /wallet/addresses: " + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	WriteJSON(w, WalletAddressGET{
+		Address: unlockConditions.UnlockHash(),
+	})
+}
+
+// walletCreateAddressHandler handles POST API calls to /wallet/address.
+func (api *API) walletCreateAddressHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	unlockConditions, err := api.wallet.NextAddress()
+	if err != nil {
+		WriteError(w, Error{"error when calling /wallet/addresses: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, WalletAddressPOST{
 		Address: unlockConditions.UnlockHash(),
 	})
 }
@@ -248,9 +275,9 @@ func (api *API) walletBackupHandler(w http.ResponseWriter, req *http.Request, _ 
 
 // walletInitHandler handles API calls to /wallet/init.
 func (api *API) walletInitHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var encryptionKey crypto.TwofishKey
+	var encryptionKey crypto.CipherKey
 	if req.FormValue("encryptionpassword") != "" {
-		encryptionKey = crypto.TwofishKey(crypto.HashObject(req.FormValue("encryptionpassword")))
+		encryptionKey = crypto.NewWalletKey(crypto.HashObject(req.FormValue("encryptionpassword")))
 	}
 
 	if req.FormValue("force") == "true" {
@@ -282,9 +309,9 @@ func (api *API) walletInitHandler(w http.ResponseWriter, req *http.Request, _ ht
 
 // walletInitSeedHandler handles API calls to /wallet/init/seed.
 func (api *API) walletInitSeedHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var encryptionKey crypto.TwofishKey
+	var encryptionKey crypto.CipherKey
 	if req.FormValue("encryptionpassword") != "" {
-		encryptionKey = crypto.TwofishKey(crypto.HashObject(req.FormValue("encryptionpassword")))
+		encryptionKey = crypto.NewWalletKey(crypto.HashObject(req.FormValue("encryptionpassword")))
 	}
 	dictID := mnemonics.DictionaryID(req.FormValue("dictionary"))
 	if dictID == "" {
@@ -522,61 +549,103 @@ func (api *API) walletTransactionHandler(w http.ResponseWriter, req *http.Reques
 // walletTransactionsHandler handles API calls to /wallet/transactions.
 func (api *API) walletTransactionsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	startheightStr, endheightStr, depthStr := req.FormValue("startheight"), req.FormValue("endheight"), req.FormValue("depth")
+	countStr, watchOnlyStr, categoryStr := req.FormValue("count"), req.FormValue("watchonly"), req.FormValue("category")
 	var start, end, depth uint64
+	var watchOnly bool
+	var count uint64
+	var category string
 	var err error
-	if depthStr == "" {
-		if startheightStr == "" || endheightStr == "" {
-			WriteError(w, Error{"startheight and endheight must be provided to a /wallet/transactions call if depth is unspecified."}, http.StatusBadRequest)
-			return
+	var confirmedTxns, unconfirmedTxns []modules.ProcessedTransaction
+	// handle depth, startheight, endheight searches
+	if depthStr != "" || startheightStr != "" || endheightStr != "" {
+		if watchOnlyStr != "" || countStr != "" || categoryStr != "" {
+			WriteError(w, Error{"startheight, endheight, and depth are incompatible with watchonly, count, and category."}, http.StatusBadRequest)
 		}
-		// Get the start and end blocks.
-		start, err = strconv.ParseUint(startheightStr, 10, 64)
-		if err != nil {
-			WriteError(w, Error{"parsing integer value for parameter `startheight` failed: " + err.Error()}, http.StatusBadRequest)
-			return
-		}
-		// Check if endheightStr is set to -1. If it is, we use MaxUint64 as the
-		// end. Otherwise we parse the argument as an unsigned integer.
-		if endheightStr == "-1" {
-			end = math.MaxUint64
+		if depthStr == "" {
+			if startheightStr == "" || endheightStr == "" {
+				WriteError(w, Error{"startheight and endheight must be provided to a /wallet/transactions call if depth is unspecified."}, http.StatusBadRequest)
+				return
+			}
+			// Get the start and end blocks.
+			start, err = strconv.ParseUint(startheightStr, 10, 64)
+			if err != nil {
+				WriteError(w, Error{"parsing integer value for parameter `startheight` failed: " + err.Error()}, http.StatusBadRequest)
+				return
+			}
+			// Check if endheightStr is set to -1. If it is, we use MaxUint64 as the
+			// end. Otherwise we parse the argument as an unsigned integer.
+			if endheightStr == "-1" {
+				end = math.MaxUint64
+			} else {
+				end, err = strconv.ParseUint(endheightStr, 10, 64)
+			}
+			if err != nil {
+				WriteError(w, Error{"parsing integer value for parameter `endheight` failed: " + err.Error()}, http.StatusBadRequest)
+				return
+			}
 		} else {
-			end, err = strconv.ParseUint(endheightStr, 10, 64)
+			if startheightStr != "" || endheightStr != "" {
+				WriteError(w, Error{"startheight and endheight must not be provided to a /wallet/transactions call if depth is specified."}, http.StatusBadRequest)
+				return
+			}
+			// Get the start and end blocks by looking backwards from our current height.
+			depth, err = strconv.ParseUint(depthStr, 10, 64)
+			if err != nil {
+				WriteError(w, Error{"parsing integer value for parameter `depth` failed: " + err.Error()}, http.StatusBadRequest)
+				return
+			}
+			height, err := api.wallet.Height()
+			if err != nil {
+				WriteError(w, Error{fmt.Sprintf("Error when calling /wallet: %v", err)}, http.StatusBadRequest)
+				return
+			}
+			end = uint64(height)
+			start = end - depth - 1
+			if start < 0 {
+				start = 0
+			}
 		}
+		confirmedTxns, err = api.wallet.Transactions(types.BlockHeight(start), types.BlockHeight(end))
 		if err != nil {
-			WriteError(w, Error{"parsing integer value for parameter `endheight` failed: " + err.Error()}, http.StatusBadRequest)
+			WriteError(w, Error{"error when calling /wallet/transactions: " + err.Error()}, http.StatusBadRequest)
 			return
 		}
+		unconfirmedTxns, err = api.wallet.UnconfirmedTransactions()
+		if err != nil {
+			WriteError(w, Error{"error when calling /wallet/transactions: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		// handle count, watchonly, category searches
 	} else {
-		if startheightStr != "" || endheightStr != "" {
-			WriteError(w, Error{"startheight and endheight must not be provided to a /wallet/transactions call if depth is specified."}, http.StatusBadRequest)
-			return
+		count = 10
+		if countStr != "" {
+			count, err = strconv.ParseUint(countStr, 10, 64)
+			if err != nil {
+				WriteError(w, Error{"parsing integer value for parameter `count` failed: " + err.Error()}, http.StatusBadRequest)
+				return
+			}
 		}
-		// Get the start and end blocks by looking backwards from our current height.
-		depth, err = strconv.ParseUint(depthStr, 10, 64)
-		if err != nil {
-			WriteError(w, Error{"parsing integer value for parameter `depth` failed: " + err.Error()}, http.StatusBadRequest)
-			return
+		watchOnly = false
+		if watchOnlyStr != "" {
+			watchOnly, err = strconv.ParseBool(watchOnlyStr)
+			if err != nil {
+				WriteError(w, Error{"parsing integer value for parameter `watchonly` failed: " + err.Error()}, http.StatusBadRequest)
+				return
+			}
 		}
-		height, err := api.wallet.Height()
-		if err != nil {
-			WriteError(w, Error{fmt.Sprintf("Error when calling /wallet: %v", err)}, http.StatusBadRequest)
-			return
+		category = ""
+		if categoryStr != "" {
+			if categoryStr != "send" && categoryStr != "receive" {
+				if err != nil {
+					WriteError(w, Error{"parameter `category` only accepts `send` or `receive` as values"}, http.StatusBadRequest)
+					return
+				}
+			} else {
+				category = categoryStr
+			}
 		}
-		end = uint64(height)
-		start = end - depth - 1
-		if start < 0 {
-			start = 0
-		}
-	}
-	confirmedTxns, err := api.wallet.Transactions(types.BlockHeight(start), types.BlockHeight(end))
-	if err != nil {
-		WriteError(w, Error{"error when calling /wallet/transactions: " + err.Error()}, http.StatusBadRequest)
-		return
-	}
-	unconfirmedTxns, err := api.wallet.UnconfirmedTransactions()
-	if err != nil {
-		WriteError(w, Error{"error when calling /wallet/transactions: " + err.Error()}, http.StatusBadRequest)
-		return
+		confirmedTxns, err = api.wallet.FilteredTransactions(count, watchOnly, category)
+		unconfirmedTxns, err = api.wallet.FilteredUnconfirmedTransactions(watchOnly, category)
 	}
 
 	WriteJSON(w, WalletTransactionsGET{
@@ -629,13 +698,19 @@ func (api *API) walletBuildTransactionHandler(w http.ResponseWriter, req *http.R
 	}
 	var fee types.Currency
 
-	txn, err := api.wallet.NewTransactionForAddress(dest, amount, fee)
+	txnSet, err := api.wallet.NewTransactionSetForAddress(dest, amount, fee)
 	if err != nil {
 		WriteError(w, Error{"error when calling /wallet/build/transaction:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
+
+	if len(txnSet) > 1 {
+		WriteError(w, Error{"error when calling /wallet/build/transaction: could not fit the desired amount into a single transaction, try sending a smaller amount"}, http.StatusBadRequest)
+		return
+	}
+
 	WriteJSON(w, WalletBuildTransactionGET{
-		Transaction: txn,
+		Transaction: txnSet[0],
 	})
 }
 
@@ -658,13 +733,13 @@ func (api *API) walletUnlockHandler(w http.ResponseWriter, req *http.Request, _ 
 
 // walletChangePasswordHandler handles API calls to /wallet/changepassword
 func (api *API) walletChangePasswordHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var newKey crypto.TwofishKey
+	var newKey crypto.CipherKey
 	newPassword := req.FormValue("newpassword")
 	if newPassword == "" {
 		WriteError(w, Error{"a password must be provided to newpassword"}, http.StatusBadRequest)
 		return
 	}
-	newKey = crypto.TwofishKey(crypto.HashObject(newPassword))
+	newKey = crypto.NewWalletKey(crypto.HashObject(newPassword))
 
 	originalKeys := encryptionKeys(req.FormValue("encryptionpassword"))
 	for _, key := range originalKeys {
@@ -753,17 +828,33 @@ func (api *API) walletSignHandler(w http.ResponseWriter, req *http.Request, _ ht
 	})
 }
 
-// walletWatchHandler handles API calls to /wallet/watch.
-func (api *API) walletWatchHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var addrs []types.UnlockHash
-	err := json.NewDecoder(req.Body).Decode(&addrs)
+// walletWatchHandlerGET handles GET calls to /wallet/watch.
+func (api *API) walletWatchHandlerGET(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	addrs, err := api.wallet.WatchAddresses()
+	if err != nil {
+		WriteError(w, Error{"failed to get watch addresses: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, WalletWatchGET{
+		Addresses: addrs,
+	})
+}
+
+// walletWatchHandlerPOST handles POST calls to /wallet/watch.
+func (api *API) walletWatchHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var wwpp WalletWatchPOST
+	err := json.NewDecoder(req.Body).Decode(&wwpp)
 	if err != nil {
 		WriteError(w, Error{"invalid parameters: " + err.Error()}, http.StatusBadRequest)
 		return
 	}
-	err = api.wallet.WatchAddresses(addrs)
+	if wwpp.Remove {
+		err = api.wallet.RemoveWatchAddresses(wwpp.Addresses, wwpp.Unused)
+	} else {
+		err = api.wallet.AddWatchAddresses(wwpp.Addresses, wwpp.Unused)
+	}
 	if err != nil {
-		WriteError(w, Error{"failed to watch addresses: " + err.Error()}, http.StatusBadRequest)
+		WriteError(w, Error{"failed to update watch set: " + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	WriteSuccess(w)

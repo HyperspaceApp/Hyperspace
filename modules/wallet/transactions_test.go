@@ -205,7 +205,7 @@ func TestProcessedTxnIndexCompatCode(t *testing.T) {
 	defer wt.closeWt()
 
 	// Mine blocks to get lots of processed transactions
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		if _, err := wt.miner.AddBlock(); err != nil {
 			t.Fatal(err)
 		}
@@ -237,7 +237,7 @@ func TestProcessedTxnIndexCompatCode(t *testing.T) {
 	}
 
 	// Restart wallet
-	wallet, err := New(wt.cs, wt.tpool, filepath.Join(wt.persistDir, modules.WalletDir))
+	wallet, err := New(wt.cs, wt.tpool, filepath.Join(wt.persistDir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatalf("Failed to restart wallet: %v", err)
 	}

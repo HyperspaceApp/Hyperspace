@@ -20,7 +20,7 @@ var (
 	errPeerGenesisID = errors.New("peer has different genesis ID")
 )
 
-// A node represents a potential peer on the Sia network.
+// A node represents a potential peer on the Hyperspace network.
 type node struct {
 	NetAddress      modules.NetAddress `json:"netaddress"`
 	WasOutboundPeer bool               `json:"wasoutboundpeer"`
@@ -56,9 +56,13 @@ func (g *Gateway) staticPingNode(addr modules.NetAddress) error {
 	defer conn.Close()
 
 	// Read the node's version.
-	_, err = connectVersionHandshake(conn, build.Version)
+	remoteVersion, err := connectVersionHandshake(conn, build.Version)
 	if err != nil {
 		return err
+	}
+
+	if err := acceptableVersion(remoteVersion); err != nil {
+		return nil // for older versions, this is where pinging ends
 	}
 
 	// Send our header.
@@ -180,7 +184,7 @@ func (g *Gateway) requestNodes(conn modules.PeerConn) error {
 		}
 	}
 	if changed {
-		err := g.saveSync()
+		err := g.saveSyncNodes()
 		if err != nil {
 			g.log.Println("ERROR: unable to save new nodes added to the gateway:", err)
 		}

@@ -21,7 +21,8 @@ package renter
 // setBandwidthLimits function.
 
 import (
-	"errors"
+	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -35,7 +36,9 @@ import (
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
+	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/threadgroup"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 var (
@@ -44,18 +47,6 @@ var (
 	errNilGateway    = errors.New("cannot create hostdb with nil gateway")
 	errNilHdb        = errors.New("cannot create renter with nil hostdb")
 	errNilTpool      = errors.New("cannot create renter with nil transaction pool")
-)
-
-var (
-	// priceEstimationScope is the number of hosts that get queried by the
-	// renter when providing price estimates. Especially for the 'Standard'
-	// variable, there should be congruence with the number of contracts being
-	// used in the renter allowance.
-	priceEstimationScope = build.Select(build.Var{
-		Standard: int(50),
-		Dev:      int(12),
-		Testing:  int(4),
-	}).(int)
 )
 
 // A hostDB is a database of hosts that the renter can use for figuring out who
@@ -69,31 +60,47 @@ type hostDB interface {
 	// order of preference.
 	AllHosts() []modules.HostDBEntry
 
-	// AverageContractPrice returns the average contract price of a host.
-	AverageContractPrice() types.Currency
-
 	// Close closes the hostdb.
 	Close() error
 
+	// Filter returns the hostdb's filterMode and filteredHosts
+	Filter() (modules.FilterMode, map[string]types.SiaPublicKey)
+
+	// SetFilterMode sets the renter's hostdb filter mode
+	SetFilterMode(lm modules.FilterMode, hosts []types.SiaPublicKey) error
+
 	// Host returns the HostDBEntry for a given host.
-	Host(types.SiaPublicKey) (modules.HostDBEntry, bool)
+	Host(pk types.SiaPublicKey) (modules.HostDBEntry, bool)
 
 	// initialScanComplete returns a boolean indicating if the initial scan of the
 	// hostdb is completed.
 	InitialScanComplete() (bool, error)
 
+	// IPViolationsCheck returns a boolean indicating if the IP violation check is
+	// enabled or not.
+	IPViolationsCheck() bool
+
 	// RandomHosts returns a set of random hosts, weighted by their estimated
 	// usefulness / attractiveness to the renter. RandomHosts will not return
 	// any offline or inactive hosts.
-	RandomHosts(int, []types.SiaPublicKey) ([]modules.HostDBEntry, error)
+	RandomHosts(int, []types.SiaPublicKey, []types.SiaPublicKey) ([]modules.HostDBEntry, error)
+
+	// RandomHostsWithAllowance is the same as RandomHosts but accepts an
+	// allowance as an argument to be used instead of the allowance set in the
+	// renter.
+	RandomHostsWithAllowance(int, []types.SiaPublicKey, []types.SiaPublicKey, modules.Allowance) ([]modules.HostDBEntry, error)
 
 	// ScoreBreakdown returns a detailed explanation of the various properties
 	// of the host.
 	ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown
 
+	// SetIPViolationCheck enables/disables the IP violation check within the
+	// hostdb.
+	SetIPViolationCheck(enabled bool)
+
 	// EstimateHostScore returns the estimated score breakdown of a host with the
 	// provided settings.
-	EstimateHostScore(modules.HostDBEntry) modules.HostScoreBreakdown
+	EstimateHostScore(modules.HostDBEntry, modules.Allowance) modules.HostScoreBreakdown
 }
 
 // A hostContractor negotiates, revises, renews, and provides access to file
@@ -110,6 +117,9 @@ type hostContractor interface {
 
 	// Close closes the hostContractor.
 	Close() error
+
+	// CancelContract cancels the Renter's contract
+	CancelContract(id types.FileContractID) error
 
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []modules.RenterContract
@@ -155,15 +165,6 @@ type hostContractor interface {
 	SetRateLimits(int64, int64, uint64)
 }
 
-// A trackedFile contains metadata about files being tracked by the Renter.
-// Tracked files are actively repaired by the Renter. By default, files
-// uploaded by the user are tracked, and files that are added (via loading a
-// .sia file) are not.
-type trackedFile struct {
-	// location of original file on disk
-	RepairPath string
-}
-
 // A Renter is responsible for tracking all of the files that a user has
 // uploaded to Sia, as well as the locations and health of these files.
 //
@@ -199,8 +200,8 @@ type Renter struct {
 	memoryManager *memoryManager
 	workerPool    map[types.FileContractID]*worker
 
-	// Cache the last price estimation result.
-	lastEstimation modules.RenterPriceEstimation
+	// Cache the hosts from the last price estimation result.
+	lastEstimationHosts []modules.HostDBEntry
 
 	// Utilities.
 	staticStreamCache *streamCache
@@ -215,6 +216,7 @@ type Renter struct {
 	mu                *siasync.RWMutex
 	tg                threadgroup.ThreadGroup
 	tpool             modules.TransactionPool
+	wal               *writeaheadlog.WAL
 }
 
 // Close closes the Renter and its dependencies
@@ -225,27 +227,88 @@ func (r *Renter) Close() error {
 }
 
 // PriceEstimation estimates the cost in siacoins of performing various storage
-// and data operations.
-//
-// TODO: Make this function line up with the actual settings in the renter.
-// Perhaps even make it so it uses the renter's actual contracts if it has any.
-func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
-	id := r.mu.RLock()
-	lastEstimation := r.lastEstimation
-	r.mu.RUnlock(id)
-	if !reflect.DeepEqual(lastEstimation, modules.RenterPriceEstimation{}) {
-		return lastEstimation
+// and data operations.  The estimation will be done using the provided
+// allowance, if an empty allowance is provided then the renter's current
+// allowance will be used if one is set.  The final allowance used will be
+// returned.
+func (r *Renter) PriceEstimation(allowance modules.Allowance) (modules.RenterPriceEstimation, modules.Allowance, error) {
+	// Use provide allowance. If no allowance provided use the existing
+	// allowance. If no allowance exists, use a sane default allowance.
+	if reflect.DeepEqual(allowance, modules.Allowance{}) {
+		rs := r.Settings()
+		allowance = rs.Allowance
+		if reflect.DeepEqual(allowance, modules.Allowance{}) {
+			allowance = modules.DefaultAllowance
+		}
 	}
 
-	// Grab hosts to perform the estimation.
-	hosts, err := r.hostDB.RandomHosts(priceEstimationScope, nil)
-	if err != nil {
-		return modules.RenterPriceEstimation{}
-	}
+	// Get hosts for estimate
+	var hosts []modules.HostDBEntry
+	hostmap := make(map[string]struct{})
 
+	// Start by grabbing hosts from contracts
+	// Get host pubkeys from contracts
+	contracts := r.Contracts()
+	var pks []types.SiaPublicKey
+	for _, c := range contracts {
+		u, ok := r.ContractUtility(c.HostPublicKey)
+		if !ok {
+			continue
+		}
+		// Check for active contracts only
+		if !u.GoodForRenew {
+			continue
+		}
+		pks = append(pks, c.HostPublicKey)
+	}
+	// Get hosts from pubkeys
+	for _, pk := range pks {
+		host, ok := r.hostDB.Host(pk)
+		if !ok || host.Filtered {
+			continue
+		}
+		// confirm host wasn't already added
+		if _, ok := hostmap[host.PublicKey.String()]; ok {
+			continue
+		}
+		hosts = append(hosts, host)
+		hostmap[host.PublicKey.String()] = struct{}{}
+	}
+	// Add hosts from previous estimate cache if needed
+	if len(hosts) < int(allowance.Hosts) {
+		id := r.mu.Lock()
+		cachedHosts := r.lastEstimationHosts
+		r.mu.Unlock(id)
+		for _, host := range cachedHosts {
+			// confirm host wasn't already added
+			if _, ok := hostmap[host.PublicKey.String()]; ok {
+				continue
+			}
+			hosts = append(hosts, host)
+			hostmap[host.PublicKey.String()] = struct{}{}
+		}
+	}
+	// Add random hosts if needed
+	if len(hosts) < int(allowance.Hosts) {
+		// Re-initialize the list with SiaPublicKeys to hold the public keys from the current
+		// set of hosts. This list will be used as address filter when requesting random hosts.
+		var pks []types.SiaPublicKey
+		for _, host := range hosts {
+			pks = append(pks, host.PublicKey)
+		}
+		// Grab hosts to perform the estimation.
+		var err error
+		randHosts, err := r.hostDB.RandomHostsWithAllowance(int(allowance.Hosts)-len(hosts), pks, pks, allowance)
+		if err != nil {
+			return modules.RenterPriceEstimation{}, allowance, errors.AddContext(err, "could not generate estimate, could not get random hosts")
+		}
+		// As the returned random hosts are checked for IP violations and double entries against the current
+		// slice of hosts, the returned hosts can be safely added to the current slice.
+		hosts = append(hosts, randHosts...)
+	}
 	// Check if there are zero hosts, which means no estimation can be made.
 	if len(hosts) == 0 {
-		return modules.RenterPriceEstimation{}
+		return modules.RenterPriceEstimation{}, allowance, errors.New("estimate cannot be made, there are no hosts")
 	}
 
 	// Add up the costs for each host.
@@ -276,12 +339,53 @@ func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
 	totalUploadCost = totalUploadCost.Div64(uint64(len(hosts)))
 
 	// Take the average of the host set to estimate the overall cost of the
-	// contract forming.
-	totalContractCost = totalContractCost.Mul64(uint64(priceEstimationScope))
+	// contract forming. This is to protect against the case where less hosts
+	// were gathered for the estimate that the allowance requires
+	totalContractCost = totalContractCost.Mul64(allowance.Hosts)
 
-	// Add the cost of paying the transaction fees for the first contract.
+	// Add the cost of paying the transaction fees and then double the contract
+	// costs to account for renewing a full set of contracts.
 	_, feePerByte := r.tpool.FeeEstimation()
-	totalContractCost = totalContractCost.Add(feePerByte.Mul64(1000).Mul64(uint64(priceEstimationScope)))
+	txnsFees := feePerByte.Mul64(modules.EstimatedFileContractTransactionSetSize).Mul64(uint64(allowance.Hosts))
+	totalContractCost = totalContractCost.Add(txnsFees)
+	totalContractCost = totalContractCost.Mul64(2)
+
+	// Determine host collateral to be added to siafund fee
+	var hostCollateral types.Currency
+	contractCostPerHost := totalContractCost.Div64(allowance.Hosts)
+	fundingPerHost := allowance.Funds.Div64(allowance.Hosts)
+	numHosts := uint64(0)
+	for _, host := range hosts {
+		// Assume that the ContractPrice equals contractCostPerHost and that
+		// the txnFee was zero. It doesn't matter since RenterPayoutsPreTax
+		// simply subtracts both values from the funding.
+		host.ContractPrice = contractCostPerHost
+		expectedStorage := allowance.ExpectedStorage / uint64(len(hosts))
+		_, _, collateral, err := modules.RenterPayouts(host, fundingPerHost, types.ZeroCurrency, types.ZeroCurrency, types.ZeroCurrency, allowance.Period, expectedStorage)
+		if err != nil {
+			continue
+		}
+		hostCollateral = hostCollateral.Add(collateral)
+		numHosts++
+	}
+
+	// Divide by zero check. The only way to get 0 numHosts is if
+	// RenterPayoutsPreTax errors for every host. This would happend if the
+	// funding of the allowance is not enough as that would cause the
+	// fundingPerHost to be less than the contract price
+	if numHosts == 0 {
+		return modules.RenterPriceEstimation{}, allowance, errors.New("funding insufficient for number of hosts")
+	}
+	// Calculate average collateral and determine collateral for allowance
+	hostCollateral = hostCollateral.Div64(numHosts)
+	hostCollateral = hostCollateral.Mul64(allowance.Hosts)
+
+	// Increase estimates by a factor of safety to account for host churn and
+	// any potential missed additions
+	totalContractCost = totalContractCost.MulFloat(PriceEstimationSafetyFactor)
+	totalDownloadCost = totalDownloadCost.MulFloat(PriceEstimationSafetyFactor)
+	totalStorageCost = totalStorageCost.MulFloat(PriceEstimationSafetyFactor)
+	totalUploadCost = totalUploadCost.MulFloat(PriceEstimationSafetyFactor)
 
 	est := modules.RenterPriceEstimation{
 		FormContracts:        totalContractCost,
@@ -290,11 +394,11 @@ func (r *Renter) PriceEstimation() modules.RenterPriceEstimation {
 		UploadTerabyte:       totalUploadCost,
 	}
 
-	id = r.mu.Lock()
-	r.lastEstimation = est
+	id := r.mu.Lock()
+	r.lastEstimationHosts = hosts
 	r.mu.Unlock(id)
 
-	return est
+	return est, allowance, nil
 }
 
 // setBandwidthLimits will change the bandwidth limits of the renter based on
@@ -352,6 +456,9 @@ func (r *Renter) SetSettings(s modules.RenterSettings) error {
 	}
 	r.persist.StreamCacheSize = s.StreamCacheSize
 
+	// Set IPViolationsCheck
+	r.hostDB.SetIPViolationCheck(s.IPViolationsCheck)
+
 	// Save the changes.
 	err = r.saveSync()
 	if err != nil {
@@ -364,11 +471,61 @@ func (r *Renter) SetSettings(s modules.RenterSettings) error {
 	return nil
 }
 
+// SetFileTrackingPath sets the on-disk location of an uploaded file to a new
+// value. Useful if files need to be moved on disk. SetFileTrackingPath will
+// check that a file exists at the new location and it ensures that it has the
+// right size, but it can't check that the content is the same. Therefore the
+// caller is responsible for not accidentally corrupting the uploaded file by
+// providing a different file with the same size.
+func (r *Renter) SetFileTrackingPath(siaPath, newPath string) error {
+	id := r.mu.Lock()
+
+	// Check if file exists and is being tracked.
+	file, exists := r.files[siaPath]
+	if !exists {
+		r.mu.Unlock(id)
+		return fmt.Errorf("unknown file %s", siaPath)
+	}
+
+	// Sanity check that a file with the correct size exists at the new
+	// location.
+	fi, err := os.Stat(newPath)
+	if err != nil {
+		r.mu.Unlock(id)
+		return errors.AddContext(err, "failed to get fileinfo of the file")
+	}
+	if uint64(fi.Size()) != file.Size() {
+		r.mu.Unlock(id)
+		return fmt.Errorf("file sizes don't match - want %v but got %v", file.Size(), fi.Size())
+	}
+
+	r.mu.Unlock(id)
+
+	// Set the new path on disk.
+	return file.SetLocalPath(newPath)
+}
+
 // ActiveHosts returns an array of hostDB's active hosts
 func (r *Renter) ActiveHosts() []modules.HostDBEntry { return r.hostDB.ActiveHosts() }
 
 // AllHosts returns an array of all hosts
 func (r *Renter) AllHosts() []modules.HostDBEntry { return r.hostDB.AllHosts() }
+
+// SetFilterMode sets the renter's hostdb filter mode
+func (r *Renter) SetFilterMode(lm modules.FilterMode, hosts []types.SiaPublicKey) error {
+	// Check to see how many hosts are needed for the allowance
+	minHosts := r.Settings().Allowance.Hosts
+	if len(hosts) < int(minHosts) && lm == modules.HostDBActiveWhitelist {
+		r.log.Printf("WARN: There are fewer whitelisted hosts than the allowance requires.  Have %v whitelisted hosts, need %v to support allowance\n", len(hosts), minHosts)
+	}
+
+	// Set list mode filter for the hostdb
+	if err := r.hostDB.SetFilterMode(lm, hosts); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // Host returns the host associated with the given public key
 func (r *Renter) Host(spk types.SiaPublicKey) (modules.HostDBEntry, bool) { return r.hostDB.Host(spk) }
@@ -383,8 +540,19 @@ func (r *Renter) ScoreBreakdown(e modules.HostDBEntry) modules.HostScoreBreakdow
 }
 
 // EstimateHostScore returns the estimated host score
-func (r *Renter) EstimateHostScore(e modules.HostDBEntry) modules.HostScoreBreakdown {
-	return r.hostDB.EstimateHostScore(e)
+func (r *Renter) EstimateHostScore(e modules.HostDBEntry, a modules.Allowance) modules.HostScoreBreakdown {
+	if reflect.DeepEqual(a, modules.Allowance{}) {
+		a = r.Settings().Allowance
+	}
+	if reflect.DeepEqual(a, modules.Allowance{}) {
+		a = modules.DefaultAllowance
+	}
+	return r.hostDB.EstimateHostScore(e, a)
+}
+
+// CancelContract cancels a renter's contract by ID by setting goodForRenew and goodForUpload to false
+func (r *Renter) CancelContract(id types.FileContractID) error {
+	return r.hostContractor.CancelContract(id)
 }
 
 // Contracts returns an array of host contractor's staticContracts
@@ -407,22 +575,36 @@ func (r *Renter) ContractUtility(pk types.SiaPublicKey) (modules.ContractUtility
 // PeriodSpending returns the host contractor's period spending
 func (r *Renter) PeriodSpending() modules.ContractorSpending { return r.hostContractor.PeriodSpending() }
 
-// Settings returns the host contractor's allowance
+// Settings returns the renter's allowance
 func (r *Renter) Settings() modules.RenterSettings {
 	download, upload, _ := r.hostContractor.RateLimits()
 	return modules.RenterSettings{
-		Allowance:        r.hostContractor.Allowance(),
-		MaxDownloadSpeed: download,
-		MaxUploadSpeed:   upload,
-		StreamCacheSize:  r.staticStreamCache.cacheSize,
+		Allowance:         r.hostContractor.Allowance(),
+		IPViolationsCheck: r.hostDB.IPViolationsCheck(),
+		MaxDownloadSpeed:  download,
+		MaxUploadSpeed:    upload,
+		StreamCacheSize:   r.staticStreamCache.cacheSize,
 	}
 }
 
 // ProcessConsensusChange returns the process consensus change
 func (r *Renter) ProcessConsensusChange(cc modules.ConsensusChange) {
 	id := r.mu.Lock()
-	r.lastEstimation = modules.RenterPriceEstimation{}
+	r.lastEstimationHosts = []modules.HostDBEntry{}
 	r.mu.Unlock(id)
+}
+
+// ProcessHeaderConsensusChange will reset the lastEstimation
+func (r *Renter) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
+	id := r.mu.Lock()
+	r.lastEstimationHosts = []modules.HostDBEntry{}
+	r.mu.Unlock(id)
+}
+
+// SetIPViolationCheck is a passthrough method to the hostdb's method of the
+// same name.
+func (r *Renter) SetIPViolationCheck(enabled bool) {
+	r.hostDB.SetIPViolationCheck(enabled)
 }
 
 // validateSiapath checks that a Siapath is a legal filename.
@@ -529,10 +711,18 @@ func NewCustomRenter(g modules.Gateway, cs modules.ConsensusSet, tpool modules.T
 	// Initialize the streaming cache.
 	r.staticStreamCache = newStreamCache(r.persist.StreamCacheSize)
 
-	// Subscribe to the consensus set.
-	err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
-	if err != nil {
-		return nil, err
+	if cs.SpvMode() {
+		// Subscribe to the consensus set.
+		err = cs.HeaderConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Subscribe to the consensus set.
+		err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Spin up the workers for the work pool.

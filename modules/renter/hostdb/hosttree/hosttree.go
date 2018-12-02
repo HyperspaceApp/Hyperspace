@@ -1,20 +1,21 @@
 package hosttree
 
 import (
-	"errors"
 	"sort"
 	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+
+	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/fastrand"
 )
 
 var (
-	// errHostExists is returned if an Insert is called with a public key that
+	// ErrHostExists is returned if an Insert is called with a public key that
 	// already exists in the tree.
-	errHostExists = errors.New("host already exists in the tree")
+	ErrHostExists = errors.New("host already exists in the tree")
 
 	// errNegativeWeight is returned from an Insert() call if an entry with a
 	// negative weight is added to the tree. Entries must always have a positive
@@ -25,9 +26,9 @@ var (
 	// should always have a non-nil entry, unless they have been Delete()ed.
 	errNilEntry = errors.New("node has a nil entry")
 
-	// errNoSuchHost is returned if Remove is called with a public key that does
+	// ErrNoSuchHost is returned if Remove is called with a public key that does
 	// not exist in the tree.
-	errNoSuchHost = errors.New("no host with specified public key")
+	ErrNoSuchHost = errors.New("no host with specified public key")
 
 	// errWeightTooHeavy is returned from a SelectRandom() call if a weight that exceeds
 	// the total weight of the tree is requested.
@@ -36,7 +37,7 @@ var (
 
 type (
 	// WeightFunc is a function used to weight a given HostDBEntry in the tree.
-	WeightFunc func(modules.HostDBEntry) types.Currency
+	WeightFunc func(modules.HostDBEntry) ScoreBreakdown
 
 	// HostTree is used to store and select host database entries. Each HostTree
 	// is initialized with a weighting func that is able to assign a weight to
@@ -47,6 +48,10 @@ type (
 
 		// hosts is a map of public keys to nodes.
 		hosts map[string]*node
+
+		// resolver is the Resolver that is used by the hosttree to resolve
+		// hostnames to IP addresses.
+		resolver modules.Resolver
 
 		// weightFn calculates the weight of a hostEntry
 		weightFn WeightFunc
@@ -86,15 +91,16 @@ func createNode(parent *node, entry *hostEntry) *node {
 	}
 }
 
-// New creates a new, empty, HostTree. It takes one argument, a `WeightFunc`,
-// which is used to determine the weight of a node on Insert.
-func New(wf WeightFunc) *HostTree {
+// New creates a new HostTree given a weight function and a resolver
+// for hostnames.
+func New(wf WeightFunc, resolver modules.Resolver) *HostTree {
 	return &HostTree{
+		hosts: make(map[string]*node),
 		root: &node{
 			count: 1,
 		},
+		resolver: resolver,
 		weightFn: wf,
-		hosts:    make(map[string]*node),
 	}
 }
 
@@ -185,22 +191,16 @@ func (n *node) remove() {
 	}
 }
 
+// Host returns the address of the HostEntry.
+func (he *hostEntry) Host() string {
+	return he.NetAddress.Host()
+}
+
 // All returns all of the hosts in the host tree, sorted by weight.
 func (ht *HostTree) All() []modules.HostDBEntry {
 	ht.mu.Lock()
 	defer ht.mu.Unlock()
-
-	var he []hostEntry
-	for _, node := range ht.hosts {
-		he = append(he, *node.entry)
-	}
-	sort.Sort(byWeight(he))
-
-	var entries []modules.HostDBEntry
-	for _, entry := range he {
-		entries = append(entries, entry.HostDBEntry)
-	}
-	return entries
+	return ht.all()
 }
 
 // Insert inserts the entry provided to `entry` into the host tree. Insert will
@@ -208,20 +208,7 @@ func (ht *HostTree) All() []modules.HostDBEntry {
 func (ht *HostTree) Insert(hdbe modules.HostDBEntry) error {
 	ht.mu.Lock()
 	defer ht.mu.Unlock()
-
-	entry := &hostEntry{
-		HostDBEntry: hdbe,
-		weight:      ht.weightFn(hdbe),
-	}
-
-	if _, exists := ht.hosts[string(entry.PublicKey.Key)]; exists {
-		return errHostExists
-	}
-
-	_, node := ht.root.recursiveInsert(entry)
-
-	ht.hosts[string(entry.PublicKey.Key)] = node
-	return nil
+	return ht.insert(hdbe)
 }
 
 // Remove removes the host with the public key provided by `pk`.
@@ -231,7 +218,7 @@ func (ht *HostTree) Remove(pk types.SiaPublicKey) error {
 
 	node, exists := ht.hosts[string(pk.Key)]
 	if !exists {
-		return errNoSuchHost
+		return ErrNoSuchHost
 	}
 	node.remove()
 	delete(ht.hosts, string(pk.Key))
@@ -247,20 +234,50 @@ func (ht *HostTree) Modify(hdbe modules.HostDBEntry) error {
 
 	node, exists := ht.hosts[string(hdbe.PublicKey.Key)]
 	if !exists {
-		return errNoSuchHost
+		return ErrNoSuchHost
 	}
 
 	node.remove()
 
 	entry := &hostEntry{
 		HostDBEntry: hdbe,
-		weight:      ht.weightFn(hdbe),
+		weight:      ht.weightFn(hdbe).Score(),
 	}
 
 	_, node = ht.root.recursiveInsert(entry)
 
 	ht.hosts[string(entry.PublicKey.Key)] = node
 	return nil
+}
+
+// SetWeightFunction resets the HostTree and assigns it a new weight
+// function. This resets the tree and reinserts all the hosts.
+func (ht *HostTree) SetWeightFunction(wf WeightFunc) error {
+	ht.mu.Lock()
+	defer ht.mu.Unlock()
+
+	// Get all the hosts.
+	allHosts := ht.all()
+
+	// Reset the tree
+	ht.hosts = make(map[string]*node)
+	ht.root = &node{
+		count: 1,
+	}
+
+	// Assign the new weight function.
+	ht.weightFn = wf
+
+	// Reinsert all the hosts. To prevent the host tree from having a
+	// catastrophic failure in the event of an error early on, we tally up all
+	// of the insertion errors and return them all at the end.
+	var insertErrs error
+	for _, hdbe := range allHosts {
+		if err := ht.insert(hdbe); err != nil {
+			insertErrs = errors.Compose(err, insertErrs)
+		}
+	}
+	return insertErrs
 }
 
 // Select returns the host with the provided public key, should the host exist.
@@ -275,26 +292,49 @@ func (ht *HostTree) Select(spk types.SiaPublicKey) (modules.HostDBEntry, bool) {
 	return node.entry.HostDBEntry, true
 }
 
-// SelectRandom grabs a random n hosts from the tree. There will be no repeats, but
-// the length of the slice returned may be less than n, and may even be zero.
-// The hosts that are returned first have the higher priority. Hosts passed to
-// 'ignore' will not be considered; pass `nil` if no blacklist is desired.
-func (ht *HostTree) SelectRandom(n int, ignore []types.SiaPublicKey) []modules.HostDBEntry {
+// SelectRandom grabs a random n hosts from the tree. There will be no repeats,
+// but the length of the slice returned may be less than n, and may even be
+// zero.  The hosts that are returned first have the higher priority. Hosts
+// passed to 'blacklist' will not be considered; pass `nil` if no blacklist is
+// desired. 'addressBlacklist' is similar to 'blacklist' but instead of not
+// considering the hosts in the list, hosts that use the same IP subnet as
+// those hosts will be ignored. In most cases those blacklists contain the same
+// elements but sometimes it is useful to block a host without blocking its IP
+// range.
+func (ht *HostTree) SelectRandom(n int, blacklist, addressBlacklist []types.SiaPublicKey) []modules.HostDBEntry {
 	ht.mu.Lock()
 	defer ht.mu.Unlock()
 
-	var hosts []modules.HostDBEntry
 	var removedEntries []*hostEntry
 
-	for _, pubkey := range ignore {
+	// Create a filter.
+	filter := NewFilter(ht.resolver)
+
+	// Add the hosts from the addressBlacklist to the filter.
+	for _, pubkey := range addressBlacklist {
 		node, exists := ht.hosts[string(pubkey.Key)]
 		if !exists {
 			continue
 		}
+		// Add the node to the addressFilter.
+		filter.Add(node.entry.NetAddress)
+	}
+	// Remove hosts we want to blacklist from the tree but remember them to make
+	// sure we can insert them later.
+	for _, pubkey := range blacklist {
+		node, exists := ht.hosts[string(pubkey.Key)]
+		if !exists {
+			continue
+		}
+		// Remove the host from the tree.
 		node.remove()
 		delete(ht.hosts, string(pubkey.Key))
+
+		// Remember the host to insert it again later.
 		removedEntries = append(removedEntries, node.entry)
 	}
+
+	var hosts []modules.HostDBEntry
 
 	for len(hosts) < n && len(ht.hosts) > 0 {
 		randWeight := fastrand.BigIntn(ht.root.weight.Big())
@@ -302,10 +342,15 @@ func (ht *HostTree) SelectRandom(n int, ignore []types.SiaPublicKey) []modules.H
 
 		if node.entry.AcceptingContracts &&
 			len(node.entry.ScanHistory) > 0 &&
-			node.entry.ScanHistory[len(node.entry.ScanHistory)-1].Success {
+			node.entry.ScanHistory[len(node.entry.ScanHistory)-1].Success &&
+			!filter.Filtered(node.entry.NetAddress) {
 			// The host must be online and accepting contracts to be returned
-			// by the random function.
+			// by the random function. It also has to pass the addressFilter
+			// check.
 			hosts = append(hosts, node.entry.HostDBEntry)
+
+			// If the host passed the filter, we add it to the filter.
+			filter.Add(node.entry.NetAddress)
 		}
 
 		removedEntries = append(removedEntries, node.entry)
@@ -319,4 +364,37 @@ func (ht *HostTree) SelectRandom(n int, ignore []types.SiaPublicKey) []modules.H
 	}
 
 	return hosts
+}
+
+// all returns all of the hosts in the host tree, sorted by weight.
+func (ht *HostTree) all() []modules.HostDBEntry {
+	var he []hostEntry
+	for _, node := range ht.hosts {
+		he = append(he, *node.entry)
+	}
+	sort.Sort(byWeight(he))
+
+	var entries []modules.HostDBEntry
+	for _, entry := range he {
+		entries = append(entries, entry.HostDBEntry)
+	}
+	return entries
+}
+
+// insert inserts the entry provided to `entry` into the host tree. Insert will
+// return an error if the input host already exists.
+func (ht *HostTree) insert(hdbe modules.HostDBEntry) error {
+	entry := &hostEntry{
+		HostDBEntry: hdbe,
+		weight:      ht.weightFn(hdbe).Score(),
+	}
+
+	if _, exists := ht.hosts[string(entry.PublicKey.Key)]; exists {
+		return ErrHostExists
+	}
+
+	_, node := ht.root.recursiveInsert(entry)
+
+	ht.hosts[string(entry.PublicKey.Key)] = node
+	return nil
 }

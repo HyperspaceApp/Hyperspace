@@ -217,7 +217,7 @@ func TestInitialBlockchainDownloadDisconnects(t *testing.T) {
 	}
 
 	testdir := build.TempDir(modules.ConsensusDir, t.Name())
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, "local", modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, "local", modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestInitialBlockchainDownloadDisconnects(t *testing.T) {
 		Gateway: g,
 		rpcErrs: make(map[modules.NetAddress]error),
 	}
-	localCS, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir))
+	localCS, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestInitialBlockchainDownloadDisconnects(t *testing.T) {
 		nil, nil, nil, nil, nil,
 	}
 	for i, rpcErr := range rpcErrs {
-		g, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - "+strconv.Itoa(i), modules.GatewayDir))
+		g, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - "+strconv.Itoa(i), modules.GatewayDir), false)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -291,7 +291,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 
 	// Create a gateway that can be forced to return errors when its RPC method
 	// is called, then create a consensus set using that gateway.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, "local", modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, "local", modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,7 +300,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 		Gateway: g,
 		rpcErrs: make(map[modules.NetAddress]error),
 	}
-	cs, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir))
+	cs, err := New(&mg, false, filepath.Join(testdir, "local", modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 		cs.threadedInitialBlockchainDownload()
 		doneChan <- struct{}{}
 	}()
-	gatewayTimesout, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - timesout", modules.GatewayDir))
+	gatewayTimesout, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - timesout", modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,7 +384,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 	// Add a peer that is synced to the peer that is not synced. IBD should not
 	// be considered completed when there is a tie between synced and
 	// not-synced peers.
-	gatewayNoTimeout, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - no timeout1", modules.GatewayDir))
+	gatewayNoTimeout, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - no timeout1", modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +405,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 	// Test when there is 2 peers that are synced and one that is not synced.
 	// There is now a majority synced peers and the minIBDWaitTime has passed,
 	// so the IBD function should finish.
-	gatewayNoTimeout2, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - no timeout2", modules.GatewayDir))
+	gatewayNoTimeout2, err := gateway.New("localhost:0", false, filepath.Join(testdir, "remote - no timeout2", modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,7 +426,7 @@ func TestInitialBlockchainDownloadDoneRules(t *testing.T) {
 	// Test when there are >= minNumOutbound peers and >= minNumOutbound peers are synced.
 	gatewayNoTimeouts := make([]modules.Gateway, minNumOutbound-1)
 	for i := 0; i < len(gatewayNoTimeouts); i++ {
-		tmpG, err := gateway.New("localhost:0", false, filepath.Join(testdir, fmt.Sprintf("remote - no timeout-auto-%v", i+3), modules.GatewayDir))
+		tmpG, err := gateway.New("localhost:0", false, filepath.Join(testdir, fmt.Sprintf("remote - no timeout-auto-%v", i+3), modules.GatewayDir), false)
 		if err != nil {
 			t.Fatal(err)
 		}

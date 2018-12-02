@@ -20,7 +20,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	contract := oldContract.header
 
 	// Extract vars from params, for convenience.
-	host, funding, startHeight, endHeight, refundAddress := params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
+	allowance, host, funding, startHeight, endHeight, refundAddress := params.Allowance, params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
 	ourSK := contract.SecretKey
 	ourPK := ourSK.PublicKey()
         var renterPK, hostPK ed25519.PublicKey
@@ -40,40 +40,28 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	var basePrice, baseCollateral types.Currency
 	if endHeight+host.WindowSize > lastRev.NewWindowEnd {
 		timeExtension := uint64((endHeight + host.WindowSize) - lastRev.NewWindowEnd)
-		basePrice = host.StoragePrice.Mul64(lastRev.NewFileSize).Mul64(timeExtension)    // cost of data already covered by contract, i.e. lastrevision.Filesize
-		baseCollateral = host.Collateral.Mul64(lastRev.NewFileSize).Mul64(timeExtension) // same but collateral
+		basePrice = host.StoragePrice.Mul64(lastRev.NewFileSize).Mul64(timeExtension)    // cost of already uploaded data that needs to be covered by the renewed contract.
+		baseCollateral = host.Collateral.Mul64(lastRev.NewFileSize).Mul64(timeExtension) // same as basePrice.
 	}
 
 	// Calculate the anticipated transaction fee.
 	_, maxFee := tpool.FeeEstimation()
 	txnFee := maxFee.Mul64(modules.EstimatedFileContractTransactionSetSize)
 
-	// Underflow check.
-	if funding.Cmp(host.ContractPrice.Add(txnFee).Add(basePrice)) <= 0 {
-		return modules.RenterContract{}, errors.New("insufficient funds to cover contract fee and transaction fee during contract renewal")
-	}
-	// Divide by zero check.
-	if host.StoragePrice.IsZero() {
-		host.StoragePrice = types.NewCurrency64(1)
-	}
-
 	// Calculate the payouts for the renter, host, and whole contract.
-	renterPayout := funding.Sub(host.ContractPrice).Sub(txnFee).Sub(basePrice) // renter payout is pre-tax
-	maxStorageSize := renterPayout.Div(host.StoragePrice)
-	hostCollateral := maxStorageSize.Mul(host.Collateral)
-	if hostCollateral.Cmp(host.MaxCollateral) > 0 {
-		hostCollateral = host.MaxCollateral
+	period := endHeight - startHeight
+	renterPayout, hostPayout, hostCollateral, err := modules.RenterPayouts(host, funding, txnFee, basePrice, baseCollateral, period, allowance.ExpectedStorage/allowance.Hosts)
+	if err != nil {
+		return modules.RenterContract{}, err
 	}
-
-	// Determine the host payout and the total payout for the contract.
-	hostPayout := hostCollateral.Add(host.ContractPrice).Add(basePrice)
 	totalPayout := renterPayout.Add(hostPayout)
 
+	if hostCollateral.Cmp(baseCollateral) < 0 {
+		baseCollateral = hostCollateral
+	}
 	// check for negative currency
 	if totalPayout.Cmp(hostPayout) < 0 {
 		return modules.RenterContract{}, errors.New("insufficient funds to pay both siafund fee and also host payout")
-	} else if hostCollateral.Cmp(baseCollateral) < 0 {
-		return modules.RenterContract{}, errors.New("new collateral smaller than base collateral")
 	}
 
 	// create file contract
@@ -146,11 +134,11 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 		return modules.RenterContract{}, errors.New("couldn't initiate RPC: " + err.Error())
 	}
 	// verify that both parties are renewing the same contract
-	if err = verifyRecentRevision(conn, contract, host.Version); err != nil {
-		// don't add context; want to preserve the original error type so that
-		// callers can check using IsRevisionMismatch
+	err = verifyRecentRevision(conn, oldContract, host.Version)
+	if err != nil {
 		return modules.RenterContract{}, err
 	}
+
 	// verify the host's settings and confirm its identity
 	host, err = verifySettings(conn, host)
 	if err != nil {

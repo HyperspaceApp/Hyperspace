@@ -53,7 +53,7 @@ func (p *peer) open() (modules.PeerConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &peerConn{conn, p.NetAddress}, nil
+	return &peerConn{conn, p.NetAddress, p.Version}, nil
 }
 
 func (p *peer) accept() (modules.PeerConn, error) {
@@ -61,7 +61,7 @@ func (p *peer) accept() (modules.PeerConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &peerConn{conn, p.NetAddress}, nil
+	return &peerConn{conn, p.NetAddress, p.Version}, nil
 }
 
 // addPeer adds a peer to the Gateway's peer list, spawns a listener thread to
@@ -157,7 +157,9 @@ func (g *Gateway) threadedAcceptConn(conn net.Conn) {
 		return
 	}
 
-	err = g.managedAcceptConnPeer(conn, remoteVersion)
+	if err = acceptableVersion(remoteVersion); err == nil {
+		err = g.managedAcceptConnPeer(conn, remoteVersion)
+	}
 	if err != nil {
 		g.log.Debugf("INFO: %v wanted to connect, but failed: %v", addr, err)
 		conn.Close()
@@ -446,10 +448,16 @@ func (g *Gateway) managedConnect(addr modules.NetAddress) error {
 	remoteVersion, err := connectVersionHandshake(conn, protocolVersion)
 	if err != nil {
 		conn.Close()
-		return err
 	}
 
-	err = g.managedConnectPeer(conn, remoteVersion, addr)
+	if g.spv && (build.VersionCmp(remoteVersion, minimumSPVAcceptablePeerVersion) < 0) {
+		conn.Close()
+		return fmt.Errorf("spv require higher version: %s < %s", remoteVersion, minimumSPVAcceptablePeerVersion)
+	}
+
+	if err = acceptableVersion(remoteVersion); err == nil {
+		err = g.managedConnectPeer(conn, remoteVersion, addr)
+	}
 	if err != nil {
 		conn.Close()
 		return err
@@ -475,7 +483,7 @@ func (g *Gateway) managedConnect(addr modules.NetAddress) error {
 	g.addNode(addr)
 	g.nodes[addr].WasOutboundPeer = true
 
-	if err := g.saveSync(); err != nil {
+	if err := g.saveSyncNodes(); err != nil {
 		g.log.Println("ERROR: Unable to save new outbound peer to gateway:", err)
 	}
 
@@ -533,6 +541,27 @@ func (g *Gateway) Peers() []modules.Peer {
 		peers = append(peers, p.Peer)
 	}
 	return peers
+}
+
+// RandomPeer returns a random peer currently connected to the Gateway.
+func (g *Gateway) RandomPeer() (modules.Peer, error) {
+	var emptyPeer modules.Peer
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if len(g.peers) == 0 {
+		return emptyPeer, errNoPeers
+	}
+
+	// Select a random peer. Note that the algorithm below is roughly linear in
+	// the number of peers connected to the gateway.
+	r := fastrand.Intn(len(g.peers))
+	for _, p := range g.peers {
+		if r <= 0 {
+			return p.Peer, nil
+		}
+		r--
+	}
+	return emptyPeer, errNoPeers
 }
 
 // Online returns true if the node is connected to the internet. During testing

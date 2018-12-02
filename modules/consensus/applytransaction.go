@@ -42,6 +42,8 @@ func applySiacoinOutputs(tx *bolt.Tx, pb *processedBlock, t types.Transaction) {
 			SiacoinOutput: sco,
 		}
 		pb.SiacoinOutputDiffs = append(pb.SiacoinOutputDiffs, scod)
+		// log.Printf("applySiacoinOutputs: %s %s %v %s", scod.SiacoinOutput.UnlockHash,
+		// 	scod.SiacoinOutput.Value, scod.Direction, scod.ID)
 		commitSiacoinOutputDiff(tx, scod, modules.DiffApply)
 	}
 }

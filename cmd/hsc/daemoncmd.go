@@ -41,7 +41,11 @@ var (
 // version prints the version of hsc and hsd.
 func versioncmd() {
 	fmt.Println("Hyperspace Client")
-	fmt.Println("\tVersion " + build.Version)
+	if build.ReleaseTag == "" {
+		fmt.Println("\tVersion " + build.Version)
+	} else {
+		fmt.Println("\tVersion " + build.Version + "-" + build.ReleaseTag)
+	}
 	if build.GitRevision != "" {
 		fmt.Println("\tGit Revision " + build.GitRevision)
 		fmt.Println("\tBuild Time   " + build.BuildTime)

@@ -6,7 +6,19 @@
 package gateway
 
 import (
+	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
+
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // For the user to be securely connected to the network, the user must be
@@ -95,21 +107,6 @@ import (
 // from their peers. Encryption + authentication would have made the attack
 // more difficult.
 
-import (
-	"errors"
-	"fmt"
-	"net"
-	"os"
-	"path/filepath"
-	"sync"
-
-	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/persist"
-	siasync "github.com/HyperspaceApp/Hyperspace/sync"
-	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/HyperspaceApp/fastrand"
-)
-
 var (
 	errNoPeers     = errors.New("no peers")
 	errUnreachable = errors.New("peer did not respond to ping")
@@ -149,8 +146,11 @@ type Gateway struct {
 	// Utilities.
 	log        *persist.Logger
 	mu         sync.RWMutex
+	persist    persistence
 	persistDir string
 	threads    siasync.ThreadGroup
+
+	spv bool
 
 	// Unique ID
 	staticId gatewayID
@@ -184,7 +184,7 @@ func (g *Gateway) Close() error {
 	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	return g.saveSync()
+	return errors.Compose(g.saveSync(), g.saveSyncNodes())
 }
 
 // DiscoverAddress discovers and returns the current public IP address of the
@@ -192,12 +192,21 @@ func (g *Gateway) Close() error {
 // multiple minutes to return. A channel to cancel the discovery can be
 // supplied optionally. If nil is supplied, a reasonable timeout will be used
 // by default.
-func (g *Gateway) DiscoverAddress(cancel <-chan struct{}) (modules.NetAddress, error) {
+func (g *Gateway) DiscoverAddress(cancel <-chan struct{}) (net.IP, error) {
 	return g.managedLearnHostname(cancel)
 }
 
+// ForwardPort adds a port mapping to the router.
+func (g *Gateway) ForwardPort(port string) error {
+	if err := g.threads.Add(); err != nil {
+		return err
+	}
+	defer g.threads.Done()
+	return g.managedForwardPort(port)
+}
+
 // New returns an initialized Gateway.
-func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
+func New(addr string, bootstrap bool, persistDir string, spv bool) (*Gateway, error) {
 	// Create the directory if it doesn't exist.
 	err := os.MkdirAll(persistDir, 0700)
 	if err != nil {
@@ -210,6 +219,8 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 
 		nodes: make(map[modules.NetAddress]*node),
 		peers: make(map[modules.NetAddress]*peer),
+
+		spv: spv,
 
 		persistDir: persistDir,
 	}
@@ -252,9 +263,13 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 		g.UnregisterConnectCall(modules.ShareNodesCmd)
 	})
 
-	// Load the old node list. If it doesn't exist, no problem, but if it does,
-	// we want to know about any errors preventing us from loading it.
+	// Load the old node list and gateway persistence. If it doesn't exist, no
+	// problem, but if it does, we want to know about any errors preventing us
+	// from loading it.
 	if loadErr := g.load(); loadErr != nil && !os.IsNotExist(loadErr) {
+		return nil, loadErr
+	}
+	if loadErr := g.loadNodes(); loadErr != nil && !os.IsNotExist(loadErr) {
 		return nil, loadErr
 	}
 	// Spawn the thread to periodically save the gateway.
@@ -262,24 +277,28 @@ func New(addr string, bootstrap bool, persistDir string) (*Gateway, error) {
 	// Make sure that the gateway saves after shutdown.
 	g.threads.AfterStop(func() {
 		g.mu.Lock()
-		err = g.saveSync()
-		g.mu.Unlock()
-		if err != nil {
+		if err := g.saveSync(); err != nil {
 			g.log.Println("ERROR: Unable to save gateway:", err)
 		}
+		if err := g.saveSyncNodes(); err != nil {
+			g.log.Println("ERROR: Unable to save gateway nodes:", err)
+		}
+		g.mu.Unlock()
 	})
 
 	// Add the bootstrap peers to the node list.
-	peers := modules.BootstrapPeers
+	var peers []modules.NetAddress
 	if types.IsTestnet {
 		peers = modules.TestnetBootstrapPeers
+	} else if spv {
+		peers = modules.SPVBootstrapPeers
+	} else {
+		peers = modules.BootstrapPeers
 	}
-	if bootstrap {
-		for _, addr := range peers {
-			err := g.addNode(addr)
-			if err != nil && err != errNodeExists {
-				g.log.Printf("WARN: failed to add the bootstrap node '%v': %v", addr, err)
-			}
+	for _, addr := range peers {
+		err := g.addNode(addr)
+		if err != nil && err != errNodeExists {
+			g.log.Printf("WARN: failed to add the spv bootstrap node '%v': %v", addr, err)
 		}
 	}
 

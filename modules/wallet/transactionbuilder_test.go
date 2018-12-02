@@ -4,7 +4,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -19,7 +18,10 @@ func (wt *walletTester) addBlockNoPayout() error {
 	// Clear the miner payout so that the wallet is not getting additional
 	// outputs from these blocks.
 	for i := range block.MinerPayouts {
-		block.MinerPayouts[i].UnlockHash = types.UnlockHash{}
+		// in blocks with devfund payouts, must respect devfund
+		if len(block.MinerPayouts) == 1 || i != len(block.MinerPayouts)-1 {
+			block.MinerPayouts[i].UnlockHash = types.UnlockHash{}
+		}
 	}
 
 	// Solve and submit the block.
@@ -509,187 +511,6 @@ func TestParallelBuilders(t *testing.T) {
 	}
 }
 
-// TestSignTransaction constructs a valid, signed transaction using the
-// wallet's UnspentOutputs and SignTransaction methods.
-func TestSignTransaction(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer wt.closeWt()
-
-	// get an output to spend and its unlock conditions
-	outputs, err := wt.wallet.UnspentOutputs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	uc, err := wt.wallet.UnlockConditions(outputs[0].UnlockHash)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// create a transaction that sends an output to the void
-	txn := types.Transaction{
-		SiacoinInputs: []types.SiacoinInput{{
-			ParentID:         types.SiacoinOutputID(outputs[0].ID),
-			UnlockConditions: uc,
-		}},
-		SiacoinOutputs: []types.SiacoinOutput{{
-			Value:      outputs[0].Value,
-			UnlockHash: types.UnlockHash{},
-		}},
-		TransactionSignatures: []types.TransactionSignature{{
-			ParentID:      crypto.Hash(outputs[0].ID),
-			CoveredFields: types.CoveredFields{WholeTransaction: true},
-		}},
-	}
-
-	// sign the transaction
-	err = wt.wallet.SignTransaction(&txn, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// txn should now have a signature
-	if len(txn.TransactionSignatures[0].Signature) == 0 {
-		t.Fatal("transaction was not signed")
-	}
-
-	// the resulting transaction should be valid; submit it to the tpool and
-	// mine a block to confirm it
-	height, _ := wt.wallet.Height()
-	err = txn.StandaloneValid(height)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = wt.tpool.AcceptTransactionSet([]types.Transaction{txn})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = wt.addBlockNoPayout()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// the wallet should no longer list the resulting output as spendable
-	outputs, err = wt.wallet.UnspentOutputs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(outputs) != 1 {
-		t.Fatal("expected one output")
-	}
-	if outputs[0].ID == types.OutputID(txn.SiacoinInputs[0].ParentID) {
-		t.Fatal("spent output still listed as spendable")
-	}
-}
-
-// TestWatchOnly tests the ability of the wallet to track addresses that it
-// does not own.
-func TestWatchOnly(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer wt.closeWt()
-
-	// create an address manually and send coins to it
-	sk := generateSpendableKey(modules.Seed{}, 1234)
-	addr := sk.UnlockConditions.UnlockHash()
-
-	_, err = wt.wallet.SendSiacoins(types.SiacoinPrecision.Mul64(77), addr)
-	if err != nil {
-		t.Fatal(err)
-	}
-	wt.miner.AddBlock()
-
-	// the output should not show up in UnspentOutputs, because the address is
-	// not being tracked yet
-	outputs, err := wt.wallet.UnspentOutputs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, o := range outputs {
-		if o.UnlockHash == addr {
-			t.Fatal("shouldn't see addr in UnspentOutputs yet")
-		}
-	}
-
-	// track the address
-	err = wt.wallet.WatchAddresses([]types.UnlockHash{addr})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// output should now show up
-	var output modules.UnspentOutput
-	outputs, err = wt.wallet.UnspentOutputs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, o := range outputs {
-		if o.UnlockHash == addr {
-			output = o
-			break
-		}
-	}
-	if output.ID == (types.OutputID{}) {
-		t.Fatal("addr not present in UnspentOutputs after WatchAddresses")
-	}
-
-	// create a transaction that sends an output to the void
-	txn := types.Transaction{
-		SiacoinInputs: []types.SiacoinInput{{
-			ParentID:         types.SiacoinOutputID(output.ID),
-			UnlockConditions: sk.UnlockConditions,
-		}},
-		SiacoinOutputs: []types.SiacoinOutput{{
-			Value:      output.Value,
-			UnlockHash: types.UnlockHash{},
-		}},
-		TransactionSignatures: []types.TransactionSignature{{
-			ParentID:      crypto.Hash(output.ID),
-			CoveredFields: types.CoveredFields{WholeTransaction: true},
-		}},
-	}
-
-	// sign the transaction
-	sig := crypto.SignHash(txn.SigHash(0), sk.SecretKeys[0])
-	txn.TransactionSignatures[0].Signature = sig[:]
-
-	// the resulting transaction should be valid; submit it to the tpool and
-	// mine a block to confirm it
-	height, _ := wt.wallet.Height()
-	err = txn.StandaloneValid(height)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = wt.tpool.AcceptTransactionSet([]types.Transaction{txn})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = wt.addBlockNoPayout()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// the wallet should no longer list the resulting output as spendable
-	outputs, err = wt.wallet.UnspentOutputs()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, o := range outputs {
-		if o.UnlockHash == addr {
-			t.Fatal("spent output still listed as spendable")
-		}
-	}
-}
-
 // TestUnconfirmedParents tests the functionality of the transaction builder's
 // UnconfirmedParents method.
 func TestUnconfirmedParents(t *testing.T) {
@@ -742,72 +563,5 @@ func TestUnconfirmedParents(t *testing.T) {
 		if tSet[i].ID() != parents[i].ID() {
 			t.Error("returned parent doesn't match transaction of transaction set")
 		}
-	}
-}
-
-func TestFundSiacoinsForOutputs(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	wt, err := createWalletTester(t.Name(), &modules.ProductionDependencies{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer wt.closeWt()
-
-	b, err := wt.wallet.StartTransaction()
-	if err != nil {
-		t.Fatal(err)
-	}
-	uc1, err := wt.wallet.NextAddress()
-	if err != nil {
-		t.Fatal(err)
-	}
-	uc2, err := wt.wallet.NextAddress()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	amount1 := types.NewCurrency64(1000)
-	amount2 := types.NewCurrency64(2000)
-	output1 := types.SiacoinOutput{
-		Value:      amount1,
-		UnlockHash: uc1.UnlockHash(),
-	}
-	output2 := types.SiacoinOutput{
-		Value:      amount2,
-		UnlockHash: uc2.UnlockHash(),
-	}
-	minerFee := types.NewCurrency64(750)
-
-	// Wallet starts off with large inputs from mining blocks, larger than our
-	// combined outputs and miner fees
-	err = b.FundSiacoinsForOutputs([]types.SiacoinOutput{output1, output2}, minerFee)
-	if err != nil {
-		t.Fatal(err)
-	}
-	unfinishedTxn, _ := b.View()
-
-	// Here we should have 3 outputs, the two specified plus a refund
-	if len(unfinishedTxn.SiacoinOutputs) != 3 {
-		t.Fatal("incorrect number of outputs generated")
-	}
-	if len(unfinishedTxn.MinerFees) != 1 {
-		t.Fatal("miner fees were not generated but should have been")
-	}
-	if unfinishedTxn.MinerFees[0].Cmp(minerFee) != 0 {
-		t.Fatal("miner fees were not generated but should have been")
-	}
-
-	// General construction seems ok, let's sign and submit it to the tpool
-	txSet, err := b.Sign(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// If the tpool accepts it, everything looks good
-	err = wt.tpool.AcceptTransactionSet(txSet)
-	if err != nil {
-		t.Fatal(err)
 	}
 }

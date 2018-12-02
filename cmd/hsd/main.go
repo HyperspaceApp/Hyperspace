@@ -8,6 +8,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/config"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 var (
@@ -43,10 +44,14 @@ type Config struct {
 		RequiredUserAgent string
 		AuthenticateAPI   bool
 		IsTestnet         bool
+		AddressGapLimit   int
+		ScanAirdrop       bool
+		TempPassword      bool
 
 		Profile    string
 		ProfileDir string
 		SiaDir     string
+		Spv        bool
 	}
 
 	MiningPoolConfig config.MiningPoolConfig
@@ -62,15 +67,19 @@ func die(args ...interface{}) {
 
 // versionCmd is a cobra command that prints the version of hsd.
 func versionCmd(*cobra.Command, []string) {
+	version := build.Version
+	if build.ReleaseTag != "" {
+		version += "-" + build.ReleaseTag
+	}
 	switch build.Release {
 	case "dev":
-		fmt.Println("Hyperspace Daemon v" + build.Version + "-dev")
+		fmt.Println("Hyperspace Daemon v" + version + "-dev")
 	case "standard":
-		fmt.Println("Hyperspace Daemon v" + build.Version)
+		fmt.Println("Hyperspace Daemon v" + version)
 	case "testing":
-		fmt.Println("Hyperspace Daemon v" + build.Version + "-testing")
+		fmt.Println("Hyperspace Daemon v" + version + "-testing")
 	default:
-		fmt.Println("Hyperspace Daemon v" + build.Version + "-???")
+		fmt.Println("Hyperspace Daemon v" + version + "-???")
 	}
 }
 
@@ -183,9 +192,13 @@ func main() {
 	root.Flags().StringVarP(&globalConfig.Siad.Profile, "profile", "", "", "enable profiling with flags 'cmt' for CPU, memory, trace")
 	root.Flags().StringVarP(&globalConfig.Siad.RPCaddr, "rpc-addr", "", config.DefaultRPCAddr, "which port the gateway listens on")
 	root.Flags().StringVarP(&globalConfig.Siad.Modules, "modules", "M", "cghrtw", "enabled modules, see 'hsd modules' for more info")
-	root.Flags().BoolVarP(&globalConfig.Siad.AuthenticateAPI, "authenticate-api", "", false, "enable API password protection")
+	root.Flags().IntVarP(&globalConfig.Siad.AddressGapLimit, "address-gap-limit", "", modules.DefaultAddressGapLimit, "address gap limit for wallet scanning")
+	root.Flags().BoolVarP(&globalConfig.Siad.ScanAirdrop, "scan-airdrop", "", false, "scan the airdrop blocks")
+	root.Flags().BoolVarP(&globalConfig.Siad.AuthenticateAPI, "authenticate-api", "", true, "enable API password protection")
+	root.Flags().BoolVarP(&globalConfig.Siad.TempPassword, "temp-password", "", false, "enter a temporary API password during startup")
 	root.Flags().BoolVarP(&globalConfig.Siad.AllowAPIBind, "disable-api-security", "", false, "allow hsd to listen on a non-localhost address (DANGEROUS)")
 	root.Flags().BoolVarP(&globalConfig.Siad.IsTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet ports (%d, %d, %d)", config.TestnetAPIPort, config.TestnetRPCPort, config.TestnetHostPort))
+	root.Flags().BoolVarP(&globalConfig.Siad.Spv, "spv", "", false, "enable SPV mode")
 
 	// Parse cmdline flags, overwriting both the default values and the config
 	// file values.

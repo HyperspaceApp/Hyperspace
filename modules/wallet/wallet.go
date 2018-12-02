@@ -7,9 +7,9 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
-	"sync"
 
 	"github.com/coreos/bbolt"
+	deadlock "github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -73,8 +73,22 @@ type Wallet struct {
 	// may access them.
 	seeds        []modules.Seed
 	keys         map[types.UnlockHash]spendableKey
-	lookahead    map[types.UnlockHash]uint64
+	lookahead    lookahead
 	watchedAddrs map[types.UnlockHash]struct{}
+	// The minimum index should typically be zero, seeds that came over from
+	// the Sia airdrop may have started with very high indices. So when we
+	// import old seeds, we scan the airdrop blocks first and set a minimum
+	// with the first value we find, or 0 if we don't find any matches.
+	seedsMinimumIndex []uint64
+	// The maximum internal index is the highest address index we're tracking
+	// locally for a seed. Once the external blockchain has been scanned,
+	// this value should be greater or equal to the maximum external index
+	// that we've seen. If we are enforcing addressGapLimit, this value
+	// should not exceed the maximum external index + addressGapLimit.
+	seedsMaximumInternalIndex []uint64
+	// The maximum external address is the highest address we've seen on the
+	// external blockchain.
+	seedsMaximumExternalIndex []uint64
 
 	// unconfirmedProcessedTransactions tracks unconfirmed transactions.
 	//
@@ -99,7 +113,7 @@ type Wallet struct {
 
 	persistDir string
 	log        *persist.Logger
-	mu         sync.RWMutex
+	mu         deadlock.RWMutex
 
 	// A separate TryMutex is used to protect against concurrent unlocking or
 	// initialization.
@@ -109,9 +123,17 @@ type Wallet struct {
 	// blocks until they have all exited before returning from Close.
 	tg threadgroup.ThreadGroup
 
-	// defragDisabled determines if the wallet is set to defrag outputs once it
-	// reaches a certain threshold
-	defragDisabled bool
+	// addressGapLimit is by default set to 20. If the software hits 20 unused
+	// addresses in a row, it expects there are no used addresses beyond this
+	// point and stops searching the address chain. We scan just the external
+	// chains, because internal chains receive only coins that come from the
+	// associated external chains.
+	//
+	// For further information, read BIP 44.
+	addressGapLimit uint64
+	// scanAirdrop specifies whether or not we do a robust scan on legacy Sia
+	// seeds against the initial 7 airdrop blocks
+	scanAirdrop bool
 }
 
 // Height return the internal processed consensus height of the wallet
@@ -139,12 +161,12 @@ func (w *Wallet) Height() (types.BlockHeight, error) {
 // name and then using the file to save in the future. Keys and addresses are
 // not loaded into the wallet during the call to 'new', but rather during the
 // call to 'Unlock'.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string) (*Wallet, error) {
-	return NewCustomWallet(cs, tpool, persistDir, modules.ProdDependencies)
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, scanAirdrop bool) (*Wallet, error) {
+	return NewCustomWallet(cs, tpool, persistDir, addressGapLimit, scanAirdrop, modules.ProdDependencies)
 }
 
 // NewCustomWallet creates a new wallet using custom dependencies.
-func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, deps modules.Dependencies) (*Wallet, error) {
+func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, addressGapLimit int, scanAirdrop bool, deps modules.Dependencies) (*Wallet, error) {
 	// Check for nil dependencies.
 	if cs == nil {
 		return nil, errNilConsensusSet
@@ -152,6 +174,7 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 	if tpool == nil {
 		return nil, errNilTpool
 	}
+	lookahead := newLookahead(uint64(addressGapLimit))
 
 	// Initialize the data structure.
 	w := &Wallet{
@@ -159,12 +182,15 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 		tpool: tpool,
 
 		keys:         make(map[types.UnlockHash]spendableKey),
-		lookahead:    make(map[types.UnlockHash]uint64),
+		lookahead:    lookahead,
 		watchedAddrs: make(map[types.UnlockHash]struct{}),
 
 		unconfirmedSets: make(map[modules.TransactionSetID][]types.TransactionID),
 
 		persistDir: persistDir,
+
+		addressGapLimit: uint64(addressGapLimit),
+		scanAirdrop:     scanAirdrop,
 
 		deps: deps,
 	}
@@ -172,6 +198,13 @@ func NewCustomWallet(cs modules.ConsensusSet, tpool modules.TransactionPool, per
 	if err != nil {
 		return nil, err
 	}
+
+	cs.SetGetWalletKeysFunc(func() ([][]byte, error) {
+		return w.allAddressesInByteArray()
+	})
+	tpool.SetGetWalletKeysFunc(func() (map[types.UnlockHash]bool, error) {
+		return w.allAddressesInMap()
+	})
 
 	return w, nil
 }
@@ -200,6 +233,63 @@ func (w *Wallet) Close() error {
 		errs = append(errs, fmt.Errorf("log.Close failed: %v", err))
 	}
 	return build.JoinErrors(errs, "; ")
+}
+
+func (w *Wallet) allAddressesInByteArray() ([][]byte, error) {
+	if err := w.tg.Add(); err != nil {
+		return [][]byte{}, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	keyArray := make([][]byte, 0, len(w.keys))
+	// TODO: maybe cache this somewhere
+	for u := range w.keys {
+		byteArray := make([]byte, len(u[:]))
+		copy(byteArray, u[:])
+		keyArray = append(keyArray, byteArray)
+	}
+
+	return keyArray, nil
+}
+
+func (w *Wallet) lookaheadAddressesInByteArray() ([][]byte, error) {
+	if err := w.tg.Add(); err != nil {
+		return [][]byte{}, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	addresses := w.lookahead.Addresses()
+	keyArray := make([][]byte, 0, len(addresses))
+	// TODO: maybe cache this somewhere
+	for _, u := range addresses {
+		byteArray := make([]byte, len(u[:]))
+		copy(byteArray, u[:])
+		keyArray = append(keyArray, byteArray)
+	}
+	return keyArray, nil
+}
+
+func (w *Wallet) allAddressesInMap() (map[types.UnlockHash]bool, error) {
+	if err := w.tg.Add(); err != nil {
+		return nil, modules.ErrWalletShutdown
+	}
+	defer w.tg.Done()
+
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	keysMap := make(map[types.UnlockHash]bool)
+	// TODO: maybe cache this somewhere
+	for u := range w.keys {
+		keysMap[u] = true
+	}
+	return keysMap, nil
 }
 
 // AllAddresses returns all addresses that the wallet is able to spend from,
@@ -244,9 +334,7 @@ func (w *Wallet) Settings() (modules.WalletSettings, error) {
 		return modules.WalletSettings{}, modules.ErrWalletShutdown
 	}
 	defer w.tg.Done()
-	return modules.WalletSettings{
-		NoDefrag: w.defragDisabled,
-	}, nil
+	return modules.WalletSettings{}, nil
 }
 
 // SetSettings will update the settings for the wallet.
@@ -257,48 +345,6 @@ func (w *Wallet) SetSettings(s modules.WalletSettings) error {
 	defer w.tg.Done()
 
 	w.mu.Lock()
-	w.defragDisabled = s.NoDefrag
 	w.mu.Unlock()
-	return nil
-}
-
-// WatchAddresses instructs the wallet to begin tracking a set of addresses,
-// replacing any addresses it was previously tracking. This requires
-// rescanning the entire blockchain, so typically WatchAddresses should be
-// called before the wallet is first unlocked.
-func (w *Wallet) WatchAddresses(addrs []types.UnlockHash) error {
-	if err := w.tg.Add(); err != nil {
-		return modules.ErrWalletShutdown
-	}
-	defer w.tg.Done()
-
-	err := func() error {
-		w.mu.Lock()
-		defer w.mu.Unlock()
-		w.watchedAddrs = make(map[types.UnlockHash]struct{}, len(addrs))
-		for _, addr := range addrs {
-			w.watchedAddrs[addr] = struct{}{}
-		}
-		if err := w.dbTx.Bucket(bucketWallet).Put(keyWatchedAddrs, encoding.Marshal(addrs)); err != nil {
-			return err
-		}
-		return w.syncDB()
-	}()
-	if err != nil {
-		return err
-	}
-
-	// rescan the blockchain
-	w.cs.Unsubscribe(w)
-	w.tpool.Unsubscribe(w)
-
-	done := make(chan struct{})
-	go w.rescanMessage(done)
-	defer close(done)
-	if err := w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan()); err != nil {
-		return err
-	}
-	w.tpool.TransactionPoolSubscribe(w)
-
 	return nil
 }

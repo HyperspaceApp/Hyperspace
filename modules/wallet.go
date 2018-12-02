@@ -3,6 +3,10 @@ package modules
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"regexp"
+	"strings"
+	"unicode"
 
 	"github.com/HyperspaceApp/entropy-mnemonics"
 
@@ -21,6 +25,13 @@ const (
 
 	// WalletDir is the directory that contains the wallet persistence.
 	WalletDir = "wallet"
+
+	// DefaultAddressGapLimit is the default address gap limit as specified in
+	// BIP 44.
+
+	// Bitcoin defaults to 20, but we can create a lot of addresses quickly
+	// when we form contracts, so we set to 50.
+	DefaultAddressGapLimit = 50
 )
 
 var (
@@ -45,6 +56,10 @@ var (
 	// ErrWalletShutdown is returned when a method can't continue execution due
 	// to the wallet shutting down.
 	ErrWalletShutdown = errors.New("wallet is shutting down")
+
+	// ErrAddressGapLimit is return when a user tries to create a new address
+	// that does not respect the address gap limit as specified in BIP 44
+	ErrAddressGapLimit = errors.New("cannot create new address beyond address gap limit")
 )
 
 type (
@@ -112,6 +127,7 @@ type (
 		UnlockHash         types.UnlockHash  `json:"unlockhash"`
 		Value              types.Currency    `json:"value"`
 		ConfirmationHeight types.BlockHeight `json:"confirmationheight"`
+		IsWatchOnly        bool              `json:"iswatchonly"`
 	}
 
 	// TransactionBuilder is used to construct custom transactions. A transaction
@@ -125,13 +141,6 @@ type (
 	//
 	// Transaction builders are not thread safe.
 	TransactionBuilder interface {
-		// FundSiacoinsForOutputs will aggregate enough inputs to cover the
-		// total value of the outputs and the miner fee if any. A refund
-		// output will be generated if necessary. All the outputs will be
-		// added to the transaction being built along with a miner fee if
-		// one is passed. The transaction will not be signed.
-		FundSiacoinsForOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
-
 		// FundSiacoins will add a siacoin input of exactly 'amount' to the
 		// transaction. A parent transaction may be needed to achieve an input
 		// with the correct value. The siacoin input will not be signed until
@@ -140,6 +149,8 @@ type (
 		// Longer risks double-spends, as the wallet will assume that the
 		// transaction failed.
 		FundSiacoins(amount types.Currency) error
+
+		FundContract(amount types.Currency) ([]types.SiacoinOutput, error)
 
 		// AddParents adds a set of parents to the transaction.
 		AddParents([]types.Transaction)
@@ -217,6 +228,56 @@ type (
 		Drop()
 	}
 
+	TransactionSetBuilder interface {
+		// FundOutputs will aggregate enough inputs to cover the
+		// total value of the outputs and the miner fee if any. A refund
+		// output will be generated if necessary. All the outputs will be
+		// added to the transaction being built along with a miner fee if
+		// one is passed. The transaction will not be signed.
+		FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
+		// FundOutput is a convenience function that does the same as FundOutputs
+		// but for just one output. Beware, it creates a refund transaction for
+		// each call!
+		FundOutput(output types.SiacoinOutput, fee types.Currency) error
+
+		// AddOutput adds a siacoin output to the transaction, returning
+		// the index of the siacoin output within the transaction.
+		AddOutput(types.SiacoinOutput) uint64
+		// AddInput adds a siacoin input to the transaction, returning
+		// the index of the siacoin input within the transaction. When 'Sign'
+		// gets called, this input will be left unsigned.
+		AddInput(types.SiacoinInput) uint64
+
+		// Sign will sign any inputs added by 'FundOutputs' and return a
+		// transaction set that contains all parents prepended to
+		// the transaction. If more fields need to be added, a new transaction
+		// builder will need to be created.
+		//
+		// If the whole transaction flag is set to true, then the whole
+		// transaction flag will be set in the covered fields object. If the
+		// whole transaction flag is set to false, then the covered fields
+		// object will cover all fields that have already been added to the
+		// transaction, but will also leave room for more fields to be added.
+		//
+		// An error will be returned if there are multiple calls to 'Sign',
+		// sometimes even if the first call to Sign has failed. Sign should
+		// only ever be called once, and if the first signing fails, the
+		// transaction should be dropped.
+		Sign(wholeTransaction bool) ([]types.Transaction, error)
+
+		// View returns the incomplete transaction along with all of its
+		// parents.
+		View() (txn types.Transaction, parents []types.Transaction)
+
+		// Drop indicates that a transaction is no longer useful and will not be
+		// broadcast, and that all of the outputs can be reclaimed. 'Drop'
+		// should only be used before signatures are added.
+		Drop()
+
+		// Size return the encoded size of the whole transaction set.
+		Size() (size int)
+	}
+
 	// EncryptionManager can encrypt, lock, unlock, and indicate the current
 	// status of the EncryptionManager.
 	EncryptionManager interface {
@@ -229,7 +290,7 @@ type (
 		// and will return an error on subsequent calls (even after restarting
 		// the wallet). To reset the wallet, the wallet files must be moved to
 		// a different directory or deleted.
-		Encrypt(masterKey crypto.TwofishKey) (Seed, error)
+		Encrypt(masterKey crypto.CipherKey) (Seed, error)
 
 		// Reset will reset the wallet, clearing the database and returning it to
 		// the unencrypted state. Reset can only be called on a wallet that has
@@ -245,7 +306,7 @@ type (
 		// Unlike Encrypt, the blockchain will be scanned to determine the
 		// seed's progress. For this reason, InitFromSeed should not be called
 		// until the blockchain is fully synced.
-		InitFromSeed(masterKey crypto.TwofishKey, seed Seed) error
+		InitFromSeed(masterKey crypto.CipherKey, seed Seed) error
 
 		// Lock deletes all keys in memory and prevents the wallet from being
 		// used to spend coins or extract keys until 'Unlock' is called.
@@ -258,11 +319,11 @@ type (
 		//
 		// All items in the wallet are encrypted using different keys which are
 		// derived from the master key.
-		Unlock(masterKey crypto.TwofishKey) error
+		Unlock(masterKey crypto.CipherKey) error
 
 		// ChangeKey changes the wallet's materKey from masterKey to newKey,
 		// re-encrypting the wallet with the provided key.
-		ChangeKey(masterKey crypto.TwofishKey, newKey crypto.TwofishKey) error
+		ChangeKey(masterKey crypto.CipherKey, newKey crypto.CipherKey) error
 
 		// Unlocked returns true if the wallet is currently unlocked, false
 		// otherwise.
@@ -288,21 +349,25 @@ type (
 		// filepath. The backup will have all seeds and keys.
 		CreateBackup(string) error
 
+		// GetAddress returns an existing coin address. This address is at an
+		// index of 1 greater than the highest index seen on the blockchain.
+		GetAddress() (types.UnlockConditions, error)
+
 		// LoadBackup will load a backup of the wallet from the provided
 		// address. The backup wallet will be added as an auxiliary seed, not
 		// as a primary seed.
-		// LoadBackup(masterKey, backupMasterKey crypto.TwofishKey, string) error
+		// LoadBackup(masterKey, backupMasterKey crypto.SiaKey, string) error
 
 		// LoadSeed will recreate a wallet file using the recovery phrase.
 		// LoadSeed only needs to be called if the original seed file or
 		// encryption password was lost. The master key is used to encrypt the
 		// recovery seed before saving it to disk.
-		LoadSeed(crypto.TwofishKey, Seed) error
+		LoadSeed(crypto.CipherKey, Seed) error
 
 		// LoadSiagKeys will take a set of filepaths that point to a siag key
 		// and will have the siag keys loaded into the wallet so that they will
 		// become spendable.
-		LoadSiagKeys(crypto.TwofishKey, []string) error
+		LoadSiagKeys(crypto.CipherKey, []string) error
 
 		// NextAddress returns a new coin addresses generated from the
 		// primary seed.
@@ -339,6 +404,13 @@ type (
 		// AddUnlockConditions adds a set of UnlockConditions to the wallet database.
 		AddUnlockConditions(uc types.UnlockConditions) error
 
+		// AddWatchAddresses instructs the wallet to begin tracking a set of
+		// addresses, in addition to the addresses it was previously tracking.
+		// If none of the addresses have appeared in the blockchain, the
+		// unused flag may be set to true. Otherwise, the wallet must rescan
+		// the blockchain to search for transactions containing the addresses.
+		AddWatchAddresses(addrs []types.UnlockHash, unused bool) error
+
 		// Close permits clean shutdown during testing and serving.
 		Close() error
 
@@ -364,6 +436,25 @@ type (
 		// transactions related to a given address.
 		AddressUnconfirmedTransactions(types.UnlockHash) ([]ProcessedTransaction, error)
 
+		// FilteredTransactions returns all transactions meeting a variety of optional
+		// filter criteria. Count specifies how many matchin transactions should be
+		// returned. If count is -1, an unlimited amount of matching transactions are
+		// returned. watchOnly specifies that only transactions matching watched
+		// addresses should be returned. category has three possible values: "send",
+		// "receive", and "". A value of "" indicates that all matching transactions
+		// should be returned. A value of "send" indicates that transactions where coins
+		// were sent from this wallet should be returned. A value of "receive" indicates
+		// that transactions where coins were received by this wallet should be returned.
+		FilteredTransactions(count uint64, watchOnly bool, category string) ([]ProcessedTransaction, error)
+
+		// FilteredUnconfirmedTransactions returns all transactions meeting watch-only and
+		// category criteria. If the watch-only filter is true, only transactions matching
+		// watched addresses will be returned. If category is "", all transactions matching
+		// the watch-only filter criteria will be returned. If category is "receive", only
+		// transactions with a relevant output will be returned. If category is "send", only
+		// transactions with a relevant input will be returned.
+		FilteredUnconfirmedTransactions(watchOnly bool, category string) ([]ProcessedTransaction, error)
+
 		// Transaction returns the transaction with the given id. The bool
 		// indicates whether the transaction is in the wallet database. The
 		// wallet only stores transactions that are related to the wallet.
@@ -382,15 +473,22 @@ type (
 		// a TransactionBuilder which can be used to expand the transaction.
 		RegisterTransaction(t types.Transaction, parents []types.Transaction) (TransactionBuilder, error)
 
-		// NewTransaction takes a list of outputs and a tx fee and
-		// returns an unsigned transaction constructed from the wallet's
+		// NewTransactionSet takes a list of outputs and a tx fee and
+		// returns an unsigned transaction set constructed from the wallet's
 		// unspent outputs
-		NewTransaction(outputs []types.SiacoinOutput, fee types.Currency) (types.Transaction, error)
+		NewTransactionSet(outputs []types.SiacoinOutput, fee types.Currency) ([]types.Transaction, error)
 
-		// NewTransaction takes a destination unlock hash, transfer amount,
-		// and a tx fee, and returns an unsigned transaction constructed from the
+		// NewTransactionSetForAddress takes a destination unlock hash, transfer amount,
+		// and a tx fee, and returns an unsigned transaction set constructed from the
 		// wallet's unspent outputs
-		NewTransactionForAddress(dest types.UnlockHash, amount, fee types.Currency) (types.Transaction, error)
+		NewTransactionSetForAddress(dest types.UnlockHash, amount, fee types.Currency) ([]types.Transaction, error)
+
+		// RemoveWatchAddresses instructs the wallet to stop tracking a set of
+		// addresses and delete their associated transactions. If none of the
+		// addresses have appeared in the blockchain, the unused flag may be
+		// set to true. Otherwise, the wallet must rescan the blockchain to
+		// rebuild its transaction history.
+		RemoveWatchAddresses(addrs []types.UnlockHash, unused bool) error
 
 		// Rescanning reports whether the wallet is currently rescanning the
 		// blockchain.
@@ -426,9 +524,9 @@ type (
 		// address, if they are known to the wallet.
 		UnlockConditions(addr types.UnlockHash) (types.UnlockConditions, error)
 
-		// WatchAddresses instructs the wallet to begin tracking a set of addresses,
-		// replacing any addresses it was previously tracking.
-		WatchAddresses(addrs []types.UnlockHash) error
+		// WatchAddresses returns the set of addresses that the wallet is
+		// currently watching.
+		WatchAddresses() ([]types.UnlockHash, error)
 	}
 
 	// WalletSettings control the behavior of the Wallet.
@@ -456,10 +554,46 @@ func SeedToString(seed Seed, did mnemonics.DictionaryID) (string, error) {
 
 // StringToSeed converts a string to a wallet seed.
 func StringToSeed(str string, did mnemonics.DictionaryID) (Seed, error) {
+	// Ensure the string is all lowercase letters and spaces
+	for _, char := range str {
+		if unicode.IsUpper(char) {
+			return Seed{}, errors.New("seed is not valid: all words must be lowercase")
+		}
+		if !unicode.IsLetter(char) && !unicode.IsSpace(char) {
+			return Seed{}, fmt.Errorf("seed is not valid: illegal character '%v'", char)
+		}
+	}
+
 	// Decode the string into the checksummed byte slice.
 	checksumSeedBytes, err := mnemonics.FromString(str, did)
 	if err != nil {
 		return Seed{}, err
+	}
+
+	// ToDo: Add other languages
+	switch {
+	case did == "english":
+		// Check seed has 28 or 29 words
+		if len(strings.Fields(str)) != 28 && len(strings.Fields(str)) != 29 {
+			return Seed{}, errors.New("seed is not valid: must be 28 or 29 words")
+		}
+
+		// Check for other formatting errors (English only)
+		IsFormat := regexp.MustCompile(`^([a-z]{4,12}){1}( {1}[a-z]{4,12}){27,28}$`).MatchString
+		if !IsFormat(str) {
+			return Seed{}, errors.New("seed is not valid: invalid formatting")
+		}
+	case did == "german":
+	case did == "japanese":
+	default:
+		return Seed{}, fmt.Errorf("seed is not valid: unsupported dictionary '%v'", did)
+	}
+
+	// Ensure the seed is 38 bytes (this check is not too helpful since it doesn't
+	// give any hints about what is wrong to the end user, which is why it's the
+	// last thing checked)
+	if len(checksumSeedBytes) != 38 {
+		return Seed{}, fmt.Errorf("seed is not valid: illegal number of bytes '%v'", len(checksumSeedBytes))
 	}
 
 	// Copy the seed from the checksummed slice.

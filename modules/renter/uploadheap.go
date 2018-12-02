@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -104,16 +103,10 @@ func (uh *uploadHeap) managedPop() (uc *unfinishedUploadChunk) {
 // the HostPubKey instead of the FileContractID, and can be simplified even
 // further once the layout is per-chunk instead of per-filecontract.
 func (r *Renter) buildUnfinishedChunks(f *siafile.SiaFile, hosts map[string]struct{}) []*unfinishedUploadChunk {
-	// If the file is not being tracked, don't repair it.
-	trackedFile, exists := r.persist.Tracking[f.SiaPath()]
-	if !exists {
-		return nil
-	}
-
 	// If we don't have enough workers for the file, don't repair it right now.
 	minWorkers := 0
 	for i := uint64(0); i < f.NumChunks(); i++ {
-		minPieces := f.ErasureCode(i).MinPieces()
+		minPieces := f.ErasureCode().MinPieces()
 		if minPieces > minWorkers {
 			minWorkers = minPieces
 		}
@@ -132,7 +125,6 @@ func (r *Renter) buildUnfinishedChunks(f *siafile.SiaFile, hosts map[string]stru
 	for i := uint64(0); i < chunkCount; i++ {
 		newUnfinishedChunks[i] = &unfinishedUploadChunk{
 			renterFile: f,
-			localPath:  trackedFile.RepairPath,
 
 			id: uploadChunkID{
 				fileUID: f.UID(),
@@ -140,8 +132,8 @@ func (r *Renter) buildUnfinishedChunks(f *siafile.SiaFile, hosts map[string]stru
 			},
 
 			index:  i,
-			length: f.ChunkSize(i),
-			offset: int64(i * f.ChunkSize(i)),
+			length: f.ChunkSize(),
+			offset: int64(i * f.ChunkSize()),
 
 			// memoryNeeded has to also include the logical data, and also
 			// include the overhead for encryption.
@@ -152,13 +144,13 @@ func (r *Renter) buildUnfinishedChunks(f *siafile.SiaFile, hosts map[string]stru
 			// TODO: Currently we request memory for all of the pieces as well
 			// as the minimum pieces, but we perhaps don't need to request all
 			// of that.
-			memoryNeeded:  f.PieceSize()*uint64(f.ErasureCode(i).NumPieces()+f.ErasureCode(i).MinPieces()) + uint64(f.ErasureCode(i).NumPieces()*crypto.TwofishOverhead),
-			minimumPieces: f.ErasureCode(i).MinPieces(),
-			piecesNeeded:  f.ErasureCode(i).NumPieces(),
+			memoryNeeded:  f.PieceSize()*uint64(f.ErasureCode().NumPieces()+f.ErasureCode().MinPieces()) + uint64(f.ErasureCode().NumPieces())*f.MasterKey().Type().Overhead(),
+			minimumPieces: f.ErasureCode().MinPieces(),
+			piecesNeeded:  f.ErasureCode().NumPieces(),
 
-			physicalChunkData: make([][]byte, f.ErasureCode(i).NumPieces()),
+			physicalChunkData: make([][]byte, f.ErasureCode().NumPieces()),
 
-			pieceUsage:  make([]bool, f.ErasureCode(i).NumPieces()),
+			pieceUsage:  make([]bool, f.ErasureCode().NumPieces()),
 			unusedHosts: make(map[string]struct{}),
 		}
 		// Every chunk can have a different set of unused hosts.
@@ -278,16 +270,10 @@ func (r *Renter) managedBuildChunkHeap(hosts map[string]struct{}) {
 		}
 	}
 	for _, file := range files {
-		// check for local file
-		id := r.mu.RLock()
-		tf, exists := r.persist.Tracking[file.SiaPath()]
-		r.mu.RUnlock(id)
-		if exists {
-			// Check if local file is missing and redundancy is less than 1
-			// log warning to renter log
-			if _, err := os.Stat(tf.RepairPath); os.IsNotExist(err) && file.Redundancy(offline, goodForRenew) < 1 {
-				r.log.Println("File not found on disk and possibly unrecoverable:", tf.RepairPath)
-			}
+		// Check if local file is missing and redundancy is less than 1
+		// log warning to renter log
+		if _, err := os.Stat(file.LocalPath()); os.IsNotExist(err) && file.Redundancy(offline, goodForRenew) < 1 {
+			r.log.Println("File not found on disk and possibly unrecoverable:", file.LocalPath())
 		}
 	}
 }
@@ -366,10 +352,14 @@ func (r *Renter) threadedUploadLoop() {
 		// and re-checks the health of all the files.
 		rebuildHeapSignal := time.After(rebuildChunkHeapInterval)
 		for {
-			// Return if the renter has shut down.
 			select {
 			case <-r.tg.StopChan():
+				// Return if the renter has shut down.
 				return
+			case <-rebuildHeapSignal:
+				// Break to the outer loop if workers/heap need to be
+				// refreshed.
+				break
 			default:
 			}
 

@@ -31,11 +31,11 @@ func TestWalletGETEncrypted(t *testing.T) {
 	t.Parallel()
 	// Check a wallet that has never been encrypted.
 	testdir := build.TempDir("api", t.Name())
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal("Failed to create gateway:", err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal("Failed to create consensus set:", err)
 	}
@@ -43,7 +43,7 @@ func TestWalletGETEncrypted(t *testing.T) {
 	if err != nil {
 		t.Fatal("Failed to create tpool:", err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal("Failed to create wallet:", err)
 	}
@@ -98,7 +98,7 @@ func TestWalletEncrypt(t *testing.T) {
 	testdir := build.TempDir("api", t.Name())
 
 	walletPassword := "testpass"
-	key := crypto.TwofishKey(crypto.HashObject(walletPassword))
+	key := crypto.NewWalletKey(crypto.HashObject(walletPassword))
 
 	st, err := assembleServerTester(key, testdir)
 	if err != nil {
@@ -170,11 +170,11 @@ func TestWalletBlankEncrypt(t *testing.T) {
 	t.Parallel()
 	// Create a server object without encrypting or unlocking the wallet.
 	testdir := build.TempDir("api", t.Name())
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestWalletBlankEncrypt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,11 +238,11 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	}
 	// Create a server object without encrypting or unlocking the wallet.
 	testdir := build.TempDir("api", "TestIntegrationWalletInitSeed")
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +250,7 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,6 +314,47 @@ func TestIntegrationWalletInitSeed(t *testing.T) {
 	}
 	if !unlocked {
 		t.Error("wallet is not unlocked")
+	}
+}
+
+func TestWalletGETAndPOST(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	st, err := createServerTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.server.panicClose()
+	// Send coins to a wallet address through the api.
+	var wag WalletAddressGET
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr := wag.Address.String()
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr2 := wag.Address.String()
+	if gAddr != gAddr2 {
+		t.Error("Called GET /wallet/address twice and got different results")
+	}
+	var wap WalletAddressPOST
+	qs := url.Values{}
+	err = st.postAPI("/wallet/address", qs, &wap)
+	pAddr := wap.Address.String()
+	if pAddr != gAddr {
+		t.Error("First GET /wallet/address and first POST /wallet/address should be the same")
+	}
+	err = st.getAPI("/wallet/address", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gAddr3 := wag.Address.String()
+	if gAddr != gAddr3 {
+		t.Error("GET /wallet/address response should not change after POST /wallet/address is called")
 	}
 }
 
@@ -425,8 +466,8 @@ func TestIntegrationWalletSweepSeedPOST(t *testing.T) {
 	defer st.server.panicClose()
 
 	// send coins to a new wallet, then sweep them back
-	key := crypto.GenerateTwofishKey()
-	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"))
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
+	w, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +531,7 @@ func TestIntegrationWalletLoadSeedPOST(t *testing.T) {
 	}
 
 	// Create a wallet.
-	key := crypto.TwofishKey(crypto.HashObject("password"))
+	key := crypto.NewWalletKey(crypto.HashObject("password"))
 	st, err := assembleServerTester(key, build.TempDir("api", t.Name()))
 	if err != nil {
 		t.Fatal(err)
@@ -505,8 +546,8 @@ func TestIntegrationWalletLoadSeedPOST(t *testing.T) {
 	}
 
 	// Create a wallet to load coins from.
-	key2 := crypto.GenerateTwofishKey()
-	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"))
+	key2 := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
+	w2, err := wallet.New(st.cs, st.tpool, filepath.Join(st.dir, "wallet2"), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -677,7 +718,20 @@ func TestWalletTransactionGETid(t *testing.T) {
 	if len(wtg.UnconfirmedTransactions) != 2 {
 		t.Fatal("expecting two unconfirmed transactions in sender wallet")
 	}
-	// Check that undocumented API behaviour used in Sia-UI still works with
+
+	// Testing GET :id for unconfirmed transactions
+	var wutgid WalletTransactionGETid
+	err = st.getAPI(fmt.Sprintf("/wallet/transaction/%s", wtg.UnconfirmedTransactions[0].TransactionID), &wutgid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wutgid2 WalletTransactionGETid
+	err = st.getAPI(fmt.Sprintf("/wallet/transaction/%s", wtg.UnconfirmedTransactions[1].TransactionID), &wutgid2)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that undocumented API behavior used in Sia-UI still works with
 	// current API.
 	err = st.getAPI("/wallet/transactions?startheight=0&endheight=-1", &wtg)
 	if err != nil {
@@ -960,7 +1014,7 @@ func TestWalletReset(t *testing.T) {
 	testdir := build.TempDir("api", t.Name())
 
 	walletPassword := "testpass"
-	key := crypto.TwofishKey(crypto.HashObject(walletPassword))
+	key := crypto.NewWalletKey(crypto.HashObject(walletPassword))
 
 	st, err := assembleServerTester(key, testdir)
 	if err != nil {
@@ -975,7 +1029,7 @@ func TestWalletReset(t *testing.T) {
 
 	// reencrypt the wallet
 	newPassword := "testpass2"
-	newKey := crypto.TwofishKey(crypto.HashObject(newPassword))
+	newKey := crypto.NewWalletKey(crypto.HashObject(newPassword))
 
 	initValues := url.Values{}
 	initValues.Set("force", "true")
@@ -1082,8 +1136,8 @@ func TestWalletChangePassword(t *testing.T) {
 
 	originalPassword := "testpass"
 	newPassword := "newpass"
-	originalKey := crypto.TwofishKey(crypto.HashObject(originalPassword))
-	newKey := crypto.TwofishKey(crypto.HashObject(newPassword))
+	originalKey := crypto.NewWalletKey(crypto.HashObject(originalPassword))
+	newKey := crypto.NewWalletKey(crypto.HashObject(newPassword))
 
 	st, err := assembleServerTester(originalKey, testdir)
 	if err != nil {
@@ -1435,11 +1489,6 @@ func TestWalletManyTransactions(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Disable defrag for the wallet
-	st.wallet.SetSettings(modules.WalletSettings{
-		NoDefrag: true,
-	})
-
 	// Mining blocks should have created transactions for the wallet containing
 	// miner payouts. Get the list of transactions.
 	var wtg WalletTransactionsGET
@@ -1601,5 +1650,107 @@ func TestWalletUnspentOutputsGET(t *testing.T) {
 	}
 	if types.CalculateCoinbase(2).Cmp(wug.Outputs[1].Value) != 0 {
 		t.Errorf("Coinbase of block 2 is appearing incorrectly in the unspent outputs API: %v != %v", types.CalculateCoinbase(2), wug.Outputs[1].Value)
+	}
+}
+
+func TestFilteredTransactionsGET(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+	st, err := createServerTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Mining blocks should have created transactions for the wallet containing
+	// miner payouts. Get the list of transactions.
+	var wtg WalletTransactionsGET
+	err = st.getAPI("/wallet/transactions?count=1", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+
+	// Test that default values work
+	err = st.getAPI("/wallet/transactions", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+
+	// Test that the receive filter works
+	err = st.getAPI("/wallet/transactions?category=receive", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting a few wallet transactions, corresponding to miner payouts.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+
+	// Test that the send filter works
+	err = st.getAPI("/wallet/transactions?category=send", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) != 0 {
+		t.Fatal("expecting no sent wallet transactions, there have only been miner payout receiving transactions.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+
+	// Test that the watch-only filter works
+	err = st.getAPI("/wallet/transactions?watchonly=true", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) != 0 {
+		t.Fatal("expecting no wallet transactions, filtered by an empty watch list.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
+	}
+	var wag WalletAddressesGET
+	err = st.getAPI("/wallet/addresses", &wag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wag.Addresses) == 0 {
+		t.Fatal("expecting wallet addresses, but found none.")
+	}
+	var wwp WalletWatchPOST
+	addresses := []string{}
+	for _, addr := range wag.Addresses {
+		addresses = append(addresses, addr.String())
+	}
+	wwr := walletWatchReq{Addresses: addresses}
+	err = st.postAPIJSON("/wallet/watch", wwr, &wwp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Test that the watch-only filter works
+	err = st.getAPI("/wallet/transactions?watchonly=true", &wtg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(wtg.ConfirmedTransactions) == 0 {
+		t.Fatal("expecting some wallet transactions since we filtered using a list of all the addresses in the wallet.")
+	}
+	if len(wtg.UnconfirmedTransactions) != 0 {
+		t.Fatal("expecting 0 unconfirmed transactions")
 	}
 }

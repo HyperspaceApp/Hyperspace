@@ -141,7 +141,7 @@ type serverTester struct {
 	renter    modules.Renter
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	server *Server
 
@@ -150,7 +150,7 @@ type serverTester struct {
 
 // assembleServerTester creates a bunch of modules and assembles them into a
 // server tester, without creating any directories or mining any blocks.
-func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester, error) {
+func assembleServerTester(key crypto.CipherKey, testdir string) (*serverTester, error) {
 	// assembleServerTester should not get called during short tests, as it
 	// takes a long time to run.
 	if testing.Short() {
@@ -158,11 +158,11 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 	}
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func assembleServerTester(key crypto.TwofishKey, testdir string) (*serverTester,
 // assembleAuthenticatedServerTester creates a bunch of modules and assembles
 // them into a server tester that requires authentication with the given
 // requiredPassword. No directories are created and no blocks are mined.
-func assembleAuthenticatedServerTester(requiredPassword string, key crypto.TwofishKey, testdir string) (*serverTester, error) {
+func assembleAuthenticatedServerTester(requiredPassword string, key crypto.CipherKey, testdir string) (*serverTester, error) {
 	// assembleAuthenticatedServerTester should not get called during short
 	// tests, as it takes a long time to run.
 	if testing.Short() {
@@ -242,11 +242,11 @@ func assembleAuthenticatedServerTester(requiredPassword string, key crypto.Twofi
 	}
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func assembleAuthenticatedServerTester(requiredPassword string, key crypto.Twofi
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
@@ -334,11 +334,11 @@ func assembleExplorerServerTester(testdir string) (*serverTester, error) {
 	}
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +387,7 @@ func blankServerTester(name string) (*serverTester, error) {
 
 	// Create the server tester with key.
 	testdir := build.TempDir("api", name)
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	st, err := assembleServerTester(key, testdir)
 	if err != nil {
 		return nil, err
@@ -408,7 +408,7 @@ func createServerTester(name string) (*serverTester, error) {
 	testdir := build.TempDir("api", name)
 	log.Println(testdir)
 
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	st, err := assembleServerTester(key, testdir)
 	if err != nil {
 		return nil, err
@@ -438,7 +438,7 @@ func createAuthenticatedServerTester(name string, password string) (*serverTeste
 	// Create the testing directory.
 	testdir := build.TempDir("authenticated-api", name)
 
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	st, err := assembleAuthenticatedServerTester(password, key, testdir)
 	if err != nil {
 		return nil, err
@@ -613,6 +613,41 @@ func (st *serverTester) getAPI(call string, obj interface{}) error {
 // postAPI makes an API call and decodes the response.
 func (st *serverTester) postAPI(call string, values url.Values, obj interface{}) error {
 	resp, err := HttpPOST("http://"+st.server.listener.Addr().String()+call, values.Encode())
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if non2xx(resp.StatusCode) {
+		return decodeError(resp)
+	}
+
+	// Return early because there is no content to decode.
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+
+	// Decode the response into 'obj'.
+	err = json.NewDecoder(resp.Body).Decode(obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type walletWatchReq struct {
+	Addresses []string `json:"addresses"`
+	Remove    bool     `json:"remove"`
+	Unused    bool     `json:"unused"`
+}
+
+// postAPIJSON makes a json-encoded API call and decodes the response.
+func (st *serverTester) postAPIJSON(call string, jsonObj, obj interface{}) error {
+	js, err := json.Marshal(jsonObj)
+	if err != nil {
+		log.Fatal(err)
+	}
+	resp, err := HttpPOSTJSON("http://"+st.server.listener.Addr().String()+call, string(js))
 	if err != nil {
 		return err
 	}

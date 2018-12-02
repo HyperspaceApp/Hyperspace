@@ -6,20 +6,12 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
+	"github.com/HyperspaceApp/Hyperspace/gcs/blockcf"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/coreos/bbolt"
 )
-
-// SurpassThreshold is a percentage that dictates how much heavier a competing
-// chain has to be before the node will switch to mining on that chain. This is
-// not a consensus rule. This percentage is only applied to the most recent
-// block, not the entire chain; see blockNode.heavierThan.
-//
-// If no threshold were in place, it would be possible to manipulate a block's
-// timestamp to produce a sufficiently heavier block.
-var SurpassThreshold = big.NewRat(20, 100)
 
 // processedBlock is a copy/rename of blockNode, with the pointers to
 // other blockNodes replaced with block ID's, and all the fields
@@ -43,7 +35,7 @@ type processedBlock struct {
 // that the weight of 'bn' exceeds the weight of 'cmp' by:
 //		(the target of 'cmp' * 'Surpass Threshold')
 func (pb *processedBlock) heavierThan(cmp *processedBlock) bool {
-	requirement := cmp.Depth.AddDifficulties(cmp.ChildTarget.MulDifficulty(SurpassThreshold))
+	requirement := cmp.Depth.AddDifficulties(cmp.ChildTarget.MulDifficulty(modules.SurpassThreshold))
 	return requirement.Cmp(pb.Depth) > 0 // Inversed, because the smaller target is actually heavier.
 }
 
@@ -118,8 +110,9 @@ func (cs *ConsensusSet) setChildTarget(blockMap *bolt.Bucket, pb *processedBlock
 }
 
 // newChild creates a blockNode from a block and adds it to the parent's set of
-// children. The new node is also returned. It necessarily modifies the database
-func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block) *processedBlock {
+// children. The new node is also returned. It necessarily modifies the block
+// and block header buckets.
+func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
 	// Create the child node.
 	childID := b.ID()
 	child := &processedBlock{
@@ -144,5 +137,96 @@ func (cs *ConsensusSet) newChild(tx *bolt.Tx, pb *processedBlock, b types.Block)
 	if build.DEBUG && err != nil {
 		panic(err)
 	}
-	return child
+	var hashes []types.UnlockHash
+	fileContracts := getRelatedFileContracts(tx, &b)
+	for _, fc := range fileContracts {
+		contractHashes := fc.OutputUnlockHashes()
+		hashes = append(hashes, contractHashes...)
+	}
+	filter, err := blockcf.BuildFilter(&b, hashes)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	childHeader := &modules.ProcessedBlockHeader{
+		BlockHeader:   b.Header(),
+		Height:        child.Height,
+		Depth:         child.Depth,
+		ChildTarget:   child.ChildTarget,
+		GCSFilter:     *filter,
+		Announcements: modules.FindHostAnnouncementsFromBlock(child.Block),
+	}
+
+	blockHeaderMap := tx.Bucket(BlockHeaderMap)
+	err = blockHeaderMap.Put(childID[:], encoding.Marshal(*childHeader))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	cs.processedBlockHeaders[childID] = childHeader
+	return child, childHeader
+}
+
+// newHeaderChild creates a new child headerNode from a header and adds it to the parent's set of
+// children. The new node is also returned. It necessarily modifies the BlockHeaderMap bucket
+func (cs *ConsensusSet) newHeaderChild(tx *bolt.Tx, parentHeader *modules.ProcessedBlockHeader, header modules.TransmittedBlockHeader) *modules.ProcessedBlockHeader {
+	// Create the child node.
+	childID := header.BlockHeader.ID()
+	childHeader := &modules.ProcessedBlockHeader{
+		BlockHeader:   header.BlockHeader,
+		Height:        parentHeader.Height + 1,
+		Depth:         parentHeader.ChildDepth(),
+		GCSFilter:     header.GCSFilter,
+		Announcements: header.Announcements,
+	}
+	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, header.BlockHeader.ParentID)
+	_, _, err := cs.storeBlockTotals(tx, childHeader.Height, childID, prevTotalTime, parentHeader.BlockHeader.Timestamp,
+		header.BlockHeader.Timestamp, prevTotalTarget, parentHeader.ChildTarget)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	// Use the difficulty adjustment algorithm to set the target of the child
+	// header and put the new processed header into the database.
+	childHeader.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, parentHeader.ChildTarget, parentHeader.Height, parentHeader.BlockHeader.Timestamp)
+
+	headerMap := tx.Bucket(BlockHeaderMap)
+	err = headerMap.Put(childID[:], encoding.Marshal(*childHeader))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+	cs.processedBlockHeaders[childID] = childHeader
+	return childHeader
+}
+
+func (cs *ConsensusSet) newSingleChild(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, b types.Block) (*processedBlock, *modules.ProcessedBlockHeader) {
+	// Create the child node.
+	childID := b.ID()
+
+	child := &processedBlock{
+		Block:  b,
+		Height: pbh.Height + 1,
+		Depth:  pbh.ChildDepth(),
+	}
+
+	// Push the total values for this block into the oak difficulty adjustment
+	// bucket. The previous totals are required to compute the new totals.
+	prevTotalTime, prevTotalTarget := cs.getBlockTotals(tx, b.ParentID)
+	_, _, err := cs.storeBlockTotals(tx, child.Height, childID, prevTotalTime, pbh.BlockHeader.Timestamp, b.Timestamp, prevTotalTarget, pbh.ChildTarget)
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+
+	// Use the difficulty adjustment algorithm to set the target of the child
+	// block and put the new processed block into the database.
+	blockMap := tx.Bucket(BlockMap)
+	child.ChildTarget = cs.childTargetOak(prevTotalTime, prevTotalTarget, pbh.ChildTarget, pbh.Height, pbh.BlockHeader.Timestamp)
+	err = blockMap.Put(childID[:], encoding.Marshal(*child))
+	if build.DEBUG && err != nil {
+		panic(err)
+	}
+
+	childHeader, exist := cs.processedBlockHeaders[childID]
+	if build.DEBUG && !exist {
+		panic("received a block without header in mem")
+	}
+
+	return child, childHeader
 }

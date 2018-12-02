@@ -1,9 +1,10 @@
-# [![Hyperspace Logo](http://i.imgur.com/9rxi9UV.png)](http://hspace.app) v0.1.1 (Sourdough)
+# [![Hyperspace Logo](http://i.imgur.com/9rxi9UV.png)](http://hspace.app) v0.2.3 (Rye)
 ----------------------------
 
 [![Build Status](https://travis-ci.org/HyperspaceApp/Hyperspace.svg?branch=master)](https://travis-ci.org/HyperspaceApp/Hyperspace)
 [![GoDoc](https://godoc.org/github.com/HyperspaceApp/Hyperspace?status.svg)](https://godoc.org/github.com/HyperspaceApp/Hyperspace)
 [![Go Report Card](https://goreportcard.com/badge/github.com/HyperspaceApp/Hyperspace)](https://goreportcard.com/report/github.com/HyperspaceApp/Hyperspace)
+[![License MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://img.shields.io/badge/License-MIT-brightgreen.svg)
 
 Hyperspace is a new decentralized cloud storage platform that radically alters the
 landscape of cloud storage. By leveraging smart contracts, client-side

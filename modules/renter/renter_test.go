@@ -15,6 +15,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // renterTester contains all of the modules that are used while testing the renter.
@@ -24,7 +25,7 @@ type renterTester struct {
 	miner     modules.TestMiner
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	renter *Renter
 	dir    string
@@ -43,11 +44,11 @@ func (rt *renterTester) Close() error {
 func newRenterTester(name string) (*renterTester, error) {
 	// Create the modules.
 	testdir := build.TempDir("renter", name)
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -55,11 +56,11 @@ func newRenterTester(name string) (*renterTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err
@@ -100,7 +101,7 @@ func newRenterTester(name string) (*renterTester, error) {
 }
 
 // stubHostDB is the minimal implementation of the hostDB interface. It can be
-// embedded in other mock hostDB types, removing the need to reimplement all
+// embedded in other mock hostDB types, removing the need to re-implement all
 // of the hostDB's methods on every mock.
 type stubHostDB struct{}
 
@@ -108,11 +109,15 @@ func (stubHostDB) ActiveHosts() []modules.HostDBEntry   { return nil }
 func (stubHostDB) AllHosts() []modules.HostDBEntry      { return nil }
 func (stubHostDB) AverageContractPrice() types.Currency { return types.Currency{} }
 func (stubHostDB) Close() error                         { return nil }
-func (stubHostDB) IsOffline(modules.NetAddress) bool    { return true }
+func (stubHostDB) Filter() (modules.FilterMode, map[string]types.SiaPublicKey) {
+	return 0, make(map[string]types.SiaPublicKey)
+}
+func (stubHostDB) SetFilterMode(fm modules.FilterMode, hosts []types.SiaPublicKey) error { return nil }
+func (stubHostDB) IsOffline(modules.NetAddress) bool                                     { return true }
 func (stubHostDB) RandomHosts(int, []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
 	return []modules.HostDBEntry{}, nil
 }
-func (stubHostDB) EstimateHostScore(modules.HostDBEntry) modules.HostScoreBreakdown {
+func (stubHostDB) EstimateHostScore(modules.HostDBEntry, modules.Allowance) modules.HostScoreBreakdown {
 	return modules.HostScoreBreakdown{}
 }
 func (stubHostDB) Host(types.SiaPublicKey) (modules.HostDBEntry, bool) {
@@ -146,9 +151,71 @@ type pricesStub struct {
 }
 
 func (pricesStub) InitialScanComplete() (bool, error) { return true, nil }
+func (pricesStub) IPViolationsCheck() bool            { return true }
 
-func (ps pricesStub) RandomHosts(n int, exclude []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
+func (ps pricesStub) RandomHosts(_ int, _, _ []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
 	return ps.dbEntries, nil
+}
+func (ps pricesStub) RandomHostsWithAllowance(_ int, _, _ []types.SiaPublicKey, _ modules.Allowance) ([]modules.HostDBEntry, error) {
+	return ps.dbEntries, nil
+}
+func (ps pricesStub) SetIPViolationCheck(enabled bool) { return }
+
+// TestRenterPricesDivideByZero verifies that the Price Estimation catches
+// divide by zero errors.
+func TestRenterPricesDivideByZero(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	rt, err := newRenterTester(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rt.Close()
+
+	// Confirm price estimation returns error if there are no hosts available
+	_, _, err = rt.renter.PriceEstimation(modules.Allowance{})
+	if err == nil {
+		t.Fatal("Expected error due to no hosts")
+	}
+
+	// Create a stubbed hostdb, add an entry.
+	hdb := &pricesStub{}
+	id := rt.renter.mu.Lock()
+	rt.renter.hostDB = hdb
+	rt.renter.mu.Unlock(id)
+	dbe := modules.HostDBEntry{}
+	dbe.ContractPrice = types.SiacoinPrecision
+	dbe.DownloadBandwidthPrice = types.SiacoinPrecision
+	dbe.UploadBandwidthPrice = types.SiacoinPrecision
+	dbe.StoragePrice = types.SiacoinPrecision
+	pk := fastrand.Bytes(crypto.EntropySize)
+	dbe.PublicKey = types.SiaPublicKey{Key: pk}
+	hdb.dbEntries = append(hdb.dbEntries, dbe)
+
+	// Confirm price estimation does not return an error now that there is a
+	// host available
+	_, _, err = rt.renter.PriceEstimation(modules.Allowance{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set allowance funds and host contract price such that the allowance funds
+	// are not sufficient to cover the contract price
+	allowance := modules.Allowance{
+		Funds:       types.SiacoinPrecision,
+		Hosts:       1,
+		Period:      12096,
+		RenewWindow: 4032,
+	}
+	dbe.ContractPrice = allowance.Funds.Mul64(2)
+
+	// Confirm price estimation returns error because of the contract and
+	// funding prices
+	_, _, err = rt.renter.PriceEstimation(allowance)
+	if err == nil {
+		t.Fatal("Expected error due to allowance funds inefficient")
+	}
 }
 
 // TestRenterPricesVolatility verifies that the renter caches its price
@@ -172,25 +239,33 @@ func TestRenterPricesVolatility(t *testing.T) {
 	dbe := modules.HostDBEntry{}
 	dbe.ContractPrice = types.SiacoinPrecision
 	dbe.DownloadBandwidthPrice = types.SiacoinPrecision
-	dbe.StoragePrice = types.SiacoinPrecision
 	dbe.UploadBandwidthPrice = types.SiacoinPrecision
-	hdb.dbEntries = append(hdb.dbEntries, dbe)
-	initial := rt.renter.PriceEstimation()
+	dbe.StoragePrice = types.SiacoinPrecision
+	// Add 4 host entries in the database with different public keys.
+	for len(hdb.dbEntries) < modules.PriceEstimationScope {
+		pk := fastrand.Bytes(crypto.EntropySize)
+		dbe.PublicKey = types.SiaPublicKey{Key: pk}
+		hdb.dbEntries = append(hdb.dbEntries, dbe)
+	}
+	allowance := modules.Allowance{}
+	initial, _, err := rt.renter.PriceEstimation(allowance)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Changing the contract price should be enough to trigger a change
+	// if the hosts are not cached.
 	dbe.ContractPrice = dbe.ContractPrice.Mul64(2)
+	pk := fastrand.Bytes(crypto.EntropySize)
+	dbe.PublicKey = types.SiaPublicKey{Key: pk}
 	hdb.dbEntries = append(hdb.dbEntries, dbe)
-	after := rt.renter.PriceEstimation()
+	after, _, err := rt.renter.PriceEstimation(allowance)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !reflect.DeepEqual(initial, after) {
 		t.Log(initial)
 		t.Log(after)
 		t.Fatal("expected renter price estimation to be constant")
-	}
-	_, err = rt.miner.AddBlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	after = rt.renter.PriceEstimation()
-	if reflect.DeepEqual(initial, after) {
-		t.Fatal("expected renter price estimation to change after mining a block")
 	}
 }
 

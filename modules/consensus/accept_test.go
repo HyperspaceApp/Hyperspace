@@ -29,6 +29,8 @@ var (
 	// parentBlockSerialized is a mock serialized form of a processedBlock.
 	parentBlockSerialized = []byte{3, 2, 1}
 
+	parentProcessedBlockHeader = modules.ProcessedBlockHeader{}
+
 	parentBlockUnmarshaler = mockBlockMarshaler{
 		[]predefinedBlockUnmarshal{
 			{parentBlockSerialized, mockParent(), nil},
@@ -58,6 +60,8 @@ var (
 	serializedParentBlockMap = []blockMapPair{
 		{mockValidBlock.ParentID[:], parentBlockSerialized},
 	}
+
+	// parentHeaderMap = make(map[types.BlockID]*modules.ProcessedBlockHeader)
 )
 
 type (
@@ -115,6 +119,12 @@ type (
 		key []byte
 		val []byte
 	}
+
+	// headerMapPair represents a key-value pair in the mock header map.
+	headerMapPair struct {
+		key []byte
+		val []byte
+	}
 )
 
 // Get returns the value associated with a given key.
@@ -150,7 +160,7 @@ func (m mockBlockMarshaler) Unmarshal(b []byte, v interface{}) error {
 			return pu.err
 		}
 	}
-	panic("unmarshal failed: predefined unmarshal not found")
+	return errors.New("unmarshal failed: predefined unmarshal not found")
 }
 
 // AddPredefinedUnmarshal adds a predefinedBlockUnmarshal to mockBlockMarshaler.
@@ -160,7 +170,7 @@ func (m *mockBlockMarshaler) AddPredefinedUnmarshal(u predefinedBlockUnmarshal) 
 
 // minimumValidChildTimestamp returns the minimum timestamp of pb that can be
 // considered a valid block.
-func (brh mockBlockRuleHelper) minimumValidChildTimestamp(blockMap dbBucket, pb *processedBlock) types.Timestamp {
+func (brh mockBlockRuleHelper) minimumValidChildTimestamp(blockMap dbBucket, blockID types.BlockID, t types.Timestamp) types.Timestamp {
 	return brh.minTimestamp
 }
 
@@ -205,6 +215,7 @@ func TestUnitValidateHeaderAndBlock(t *testing.T) {
 		block                  types.Block
 		dosBlocks              map[types.BlockID]struct{}
 		blockMapPairs          []blockMapPair
+		headerMapPairs         []headerMapPair
 		earliestValidTimestamp types.Timestamp
 		marshaler              mockBlockMarshaler
 		useNilBlockMap         bool
@@ -344,9 +355,11 @@ func TestUnitValidateHeader(t *testing.T) {
 	mockValidBlockID := mockValidBlock.ID()
 
 	var tests = []struct {
-		header                 types.BlockHeader
-		dosBlocks              map[types.BlockID]struct{}
-		blockMapPairs          []blockMapPair
+		header        types.BlockHeader
+		dosBlocks     map[types.BlockID]struct{}
+		blockMapPairs []blockMapPair
+		// headerMapPairs         []headerMapPair
+		// processedBlockHeaders  []headerMapPair
 		earliestValidTimestamp types.Timestamp
 		marshaler              mockBlockMarshaler
 		useNilBlockMap         bool
@@ -366,7 +379,7 @@ func TestUnitValidateHeader(t *testing.T) {
 			errWant:                errDoSBlock,
 			msg:                    "validateHeader should reject known bad blocks",
 		},
-		// Test that blocks are rejected if a block map doesn't exist.
+		// Test that headers are rejected if a block header map doesn't exist.
 		{
 			header:                 mockValidBlock.Header(),
 			dosBlocks:              make(map[types.BlockID]struct{}),
@@ -374,8 +387,8 @@ func TestUnitValidateHeader(t *testing.T) {
 			earliestValidTimestamp: mockValidBlock.Timestamp,
 			marshaler:              parentBlockUnmarshaler,
 			useNilBlockMap:         true,
-			errWant:                errNoBlockMap,
-			msg:                    "validateHeader should fail when no block map is found in the database",
+			errWant:                errNoHeaderMap,
+			msg:                    "validateHeader should fail when no header map is found in the database",
 		},
 		// Test that known blocks are rejected.
 		{
@@ -397,15 +410,16 @@ func TestUnitValidateHeader(t *testing.T) {
 			msg:                    "validateHeader should reject a block if its parent block does not appear in the block database",
 		},
 		// Test that blocks whose parents don't unmarshal are rejected.
-		{
-			header:                 mockValidBlock.Header(),
-			dosBlocks:              make(map[types.BlockID]struct{}),
-			blockMapPairs:          serializedParentBlockMap,
-			earliestValidTimestamp: mockValidBlock.Timestamp,
-			marshaler:              failingBlockUnmarshaler,
-			errWant:                unmarshalFailedErr,
-			msg:                    "validateHeader should fail when unmarshaling the parent block fails",
-		},
+		// { // we don't unmarshal anymore
+		// 	header:                 mockValidBlock.Header(),
+		// 	dosBlocks:              make(map[types.BlockID]struct{}),
+		// 	blockMapPairs:          serializedParentBlockMap,
+		// 	earliestValidTimestamp: mockValidBlock.Timestamp,
+		// 	marshaler:              failingBlockUnmarshaler,
+		// 	errWant:                unmarshalFailedErr,
+		// 	msg:                    "validateHeader should fail when unmarshaling the parent block fails",
+		// },
+
 		// Test that blocks with too early of a timestamp are rejected.
 		{
 			header:                 mockValidBlock.Header(),
@@ -462,27 +476,50 @@ func TestUnitValidateHeader(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		// Initialize the blockmap in the tx.
-		bucket := mockDbBucket{map[string][]byte{}}
-		for _, mapPair := range tt.blockMapPairs {
-			bucket.Set(mapPair.key, mapPair.val)
-		}
-		dbBucketMap := map[string]dbBucket{}
-		if tt.useNilBlockMap {
-			dbBucketMap[string(BlockMap)] = nil
-		} else {
-			dbBucketMap[string(BlockMap)] = bucket
-		}
-		tx := mockDbTx{dbBucketMap}
-
 		cs := ConsensusSet{
 			dosBlocks: tt.dosBlocks,
 			marshaler: tt.marshaler,
 			blockRuleHelper: mockBlockRuleHelper{
 				minTimestamp: tt.earliestValidTimestamp,
 			},
+			processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 		}
-		err := cs.validateHeader(tx, tt.header)
+		// log.Printf("\nitem: %s\n", tt.msg)
+		// Initialize the blockmap in the tx.
+		blockBucket := mockDbBucket{map[string][]byte{}}
+		for _, mapPair := range tt.blockMapPairs {
+			var id types.BlockID
+			copy(id[:], mapPair.key[:])
+			blockBucket.Set(mapPair.key, mapPair.val)
+			// log.Printf("set block id: %s", id)
+			var b processedBlock
+			err := tt.marshaler.Unmarshal(mapPair.val, &b)
+			if err == nil {
+				// log.Printf("set parent id: %s", id)
+				cs.processedBlockHeaders[id] = &modules.ProcessedBlockHeader{
+					BlockHeader: b.Block.Header(),
+					ChildTarget: b.ChildTarget,
+				}
+			} else {
+				cs.processedBlockHeaders[id] = &modules.ProcessedBlockHeader{}
+			}
+		}
+
+		dbBucketMap := map[string]dbBucket{}
+		if tt.useNilBlockMap {
+			dbBucketMap[string(BlockMap)] = nil
+			dbBucketMap[string(BlockHeaderMap)] = nil
+		} else {
+			dbBucketMap[string(BlockMap)] = blockBucket
+			dbBucketMap[string(BlockHeaderMap)] = blockBucket
+		}
+		// dbBucketMap[string(BlockHeaderMap)] = headerBucket
+		tx := mockDbTx{dbBucketMap}
+		// parentHeaderMap[mockValidBlock.ParentID] = &parentProcessedBlockHeader
+
+		_, err := cs.validateHeader(tx, tt.header)
+		// log.Printf("header parent id: %s", tt.header.ParentID)
+
 		if err != tt.errWant {
 			t.Errorf("%s: expected to fail with `%v', got: `%v'", tt.msg, tt.errWant, err)
 		}

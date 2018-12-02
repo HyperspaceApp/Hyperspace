@@ -3,6 +3,7 @@ package siatest
 import (
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 	"reflect"
 	"time"
@@ -16,15 +17,15 @@ import (
 )
 
 // DownloadToDisk downloads a previously uploaded file. The file will be downloaded
-// to a random location and returned as a TestFile object.
+// to a random location and returned as a LocalFile object.
 func (tn *TestNode) DownloadToDisk(rf *RemoteFile, async bool) (*LocalFile, error) {
 	fi, err := tn.FileInfo(rf)
 	if err != nil {
 		return nil, errors.AddContext(err, "failed to retrieve FileInfo")
 	}
 	// Create a random destination for the download
-	fileName := fmt.Sprintf("%dbytes-%s", fi.Filesize, hex.EncodeToString(fastrand.Bytes(4)))
-	dest := filepath.Join(tn.downloadsDir(), fileName)
+	fileName := fmt.Sprintf("%dbytes %s", fi.Filesize, hex.EncodeToString(fastrand.Bytes(4)))
+	dest := filepath.Join(tn.downloadDir.path, fileName)
 	if err := tn.RenterDownloadGet(rf.siaPath, dest, 0, fi.Filesize, async); err != nil {
 		return nil, errors.AddContext(err, "failed to download file")
 	}
@@ -45,6 +46,49 @@ func (tn *TestNode) DownloadToDisk(rf *RemoteFile, async bool) (*LocalFile, erro
 	return lf, nil
 }
 
+// DownloadToDiskPartial downloads a part of a previously uploaded file. The
+// file will be downlaoded to a random location and returned as a LocalFile
+// object.
+func (tn *TestNode) DownloadToDiskPartial(rf *RemoteFile, lf *LocalFile, async bool, offset, length uint64) (*LocalFile, error) {
+	fi, err := tn.FileInfo(rf)
+	if err != nil {
+		return nil, errors.AddContext(err, "failed to retrieve FileInfo")
+	}
+	// Create a random destination for the download
+	fileName := fmt.Sprintf("%dbytes %s", fi.Filesize, hex.EncodeToString(fastrand.Bytes(4)))
+	dest := filepath.Join(tn.downloadDir.path, fileName)
+	if err := tn.RenterDownloadGet(rf.siaPath, dest, offset, length, async); err != nil {
+		return nil, errors.AddContext(err, "failed to download file")
+	}
+	// Create the TestFile
+	destFile := &LocalFile{
+		path:     dest,
+		size:     int(fi.Filesize),
+		checksum: rf.checksum,
+	}
+	// If we download the file asynchronously we are done
+	if async {
+		return destFile, nil
+	}
+	// Verify checksum if we downloaded the file blocking and if lf was
+	// provided.
+	if lf != nil {
+		var checksum crypto.Hash
+		checksum, err = lf.partialChecksum(offset, offset+length)
+		if err != nil {
+			return nil, errors.AddContext(err, "failed to get partial checksum")
+		}
+		data, err := ioutil.ReadFile(dest)
+		if err != nil {
+			return nil, errors.AddContext(err, "failed to read downloaded file")
+		}
+		if checksum != crypto.HashBytes(data) {
+			return nil, fmt.Errorf("downloaded bytes don't match requested data %v-%v", offset, length)
+		}
+	}
+	return destFile, nil
+}
+
 // DownloadByStream downloads a file and returns its contents as a slice of bytes.
 func (tn *TestNode) DownloadByStream(rf *RemoteFile) (data []byte, err error) {
 	fi, err := tn.FileInfo(rf)
@@ -56,6 +100,22 @@ func (tn *TestNode) DownloadByStream(rf *RemoteFile) (data []byte, err error) {
 		err = errors.New("downloaded bytes don't match requested data")
 	}
 	return
+}
+
+// Rename renames a remoteFile and returns the new file.
+func (tn *TestNode) Rename(rf *RemoteFile, newPath string) (*RemoteFile, error) {
+	err := tn.RenterRenamePost(rf.siaPath, newPath)
+	if err != nil {
+		return nil, err
+	}
+	rf.siaPath = newPath
+	return rf, nil
+}
+
+// SetFileRepairPath changes the repair path of a remote file to the provided
+// local file's path.
+func (tn *TestNode) SetFileRepairPath(rf *RemoteFile, lf *LocalFile) error {
+	return tn.RenterSetRepairPathPost(rf.siaPath, lf.path)
 }
 
 // Stream uses the streaming endpoint to download a file.
@@ -132,12 +192,12 @@ func (tn *TestNode) DownloadInfo(lf *LocalFile, rf *RemoteFile) (*api.DownloadIn
 }
 
 // File returns the file queried by the user
-func (tn *TestNode) File(siaPath string) (modules.FileInfo, error) {
-	rf, err := tn.RenterFileGet(siaPath)
+func (tn *TestNode) File(rf *RemoteFile) (modules.FileInfo, error) {
+	rfile, err := tn.RenterFileGet(rf.siaPath)
 	if err != nil {
-		return rf.File, err
+		return rfile.File, err
 	}
-	return rf.File, err
+	return rfile.File, err
 }
 
 // Files lists the files tracked by the renter
@@ -163,16 +223,16 @@ func (tn *TestNode) FileInfo(rf *RemoteFile) (modules.FileInfo, error) {
 	return modules.FileInfo{}, errors.New("file is not tracked by the renter")
 }
 
-// Upload uses the node to upload the file.
-func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64) (*RemoteFile, error) {
+// Upload uses the node to upload the file with the option to overwrite if exists.
+func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64, force bool) (*RemoteFile, error) {
 	// Upload file
-	err := tn.RenterUploadPost(lf.path, "/"+lf.fileName(), dataPieces, parityPieces)
+	err := tn.RenterUploadForcePost(lf.path, "/"+lf.FileName(), dataPieces, parityPieces, force)
 	if err != nil {
 		return nil, err
 	}
 	// Create remote file object
 	rf := &RemoteFile{
-		siaPath:  lf.fileName(),
+		siaPath:  lf.FileName(),
 		checksum: lf.checksum,
 	}
 	// Make sure renter tracks file
@@ -183,25 +243,57 @@ func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64) (*Rem
 	return rf, nil
 }
 
-// UploadNewFile initiates the upload of a filesize bytes large file.
-func (tn *TestNode) UploadNewFile(filesize int, dataPieces uint64, parityPieces uint64) (*LocalFile, *RemoteFile, error) {
+// UploadDirectory uses the node to upload a directory
+func (tn *TestNode) UploadDirectory(ld *LocalDir) (*RemoteDir, error) {
+	// Upload Directory
+	siapath := tn.SiaPath(ld.path)
+	err := tn.RenterDirCreatePost(siapath)
+	if err != nil {
+		return nil, errors.AddContext(err, "failed to upload directory")
+	}
+
+	// Create remote directory object
+	rd := &RemoteDir{
+		siapath: siapath,
+	}
+	return rd, nil
+}
+
+// UploadNewDirectory uses the node to create and upload a directory with a
+// random name
+func (tn *TestNode) UploadNewDirectory(files, dirs, levels uint) (*RemoteDir, error) {
+	// Create Directory
+	ld, err := tn.uploadDir.newDir()
+	if err != nil {
+		return nil, errors.AddContext(err, "failed to create local directory")
+	}
+	if err = ld.PopulateDir(files, dirs, levels); err != nil {
+		return nil, errors.AddContext(err, "failed to populate directory")
+	}
+
+	// Upload Directory
+	return tn.UploadDirectory(ld)
+}
+
+// UploadNewFile initiates the upload of a filesize bytes large file with the option to overwrite if exists.
+func (tn *TestNode) UploadNewFile(filesize int, dataPieces uint64, parityPieces uint64, force bool) (*LocalFile, *RemoteFile, error) {
 	// Create file for upload
-	localFile, err := tn.NewFile(filesize)
+	localFile, err := tn.uploadDir.NewFile(filesize)
 	if err != nil {
 		return nil, nil, errors.AddContext(err, "failed to create file")
 	}
 	// Upload file, creating a parity piece for each host in the group
-	remoteFile, err := tn.Upload(localFile, dataPieces, parityPieces)
+	remoteFile, err := tn.Upload(localFile, dataPieces, parityPieces, force)
 	if err != nil {
 		return nil, nil, errors.AddContext(err, "failed to start upload")
 	}
 	return localFile, remoteFile, nil
 }
 
-// UploadNewFileBlocking uploads a filesize bytes large file and waits for the
-// upload to reach 100% progress and redundancy.
-func (tn *TestNode) UploadNewFileBlocking(filesize int, dataPieces uint64, parityPieces uint64) (*LocalFile, *RemoteFile, error) {
-	localFile, remoteFile, err := tn.UploadNewFile(filesize, dataPieces, parityPieces)
+// UploadNewFileBlocking uploads a filesize bytes large file with the option to overwrite if exists
+// and waits for the upload to reach 100% progress and redundancy.
+func (tn *TestNode) UploadNewFileBlocking(filesize int, dataPieces uint64, parityPieces uint64, force bool) (*LocalFile, *RemoteFile, error) {
+	localFile, remoteFile, err := tn.UploadNewFile(filesize, dataPieces, parityPieces, force)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -212,6 +304,25 @@ func (tn *TestNode) UploadNewFileBlocking(filesize int, dataPieces uint64, parit
 	// Wait until upload reaches a certain redundancy
 	err = tn.WaitForUploadRedundancy(remoteFile, float64((dataPieces+parityPieces))/float64(dataPieces))
 	return localFile, remoteFile, err
+}
+
+// UploadBlocking attempts to upload an existing file with the option to overwrite if exists
+// and waits for the upload to reach 100% progress and redundancy.
+func (tn *TestNode) UploadBlocking(localFile *LocalFile, dataPieces uint64, parityPieces uint64, force bool) (*RemoteFile, error) {
+	// Upload file, creating a parity piece for each host in the group
+	remoteFile, err := tn.Upload(localFile, dataPieces, parityPieces, force)
+	if err != nil {
+		return nil, errors.AddContext(err, "failed to start upload")
+	}
+
+	// Wait until upload reached the specified progress
+	if err = tn.WaitForUploadProgress(remoteFile, 1); err != nil {
+		return nil, err
+	}
+
+	// Wait until upload reaches a certain redundancy
+	err = tn.WaitForUploadRedundancy(remoteFile, float64((dataPieces+parityPieces))/float64(dataPieces))
+	return remoteFile, err
 }
 
 // WaitForDownload waits for the download of a file to finish. If a file wasn't

@@ -14,11 +14,11 @@ all: release
 dependencies:
 	# Consensus Dependencies
 	go get -u github.com/HyperspaceApp/demotemutex
+	go get -u github.com/HyperspaceApp/ed25519
 	go get -u github.com/HyperspaceApp/fastrand
 	go get -u github.com/HyperspaceApp/merkletree
 	go get -u github.com/HyperspaceApp/Hyperspace/sync
 	go get -u golang.org/x/crypto/blake2b
-	go get -u golang.org/x/crypto/ed25519
 	# Module + Daemon Dependencies
 	go get -u github.com/HyperspaceApp/entropy-mnemonics
 	go get -u github.com/HyperspaceApp/errors
@@ -36,6 +36,7 @@ dependencies:
 	go get github.com/sasha-s/go-deadlock/...
 	go get -u github.com/gorilla/websocket
 	go get -u github.com/dchest/siphash
+	go get -u github.com/dchest/threefish
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
@@ -44,7 +45,7 @@ dependencies:
 	# Developer Dependencies
 	#go install -race std
 	go get -u github.com/client9/misspell/cmd/misspell
-	go get -u github.com/golang/lint/golint
+	go get -u golang.org/x/lint/golint
 	go get -u gitlab.com/NebulousLabs/glyphcheck
 
 # pkgs changes which packages the makefile calls operate on. run changes which
@@ -52,9 +53,10 @@ dependencies:
 run = .
 pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./gcs ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
-       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/miner ./modules/miningpool \
-       ./modules/wallet ./modules/transactionpool ./modules/stratumminer ./node ./node/api ./persist ./siatest \
-       ./siatest/consensus ./siatest/renter ./siatest/wallet ./node/api/server ./sync ./types
+       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/renter/siafile \
+       ./modules/miner ./modules/miningpool ./modules/wallet ./modules/transactionpool ./modules/stratumminer \
+       ./node ./node/api ./node/api/server ./persist ./siatest ./siatest/consensus ./siatest/renter ./siatest/wallet \
+       ./sync ./types
 
 # fmt calls go fmt on all packages.
 fmt:
@@ -90,10 +92,6 @@ release:
 release-race:
 	go install -race -tags='netgo' -a -ldflags='-s -w $(ldflags)' $(pkgs)
 
-# deploy builds release binaries for every platform.
-deploy:
-	./deploy.sh
-
 # clean removes all directories that get automatically created during
 # development.
 clean:
@@ -101,21 +99,27 @@ clean:
 	rm -rf cover release
 
 test:
-	go test -short -tags='debug testing netgo' -timeout=5s $(pkgs) -run=$(run)
+	go test -short -tags='debug testing netgo' -timeout=6s $(pkgs) -run=$(run)
 test-v:
 	go test -race -v -short -tags='debug testing netgo' -timeout=15s $(pkgs) -run=$(run)
 test-long: clean fmt vet lint
 	@mkdir -p cover
-	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug netgo' -timeout=1200s $(pkgs) -run=$(run)
+	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug netgo' -timeout=1800s $(pkgs) -run=$(run)
 test-vlong: clean fmt vet lint
 	@mkdir -p cover
-	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug vlong netgo' -timeout=5000s $(pkgs) -run=$(run)
+	go test --coverprofile='./cover/cover.out' -v -race -tags='testing debug vlong netgo' -timeout=20000s $(pkgs) -run=$(run)
 test-cpu:
 	go test -v -tags='testing debug netgo' -timeout=500s -cpuprofile cpu.prof $(pkgs) -run=$(run)
 test-mem:
 	go test -v -tags='testing debug netgo' -timeout=500s -memprofile mem.prof $(pkgs) -run=$(run)
 test-pool:
 	go test -short -parallel=1 -tags='testing debug pool' -timeout=120s ./modules/miningpool -run=$(run)
+test-spv:
+	go test -v -tags='testing debug pool spv long' -timeout=60s ./modules/consensus/ -run=^TestSPV.*$
+test-spv-renter:
+	go test -v -tags='testing debug pool spv long' -timeout=60s ./node/api/ -run=^TestSPVRenter.*$
+test-module:
+	go test -v -tags='debug testing netgo' $(package) -run=$(test)
 bench: clean fmt
 	go test -tags='debug testing netgo' -timeout=500s -run=XXX -bench=$(run) $(pkgs)
 cover: clean

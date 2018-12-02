@@ -33,6 +33,7 @@ func validSiacoins(tx *bolt.Tx, t types.Transaction) error {
 	for _, sci := range t.SiacoinInputs {
 		// Check that the input spends an existing output.
 		scoBytes := scoBucket.Get(sci.ParentID[:])
+		//log.Printf("errMissingSiacoinOutput: %s", sci.ParentID.String())
 		if scoBytes == nil {
 			return errMissingSiacoinOutput
 		}
@@ -210,6 +211,17 @@ func validTransaction(tx *bolt.Tx, t types.Transaction) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func validTransactionForSPV(tx *bolt.Tx, t types.Transaction) error {
+	// StandaloneValid will check things like signatures and properties that
+	// should be inherent to the transaction. (storage proof rules, etc.)
+	err := t.StandaloneValid(blockHeight(tx))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

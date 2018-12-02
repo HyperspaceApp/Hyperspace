@@ -297,13 +297,27 @@ func TestBuriedBadFork(t *testing.T) {
 	// Create a bad block that builds on a parent, so that it is part of not
 	// the longest fork.
 	badBlock := types.Block{
-		ParentID:     pb.Block.ParentID,
-		Timestamp:    types.CurrentTimestamp(),
-		MinerPayouts: []types.SiacoinOutput{{Value: types.CalculateCoinbase(pb.Height)}},
+		ParentID:  pb.Block.ParentID,
+		Timestamp: types.CurrentTimestamp(),
 		Transactions: []types.Transaction{{
 			SiacoinInputs: []types.SiacoinInput{{}}, // Will trigger an error on full verification but not partial verification.
 		}},
 	}
+
+	minerPayoutVal, devPayoutVal := badBlock.CalculateSubsidies(pb.Height)
+	if pb.Height <= 2 {
+		badBlock.MinerPayouts = []types.SiacoinOutput{{
+			Value: minerPayoutVal,
+		}}
+	} else {
+		badBlock.MinerPayouts = []types.SiacoinOutput{{
+			Value: minerPayoutVal,
+		}, {
+			Value:      devPayoutVal,
+			UnlockHash: types.DevFundUnlockHash,
+		}}
+	}
+
 	parent, err := cst.cs.dbGetBlockMap(pb.Block.ParentID)
 	if err != nil {
 		t.Fatal(err)

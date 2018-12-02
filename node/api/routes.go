@@ -111,11 +111,12 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 	if api.renter != nil {
 		router.GET("/renter", api.renterHandlerGET)
 		router.POST("/renter", RequirePassword(api.renterHandlerPOST, requiredPassword))
+		router.POST("/renter/contract/cancel", RequirePassword(api.renterContractCancelHandler, requiredPassword))
 		router.GET("/renter/contracts", api.renterContractsHandler)
 		router.GET("/renter/downloads", api.renterDownloadsHandler)
 		router.POST("/renter/downloads/clear", RequirePassword(api.renterClearDownloadsHandler, requiredPassword))
 		router.GET("/renter/files", api.renterFilesHandler)
-		router.GET("/renter/file/*hyperspacepath", api.renterFileHandler)
+		router.GET("/renter/file/*hyperspacepath", api.renterFileHandlerGET)
 		router.GET("/renter/prices", api.renterPricesHandler)
 
 		// TODO: re-enable these routes once the new .sia format has been
@@ -131,12 +132,17 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.POST("/renter/rename/*hyperspacepath", RequirePassword(api.renterRenameHandler, requiredPassword))
 		router.GET("/renter/stream/*hyperspacepath", api.renterStreamHandler)
 		router.POST("/renter/upload/*hyperspacepath", RequirePassword(api.renterUploadHandler, requiredPassword))
+		router.POST("/renter/file/*hyperspacepath", RequirePassword(api.renterFileHandlerPOST, requiredPassword))
+
+		// Directory endpoints
+		router.POST("/renter/dir/*siapath", RequirePassword(api.renterDirHandlerPOST, requiredPassword))
 
 		// HostDB endpoints.
 		router.GET("/hostdb", api.hostdbHandler)
 		router.GET("/hostdb/active", api.hostdbActiveHandler)
 		router.GET("/hostdb/all", api.hostdbAllHandler)
 		router.GET("/hostdb/hosts/:pubkey", api.hostdbHostsHandler)
+		router.POST("/hostdb/filtermode", RequirePassword(api.hostdbFilterModeHandlerPOST, requiredPassword))
 	}
 
 	if api.stratumminer != nil {
@@ -159,7 +165,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 	// Wallet API Calls
 	if api.wallet != nil {
 		router.GET("/wallet", api.walletHandler)
-		router.GET("/wallet/address", RequirePassword(api.walletAddressHandler, requiredPassword))
+		router.GET("/wallet/address", RequirePassword(api.walletGetAddressHandler, requiredPassword))
+		router.POST("/wallet/address", RequirePassword(api.walletCreateAddressHandler, requiredPassword))
 		router.GET("/wallet/addresses", api.walletAddressesHandler)
 		router.GET("/wallet/backup", RequirePassword(api.walletBackupHandler, requiredPassword))
 		router.GET("/wallet/build/transaction", api.walletBuildTransactionHandler)
@@ -181,7 +188,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.POST("/wallet/unlockconditions", RequirePassword(api.walletUnlockConditionsHandlerPOST, requiredPassword))
 		router.GET("/wallet/unspent", RequirePassword(api.walletUnspentHandler, requiredPassword))
 		router.POST("/wallet/sign", RequirePassword(api.walletSignHandler, requiredPassword))
-		router.POST("/wallet/watch", RequirePassword(api.walletWatchHandler, requiredPassword))
+		router.GET("/wallet/watch", RequirePassword(api.walletWatchHandlerGET, requiredPassword))
+		router.POST("/wallet/watch", RequirePassword(api.walletWatchHandlerPOST, requiredPassword))
 	}
 
 	// Apply UserAgent middleware and return the Router

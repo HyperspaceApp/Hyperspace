@@ -1,12 +1,13 @@
 package contractor
 
-// contracts.go handles forming and renewing contracts for the contractor. This
-// includes deciding when new contracts need to be formed, when contracts need
-// to be renewed, and if contracts need to be blacklisted.
+// contractmaintenance.go handles forming and renewing contracts for the
+// contractor. This includes deciding when new contracts need to be formed, when
+// contracts need to be renewed, and if contracts need to be blacklisted.
 
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -31,6 +32,53 @@ type (
 	}
 )
 
+// managedCheckForDuplicates checks for static contracts that have the same host
+// key and moves the older one to old contracts
+func (c *Contractor) managedCheckForDuplicates() {
+	// Build map for comparison
+	pubkeys := make(map[string]types.FileContractID)
+	var newContract, oldContract modules.RenterContract
+	for _, contract := range c.staticContracts.ViewAll() {
+		id, exists := pubkeys[contract.HostPublicKey.String()]
+		if !exists {
+			pubkeys[contract.HostPublicKey.String()] = contract.ID
+			continue
+		}
+		// Duplicate contract found, determine older contract to delete
+		if rc, ok := c.staticContracts.View(id); ok {
+			if rc.StartHeight >= contract.StartHeight {
+				newContract, oldContract = rc, contract
+			} else {
+				newContract, oldContract = contract, rc
+			}
+			// Get SafeContract
+			oldSC, ok := c.staticContracts.Acquire(oldContract.ID)
+			if !ok {
+				// Update map
+				pubkeys[contract.HostPublicKey.String()] = newContract.ID
+				continue
+			}
+			c.mu.Lock()
+			// Link Contracts
+			c.renewedFrom[newContract.ID] = oldContract.ID
+			c.renewedTo[oldContract.ID] = newContract.ID
+			// Store the contract in the record of historic contracts.
+			c.oldContracts[oldContract.ID] = oldSC.Metadata()
+			// Save the contractor.
+			err := c.saveSync()
+			if err != nil {
+				c.log.Println("Failed to save the contractor after updating renewed maps.")
+			}
+			c.mu.Unlock()
+			// Delete the old contract.
+			c.staticContracts.Delete(oldSC)
+			// Update map
+			pubkeys[contract.HostPublicKey.String()] = newContract.ID
+			c.log.Println("Duplicate contract found and older contract deleted")
+		}
+	}
+}
+
 // managedEstimateRenewFundingRequirements estimates the amount of money that a
 // contract is going to need in the next billing cycle by looking at how much
 // storage is in the contract and what the historic usage pattern of the
@@ -40,6 +88,9 @@ func (c *Contractor) managedEstimateRenewFundingRequirements(contract modules.Re
 	host, exists := c.hdb.Host(contract.HostPublicKey)
 	if !exists {
 		return types.ZeroCurrency, errors.New("could not find host in hostdb")
+	}
+	if host.Filtered {
+		return types.ZeroCurrency, errors.New("host is blacklisted")
 	}
 
 	// Estimate the amount of money that's going to be needed for existing
@@ -86,7 +137,10 @@ func (c *Contractor) managedEstimateRenewFundingRequirements(contract modules.Re
 	// Estimate the amount of money that's going to be needed for new storage
 	// based on the amount of new storage added in the previous period. Account
 	// for both the storage price as well as the upload price.
-	prevUploadDataEstimate := prevUploadSpending.Div(host.UploadBandwidthPrice)
+	prevUploadDataEstimate := prevUploadSpending
+	if !host.UploadBandwidthPrice.IsZero() {
+		prevUploadDataEstimate = prevUploadDataEstimate.Div(host.UploadBandwidthPrice)
+	}
 	// Sanity check - the host may have changed prices, make sure we aren't
 	// assuming an unreasonable amount of data.
 	if types.NewCurrency64(dataStored).Cmp(prevUploadDataEstimate) < 0 {
@@ -166,7 +220,7 @@ func (c *Contractor) managedMarkContractsUtility() error {
 	c.mu.RLock()
 	hostCount := int(c.allowance.Hosts)
 	c.mu.RUnlock()
-	hosts, err := c.hdb.RandomHosts(hostCount+randomHostsBufferForScore, nil)
+	hosts, err := c.hdb.RandomHosts(hostCount+randomHostsBufferForScore, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -189,6 +243,11 @@ func (c *Contractor) managedMarkContractsUtility() error {
 	// Update utility fields for each contract.
 	for _, contract := range c.staticContracts.ViewAll() {
 		utility := func() (u modules.ContractUtility) {
+			// Record current utility of the contract
+			u.GoodForRenew = contract.Utility.GoodForRenew
+			u.GoodForUpload = contract.Utility.GoodForUpload
+			u.Locked = contract.Utility.Locked
+
 			// Start the contract in good standing if the utility wasn't
 			// locked.
 			if !u.Locked {
@@ -197,8 +256,8 @@ func (c *Contractor) managedMarkContractsUtility() error {
 			}
 
 			host, exists := c.hdb.Host(contract.HostPublicKey)
-			// Contract has no utility if the host is not in the database.
-			if !exists {
+			// Contract has no utility if the host is not in the database. Or is blacklisted
+			if !exists || host.Filtered {
 				u.GoodForUpload = false
 				u.GoodForRenew = false
 				return
@@ -244,6 +303,19 @@ func (c *Contractor) managedNewContract(host modules.HostDBEntry, contractFundin
 	if host.StoragePrice.Cmp(maxStoragePrice) > 0 {
 		return types.ZeroCurrency, modules.RenterContract{}, errTooExpensive
 	}
+	// Determine if host settings align with allowance period
+	c.mu.Lock()
+	if reflect.DeepEqual(c.allowance, modules.Allowance{}) {
+		c.mu.Unlock()
+		return types.ZeroCurrency, modules.RenterContract{}, errors.New("called managedNewContract but allowance wasn't set")
+	}
+	period := c.allowance.Period
+	c.mu.Unlock()
+
+	if host.MaxDuration < period {
+		err := errors.New("unable to form contract with host due to insufficient MaxDuration of host")
+		return types.ZeroCurrency, modules.RenterContract{}, err
+	}
 	// cap host.MaxCollateral
 	if host.MaxCollateral.Cmp(maxCollateral) > 0 {
 		host.MaxCollateral = maxCollateral
@@ -258,6 +330,7 @@ func (c *Contractor) managedNewContract(host modules.HostDBEntry, contractFundin
 	// create contract params
 	c.mu.RLock()
 	params := proto.ContractParams{
+		Allowance:     c.allowance,
 		Host:          host,
 		Funding:       contractFunding,
 		StartHeight:   c.blockHeight,
@@ -314,6 +387,38 @@ func (c *Contractor) managedPrunePubkeyMap() {
 	c.mu.Unlock()
 }
 
+// managedPrunedRedundantAddressRange uses the hostdb to find hosts that
+// violate the rules about address ranges and cancels them.
+func (c *Contractor) managedPrunedRedundantAddressRange() {
+	// Get all contracts which are not canceled.
+	allContracts := c.staticContracts.ViewAll()
+	var contracts []modules.RenterContract
+	for _, contract := range allContracts {
+		if contract.Utility.Locked && !contract.Utility.GoodForRenew && !contract.Utility.GoodForUpload {
+			// contract is canceled
+			continue
+		}
+		contracts = append(contracts, contract)
+	}
+
+	// Get all the public keys and map them to contract ids.
+	pks := make([]types.SiaPublicKey, 0, len(allContracts))
+	cids := make(map[string]types.FileContractID)
+	for _, contract := range contracts {
+		pks = append(pks, contract.HostPublicKey)
+		cids[contract.HostPublicKey.String()] = contract.ID
+	}
+
+	// Let the hostdb filter out bad hosts and cancel contracts with those
+	// hosts.
+	badHosts := c.hdb.CheckForIPViolations(pks)
+	for _, host := range badHosts {
+		if err := c.managedCancelContract(cids[host.String()]); err != nil {
+			c.log.Print("WARNING: Wasn't able to cancel contract in managedPrunedRedundantAddressRange", err)
+		}
+	}
+}
+
 // managedRenew negotiates a new contract for data already stored with a host.
 // It returns the new contract. This is a blocking call that performs network
 // I/O.
@@ -329,11 +434,23 @@ func (c *Contractor) managedRenew(sc *proto.SafeContract, contractFunding types.
 
 	// Fetch the host associated with this contract.
 	host, ok := c.hdb.Host(contract.HostPublicKey)
+	c.mu.Lock()
+	if reflect.DeepEqual(c.allowance, modules.Allowance{}) {
+		c.mu.Unlock()
+		return modules.RenterContract{}, errors.New("called managedRenew but allowance isn't set")
+	}
+	period := c.allowance.Period
+	c.mu.Unlock()
 	if !ok {
 		return modules.RenterContract{}, errors.New("no record of that host")
+	} else if host.Filtered {
+		return modules.RenterContract{}, errors.New("host is blacklisted")
 	} else if host.StoragePrice.Cmp(maxStoragePrice) > 0 {
 		return modules.RenterContract{}, errTooExpensive
+	} else if host.MaxDuration < period {
+		return modules.RenterContract{}, errors.New("insufficient MaxDuration of host")
 	}
+
 	// cap host.MaxCollateral
 	if host.MaxCollateral.Cmp(maxCollateral) > 0 {
 		host.MaxCollateral = maxCollateral
@@ -348,6 +465,7 @@ func (c *Contractor) managedRenew(sc *proto.SafeContract, contractFunding types.
 	// create contract params
 	c.mu.RLock()
 	params := proto.ContractParams{
+		Allowance:     c.allowance,
 		Host:          host,
 		Funding:       contractFunding,
 		StartHeight:   c.blockHeight,
@@ -480,27 +598,33 @@ func (c *Contractor) managedRenewContract(renewInstructions fileContractRenewal,
 	}
 	oldUtility.GoodForRenew = false
 	oldUtility.GoodForUpload = false
+	oldUtility.Locked = true
 	if err := oldContract.UpdateUtility(oldUtility); err != nil {
 		c.log.Println("Failed to update the contract utilities", err)
+		c.staticContracts.Return(oldContract)
 		return amount, nil // Error is not returned because the renew succeeded.
 	}
 
+	if c.staticDeps.Disrupt("InterruptContractSaveToDiskAfterDeletion") {
+		c.staticContracts.Return(oldContract)
+		return amount, errors.New("InterruptContractSaveToDiskAfterDeletion disrupt")
+	}
 	// Lock the contractor as we update it to use the new contract
 	// instead of the old contract.
 	c.mu.Lock()
-	defer c.mu.Unlock()
-	// Delete the old contract.
-	c.staticContracts.Delete(oldContract)
-	// Store the contract in the record of historic contracts.
-	c.oldContracts[id] = oldContract.Metadata()
 	// Link Contracts
 	c.renewedFrom[newContract.ID] = id
 	c.renewedTo[id] = newContract.ID
+	// Store the contract in the record of historic contracts.
+	c.oldContracts[id] = oldContract.Metadata()
 	// Save the contractor.
 	err = c.saveSync()
 	if err != nil {
 		c.log.Println("Failed to save the contractor after creating a new contract.")
 	}
+	c.mu.Unlock()
+	// Delete the old contract.
+	c.staticContracts.Delete(oldContract)
 	return amount, nil
 }
 
@@ -521,9 +645,14 @@ func (c *Contractor) threadedContractMaintenance() {
 	defer c.tg.Done()
 
 	// Archive contracts that need to be archived before doing additional
-	// maintenance, and then prune the pubkey map.
+	// maintenance, check for any duplicates caused by interruption, and then
+	// prune the pubkey map.
 	c.managedArchiveContracts()
+	c.managedCheckForDuplicates()
 	c.managedPrunePubkeyMap()
+
+	// Deduplicate contracts which share the same subnet.
+	c.managedPrunedRedundantAddressRange()
 
 	// Nothing to do if there are no hosts.
 	c.mu.RLock()
@@ -607,6 +736,9 @@ func (c *Contractor) threadedContractMaintenance() {
 		// (3% at time of writing), or if there is less than 3 sectors worth of
 		// storage+upload+download remaining.
 		host, _ := c.hdb.Host(contract.HostPublicKey)
+		if host.Filtered {
+			continue
+		}
 		blockBytes := types.NewCurrency64(modules.SectorSize * uint64(allowance.Period))
 		sectorStoragePrice := host.StoragePrice.Mul(blockBytes)
 		sectorUploadBandwidthPrice := host.UploadBandwidthPrice.Mul64(modules.SectorSize)
@@ -618,7 +750,7 @@ func (c *Contractor) threadedContractMaintenance() {
 			// Renew the contract with double the amount of funds that the
 			// contract had previously. The reason that we double the funding
 			// instead of doing anything more clever is that we don't know what
-			// the usage pattern has been. The spending could have all occured
+			// the usage pattern has been. The spending could have all occurred
 			// in one burst recently, and the user might need a contract that
 			// has substantially more money in it.
 			//
@@ -728,17 +860,23 @@ func (c *Contractor) threadedContractMaintenance() {
 		return
 	}
 
-	// Assemble an exclusion list that includes all of the hosts that we already
-	// have contracts with, then select a new batch of hosts to attempt contract
-	// formation with.
+	// Assemble two exclusion lists. The first one includes all hosts that we
+	// already have contracts with and the second one includes all hosts we
+	// have active contracts with. Then select a new batch of hosts to attempt
+	// contract formation with.
+	allContracts := c.staticContracts.ViewAll()
 	c.mu.RLock()
-	var exclude []types.SiaPublicKey
-	for _, contract := range c.staticContracts.ViewAll() {
-		exclude = append(exclude, contract.HostPublicKey)
+	var blacklist []types.SiaPublicKey
+	var addressBlacklist []types.SiaPublicKey
+	for _, contract := range allContracts {
+		blacklist = append(blacklist, contract.HostPublicKey)
+		if !contract.Utility.Locked || contract.Utility.GoodForRenew || contract.Utility.GoodForUpload {
+			addressBlacklist = append(addressBlacklist, contract.HostPublicKey)
+		}
 	}
 	initialContractFunds := c.allowance.Funds.Div64(c.allowance.Hosts).Div64(3)
 	c.mu.RUnlock()
-	hosts, err := c.hdb.RandomHosts(neededContracts*2+randomHostsBufferForScore, exclude)
+	hosts, err := c.hdb.RandomHosts(neededContracts*2+randomHostsBufferForScore, blacklist, addressBlacklist)
 	if err != nil {
 		c.log.Println("WARN: not forming new contracts:", err)
 		return
@@ -751,6 +889,13 @@ func (c *Contractor) threadedContractMaintenance() {
 		if fundsRemaining.Cmp(initialContractFunds) < 0 {
 			c.log.Println("WARN: need to form new contracts, but unable to because of a low allowance")
 			break
+		}
+
+		// If we are using a custom resolver we need to replace the domain name
+		// with 127.0.0.1 to be able to form contracts.
+		if c.staticDeps.Disrupt("customResolver") {
+			port := host.NetAddress.Port()
+			host.NetAddress = modules.NetAddress(fmt.Sprintf("127.0.0.1:%s", port))
 		}
 
 		// Attempt forming a contract with this host.

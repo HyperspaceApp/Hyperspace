@@ -1,11 +1,12 @@
 package siafile
 
 import (
-	"encoding/binary"
 	"os"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/errors"
 )
 
 type (
@@ -15,7 +16,7 @@ type (
 	FileData struct {
 		Name        string
 		FileSize    uint64
-		MasterKey   crypto.TwofishKey
+		MasterKey   [crypto.EntropySize]byte
 		ErasureCode modules.ErasureCoder
 		RepairPath  string
 		PieceSize   uint64
@@ -32,25 +33,38 @@ type (
 
 // NewFromFileData creates a new SiaFile from a FileData object that was
 // previously created from a legacy file.
-func NewFromFileData(fd FileData) *SiaFile {
+func NewFromFileData(fd FileData) (*SiaFile, error) {
+	// legacy masterKeys are always twofish keys
+	mk, err := crypto.NewSiaKey(crypto.TypeThreefish, fd.MasterKey[:])
+	if err != nil {
+		return nil, errors.AddContext(err, "failed to restore master key")
+	}
+	currentTime := time.Now()
+	ecType, ecParams := marshalErasureCoder(fd.ErasureCode)
 	file := &SiaFile{
-		staticMetadata: Metadata{
-			staticFileSize:  int64(fd.FileSize),
-			staticMasterKey: fd.MasterKey,
-			mode:            fd.Mode,
-			staticPieceSize: fd.PieceSize,
-			siaPath:         fd.Name,
+		staticMetadata: metadata{
+			AccessTime:              currentTime,
+			ChunkOffset:             defaultReservedMDPages * pageSize,
+			ChangeTime:              currentTime,
+			CreateTime:              currentTime,
+			StaticFileSize:          int64(fd.FileSize),
+			LocalPath:               fd.RepairPath,
+			StaticMasterKey:         mk.Key(),
+			StaticMasterKeyType:     mk.Type(),
+			Mode:                    fd.Mode,
+			ModTime:                 currentTime,
+			staticErasureCode:       fd.ErasureCode,
+			StaticErasureCodeType:   ecType,
+			StaticErasureCodeParams: ecParams,
+			StaticPieceSize:         fd.PieceSize,
+			SiaPath:                 fd.Name,
 		},
 		deleted:   fd.Deleted,
 		staticUID: fd.UID,
 	}
-	file.staticChunks = make([]Chunk, len(fd.Chunks))
+	file.staticChunks = make([]chunk, len(fd.Chunks))
 	for i := range file.staticChunks {
-		file.staticChunks[i].staticErasureCode = fd.ErasureCode
-		file.staticChunks[i].staticErasureCodeType = [4]byte{0, 0, 0, 1}
-		binary.LittleEndian.PutUint32(file.staticChunks[i].staticErasureCodeParams[0:4], uint32(file.staticChunks[i].staticErasureCode.MinPieces()))
-		binary.LittleEndian.PutUint32(file.staticChunks[i].staticErasureCodeParams[4:8], uint32(file.staticChunks[i].staticErasureCode.NumPieces()-file.staticChunks[i].staticErasureCode.MinPieces()))
-		file.staticChunks[i].pieces = make([][]Piece, file.staticChunks[i].staticErasureCode.NumPieces())
+		file.staticChunks[i].Pieces = make([][]Piece, file.staticMetadata.staticErasureCode.NumPieces())
 	}
 
 	// Populate the pubKeyTable of the file and add the pieces.
@@ -64,40 +78,12 @@ func NewFromFileData(fd FileData) *SiaFile {
 					file.pubKeyTable = append(file.pubKeyTable, piece.HostPubKey)
 				}
 				// Add the piece to the SiaFile.
-				file.staticChunks[chunkIndex].pieces[pieceIndex] = append(file.staticChunks[chunkIndex].pieces[pieceIndex], Piece{
+				file.staticChunks[chunkIndex].Pieces[pieceIndex] = append(file.staticChunks[chunkIndex].Pieces[pieceIndex], Piece{
 					HostPubKey: piece.HostPubKey,
 					MerkleRoot: piece.MerkleRoot,
 				})
 			}
 		}
 	}
-	return file
-}
-
-// ExportFileData creates a FileData object from a SiaFile that can be used to
-// convert the file into a legacy file.
-func (sf *SiaFile) ExportFileData() FileData {
-	sf.mu.RLock()
-	defer sf.mu.RUnlock()
-	fd := FileData{
-		Name:        sf.staticMetadata.siaPath,
-		FileSize:    uint64(sf.staticMetadata.staticFileSize),
-		MasterKey:   sf.staticMetadata.staticMasterKey,
-		ErasureCode: sf.staticChunks[0].staticErasureCode,
-		RepairPath:  sf.staticMetadata.localPath,
-		PieceSize:   sf.staticMetadata.staticPieceSize,
-		Mode:        sf.staticMetadata.mode,
-		Deleted:     sf.deleted,
-		UID:         sf.staticUID,
-	}
-	// Return a deep-copy to avoid race conditions.
-	fd.Chunks = make([]FileChunk, len(sf.staticChunks))
-	for chunkIndex := range fd.Chunks {
-		fd.Chunks[chunkIndex].Pieces = make([][]Piece, len(sf.staticChunks[chunkIndex].pieces))
-		for pieceIndex := range fd.Chunks[chunkIndex].Pieces {
-			fd.Chunks[chunkIndex].Pieces[pieceIndex] = make([]Piece, len(sf.staticChunks[chunkIndex].pieces[pieceIndex]))
-			copy(fd.Chunks[chunkIndex].Pieces[pieceIndex], sf.staticChunks[chunkIndex].pieces[pieceIndex])
-		}
-	}
-	return fd
+	return file, nil
 }

@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -9,9 +10,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"gitlab.com/NebulousLabs/ratelimit"
 	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/writeaheadlog"
+	"gitlab.com/NebulousLabs/ratelimit"
 )
 
 // A ContractSet provides safe concurrent access to a set of contracts. Its
@@ -199,7 +200,8 @@ func NewContractSet(dir string, deps modules.Dependencies) (*ContractSet, error)
 		}
 		path := filepath.Join(dir, filename)
 		if err := cs.loadSafeContract(path, walTxns); err != nil {
-			return nil, err
+			extErr := fmt.Errorf("failed to load safecontract %v", path)
+			return nil, errors.Compose(extErr, err)
 		}
 	}
 

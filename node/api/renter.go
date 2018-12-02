@@ -3,30 +3,24 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"path/filepath"
+	"regexp"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/errors"
 
 	"github.com/julienschmidt/httprouter"
-	"regexp"
 )
 
 var (
-	// recommendedHosts is the number of hosts that the renter will form
-	// contracts with if the value is not specified explicitly in the call to
-	// SetSettings.
-	recommendedHosts = build.Select(build.Var{
-		Standard: uint64(50),
-		Dev:      uint64(2),
-		Testing:  uint64(1),
-	}).(uint64)
-
 	// requiredHosts specifies the minimum number of hosts that must be set in
 	// the renter settings for the renter settings to be valid. This minimum is
 	// there to prevent users from shooting themselves in the foot.
@@ -146,6 +140,7 @@ type (
 	// to /renter/prices.
 	RenterPricesGET struct {
 		modules.RenterPriceEstimation
+		modules.Allowance
 	}
 
 	// RenterShareASCII contains an ASCII-encoded .sia file.
@@ -204,13 +199,14 @@ func (api *API) renterHandlerPOST(w http.ResponseWriter, req *http.Request, _ ht
 			WriteError(w, Error{"unable to parse hosts: " + err.Error()}, http.StatusBadRequest)
 			return
 		} else if hosts != 0 && hosts < requiredHosts {
-			WriteError(w, Error{fmt.Sprintf("insufficient number of hosts, need at least %v but have %v", recommendedHosts, hosts)}, http.StatusBadRequest)
+			WriteError(w, Error{fmt.Sprintf("insufficient number of hosts, need at least %v but have %v", requiredHosts, hosts)}, http.StatusBadRequest)
+			return
 		} else {
 			settings.Allowance.Hosts = hosts
 		}
 	} else if settings.Allowance.Hosts == 0 {
 		// Sane defaults if host haven't been set before.
-		settings.Allowance.Hosts = recommendedHosts
+		settings.Allowance.Hosts = modules.DefaultAllowance.Hosts
 	}
 	// Scan the period. (optional parameter)
 	if p := req.FormValue("period"); p != "" {
@@ -240,6 +236,54 @@ func (api *API) renterHandlerPOST(w http.ResponseWriter, req *http.Request, _ ht
 		// Sane defaults if renew window hasn't been set before.
 		settings.Allowance.RenewWindow = settings.Allowance.Period / 2
 	}
+	// Scan the expected storage. (optional parameter)
+	if es := req.FormValue("expectedstorage"); es != "" {
+		var expectedStorage uint64
+		if _, err := fmt.Sscan(es, &expectedStorage); err != nil {
+			WriteError(w, Error{"unable to parse expectedStorage: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.Allowance.ExpectedStorage = expectedStorage
+	} else if settings.Allowance.ExpectedStorage == 0 {
+		// Sane defaults if it hasn't been set before.
+		settings.Allowance.ExpectedStorage = modules.DefaultAllowance.ExpectedStorage
+	}
+	// Scan the upload bandwidth. (optional parameter)
+	if euf := req.FormValue("expectedupload"); euf != "" {
+		var expectedUpload uint64
+		if _, err := fmt.Sscan(euf, &expectedUpload); err != nil {
+			WriteError(w, Error{"unable to parse expectedUpload: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.Allowance.ExpectedUpload = expectedUpload
+	} else if settings.Allowance.ExpectedUpload == 0 {
+		// Sane defaults if it hasn't been set before.
+		settings.Allowance.ExpectedUpload = modules.DefaultAllowance.ExpectedUpload
+	}
+	// Scan the download bandwidth. (optional parameter)
+	if edf := req.FormValue("expecteddownload"); edf != "" {
+		var expectedDownload uint64
+		if _, err := fmt.Sscan(edf, &expectedDownload); err != nil {
+			WriteError(w, Error{"unable to parse expectedDownload: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.Allowance.ExpectedDownload = expectedDownload
+	} else if settings.Allowance.ExpectedDownload == 0 {
+		// Sane defaults if it hasn't been set before.
+		settings.Allowance.ExpectedDownload = modules.DefaultAllowance.ExpectedDownload
+	}
+	// Scan the expected redundancy. (optional parameter)
+	if er := req.FormValue("expectedredundancy"); er != "" {
+		var expectedRedundancy float64
+		if _, err := fmt.Sscan(er, &expectedRedundancy); err != nil {
+			WriteError(w, Error{"unable to parse expectedRedundancy: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.Allowance.ExpectedRedundancy = expectedRedundancy
+	} else if settings.Allowance.ExpectedRedundancy == 0 {
+		// Sane defaults if it hasn't been set before.
+		settings.Allowance.ExpectedRedundancy = modules.DefaultAllowance.ExpectedRedundancy
+	}
 	// Scan the download speed limit. (optional parameter)
 	if d := req.FormValue("maxdownloadspeed"); d != "" {
 		var downloadSpeed int64
@@ -267,10 +311,35 @@ func (api *API) renterHandlerPOST(w http.ResponseWriter, req *http.Request, _ ht
 		}
 		settings.StreamCacheSize = streamCacheSize
 	}
+	// Scan the checkforipviolation flag.
+	if ipc := req.FormValue("checkforipviolation"); ipc != "" {
+		var ipviolationcheck bool
+		if _, err := fmt.Sscan(ipc, &ipviolationcheck); err != nil {
+			WriteError(w, Error{"unable to parse ipviolationcheck: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		settings.IPViolationsCheck = ipviolationcheck
+	}
+
 	// Set the settings in the renter.
 	err := api.renter.SetSettings(settings)
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteSuccess(w)
+}
+
+// renterContractCancelHandler handles the API call to cancel a specific Renter contract.
+func (api *API) renterContractCancelHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var fcid types.FileContractID
+	if err := fcid.LoadString(req.FormValue("id")); err != nil {
+		WriteError(w, Error{"unable to parse id:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	err := api.renter.CancelContract(fcid)
+	if err != nil {
+		WriteError(w, Error{"unable to cancel contract:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	WriteSuccess(w)
@@ -291,10 +360,12 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 	// Parse flags
 	inactive, err := scanBool(req.FormValue("inactive"))
 	if err != nil {
+		WriteError(w, Error{"unable to parse inactive:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
 	expired, err := scanBool(req.FormValue("expired"))
 	if err != nil {
+		WriteError(w, Error{"unable to parse expired:" + err.Error()}, http.StatusBadRequest)
 		return
 	}
 
@@ -319,19 +390,13 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 			netAddress = hdbe.NetAddress
 		}
 
-		// Fetch utilities for contract
-		var goodForUpload bool
-		var goodForRenew bool
-		if utility, ok := api.renter.ContractUtility(c.HostPublicKey); ok {
-			goodForUpload = utility.GoodForUpload
-			goodForRenew = utility.GoodForRenew
-		}
+		// Build the contract.
 		contract := RenterContract{
 			DownloadSpending:          c.DownloadSpending,
 			EndHeight:                 c.EndHeight,
 			Fees:                      c.TxnFee.Add(c.ContractFee),
-			GoodForUpload:             goodForUpload,
-			GoodForRenew:              goodForRenew,
+			GoodForUpload:             c.Utility.GoodForUpload,
+			GoodForRenew:              c.Utility.GoodForRenew,
 			HostPublicKey:             c.HostPublicKey,
 			ID:                        c.ID,
 			LastTransaction:           c.Transaction,
@@ -344,9 +409,9 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 			TotalCost:                 c.TotalCost,
 			UploadSpending:            c.UploadSpending,
 		}
-		if goodForRenew {
+		if c.Utility.GoodForRenew {
 			activeContracts = append(activeContracts, contract)
-		} else if inactive && !goodForRenew {
+		} else if inactive && !c.Utility.GoodForRenew {
 			inactiveContracts = append(inactiveContracts, contract)
 		}
 		contracts = append(contracts, contract)
@@ -367,20 +432,12 @@ func (api *API) renterContractsHandler(w http.ResponseWriter, req *http.Request,
 				netAddress = hdbe.NetAddress
 			}
 
-			// Fetch utilities for contract
-			var goodForUpload bool
-			var goodForRenew bool
-			if utility, ok := api.renter.ContractUtility(c.HostPublicKey); ok {
-				goodForUpload = utility.GoodForUpload
-				goodForRenew = utility.GoodForRenew
-			}
-
 			contract := RenterContract{
 				DownloadSpending:          c.DownloadSpending,
 				EndHeight:                 c.EndHeight,
 				Fees:                      c.TxnFee.Add(c.ContractFee),
-				GoodForUpload:             goodForUpload,
-				GoodForRenew:              goodForRenew,
+				GoodForUpload:             c.Utility.GoodForUpload,
+				GoodForRenew:              c.Utility.GoodForRenew,
 				HostPublicKey:             c.HostPublicKey,
 				ID:                        c.ID,
 				LastTransaction:           c.Transaction,
@@ -467,7 +524,11 @@ func (api *API) renterDownloadsHandler(w http.ResponseWriter, _ *http.Request, _
 
 // renterLoadHandler handles the API call to load a '.sia' file.
 func (api *API) renterLoadHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	source := req.FormValue("source")
+	source, err := url.QueryUnescape(req.FormValue("source"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape the source path"}, http.StatusBadRequest)
+		return
+	}
 	if !filepath.IsAbs(source) {
 		WriteError(w, Error{"source must be an absolute path"}, http.StatusBadRequest)
 		return
@@ -497,17 +558,21 @@ func (api *API) renterLoadASCIIHandler(w http.ResponseWriter, req *http.Request,
 // renterRenameHandler handles the API call to rename a file entry in the
 // renter.
 func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	err := api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), req.FormValue("newhyperspacepath"))
+	newSiaPath, err := url.QueryUnescape(req.FormValue("newhyperspacepath"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape newhyperspacepath"}, http.StatusBadRequest)
+		return
+	}
+	err = api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), strings.TrimPrefix(newSiaPath, "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
 	}
-
 	WriteSuccess(w)
 }
 
-// renterFileHandler handles the API call to return specific file.
-func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+// renterFileHandler handles GET requests to the /renter/file/:hyperspacepath API endpoint.
+func (api *API) renterFileHandlerGET(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	file, err := api.renter.File(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
@@ -516,6 +581,25 @@ func (api *API) renterFileHandler(w http.ResponseWriter, req *http.Request, ps h
 	WriteJSON(w, RenterFile{
 		File: file,
 	})
+}
+
+// renterFileHandler handles POST requests to the /renter/file/:hyperspacepath API endpoint.
+func (api *API) renterFileHandlerPOST(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	newTrackingPath, err := url.QueryUnescape(req.FormValue("trackingpath"))
+	if err != nil {
+		WriteError(w, Error{"unable to unescape new tracking path"}, http.StatusBadRequest)
+		return
+	}
+
+	// Handle changing the tracking path of a file.
+	if newTrackingPath != "" {
+		siapath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
+		if err := api.renter.SetFileTrackingPath(siapath, newTrackingPath); err != nil {
+			WriteError(w, Error{fmt.Sprintf("unable set tracking path: %v", err)}, http.StatusBadRequest)
+			return
+		}
+	}
+	WriteSuccess(w)
 }
 
 // renterFilesHandler handles the API call to list all of the files.
@@ -539,9 +623,82 @@ func (api *API) renterFilesHandler(w http.ResponseWriter, req *http.Request, _ h
 
 // renterPricesHandler reports the expected costs of various actions given the
 // renter settings and the set of available hosts.
-func (api *API) renterPricesHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+func (api *API) renterPricesHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	allowance := modules.Allowance{}
+	// Scan the allowance amount. (optional parameter)
+	if f := req.FormValue("funds"); f != "" {
+		funds, ok := scanAmount(f)
+		if !ok {
+			WriteError(w, Error{"unable to parse funds"}, http.StatusBadRequest)
+			return
+		}
+		allowance.Funds = funds
+	}
+	// Scan the number of hosts to use. (optional parameter)
+	if h := req.FormValue("hosts"); h != "" {
+		var hosts uint64
+		if _, err := fmt.Sscan(h, &hosts); err != nil {
+			WriteError(w, Error{"unable to parse hosts: " + err.Error()}, http.StatusBadRequest)
+			return
+		} else if hosts != 0 && hosts < requiredHosts {
+			WriteError(w, Error{fmt.Sprintf("insufficient number of hosts, need at least %v but have %v", modules.DefaultAllowance.Hosts, hosts)}, http.StatusBadRequest)
+		} else {
+			allowance.Hosts = hosts
+		}
+	}
+	// Scan the period. (optional parameter)
+	if p := req.FormValue("period"); p != "" {
+		var period types.BlockHeight
+		if _, err := fmt.Sscan(p, &period); err != nil {
+			WriteError(w, Error{"unable to parse period: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+		allowance.Period = types.BlockHeight(period)
+	}
+	// Scan the renew window. (optional parameter)
+	if rw := req.FormValue("renewwindow"); rw != "" {
+		var renewWindow types.BlockHeight
+		if _, err := fmt.Sscan(rw, &renewWindow); err != nil {
+			WriteError(w, Error{"unable to parse renewwindow: " + err.Error()}, http.StatusBadRequest)
+			return
+		} else if renewWindow != 0 && types.BlockHeight(renewWindow) < requiredRenewWindow {
+			WriteError(w, Error{fmt.Sprintf("renew window is too small, must be at least %v blocks but have %v blocks", requiredRenewWindow, renewWindow)}, http.StatusBadRequest)
+			return
+		} else {
+			allowance.RenewWindow = types.BlockHeight(renewWindow)
+		}
+	}
+
+	// Check for partially set allowance, which can happen since hosts and renew
+	// window can be optional fields. Checking here instead of assigning values
+	// above so that an empty allowance can still be submitted
+	if !reflect.DeepEqual(allowance, modules.Allowance{}) {
+		if allowance.Funds.Cmp(types.ZeroCurrency) == 0 {
+			WriteError(w, Error{fmt.Sprint("Allowance not set correctly, `funds` parameter left empty")}, http.StatusBadRequest)
+			return
+		}
+		if allowance.Period == 0 {
+			WriteError(w, Error{fmt.Sprint("Allowance not set correctly, `period` parameter left empty")}, http.StatusBadRequest)
+			return
+		}
+		if allowance.Hosts == 0 {
+			WriteError(w, Error{fmt.Sprint("Allowance not set correctly, `hosts` parameter left empty")}, http.StatusBadRequest)
+			return
+		}
+		if allowance.RenewWindow == 0 {
+			WriteError(w, Error{fmt.Sprint("Allowance not set correctly, `renewwindow` parameter left empty")}, http.StatusBadRequest)
+			return
+		}
+	}
+
+	estimate, a, err := api.renter.PriceEstimation(allowance)
+	if err != nil {
+		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
 	WriteJSON(w, RenterPricesGET{
-		RenterPriceEstimation: api.renter.PriceEstimation(),
+		RenterPriceEstimation: estimate,
+		Allowance:             a,
 	})
 }
 
@@ -593,7 +750,10 @@ func (api *API) renterDownloadAsyncHandler(w http.ResponseWriter, req *http.Requ
 // /renter/download endpoint. Validation of these parameters is done by the
 // renter.
 func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httprouter.Params) (modules.RenterDownloadParameters, error) {
-	destination := req.FormValue("destination")
+	destination, err := url.QueryUnescape(req.FormValue("destination"))
+	if err != nil {
+		return modules.RenterDownloadParameters{}, errors.AddContext(err, "failed to unescape the destination")
+	}
 
 	// The offset and length in bytes.
 	offsetparam := req.FormValue("offset")
@@ -611,26 +771,26 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 	if len(offsetparam) > 0 {
 		_, err := fmt.Sscan(offsetparam, &offset)
 		if err != nil {
-			return modules.RenterDownloadParameters{}, build.ExtendErr("could not decode the offset as uint64: ", err)
+			return modules.RenterDownloadParameters{}, errors.AddContext(err, "could not decode the offset as uint64")
 		}
 	}
 	if len(lengthparam) > 0 {
 		_, err := fmt.Sscan(lengthparam, &length)
 		if err != nil {
-			return modules.RenterDownloadParameters{}, build.ExtendErr("could not decode the offset as uint64: ", err)
+			return modules.RenterDownloadParameters{}, errors.AddContext(err, "could not decode the offset as uint64")
 		}
 	}
 
 	// Parse the httpresp parameter.
 	httpresp, err := scanBool(httprespparam)
 	if err != nil {
-		return modules.RenterDownloadParameters{}, build.ExtendErr("httpresp parameter could not be parsed", err)
+		return modules.RenterDownloadParameters{}, errors.AddContext(err, "httpresp parameter could not be parsed")
 	}
 
 	// Parse the async parameter.
 	async, err := scanBool(asyncparam)
 	if err != nil {
-		return modules.RenterDownloadParameters{}, build.ExtendErr("async parameter could not be parsed", err)
+		return modules.RenterDownloadParameters{}, errors.AddContext(err, "async parameter could not be parsed")
 	}
 
 	hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/") // Sia file name.
@@ -652,14 +812,18 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 // renterShareHandler handles the API call to create a '.sia' file that
 // shares a set of file.
 func (api *API) renterShareHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	destination := req.FormValue("destination")
+	destination, err := url.QueryUnescape(req.FormValue("destination"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape the destination path"}, http.StatusBadRequest)
+		return
+	}
 	// Check that the destination path is absolute.
 	if !filepath.IsAbs(destination) {
 		WriteError(w, Error{"destination must be an absolute path"}, http.StatusBadRequest)
 		return
 	}
 
-	err := api.renter.ShareFiles(strings.Split(req.FormValue("hyperspacepaths"), ","), destination)
+	err = api.renter.ShareFiles(strings.Split(req.FormValue("hyperspacepaths"), ","), destination)
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -695,21 +859,23 @@ func (api *API) renterStreamHandler(w http.ResponseWriter, req *http.Request, ps
 
 // renterUploadHandler handles the API call to upload a file.
 func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	source := req.FormValue("source")
+	source, err := url.QueryUnescape(req.FormValue("source"))
+	if err != nil {
+		WriteError(w, Error{"failed to unescape the source path"}, http.StatusBadRequest)
+		return
+	}
 	if !filepath.IsAbs(source) {
 		WriteError(w, Error{"source must be an absolute path"}, http.StatusBadRequest)
 		return
 	}
 
 	// Check whether existing file should be overwritten
-	overwrite := false
-	if req.FormValue("overwrite") != "" {
-		b, err := strconv.ParseBool(req.FormValue("overwrite"))
+	force := false
+	if f := req.FormValue("force"); f != "" {
+		force, err = strconv.ParseBool(f)
 		if err != nil {
-			WriteError(w, Error{"unable to parse 'overwrite' parameter: " + err.Error()}, http.StatusBadRequest)
+			WriteError(w, Error{"unable to parse 'force' parameter: " + err.Error()}, http.StatusBadRequest)
 			return
-		} else {
-			overwrite = b
 		}
 	}
 
@@ -748,7 +914,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 		}
 
 		// Create the erasure coder.
-		ec, err = renter.NewRSCode(dataPieces, parityPieces)
+		ec, err = siafile.NewRSCode(dataPieces, parityPieces)
 		if err != nil {
 			WriteError(w, Error{"unable to encode file using the provided parameters: " + err.Error()}, http.StatusBadRequest)
 			return
@@ -756,15 +922,52 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 	}
 
 	// Call the renter to upload the file.
-	err := api.renter.Upload(modules.FileUploadParams{
+	err = api.renter.Upload(modules.FileUploadParams{
 		Source:      source,
 		SiaPath:     strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
 		ErasureCode: ec,
-		Overwrite:   overwrite,
+		Force:       force,
 	})
 	if err != nil {
 		WriteError(w, Error{"upload failed: " + err.Error()}, http.StatusInternalServerError)
 		return
 	}
 	WriteSuccess(w)
+}
+
+// renterDirHandlerPOST handles the API call to create a directory
+func (api *API) renterDirHandlerPOST(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	// Parse action
+	action := req.FormValue("action")
+	if action == "" {
+		WriteError(w, Error{"you must set the action you wish to execute"}, http.StatusInternalServerError)
+		return
+	}
+	if action == "create" {
+		// Call the renter to create directory
+		err := api.renter.CreateDir(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
+		if err != nil {
+			WriteError(w, Error{"failed to create directory: " + err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		WriteSuccess(w)
+		return
+	}
+	if action == "delete" {
+		fmt.Println("delete")
+		// TODO - implement
+		WriteError(w, Error{"not implemented"}, http.StatusNotImplemented)
+		return
+	}
+	if action == "rename" {
+		fmt.Println("rename")
+		// newsiapath := ps.ByName("newsiapath")
+		// TODO - implement
+		WriteError(w, Error{"not implemented"}, http.StatusNotImplemented)
+		return
+	}
+
+	// Report that no calls were made
+	WriteError(w, Error{"no calls were made, please check your submission and try again"}, http.StatusInternalServerError)
+	return
 }

@@ -51,7 +51,7 @@ func (w *worker) managedDownload(udc *unfinishedDownloadChunk) {
 	// a large overdrive. It shouldn't be a bottleneck though since bandwidth
 	// is usually a lot more scarce than CPU processing power.
 	pieceIndex := udc.staticChunkMap[string(w.contract.HostPublicKey.Key)].index
-	key := deriveKey(udc.masterKey, udc.staticChunkIndex, pieceIndex)
+	key := udc.masterKey.Derive(udc.staticChunkIndex, pieceIndex)
 	decryptedPiece, err := key.DecryptBytesInPlace(pieceData)
 	if err != nil {
 		w.renter.log.Debugln("worker failed to decrypt piece:", err)
@@ -63,13 +63,19 @@ func (w *worker) managedDownload(udc *unfinishedDownloadChunk) {
 	// enough pieces to do so. Chunk recovery is an expensive operation that
 	// should be performed in a separate thread as to not block the worker.
 	udc.mu.Lock()
-	udc.piecesCompleted++
+	udc.markPieceCompleted(pieceIndex)
 	udc.piecesRegistered--
 	if udc.piecesCompleted <= udc.erasureCode.MinPieces() {
 		atomic.AddUint64(&udc.download.atomicDataReceived, udc.staticFetchLength/uint64(udc.erasureCode.MinPieces()))
 		udc.physicalChunkData[pieceIndex] = decryptedPiece
 	}
 	if udc.piecesCompleted == udc.erasureCode.MinPieces() {
+		// Uint division might not always cause atomicDataReceived to cleanly
+		// add up to staticFetchLength so we need to figure out how much we
+		// already added to the download and how much is missing.
+		addedReceivedData := uint64(udc.erasureCode.MinPieces()) * (udc.staticFetchLength / uint64(udc.erasureCode.MinPieces()))
+		atomic.AddUint64(&udc.download.atomicDataReceived, udc.staticFetchLength-addedReceivedData)
+		// Recover the logical data.
 		go udc.threadedRecoverLogicalData()
 	}
 	udc.mu.Unlock()
@@ -168,8 +174,8 @@ func (w *worker) ownedProcessDownloadChunk(udc *unfinishedDownloadChunk) *unfini
 	chunkComplete := udc.piecesCompleted >= udc.erasureCode.MinPieces()
 	chunkFailed := udc.piecesCompleted+udc.workersRemaining < udc.erasureCode.MinPieces()
 	pieceData, workerHasPiece := udc.staticChunkMap[string(w.contract.HostPublicKey.Key)]
-	pieceTaken := udc.pieceUsage[pieceData.index]
-	if chunkComplete || chunkFailed || w.ownedOnDownloadCooldown() || !workerHasPiece || pieceTaken {
+	pieceCompleted := udc.completedPieces[pieceData.index]
+	if chunkComplete || chunkFailed || w.ownedOnDownloadCooldown() || !workerHasPiece || pieceCompleted {
 		udc.mu.Unlock()
 		udc.managedRemoveWorker()
 		return nil
@@ -215,9 +221,10 @@ func (w *worker) ownedProcessDownloadChunk(udc *unfinishedDownloadChunk) *unfini
 	// number of overdrive workers (typically zero). For our purposes, completed
 	// pieces count as active workers, though the workers have actually
 	// finished.
+	pieceTaken := udc.pieceUsage[pieceData.index]
 	piecesInProgress := udc.piecesRegistered + udc.piecesCompleted
 	desiredPiecesInProgress := udc.erasureCode.MinPieces() + udc.staticOverdrive
-	workersDesired := piecesInProgress < desiredPiecesInProgress
+	workersDesired := piecesInProgress < desiredPiecesInProgress && !pieceTaken
 
 	if workersDesired && meetsExtraCriteria {
 		// Worker can be useful. Register the worker and return the chunk for

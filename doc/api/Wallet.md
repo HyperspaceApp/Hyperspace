@@ -49,7 +49,9 @@ Index
 | [/wallet/unlockconditions](#walletunlockconditions-post)                | POST      |
 | [/wallet/unlockconditions/___:addr___](#walletunlockconditionsaddr-get) | GET       |
 | [/wallet/unlock](#walletunlock-post)                                    | POST      |
+| [/wallet/unspent](#walletunspent-get)                                   | GET       |
 | [/wallet/verify/address/:___addr___](#walletverifyaddress-get)          | GET       |
+| [/wallet/watch](#walletwatch-get)                                       | GET       |
 | [/wallet/watch](#walletwatch-post)                                      | POST      |
 
 #### /wallet [GET]
@@ -268,7 +270,7 @@ returns a list of seeds in use by the wallet. The primary seed is the only seed
 that gets used to generate new addresses. This call is unavailable when the
 wallet is locked.
 
-A seed is an encoded version of a 128 bit random seed. The output is 15 words
+A seed is an encoded version of a 256 bit random seed. The output is 29 words
 chosen from a small dictionary as indicated by the input. The most common
 choice for the dictionary is going to be 'english'. The underlying seed is the
 same no matter what dictionary is used for the encoding. The encoding also
@@ -449,13 +451,41 @@ every TransactionSignature that it has keys for.
 ```javascript
 {
   // Unsigned transaction
-  "transaction": { }, // types.Transaction
+  "transaction": {
+    "siacoininputs": [
+      {
+        "parentid": "af1a88781c362573943cda006690576b150537c1ae142a364dbfc7f04ab99584",
+        "unlockconditions": {
+          "timelock": 0,
+          "publickeys": [ "ed25519:8b845bf4871bcdf4ff80478939e508f43a2d4b2f68e94e8b2e3d1ea9b5f33ef1" ],
+          "signaturesrequired": 1
+        }
+      }
+    ],
+    "siacoinoutputs": [
+      {
+        "value": "5000000000000000000000000",
+        "unlockhash": "17d25299caeccaa7d1598751f239dd47570d148bb08658e596112d917dfa6bc8400b44f239bb"
+      },
+      {
+        "value": "299990000000000000000000000000",
+        "unlockhash": "b4bf662170622944a7c838c7e75665a9a4cf76c4cebd97d0e5dcecaefad1c8df312f90070966"
+      }
+    ],
+    "minerfees": [ "1000000000000000000000000" ],
+    "transactionsignatures": [
+      {
+        "parentid": "af1a88781c362573943cda006690576b150537c1ae142a364dbfc7f04ab99584",
+        "publickeyindex": 0,
+        "coveredfields": {"wholetransaction": true}
+      }
+    ]
+  },
 
-  // Optional IDs to sign; each should correspond to a ParentID in the TransactionSignatures.
-  "tosign": {
-    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
-  }
+  // Optional IDs to sign; each should correspond to a parentid in the transactionsignatures.
+  "tosign": [
+    "af1a88781c362573943cda006690576b150537c1ae142a364dbfc7f04ab99584"
+  ]
 }
 ```
 
@@ -463,7 +493,37 @@ every TransactionSignature that it has keys for.
 ```javascript
 {
   // signed transaction
-  "transaction": { } // types.Transaction
+  "transaction": {
+    "siacoininputs": [
+      {
+        "parentid": "af1a88781c362573943cda006690576b150537c1ae142a364dbfc7f04ab99584",
+        "unlockconditions": {
+          "timelock": 0,
+          "publickeys": [ "ed25519:8b845bf4871bcdf4ff80478939e508f43a2d4b2f68e94e8b2e3d1ea9b5f33ef1" ],
+          "signaturesrequired": 1
+        }
+      }
+    ],
+    "siacoinoutputs": [
+      {
+        "value": "5000000000000000000000000",
+        "unlockhash": "17d25299caeccaa7d1598751f239dd47570d148bb08658e596112d917dfa6bc8400b44f239bb"
+      },
+      {
+        "value": "299990000000000000000000000000",
+        "unlockhash": "b4bf662170622944a7c838c7e75665a9a4cf76c4cebd97d0e5dcecaefad1c8df312f90070966"
+      }
+    ],
+    "minerfees": [ "1000000000000000000000000" ],
+    "transactionsignatures": [
+      {
+        "parentid": "af1a88781c362573943cda006690576b150537c1ae142a364dbfc7f04ab99584",
+        "publickeyindex": 0,
+        "coveredfields": {"wholetransaction": true},
+        "signature": "CVkGjy4The6h+UU+O8rlZd/O3Gb1xRJdyQ2vzBFEb/5KveDKDrrieCiFoNtUaknXEQbdxlrDqMujc+x3aZbKCQ=="
+      }
+    ]
+  }
 }
 ```
 
@@ -742,6 +802,9 @@ returns a list of unspent outputs that the wallet is tracking.
 
       // Amount of funds in the output; hastings for space cash outputs
       "value": "1234" // big int
+
+      // Whether the output comes from a watched address or from the wallet's seed.
+      "iswatchonly": false
     }
   ]
 }
@@ -759,18 +822,45 @@ takes the address specified by :addr and returns a JSON response indicating if t
 }
 ```
 
+#### /wallet/watch [GET]
+
+returns the set of addresses that the wallet is watching. This set only
+includes addresses that were explicitly requested to be watched; addresses
+that were generated automatically by the wallet, or by /wallet/address, are
+not included.
+
+###### JSON Response [(with comments)](/doc/api/Wallet.md#json-response-12)
+```javascript
+{
+  // The addresses currently watched by the wallet.
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ]
+}
+```
+
 #### /wallet/watch [POST]
 
-start tracking a set of addresses. Outputs owned by the addresses will be
-reported in /wallet/unspent.
+updates the set of addresses watched by the wallet.
 
 ###### Request Body
-```javascript
-[
-  // unlock hashes to track
-  "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
-]
+```
+{
+  // The addresses to add or remove from the current set.
+  "addresses": [
+    "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "abcdef0123456789abcdef0123456789abcd1234567890ef0123456789abcdef"
+  ],
+
+  // If true, remove the addresses instead of adding them.
+  "remove": false,
+
+  // If true, the wallet will not rescan the blockchain. Only set this flag if
+  // the addresses have never appeared in the blockchain.
+  "unused": true,
+}
+
 ```
 
 ###### Response

@@ -1,8 +1,9 @@
 package main
 
 import (
-	"errors"
+	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,6 +18,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/profile"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	mnemonics "github.com/HyperspaceApp/entropy-mnemonics"
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/fastrand"
+	deadlock "github.com/sasha-s/go-deadlock"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -116,16 +120,16 @@ func processConfig(config Config) (Config, error) {
 // unlockWallet is called on hsd startup and attempts to automatically
 // unlock the wallet with the given password string.
 func unlockWallet(w modules.Wallet, password string) error {
-	var validKeys []crypto.TwofishKey
+	var validKeys []crypto.CipherKey
 	dicts := []mnemonics.DictionaryID{"english", "german", "japanese"}
 	for _, dict := range dicts {
 		seed, err := modules.StringToSeed(password, dict)
 		if err != nil {
 			continue
 		}
-		validKeys = append(validKeys, crypto.TwofishKey(crypto.HashObject(seed)))
+		validKeys = append(validKeys, crypto.NewWalletKey(crypto.HashObject(seed)))
 	}
-	validKeys = append(validKeys, crypto.TwofishKey(crypto.HashObject(password)))
+	validKeys = append(validKeys, crypto.NewWalletKey(crypto.HashObject(password)))
 	for _, key := range validKeys {
 		if err := w.Unlock(key); err == nil {
 			return nil
@@ -155,6 +159,7 @@ func readFileConfig(config Config) error {
 		poolViper.SetDefault("dbaddress", "127.0.0.1")
 		poolViper.SetDefault("dbname", "miningpool")
 		poolViper.SetDefault("dbport", "3306")
+		poolViper.SetDefault("difficulty", map[string]string{"nil": "nil"})
 		if !poolViper.IsSet("poolwallet") {
 			return errors.New("Must specify a poolwallet")
 		}
@@ -170,6 +175,12 @@ func readFileConfig(config Config) error {
 		dbPort := poolViper.GetString("dbport")
 		dbName := poolViper.GetString("dbname")
 		dbConnection := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPass, dbAddress, dbPort, dbName)
+		dbSocket := poolViper.GetString("dbsocket")
+		if poolViper.IsSet("dbsocket") {
+			dbConnection = fmt.Sprintf("%s:%s@unix(%s)/%s", dbUser, dbPass, dbSocket, dbName)
+		}
+		difficulty := poolViper.GetStringMapString("difficulty")
+
 		poolConfig := daemonConfig.MiningPoolConfig{
 			PoolNetworkPort:  int(poolViper.GetInt("networkport")),
 			PoolName:         poolViper.GetString("name"),
@@ -177,6 +188,7 @@ func readFileConfig(config Config) error {
 			PoolDBConnection: dbConnection,
 			PoolWallet:       poolViper.GetString("poolwallet"),
 			Luck:             poolViper.GetBool("luck"),
+			Difficulty:       difficulty,
 		}
 		globalConfig.MiningPoolConfig = poolConfig
 	}
@@ -208,22 +220,58 @@ func readFileConfig(config Config) error {
 	return nil
 }
 
+// apiPassword discovers the API password, which may be specified in an
+// environment variable, stored in a file on disk, or supplied by the user via
+// stdin.
+func apiPassword(siaDir string) (string, error) {
+	// Check the environment variable.
+	pw := os.Getenv("HYPERSPACE_API_PASSWORD")
+	if pw != "" {
+		fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
+		return pw, nil
+	}
+
+	// Try to read the password from disk.
+	path := build.APIPasswordFile(siaDir)
+	pwFile, err := ioutil.ReadFile(path)
+	if err == nil {
+		// This is the "normal" case, so don't print anything.
+		return strings.TrimSpace(string(pwFile)), nil
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
+
+	// No password file; generate a secure one.
+	// Generate a password file.
+	if err := os.MkdirAll(siaDir, 0700); err != nil {
+		return "", err
+	}
+	pw = hex.EncodeToString(fastrand.Bytes(16))
+	if err := ioutil.WriteFile(path, []byte(pw+"\n"), 0600); err != nil {
+		return "", err
+	}
+	fmt.Println("A secure API password has been written to", path)
+	fmt.Println("This password will be used automatically the next time you run siad.")
+	return pw, nil
+}
+
 // startDaemon uses the config parameters to initialize Sia modules and start
 // hsd.
 func startDaemon(config Config) (err error) {
 	if config.Siad.AuthenticateAPI {
-		password := os.Getenv("HYPERSPACE_API_PASSWORD")
-		if password != "" {
-			fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
-			config.APIPassword = password
-		} else {
-			// Prompt user for API password.
+		if config.Siad.TempPassword {
 			config.APIPassword, err = passwordPrompt("Enter API password: ")
 			if err != nil {
 				return err
-			}
-			if config.APIPassword == "" {
+			} else if config.APIPassword == "" {
 				return errors.New("password cannot be blank")
+			}
+		} else {
+			// load API password from environment variable or file.
+			// TODO: allow user to specify location of password file.
+			config.APIPassword, err = apiPassword(build.DefaultSiaDir())
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -235,6 +283,9 @@ func startDaemon(config Config) (err error) {
 	} else {
 		fmt.Println("Git Revision " + build.GitRevision)
 	}
+
+	// longer timeout time for locks
+	deadlock.Opts.DeadlockTimeout = time.Minute * 2
 
 	// Install a signal handler that will catch exceptions thrown by mmap'd
 	// files.

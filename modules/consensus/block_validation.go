@@ -94,15 +94,16 @@ func checkMinerPayouts(b types.Block, height types.BlockHeight) bool {
 
 	// Make sure the dev subsidy is correct
 	minerBlockSubsidy, devBlockSubsidy := b.CalculateSubsidies(height)
-	//fmt.Printf("checking to ensure dev payout equals the dev block subsidy. payout: %s, subsidy: %s\n", devSubsidyPayout, devBlockSubsidy)
+	// fmt.Printf("checking to ensure dev payout equals the dev block subsidy. payout: %s, subsidy: %s\n", devSubsidyPayout.Value, devBlockSubsidy)
 	if !devSubsidyPayout.Value.Equals(devBlockSubsidy) {
 		return false
 	}
+	// assure dev fund unlockhash is correct
 	if bytes.Compare(devSubsidyPayout.UnlockHash[:], types.DevFundUnlockHash[:]) != 0 {
 		return false
 	}
 
-	//fmt.Printf("checking to ensure miner payout equals the miner block subsidy. payout: %s, subsidy: %s\n", minerPayoutSum, minerBlockSubsidy)
+	// fmt.Printf("checking to ensure miner payout equals the miner block subsidy. payout: %s, subsidy: %s\n", minerPayoutSum, minerBlockSubsidy)
 	// Finally, make sure the miner subsidy is correct
 	return minerBlockSubsidy.Equals(minerPayoutSum)
 }

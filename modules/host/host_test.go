@@ -29,7 +29,7 @@ type hostTester struct {
 	renting   bool
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	host *Host
 
@@ -84,7 +84,7 @@ func (ht *hostTester) initRenting() error {
 // and then stores the key in the host tester.
 func (ht *hostTester) initWallet() error {
 	// Create the keys for the wallet and unlock it.
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	ht.walletKey = key
 	_, err := ht.wallet.Encrypt(key)
 	if err != nil {
@@ -111,11 +111,11 @@ func blankMockHostTester(d modules.Dependencies, name string) (*hostTester, erro
 	testdir := build.TempDir(modules.HostDir, name)
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func blankMockHostTester(d modules.Dependencies, name string) (*hostTester, erro
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}

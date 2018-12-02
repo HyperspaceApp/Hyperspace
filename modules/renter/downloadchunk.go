@@ -6,8 +6,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 
 	"github.com/HyperspaceApp/errors"
 )
@@ -37,7 +39,7 @@ type unfinishedDownloadChunk struct {
 	// Fetch + Write instructions - read only or otherwise thread safe.
 	destination downloadDestination // Where to write the recovered logical chunk.
 	erasureCode modules.ErasureCoder
-	masterKey   crypto.TwofishKey
+	masterKey   crypto.CipherKey
 
 	// Fetch + Write instructions - read only or otherwise thread safe.
 	staticChunkIndex  uint64                       // Required for deriving the encryption keys for each piece.
@@ -56,6 +58,7 @@ type unfinishedDownloadChunk struct {
 	staticPriority      uint64
 
 	// Download chunk state - need mutex to access.
+	completedPieces   []bool    // Which pieces were downloaded successfully.
 	failed            bool      // Indicates if the chunk has been marked as failed.
 	physicalChunkData [][]byte  // Used to recover the logical data.
 	pieceUsage        []bool    // Which pieces are being actively fetched.
@@ -71,6 +74,9 @@ type unfinishedDownloadChunk struct {
 	// The download object, mostly to update download progress.
 	download *download
 	mu       sync.Mutex
+
+	// The SiaFile from which data is being downloaded.
+	renterFile *siafile.SiaFile
 
 	// Caching related fields
 	staticStreamCache *streamCache
@@ -139,6 +145,27 @@ func (udc *unfinishedDownloadChunk) managedRemoveWorker() {
 	udc.workersRemaining--
 	udc.mu.Unlock()
 	udc.managedCleanUp()
+}
+
+// markPieceCompleted marks the piece with pieceIndex as completed.
+func (udc *unfinishedDownloadChunk) markPieceCompleted(pieceIndex uint64) {
+	udc.completedPieces[pieceIndex] = true
+	udc.piecesCompleted++
+
+	// Sanity check to make sure the slice and counter are consistent.
+	if !build.DEBUG {
+		return
+	}
+	completed := 0
+	for _, b := range udc.completedPieces {
+		if b {
+			completed++
+		}
+	}
+	if completed != udc.piecesCompleted {
+		build.Critical(fmt.Sprintf("pieces completed and completedPieces out of sync %v != %v",
+			completed, udc.piecesCompleted))
+	}
 }
 
 // returnMemory will check on the status of all the workers and pieces, and
@@ -232,10 +259,11 @@ func (udc *unfinishedDownloadChunk) threadedRecoverLogicalData() error {
 		// Download is complete, send out a notification and close the
 		// destination writer.
 		udc.download.endTime = time.Now()
+		err1 := udc.renterFile.UpdateAccessTime()
 		close(udc.download.completeChan)
-		err := udc.download.destination.Close()
+		err2 := udc.download.destination.Close()
 		udc.download.destination = nil
-		return err
+		return errors.Compose(err1, err2)
 	}
 	return nil
 }

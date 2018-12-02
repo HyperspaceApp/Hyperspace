@@ -8,8 +8,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/errors"
+	"github.com/coreos/bbolt"
 )
 
 // difficulty.go defines the Oak difficulty adjustment algorithm.

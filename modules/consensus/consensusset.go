@@ -14,9 +14,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/demotemutex"
 
 	"github.com/coreos/bbolt"
-	"github.com/HyperspaceApp/demotemutex"
 )
 
 var (
@@ -45,6 +45,12 @@ type ConsensusSet struct {
 
 	// The block root contains the genesis block.
 	blockRoot processedBlock
+
+	// getWalletKeysFunc will help check block addresses in wallet keys or not
+	getWalletKeysFunc func() ([][]byte, error)
+
+	// headerSubscribers subscribe header change
+	headerSubscribers []modules.HeaderConsensusSetSubscriber
 
 	// Subscribers to the consensus set will receive a changelog every time
 	// there is an update to the consensus set. At initialization, they receive
@@ -91,21 +97,26 @@ type ConsensusSet struct {
 	staticDeps modules.Dependencies
 	log        *persist.Logger
 	mu         demotemutex.DemoteMutex
+	// mu         deadlock.RWMutex
 	persistDir string
 	tg         siasync.ThreadGroup
+
+	// If using Simplified Payment Verification mode
+	spv                   bool
+	processedBlockHeaders map[types.BlockID]*modules.ProcessedBlockHeader
 }
 
 // New returns a new ConsensusSet, containing at least the genesis block. If
 // there is an existing block database present in the persist directory, it
 // will be loaded.
-func New(gateway modules.Gateway, bootstrap bool, persistDir string) (*ConsensusSet, error) {
-	return NewCustomConsensusSet(gateway, bootstrap, persistDir, modules.ProdDependencies)
+func New(gateway modules.Gateway, bootstrap bool, persistDir string, spv bool) (*ConsensusSet, error) {
+	return NewCustomConsensusSet(gateway, bootstrap, persistDir, modules.ProdDependencies, spv)
 }
 
 // NewCustomConsensusSet returns a new ConsensusSet, containing at least the genesis block. If
 // there is an existing block database present in the persist directory, it
 // will be loaded.
-func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir string, deps modules.Dependencies) (*ConsensusSet, error) {
+func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir string, deps modules.Dependencies, spv bool) (*ConsensusSet, error) {
 	// Check for nil dependencies.
 	if gateway == nil {
 		return nil, errNilGateway
@@ -129,8 +140,10 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		blockRuleHelper: stdBlockRuleHelper{},
 		blockValidator:  NewBlockValidator(),
 
-		staticDeps: deps,
-		persistDir: persistDir,
+		staticDeps:            deps,
+		persistDir:            persistDir,
+		spv:                   spv,
+		processedBlockHeaders: make(map[types.BlockID]*modules.ProcessedBlockHeader),
 	}
 
 	// Create the diffs for the genesis siacoin outputs.
@@ -157,7 +170,11 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		if bootstrap {
 			// We are in a virgin goroutine right now, so calling the threaded
 			// function without a goroutine is okay.
-			err = cs.threadedInitialBlockchainDownload()
+			if cs.spv {
+				err = cs.threadedInitialHeadersDownload()
+			} else {
+				err = cs.threadedInitialBlockchainDownload()
+			}
 			if err != nil {
 				return
 			}
@@ -173,15 +190,34 @@ func NewCustomConsensusSet(gateway modules.Gateway, bootstrap bool, persistDir s
 		defer cs.tg.Done()
 
 		// Register RPCs
-		gateway.RegisterRPC(modules.SendBlocksCmd, cs.rpcSendBlocks)
+		if spv {
+			// If SPV mode, only register the header receiver RPC
+			gateway.RegisterConnectCall(modules.SendHeadersCmd, cs.threadedReceiveHeaders)
+		} else {
+			// If running a full node, register the full blockchain RPCs
+			gateway.RegisterRPC(modules.SendBlocksCmd, cs.rpcSendBlocks)
+			// send block to peer
+			gateway.RegisterRPC(modules.SendBlockCmd, cs.rpcSendBlk)
+			gateway.RegisterConnectCall(modules.SendBlocksCmd, cs.threadedReceiveBlocks)
+			// SPV nodes and full nodes can send headers and relay headers
+			// TODO: currently we only have full nodes send headers because
+			// when a full node is relayed a header it tries to grab a full block
+			// from the relayer
+			gateway.RegisterRPC(modules.SendHeadersCmd, cs.rpcSendHeaders)
+			// gateway.RegisterRPC(modules.SendHeaderCmd, cs.rpcSendHeader)
+		}
 		gateway.RegisterRPC(modules.RelayHeaderCmd, cs.threadedRPCRelayHeader)
-		gateway.RegisterRPC(modules.SendBlockCmd, cs.rpcSendBlk)
-		gateway.RegisterConnectCall(modules.SendBlocksCmd, cs.threadedReceiveBlocks)
 		cs.tg.OnStop(func() {
-			cs.gateway.UnregisterRPC(modules.SendBlocksCmd)
+			if spv {
+				cs.gateway.UnregisterConnectCall(modules.SendHeadersCmd)
+			} else {
+				cs.gateway.UnregisterRPC(modules.SendBlocksCmd)
+				cs.gateway.UnregisterRPC(modules.SendBlockCmd)
+				cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
+				cs.gateway.UnregisterRPC(modules.SendHeadersCmd)
+				// cs.gateway.UnregisterRPC(modules.SendHeaderCmd)
+			}
 			cs.gateway.UnregisterRPC(modules.RelayHeaderCmd)
-			cs.gateway.UnregisterRPC(modules.SendBlockCmd)
-			cs.gateway.UnregisterConnectCall(modules.SendBlocksCmd)
 		})
 
 		// Mark that we are synced with the network.
@@ -265,6 +301,18 @@ func (cs *ConsensusSet) managedCurrentBlock() (block types.Block) {
 	return block
 }
 
+// managedCurrentHeader returns the latest header in the heaviest known blockchain.
+func (cs *ConsensusSet) managedCurrentHeader() (header types.BlockHeader) {
+	cs.mu.RLock()
+	defer cs.mu.RUnlock()
+	_ = cs.db.View(func(tx *bolt.Tx) error {
+		ph := currentProcessedHeader(tx)
+		header = ph.BlockHeader
+		return nil
+	})
+	return header
+}
+
 // CurrentBlock returns the latest block in the heaviest known blockchain.
 func (cs *ConsensusSet) CurrentBlock() (block types.Block) {
 	// A call to a closed database can cause undefined behavior.
@@ -286,6 +334,29 @@ func (cs *ConsensusSet) CurrentBlock() (block types.Block) {
 		return nil
 	})
 	return block
+}
+
+// CurrentHeader returns the latest header in the heaviest known blockchain.
+func (cs *ConsensusSet) CurrentHeader() (header types.BlockHeader) {
+	// A call to a closed database can cause undefined behavior.
+	err := cs.tg.Add()
+	if err != nil {
+		return types.BlockHeader{}
+	}
+	defer cs.tg.Done()
+
+	// Block until a lock can be grabbed on the consensus set, indicating that
+	// all modules have received the most recent block. The lock is held so that
+	// there are no race conditions when trying to synchronize nodes.
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+
+	_ = cs.db.View(func(tx *bolt.Tx) error {
+		pbh := currentProcessedHeader(tx)
+		header = pbh.BlockHeader
+		return nil
+	})
+	return header
 }
 
 // Flush will block until the consensus set has finished all in-progress
@@ -359,7 +430,7 @@ func (cs *ConsensusSet) MinimumValidChildTimestamp(id types.BlockID) (timestamp 
 		if err != nil {
 			return err
 		}
-		timestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb)
+		timestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb.Block.ParentID, pb.Block.Timestamp)
 		exists = true
 		return nil
 	})
@@ -386,4 +457,14 @@ func (cs *ConsensusSet) StorageProofSegment(fcid types.FileContractID) (index ui
 // Db returns the database associated with the ConsensusSet
 func (cs *ConsensusSet) Db() *persist.BoltDatabase {
 	return cs.db
+}
+
+// SpvMode return true if in spv mode
+func (cs *ConsensusSet) SpvMode() bool {
+	return cs.spv
+}
+
+// SetGetWalletKeysFunc set the getWalletKeysFunc callback
+func (cs *ConsensusSet) SetGetWalletKeysFunc(f func() ([][]byte, error)) {
+	cs.getWalletKeysFunc = f
 }

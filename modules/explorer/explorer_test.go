@@ -25,7 +25,7 @@ type explorerTester struct {
 	miner     modules.TestMiner
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	explorer *Explorer
 	testdir  string
@@ -39,12 +39,12 @@ func createExplorerTester(name string) (*explorerTester, error) {
 
 	// Create and assemble the dependencies.
 	testdir := build.TempDir(modules.ExplorerDir, name)
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		log.Printf("Failed to open gateway: %s", err)
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		log.Printf("Failed to open consensus: %s", err)
 		return nil, err
@@ -54,12 +54,12 @@ func createExplorerTester(name string) (*explorerTester, error) {
 		log.Printf("Failed to open tpool: %s", err)
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		log.Printf("Failed to open wallet: %s", err)
 		return nil, err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err
@@ -115,11 +115,11 @@ func (et *explorerTester) reorgToBlank() error {
 	dir := et.testdir + " - " + persist.RandomSuffix()
 
 	// Create a miner and all dependencies to create an alternate chain.
-	g, err := gateway.New("localhost:0", false, filepath.Join(dir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(dir, modules.GatewayDir), false)
 	if err != nil {
 		return err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir), false)
 	if err != nil {
 		return err
 	}
@@ -127,11 +127,11 @@ func (et *explorerTester) reorgToBlank() error {
 	if err != nil {
 		return err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(dir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return err
@@ -180,11 +180,11 @@ func TestNilExplorerDependencies(t *testing.T) {
 func TestExplorerGenesisHeight(t *testing.T) {
 	// Create the dependencies.
 	testdir := build.TempDir(modules.HostDir, t.Name())
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}

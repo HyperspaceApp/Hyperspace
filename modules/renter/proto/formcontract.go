@@ -18,7 +18,7 @@ import (
 // TODO joint signature
 func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactionBuilder, tpool transactionPool, hdb hostDB, cancel <-chan struct{}) (rc modules.RenterContract, err error) {
 	// Extract vars from params, for convenience.
-	host, funding, startHeight, endHeight, refundAddress := params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
+	allowance, host, funding, startHeight, endHeight, refundAddress := params.Allowance, params.Host, params.Funding, params.StartHeight, params.EndHeight, params.RefundAddress
 
 	// Create our keys.
 	ourSK, ourPK := crypto.GenerateKeyPair()
@@ -53,24 +53,12 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	_, maxFee := tpool.FeeEstimation()
 	txnFee := maxFee.Mul64(modules.EstimatedFileContractTransactionSetSize)
 
-	// Underflow check.
-	if funding.Cmp(host.ContractPrice.Add(txnFee)) <= 0 {
-		return modules.RenterContract{}, errors.New("insufficient funds to cover contract fee and transaction fee during contract formation")
+	period := endHeight - startHeight
+	expectedStorage := allowance.ExpectedStorage / allowance.Hosts
+	renterPayout, hostPayout, _, err := modules.RenterPayouts(host, funding, txnFee, types.ZeroCurrency, types.ZeroCurrency, period, expectedStorage)
+	if err != nil {
+		return modules.RenterContract{}, err
 	}
-	// Divide by zero check.
-	if host.StoragePrice.IsZero() {
-		host.StoragePrice = types.NewCurrency64(1)
-	}
-
-	// Calculate the payouts for the renter, host, and whole contract.
-	renterPayout := funding.Sub(host.ContractPrice).Sub(txnFee)
-	maxStorageSize := renterPayout.Div(host.StoragePrice)
-	hostCollateral := maxStorageSize.Mul(host.Collateral)
-	if hostCollateral.Cmp(host.MaxCollateral) > 0 {
-		hostCollateral = host.MaxCollateral
-	}
-	// Calculate the initial host payout.
-	hostPayout := hostCollateral.Add(host.ContractPrice)
 	totalPayout := renterPayout.Add(hostPayout)
 
 	// Create file contract.
@@ -99,7 +87,7 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 
 	// Build transaction containing fc, e.g. the File Contract.
-	err = txnBuilder.FundSiacoins(funding)
+	_, err = txnBuilder.FundContract(funding)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}
@@ -175,17 +163,19 @@ func (cs *ContractSet) FormContract(params ContractParams, txnBuilder transactio
 	}
 	// Host now sends any new parent transactions, inputs and outputs that
 	// were added to the transaction.
-	var newParents []types.Transaction
+	var newRefundOutputs []types.SiacoinOutput
 	var newInputs []types.SiacoinInput
-	if err = encoding.ReadObject(conn, &newParents, types.BlockSizeLimit); err != nil {
-		return modules.RenterContract{}, errors.New("couldn't read the host's added parents: " + err.Error())
+	if err = encoding.ReadObject(conn, &newRefundOutputs, types.BlockSizeLimit); err != nil {
+		return modules.RenterContract{}, errors.New("couldn't read the host's added newRefundOutputs: " + err.Error())
 	}
 	if err = encoding.ReadObject(conn, &newInputs, types.BlockSizeLimit); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't read the host's added inputs: " + err.Error())
 	}
 
 	// Merge txnAdditions with txnSet.
-	txnBuilder.AddParents(newParents)
+	for _, output := range newRefundOutputs {
+		txnBuilder.AddSiacoinOutput(output)
+	}
 	for _, input := range newInputs {
 		txnBuilder.AddSiacoinInput(input)
 	}

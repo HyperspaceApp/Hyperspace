@@ -11,8 +11,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/errors"
+	"github.com/coreos/bbolt"
 )
 
 const tpoolSyncRate = time.Minute * 2
@@ -177,27 +177,32 @@ func (tp *TransactionPool) initPersist() error {
 	}
 
 	// Subscribe to the consensus set using the most recent consensus change.
-	err = tp.consensusSet.ConsensusSetSubscribe(tp, cc, tp.tg.StopChan())
-	if err == modules.ErrInvalidConsensusChangeID {
-		tp.log.Println("Invalid consensus change loaded; resetting. This can take a while.")
-		// Reset and rescan because the consensus set does not recognize the
-		// provided consensus change id.
-		resetErr := tp.resetDB(tp.dbTx)
-		if resetErr != nil {
-			return resetErr
+	if tp.consensusSet.SpvMode() {
+		// wait after unlock
+	} else {
+		err = tp.consensusSet.ConsensusSetSubscribe(tp, cc, tp.tg.StopChan())
+		if err == modules.ErrInvalidConsensusChangeID {
+			tp.log.Println("Invalid consensus change loaded; resetting. This can take a while.")
+			// Reset and rescan because the consensus set does not recognize the
+			// provided consensus change id.
+			resetErr := tp.resetDB(tp.dbTx)
+			if resetErr != nil {
+				return resetErr
+			}
+			freshScanErr := tp.consensusSet.ConsensusSetSubscribe(tp, modules.ConsensusChangeBeginning, tp.tg.StopChan())
+			if freshScanErr != nil {
+				return freshScanErr
+			}
+			tp.tg.OnStop(func() {
+				tp.consensusSet.Unsubscribe(tp)
+			})
+			return nil
 		}
-		freshScanErr := tp.consensusSet.ConsensusSetSubscribe(tp, modules.ConsensusChangeBeginning, tp.tg.StopChan())
-		if freshScanErr != nil {
-			return freshScanErr
+		if err != nil {
+			return err
 		}
-		tp.tg.OnStop(func() {
-			tp.consensusSet.Unsubscribe(tp)
-		})
-		return nil
 	}
-	if err != nil {
-		return err
-	}
+
 	tp.tg.OnStop(func() {
 		tp.consensusSet.Unsubscribe(tp)
 	})

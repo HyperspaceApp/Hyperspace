@@ -40,7 +40,7 @@ func TestGatewayPeerConnect(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	peer, err := gateway.New("localhost:0", false, build.TempDir("api", t.Name()+"2", "gateway"))
+	peer, err := gateway.New("localhost:0", false, build.TempDir("api", t.Name()+"2", "gateway"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestGatewayPeerDisconnect(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	peer, err := gateway.New("localhost:0", false, build.TempDir("api", t.Name()+"2", "gateway"))
+	peer, err := gateway.New("localhost:0", false, build.TempDir("api", t.Name()+"2", "gateway"), false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -144,6 +144,7 @@ var (
 func (h *Host) managedFinalizeContract(jointSecretKey crypto.SecretKey, fullTxnSet []types.Transaction, revisionTransaction types.Transaction, builder modules.TransactionBuilder, initialSectorRoots []crypto.Hash, hostCollateral, hostInitialRevenue, hostInitialRisk types.Currency, settings modules.HostExternalSettings) ([]types.TransactionSignature, types.FileContractID, error) {
 	// Create and add the storage obligation for this file contract.
 	fullTxn, _ := builder.View()
+	blockHeight := h.blockHeight
 	so := storageObligation{
 		SectorRoots: initialSectorRoots,
 
@@ -153,6 +154,8 @@ func (h *Host) managedFinalizeContract(jointSecretKey crypto.SecretKey, fullTxnS
 		LockedCollateral:        hostCollateral,
 		PotentialStorageRevenue: hostInitialRevenue,
 		RiskedCollateral:        hostInitialRisk,
+
+		NegotiationHeight: blockHeight,
 
 		OriginTransactionSet:   fullTxnSet,
 		RevisionTransactionSet: []types.Transaction{revisionTransaction},

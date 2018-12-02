@@ -84,7 +84,7 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 		return modules.RenterContract{}, crypto.Hash{}, errors.New("contract has insufficient funds to support upload")
 	}
 	if contract.LastRevision().NewMissedProofOutputs[1].Value.Cmp(sectorCollateral) < 0 {
-		return modules.RenterContract{}, crypto.Hash{}, errors.New("contract has insufficient collateral to support upload")
+		sectorCollateral = contract.LastRevision().NewMissedProofOutputs[1].Value
 	}
 
 	// calculate the new Merkle root
@@ -186,20 +186,9 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 		}
 	}()
 
-	conn, closeChan, err := initiateRevisionLoop(host, contract, modules.RPCReviseContract, cancel, cs.rl)
-	if IsRevisionMismatch(err) && len(sc.unappliedTxns) > 0 {
-		// we have desynced from the host. If we have unapplied updates from the
-		// WAL, try applying them.
-		conn, closeChan, err = initiateRevisionLoop(host, sc.unappliedHeader(), modules.RPCReviseContract, cancel, cs.rl)
-		if err != nil {
-			return nil, err
-		}
-		// applying the updates was successful; commit them to disk
-		if err := sc.commitTxns(); err != nil {
-			return nil, err
-		}
-	} else if err != nil {
-		return nil, err
+	conn, closeChan, err := initiateRevisionLoop(host, sc, modules.RPCReviseContract, cancel, cs.rl)
+	if err != nil {
+		return nil, errors.AddContext(err, "failed to initiate revision loop")
 	}
 	// if we succeeded, we can safely discard the unappliedTxns
 	for _, txn := range sc.unappliedTxns {
@@ -211,7 +200,6 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 	return &Editor{
 		host:        host,
 		hdb:         hdb,
-		height:      currentHeight,
 		contractID:  id,
 		contractSet: cs,
 		conn:        conn,
@@ -222,7 +210,7 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 
 // initiateRevisionLoop initiates either the editor or downloader loop with
 // host, depending on which rpc was passed.
-func initiateRevisionLoop(host modules.HostDBEntry, contract contractHeader, rpc types.Specifier, cancel <-chan struct{}, rl *ratelimit.RateLimit) (net.Conn, chan struct{}, error) {
+func initiateRevisionLoop(host modules.HostDBEntry, contract *SafeContract, rpc types.Specifier, cancel <-chan struct{}, rl *ratelimit.RateLimit) (net.Conn, chan struct{}, error) {
 	c, err := (&net.Dialer{
 		Cancel:  cancel,
 		Timeout: 45 * time.Second, // TODO: Constant

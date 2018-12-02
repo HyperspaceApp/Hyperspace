@@ -11,12 +11,17 @@ import (
 type peerConn struct {
 	net.Conn
 	dialbackAddr modules.NetAddress
+	version      string
 }
 
 // RPCAddr implements the RPCAddr method of the modules.PeerConn interface. It
 // is the address that identifies a peer.
 func (pc peerConn) RPCAddr() modules.NetAddress {
 	return pc.dialbackAddr
+}
+
+func (pc peerConn) Version() string {
+	return pc.version
 }
 
 // staticDial will staticDial the input address and return a connection. staticDial appropriately

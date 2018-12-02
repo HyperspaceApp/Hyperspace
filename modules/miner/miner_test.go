@@ -14,7 +14,6 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/HyperspaceApp/fastrand"
 )
 
 // A minerTester is the helper object for miner testing.
@@ -23,7 +22,7 @@ type minerTester struct {
 	cs        modules.ConsensusSet
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	miner *Miner
 
@@ -36,11 +35,11 @@ func createMinerTester(name string) (*minerTester, error) {
 	testdir := build.TempDir(modules.MinerDir, name)
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -48,12 +47,11 @@ func createMinerTester(name string) (*minerTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
-	var key crypto.TwofishKey
-	fastrand.Read(key[:])
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err
@@ -173,7 +171,7 @@ func TestIntegrationBlocksMined(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Unsolve the header - necessary because the target is very low when
+	// Solve the header - necessary because the target is very low when
 	// mining.
 	for {
 		unsolvedHeader.Nonce[0]++

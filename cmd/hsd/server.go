@@ -222,7 +222,7 @@ func updateToRelease(release githubRelease) error {
 	}
 
 	// construct release filename
-	releaseName := fmt.Sprintf("Sia-%s-%s-%s.zip", release.TagName, runtime.GOOS, runtime.GOARCH)
+	releaseName := fmt.Sprintf("Hyperspace-%s-%s-%s.zip", release.TagName, runtime.GOOS, runtime.GOARCH)
 
 	// find release
 	var downloadURL string
@@ -369,7 +369,11 @@ func (srv *Server) daemonConstantsHandler(w http.ResponseWriter, _ *http.Request
 
 // daemonVersionHandler handles the API call that requests the daemon's version.
 func (srv *Server) daemonVersionHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-	api.WriteJSON(w, DaemonVersion{Version: build.Version, GitRevision: build.GitRevision, BuildTime: build.BuildTime})
+	version := build.Version
+	if build.ReleaseTag != "" {
+		version += "-" + build.ReleaseTag
+	}
+	api.WriteJSON(w, DaemonVersion{Version: version, GitRevision: build.GitRevision, BuildTime: build.BuildTime})
 }
 
 // daemonStopHandler handles the API call to stop the daemon cleanly.
@@ -490,7 +494,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "g") {
 		i++
 		fmt.Printf("(%d/%d) Loading gateway...\n", i, len(srv.config.Siad.Modules))
-		g, err = gateway.New(srv.config.Siad.RPCaddr, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.GatewayDir))
+		g, err = gateway.New(srv.config.Siad.RPCaddr, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.GatewayDir), srv.config.Siad.Spv)
 		if err != nil {
 			return err
 		}
@@ -500,7 +504,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "c") {
 		i++
 		fmt.Printf("(%d/%d) Loading consensus...\n", i, len(srv.config.Siad.Modules))
-		cs, err = consensus.New(g, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.ConsensusDir))
+		cs, err = consensus.New(g, !srv.config.Siad.NoBootstrap, filepath.Join(srv.config.Siad.SiaDir, modules.ConsensusDir), srv.config.Siad.Spv)
 		if err != nil {
 			return err
 		}
@@ -520,6 +524,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "e") {
 		i++
 		fmt.Printf("(%d/%d) Loading explorer...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("explorer module not supported in spv mode")
+		}
 		e, err = explorer.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.ExplorerDir))
 		if err != nil {
 			return err
@@ -530,7 +537,7 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "w") {
 		i++
 		fmt.Printf("(%d/%d) Loading wallet...\n", i, len(srv.config.Siad.Modules))
-		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir))
+		w, err = wallet.New(cs, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.WalletDir), srv.config.Siad.AddressGapLimit, srv.config.Siad.ScanAirdrop)
 		if err != nil {
 			return err
 		}
@@ -540,6 +547,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "m") {
 		i++
 		fmt.Printf("(%d/%d) Loading miner...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("miner module not supported in spv mode")
+		}
 		m, err = miner.New(cs, tpool, w, filepath.Join(srv.config.Siad.SiaDir, modules.MinerDir))
 		if err != nil {
 			return err
@@ -550,6 +560,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "h") {
 		i++
 		fmt.Printf("(%d/%d) Loading host...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("host module not supported in spv mode")
+		}
 		h, err = host.New(cs, g, tpool, w, srv.config.Siad.HostAddr, filepath.Join(srv.config.Siad.SiaDir, modules.HostDir))
 		if err != nil {
 			return err
@@ -570,6 +583,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "p") {
 		i++
 		fmt.Printf("(%d/%d) Loading pool...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("miningpool module not supported in spv mode")
+		}
 		p, err = pool.New(cs, tpool, g, w, filepath.Join(srv.config.Siad.SiaDir, modules.PoolDir), srv.config.MiningPoolConfig)
 		if err != nil {
 			return err
@@ -580,6 +596,9 @@ func (srv *Server) loadModules() error {
 	if strings.Contains(srv.config.Siad.Modules, "s") {
 		i++
 		fmt.Printf("(%d/%d) Loading stratum miner...\n", i, len(srv.config.Siad.Modules))
+		if cs.SpvMode() {
+			return errors.New("stratum miner module not supported in spv mode")
+		}
 		sm, err = stratumminer.New(filepath.Join(srv.config.Siad.SiaDir, modules.StratumMinerDir))
 		if err != nil {
 			return err

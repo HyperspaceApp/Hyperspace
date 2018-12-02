@@ -11,9 +11,16 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
-// WalletAddressGet requests a new address from the /wallet/address endpoint
+// WalletAddressGet requests an unused address from the /wallet/address endpoint
 func (c *Client) WalletAddressGet() (wag api.WalletAddressGET, err error) {
 	err = c.get("/wallet/address", &wag)
+	return
+}
+
+// WalletAddressPost requests a new address from the /wallet/address endpoint
+func (c *Client) WalletAddressPost() (wap api.WalletAddressPOST, err error) {
+	values := url.Values{}
+	err = c.post("/wallet/address", values.Encode(), &wap)
 	return
 }
 
@@ -185,10 +192,37 @@ func (c *Client) WalletUnspentGet() (wug api.WalletUnspentGET, err error) {
 	return
 }
 
-// WalletWatchPost uses the /wallet/watch endpoint to track a set of
-// addresses.
-func (c *Client) WalletWatchPost(addrs []types.UnlockHash) error {
-	json, err := json.Marshal(addrs)
+// WalletWatchGet requests the /wallet/watch endpoint and returns the set of
+// currently watched addresses.
+func (c *Client) WalletWatchGet() (wwg api.WalletWatchGET, err error) {
+	err = c.get("/wallet/watch", &wwg)
+	return
+}
+
+// WalletWatchPost uses the /wallet/watch endpoint to add a set of addresses
+// to the watch set. The unused flag should be set to true if the addresses
+// have never appeared in the blockchain.
+func (c *Client) WalletWatchAddPost(addrs []types.UnlockHash, unused bool) error {
+	json, err := json.Marshal(api.WalletWatchPOST{
+		Addresses: addrs,
+		Remove:    false,
+		Unused:    unused,
+	})
+	if err != nil {
+		return err
+	}
+	return c.post("/wallet/watch", string(json), nil)
+}
+
+// WalletWatchPost uses the /wallet/watch endpoint to remove a set of
+// addresses from the watch set. The unused flag should be set to true if the
+// addresses have never appeared in the blockchain.
+func (c *Client) WalletWatchRemovePost(addrs []types.UnlockHash, unused bool) error {
+	json, err := json.Marshal(api.WalletWatchPOST{
+		Addresses: addrs,
+		Remove:    true,
+		Unused:    unused,
+	})
 	if err != nil {
 		return err
 	}

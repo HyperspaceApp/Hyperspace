@@ -63,7 +63,7 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", renewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	err = st.stdPostAPI("/renter", allowanceValues)
 	if err != nil {
 		t.Fatal(err)
@@ -93,7 +93,7 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 			var rf RenterFiles
 			st.getAPI("/renter/files", &rf)
 			if len(rf.Files) != 1 || !rf.Files[0].Available {
-				return fmt.Errorf("the uploading is not succeeding for some reason: %v\n", rf.Files[0])
+				return fmt.Errorf("the uploading is not succeeding for some reason: %v", rf.Files[0])
 			}
 			return nil
 		})
@@ -274,9 +274,8 @@ func TestValidDownloads(t *testing.T) {
 		{sectorSize * 5, 150, 3 * (sectorSize * 5) / 4, true, "HttpRespOffsetAndLengthManyChunks"},
 		{sectorSize * 5, 150, sectorSize * 5 / 4, true, "HttpRespOffsetAndLengthManyChunksSubsetOfChunks"},
 	}
-	for i, params := range testParams {
-		params := params
-		t.Run(fmt.Sprintf("%v-%v", t.Name(), i), func(st *testing.T) {
+	for _, params := range testParams {
+		t.Run(params.testName, func(st *testing.T) {
 			st.Parallel()
 			err := runDownloadTest(st, params.filesize, params.offset, params.length, params.useHttpResp, params.testName)
 			if err != nil {
@@ -597,7 +596,7 @@ func TestRenterHandlerContracts(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -622,7 +621,7 @@ func TestRenterHandlerContracts(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -682,7 +681,7 @@ func TestRenterHandlerGetAndPost(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -698,7 +697,7 @@ func TestRenterHandlerGetAndPost(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -770,7 +769,7 @@ func TestRenterLoadNonexistent(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -786,7 +785,7 @@ func TestRenterLoadNonexistent(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -831,7 +830,7 @@ func TestRenterHandlerRename(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -855,7 +854,7 @@ func TestRenterHandlerRename(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -947,7 +946,7 @@ func TestRenterHandlerDelete(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -963,7 +962,7 @@ func TestRenterHandlerDelete(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1014,7 +1013,7 @@ func TestRenterRelativePathErrorUpload(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -1030,7 +1029,7 @@ func TestRenterRelativePathErrorUpload(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1077,7 +1076,7 @@ func TestRenterRelativePathErrorDownload(t *testing.T) {
 	}
 	defer st.server.panicClose()
 
-	// Anounce the host and start accepting contracts.
+	// Announce the host and start accepting contracts.
 	if err := st.announceHost(); err != nil {
 		t.Fatal(err)
 	}
@@ -1093,7 +1092,7 @@ func TestRenterRelativePathErrorDownload(t *testing.T) {
 	allowanceValues.Set("funds", testFunds)
 	allowanceValues.Set("period", testPeriod)
 	allowanceValues.Set("renewwindow", testRenewWindow)
-	allowanceValues.Set("hosts", fmt.Sprint(recommendedHosts))
+	allowanceValues.Set("hosts", fmt.Sprint(modules.DefaultAllowance.Hosts))
 	if err = st.stdPostAPI("/renter", allowanceValues); err != nil {
 		t.Fatal(err)
 	}
@@ -1209,216 +1208,8 @@ func TestRenterPricesHandler(t *testing.T) {
 		t.Log(rpeSingle.DownloadTerabyte)
 		t.Error("price changed from single to multi")
 	}
-	if !rpeMulti.FormContracts.Equals(rpeSingle.FormContracts) {
-		t.Error("price changed from single to multi")
-	}
-	if !rpeMulti.StorageTerabyteMonth.Equals(rpeSingle.StorageTerabyteMonth) {
-		t.Error("price changed from single to multi")
-	}
-	if !rpeMulti.UploadTerabyte.Equals(rpeSingle.UploadTerabyte) {
-		t.Error("price changed from single to multi")
-	}
-}
-
-// TestRenterPricesHandlerCheap checks that the prices command returns
-// reasonable values given the settings of the hosts.
-func TestRenterPricesHandlerCheap(t *testing.T) {
-	if testing.Short() || !build.VLONG {
-		t.SkipNow()
-	}
-	t.Parallel()
-	st, err := createServerTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.server.panicClose()
-
-	// Announce the host and then get the calculated prices for when there is a
-	// single host.
-	var rpeSingle modules.RenterPriceEstimation
-	if err = st.announceHost(); err != nil {
-		t.Fatal(err)
-	}
-	if err = st.getAPI("/renter/prices", &rpeSingle); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create several more hosts all using the default settings.
-	stHost1, err := blankServerTester(t.Name() + " - Host 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost1.panicClose()
-	stHost2, err := blankServerTester(t.Name() + " - Host 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost2.panicClose()
-
-	var hg HostGET
-	err = st.getAPI("/host", &hg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = stHost1.getAPI("/host", &hg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = stHost2.getAPI("/host", &hg)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Set host 5 to be cheaper than the rest by a substantial amount. This
-	// should result in a reduction for the price estimation.
-	vals := url.Values{}
-	vals.Set("mincontractprice", "1")
-	vals.Set("mindownloadbandwidthprice", "1")
-	vals.Set("minstorageprice", "1")
-	vals.Set("minuploadbandwidthprice", "1")
-	err = stHost2.stdPostAPI("/host", vals)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Connect all the nodes and announce all of the hosts.
-	sts := []*serverTester{st, stHost1, stHost2}
-	err = fullyConnectNodes(sts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = fundAllNodes(sts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = announceAllHosts(sts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Grab the price estimates for when there are a bunch of hosts with the
-	// same stats.
-	var rpeMulti modules.RenterPriceEstimation
-	if err = st.announceHost(); err != nil {
-		t.Fatal(err)
-	}
-	if err = st.getAPI("/renter/prices", &rpeMulti); err != nil {
-		t.Fatal(err)
-	}
-
-	// Verify that the aggregate is the same.
-	if !(rpeMulti.DownloadTerabyte.Cmp(rpeSingle.DownloadTerabyte) < 0) {
-		t.Log(rpeMulti.DownloadTerabyte)
-		t.Log(rpeSingle.DownloadTerabyte)
-		t.Error("price did not drop from single to multi")
-	}
-	if !(rpeMulti.FormContracts.Cmp(rpeSingle.FormContracts) < 0) {
-		t.Error("price did not drop from single to multi")
-	}
-	if !(rpeMulti.StorageTerabyteMonth.Cmp(rpeSingle.StorageTerabyteMonth) < 0) {
-		t.Error("price did not drop from single to multi")
-	}
-	if !(rpeMulti.UploadTerabyte.Cmp(rpeSingle.UploadTerabyte) < 0) {
-		t.Error("price did not drop from single to multi")
-	}
-}
-
-// TestRenterPricesHandlerIgnorePricey checks that the prices command returns
-// reasonable values given the settings of the hosts.
-func TestRenterPricesHandlerIgnorePricey(t *testing.T) {
-	if testing.Short() || !build.VLONG {
-		t.SkipNow()
-	}
-	t.Parallel()
-	st, err := createServerTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.server.panicClose()
-
-	// Announce the host and then get the calculated prices for when there is a
-	// single host.
-	var rpeSingle modules.RenterPriceEstimation
-	if err = st.announceHost(); err != nil {
-		t.Fatal(err)
-	}
-	if err = st.getAPI("/renter/prices", &rpeSingle); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create several more hosts all using the default settings.
-	stHost1, err := blankServerTester(t.Name() + " - Host 1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost1.panicClose()
-	stHost2, err := blankServerTester(t.Name() + " - Host 2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost2.panicClose()
-	stHost3, err := blankServerTester(t.Name() + " - Host 3")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost3.panicClose()
-	stHost4, err := blankServerTester(t.Name() + " - Host 4")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost4.panicClose()
-	stHost5, err := blankServerTester(t.Name() + " - Host 5")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stHost5.panicClose()
-
-	// Set host 5 to be cheaper than the rest by a substantial amount. This
-	// should result in a reduction for the price estimation.
-	vals := url.Values{}
-	vals.Set("mindownloadbandwidthprice", "100000000000000000000")
-	vals.Set("mincontractprice", "1000000000000000000000000000")
-	vals.Set("minstorageprice", "100000000000000000000")
-	vals.Set("minuploadbandwidthprice", "100000000000000000000")
-	err = stHost5.stdPostAPI("/host", vals)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Connect all the nodes and announce all of the hosts.
-	sts := []*serverTester{st, stHost1, stHost2, stHost3, stHost4, stHost5}
-	err = fullyConnectNodes(sts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = fundAllNodes(sts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = announceAllHosts(sts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Grab the price estimates for when there are a bunch of hosts with the
-	// same stats.
-	var rpeMulti modules.RenterPriceEstimation
-	if err = st.announceHost(); err != nil {
-		t.Fatal(err)
-	}
-	if err = st.getAPI("/renter/prices", &rpeMulti); err != nil {
-		t.Fatal(err)
-	}
-
-	// Verify that the aggregate is the same - price should not have moved
-	// because the expensive host will be ignored as there is only one.
-	if !rpeMulti.DownloadTerabyte.Equals(rpeSingle.DownloadTerabyte) {
-		t.Log(rpeMulti.DownloadTerabyte)
-		t.Log(rpeSingle.DownloadTerabyte)
-		t.Error("price changed from single to multi")
-	}
-	if !rpeMulti.FormContracts.Equals(rpeSingle.FormContracts) {
-		t.Error("price changed from single to multi")
+	if rpeMulti.FormContracts.Equals(rpeSingle.FormContracts) {
+		t.Error("price of forming contracts should have increased from single to multi")
 	}
 	if !rpeMulti.StorageTerabyteMonth.Equals(rpeSingle.StorageTerabyteMonth) {
 		t.Error("price changed from single to multi")
@@ -1475,12 +1266,12 @@ func TestRenterPricesHandlerPricey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Set host 5 to be cheaper than the rest by a substantial amount. This
-	// should result in a reduction for the price estimation.
+	// Set host 2 to be more expensive than the rest by a substantial amount. This
+	// should result in an increase for the price estimation.
 	vals := url.Values{}
 	vals.Set("mindownloadbandwidthprice", "100000000000000000000")
-	vals.Set("mincontractprice", "1000000000000000000000000000")
-	vals.Set("minstorageprice", "100000000000000000000")
+	vals.Set("mincontractprice", "1000000000000000000000000")
+	vals.Set("minstorageprice", "1000000000000000000000")
 	vals.Set("minuploadbandwidthprice", "100000000000000000000")
 	err = stHost2.stdPostAPI("/host", vals)
 	if err != nil {
@@ -1509,20 +1300,30 @@ func TestRenterPricesHandlerPricey(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Verify that the aggregate is the same.
+	// Verify that the estimate for downloading, uploading, and storing
+	// increased but the estimate for formaing contracts decreased. Forming
+	// contracts decreases because with a more expensive host you are not able
+	// to store as much data therefore reducing the amount of host collateral
+	// you have to pay the siafund fee on
 	if !(rpeMulti.DownloadTerabyte.Cmp(rpeSingle.DownloadTerabyte) > 0) {
-		t.Error("price did not drop from single to multi")
+		t.Log("Multi DownloadTerabyte cost:", rpeMulti.DownloadTerabyte.HumanString())
+		t.Log("Single DownloadTerabyte cost:", rpeSingle.DownloadTerabyte.HumanString())
+		t.Error("price did not increase from single to multi")
 	}
-	if !(rpeMulti.FormContracts.Cmp(rpeSingle.FormContracts) > 0) {
-		t.Log(rpeMulti.FormContracts)
-		t.Log(rpeSingle.FormContracts)
+	if rpeMulti.FormContracts.Cmp(rpeSingle.FormContracts) > 0 {
+		t.Log("Multi FormContracts cost:", rpeMulti.FormContracts.HumanString())
+		t.Log("Single FormContracts cost:", rpeSingle.FormContracts.HumanString())
 		t.Error("price did not drop from single to multi")
 	}
 	if !(rpeMulti.StorageTerabyteMonth.Cmp(rpeSingle.StorageTerabyteMonth) > 0) {
-		t.Error("price did not drop from single to multi")
+		t.Log("Multi StorageTerabyteMonth cost:", rpeMulti.StorageTerabyteMonth.HumanString())
+		t.Log("Single StorageTerabyteMonth cost:", rpeSingle.StorageTerabyteMonth.HumanString())
+		t.Error("price did not increase from single to multi")
 	}
 	if !(rpeMulti.UploadTerabyte.Cmp(rpeSingle.UploadTerabyte) > 0) {
-		t.Error("price did not drop from single to multi")
+		t.Log("Multi UploadTerabyte cost:", rpeMulti.UploadTerabyte.HumanString())
+		t.Log("Single UploadTerabyte cost:", rpeSingle.UploadTerabyte.HumanString())
+		t.Error("price did not increase from single to multi")
 	}
 }
 
@@ -1574,7 +1375,7 @@ func TestContractorHostRemoval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Anounce the hosts.
+	// Announce the hosts.
 	err = announceAllHosts(testGroup)
 	if err != nil {
 		t.Fatal(err)
@@ -1645,11 +1446,11 @@ func TestContractorHostRemoval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rc.Contracts) != 2 {
+	if len(rc.ActiveContracts) != 2 {
 		t.Fatal("wrong contract count")
 	}
-	rc1Host := rc.Contracts[0].HostPublicKey.String()
-	rc2Host := rc.Contracts[1].HostPublicKey.String()
+	rc1Host := rc.ActiveContracts[0].HostPublicKey.String()
+	rc2Host := rc.ActiveContracts[1].HostPublicKey.String()
 
 	// Add 3 new hosts that will be competing with the expensive hosts.
 	stH2, err := blankServerTester(t.Name() + " - Host 2")
@@ -1684,7 +1485,7 @@ func TestContractorHostRemoval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Anounce the hosts.
+	// Announce the hosts.
 	err = announceAllHosts(testGroup)
 	if err != nil {
 		t.Fatal(err)
@@ -1713,7 +1514,8 @@ func TestContractorHostRemoval(t *testing.T) {
 	}
 
 	// Verify that st and stH1 are dropped in favor of the newer, better hosts.
-	err = build.Retry(150, time.Millisecond*250, func() error {
+	rc = RenterContracts{}
+	err = build.Retry(100, time.Millisecond*100, func() error {
 		var newContracts int
 		err = st.getAPI("/renter/contracts", &rc)
 		if err != nil {
@@ -1722,7 +1524,7 @@ func TestContractorHostRemoval(t *testing.T) {
 		hostMap := make(map[string]struct{})
 		hostMap[rc1Host] = struct{}{}
 		hostMap[rc2Host] = struct{}{}
-		for _, contract := range rc.Contracts {
+		for _, contract := range rc.ActiveContracts {
 			_, exists := hostMap[contract.HostPublicKey.String()]
 			if !exists {
 				newContracts++
@@ -1750,14 +1552,14 @@ func TestContractorHostRemoval(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Grab the old contracts, then mine blocks to trigger a renew, and then
+	// Grab the current contracts, then mine blocks to trigger a renew, and then
 	// wait until the renew is complete.
 	err = st.getAPI("/renter/contracts", &rc)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Check the amount of data in each contract.
-	for _, contract := range rc.Contracts {
+	for _, contract := range rc.ActiveContracts {
 		if contract.Size != modules.SectorSize {
 			t.Error("Each contrat should have 1 sector:", contract.Size, contract.ID)
 		}
@@ -1777,7 +1579,17 @@ func TestContractorHostRemoval(t *testing.T) {
 	}
 	// Give the renter time to renew. Two of the contracts should renew.
 	var rc2 RenterContracts
-	err = build.Retry(50, time.Millisecond*250, func() error {
+	loop := 0
+	err = build.Retry(100, time.Millisecond*100, func() error {
+		loop++
+		// Mine a block every 10 iterations to make sure
+		// threadedContractMaintenance continues to create and replace contracts
+		if loop%10 == 0 {
+			_, err = st.miner.AddBlock()
+			if err != nil {
+				return err
+			}
+		}
 		err = st.getAPI("/renter/contracts", &rc2)
 		if err != nil {
 			return errors.New("couldn't get renter stats")
@@ -1786,14 +1598,14 @@ func TestContractorHostRemoval(t *testing.T) {
 		// Check that at least 2 contracts are different between rc and rc2.
 		tracker := make(map[types.FileContractID]struct{})
 		// Add all the contracts.
-		for _, contract := range rc.Contracts {
+		for _, contract := range rc.ActiveContracts {
 			tracker[contract.ID] = struct{}{}
 		}
 		// Count the number of contracts that were not seen in the previous
 		// batch of contracts, and check that the new contracts are not with the
 		// expensive hosts.
 		var unseen int
-		for _, contract := range rc2.Contracts {
+		for _, contract := range rc2.ActiveContracts {
 			_, exists := tracker[contract.ID]
 			if !exists {
 				unseen++
@@ -1804,7 +1616,7 @@ func TestContractorHostRemoval(t *testing.T) {
 			}
 		}
 		if unseen != 2 {
-			return fmt.Errorf("the wrong number of contracts seem to be getting renewed")
+			return fmt.Errorf("the wrong number of contracts seem to be getting renewed, have %v expect 2", unseen)
 		}
 		return nil
 	})
@@ -1813,7 +1625,7 @@ func TestContractorHostRemoval(t *testing.T) {
 	}
 	// The renewing process should not have resulted in additional data being
 	// uploaded - it should be the same data in the contracts.
-	for _, contract := range rc2.Contracts {
+	for _, contract := range rc2.ActiveContracts {
 		if contract.Size != modules.SectorSize {
 			t.Error("Contract has the wrong size:", contract.Size)
 		}
@@ -1851,29 +1663,30 @@ func TestContractorHostRemoval(t *testing.T) {
 	// st and stH1 are dropped in favor of the newer, better hosts. The
 	// contracts should also have data in them.
 	err = build.Retry(50, time.Millisecond*250, func() error {
+		var rc RenterContracts
 		err = st.getAPI("/renter/contracts", &rc)
 		if err != nil {
 			return errors.New("couldn't get renter stats")
 		}
-		if len(rc.Contracts) != 2 {
-			return fmt.Errorf("renewing seems to have failed: %v", len(rc.Contracts))
+		if len(rc.ActiveContracts) != 2 {
+			return fmt.Errorf("renewing seems to have failed: %v", len(rc.ActiveContracts))
 		}
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rc.Contracts[0].HostPublicKey.String() == rc1Host || rc.Contracts[0].HostPublicKey.String() == rc2Host {
-		t.Error("renter is renewing the wrong contracts", rc.Contracts[0].HostPublicKey.String())
+	if rc.ActiveContracts[0].HostPublicKey.String() == rc1Host || rc.ActiveContracts[0].HostPublicKey.String() == rc2Host {
+		t.Error("renter is renewing the wrong contracts", rc.ActiveContracts[0].HostPublicKey.String())
 	}
-	if rc.Contracts[1].HostPublicKey.String() == rc1Host || rc.Contracts[1].HostPublicKey.String() == rc2Host {
-		t.Error("renter is renewing the wrong contracts", rc.Contracts[1].HostPublicKey.String())
+	if rc.ActiveContracts[1].HostPublicKey.String() == rc1Host || rc.ActiveContracts[1].HostPublicKey.String() == rc2Host {
+		t.Error("renter is renewing the wrong contracts", rc.ActiveContracts[1].HostPublicKey.String())
 	}
 	// The renewing process should not have resulted in additional data being
 	// uploaded - it should be the same data in the contracts.
-	for _, contract := range rc.Contracts {
+	for _, contract := range rc.ActiveContracts {
 		if contract.Size != modules.SectorSize {
-			t.Error("Contract has the wrong size:", contract.Size)
+			t.Error("Contract has the wrong size:", contract.Size, contract.ID)
 		}
 	}
 	// Redundancy should still be 2.
@@ -1901,111 +1714,6 @@ func TestContractorHostRemoval(t *testing.T) {
 	}
 	if !bytes.Equal(downloadBytes3, origBytes) {
 		t.Error("downloaded file and uploaded file do not match")
-	}
-}
-
-// TestExhaustedContracts verifies that the contractor renews contracts which
-// run out of funds before the period elapses.
-func TestExhaustedContracts(t *testing.T) {
-	if testing.Short() || !build.VLONG {
-		t.SkipNow()
-	}
-	t.Parallel()
-	st, err := createServerTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.server.panicClose()
-
-	// set a very high price for the host so we use up the entire funds of the
-	// contract
-	err = st.acceptContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = st.setHostStorage()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Increase the storage and bandwidth prices to drain the allowance faster.
-	settings := st.host.InternalSettings()
-	settings.MinUploadBandwidthPrice = settings.MinUploadBandwidthPrice.Mul64(2)
-	settings.MinStoragePrice = settings.MinUploadBandwidthPrice.Mul64(2)
-	settings.MaxDuration = 1e6 // set a high max duration to allow an expensive storage price
-	err = st.host.SetInternalSettings(settings)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = st.announceHost()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Set an allowance for the renter, allowing a contract to be formed.
-	allowanceValues := url.Values{}
-	testPeriod := "950000" // large period to cause an expensive test, exhausting the allowance faster
-	allowanceValues.Set("funds", types.SiacoinPrecision.Mul64(10).String())
-	allowanceValues.Set("period", testPeriod)
-	err = st.stdPostAPI("/renter", allowanceValues)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wait until we have a contract
-	err = build.Retry(500, time.Millisecond*50, func() error {
-		if len(st.renter.Contracts()) >= 1 {
-			return nil
-		}
-		return errors.New("no renter contracts")
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	initialContract := st.renter.Contracts()[0]
-
-	// upload a file. the high upload cost will cause the underlying contract to
-	// require premature renewal. If premature renewal never happens, the upload
-	// will never complete.
-	path := filepath.Join(st.dir, "randUploadFile")
-	size := int(modules.SectorSize * 75)
-	err = createRandFile(path, size)
-	if err != nil {
-		t.Fatal(err)
-	}
-	uploadValues := url.Values{}
-	uploadValues.Set("source", path)
-	uploadValues.Set("renew", "true")
-	uploadValues.Set("datapieces", "1")
-	uploadValues.Set("paritypieces", "1")
-	err = st.stdPostAPI("/renter/upload/"+filepath.Base(path), uploadValues)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = build.Retry(100, time.Millisecond*500, func() error {
-		// mine blocks each iteration to trigger contract maintenance
-		_, err = st.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		st.miner.AddBlock()
-		if !st.renter.FileList()[0].Available {
-			return errors.New("file did not complete uploading")
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// verify that the window did not change and the contract ID did change
-	newContract := st.renter.Contracts()[0]
-	endHeight := newContract.EndHeight
-	if newContract.ID == initialContract.ID {
-		t.Error("renew did not occur")
-	}
-	if endHeight != initialContract.EndHeight {
-		t.Error("contract end height changed, wanted", initialContract.EndHeight, "got", endHeight)
 	}
 }
 
@@ -2093,10 +1801,6 @@ func TestAdversarialPriceRenewal(t *testing.T) {
 	settings := st.host.InternalSettings()
 	settings.MinStoragePrice = settings.MinStoragePrice.Mul64(10800000000)
 	err = st.host.SetInternalSettings(settings)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = st.announceHost()
 	if err != nil {
 		t.Fatal(err)
 	}

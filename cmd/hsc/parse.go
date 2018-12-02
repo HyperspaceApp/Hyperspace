@@ -1,12 +1,17 @@
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"math/big"
+	"os"
 	"strings"
 
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
@@ -113,7 +118,7 @@ func currencyUnits(c types.Currency) string {
 	// iterate until we find a unit greater than c
 	mag := pico
 	unit := ""
-	for _, unit = range []string{"pS", "nS", "uS", "mS", "SC", "KS", "MS", "GS", "TS"} {
+	for _, unit = range []string{"pS", "nS", "uS", "mS", "S", "KS", "MS", "GS", "TS"} {
 		if c.Cmp(mag.Mul64(1e3)) < 0 {
 			break
 		} else if unit != "TS" {
@@ -132,7 +137,7 @@ func currencyUnits(c types.Currency) string {
 
 // parseCurrency converts a SPACE amount to base units.
 func parseCurrency(amount string) (string, error) {
-	units := []string{"pS", "nS", "uS", "mS", "SC", "KS", "MS", "GS", "TS"}
+	units := []string{"pS", "nS", "uS", "mS", "S", "KS", "MS", "GS", "TS"}
 	for i, unit := range units {
 		if strings.HasSuffix(amount, unit) {
 			// scan into big.Rat
@@ -165,4 +170,34 @@ func yesNo(b bool) string {
 		return "Yes"
 	}
 	return "No"
+}
+
+// parseTxn decodes a transaction from s, which can be JSON, base64, or a path
+// to a file containing either encoding.
+func parseTxn(s string) (types.Transaction, error) {
+	// first assume s is a file
+	txnBytes, err := ioutil.ReadFile(s)
+	if os.IsNotExist(err) {
+		// assume s is a literal encoding
+		txnBytes = []byte(s)
+	} else if err != nil {
+		return types.Transaction{}, errors.New("could not read transaction file: " + err.Error())
+	}
+	// txnBytes now contains either s or the contents of the file, so it is
+	// either JSON or base64
+	var txn types.Transaction
+	if json.Valid(txnBytes) {
+		if err := json.Unmarshal(txnBytes, &txn); err != nil {
+			return types.Transaction{}, errors.New("could not decode JSON transaction: " + err.Error())
+		}
+	} else {
+		bin, err := base64.StdEncoding.DecodeString(string(txnBytes))
+		if err != nil {
+			return types.Transaction{}, errors.New("argument is not valid JSON, base64, or filepath")
+		}
+		if err := encoding.Unmarshal(bin, &txn); err != nil {
+			return types.Transaction{}, errors.New("could not decode binary transaction: " + err.Error())
+		}
+	}
+	return txn, nil
 }

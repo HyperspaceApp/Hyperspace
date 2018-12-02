@@ -426,8 +426,8 @@ func TestUnitAcceptableVersion(t *testing.T) {
 	}
 	validVersions := []string{
 		minimumAcceptablePeerVersion,
+		"1.3.7",
 		"1.4.0",
-		"1.3.1",
 		"1.6.0",
 		"1.6.1",
 		"1.9",
@@ -1060,7 +1060,7 @@ func TestPeerManagerPriority(t *testing.T) {
 
 	// Restart g1. It should immediately reconnect to g2, and then g3 after a
 	// delay.
-	g1, err = New(string(g1.myAddr), false, g1.persistDir)
+	g1, err = New(string(g1.myAddr), false, g1.persistDir, false)
 	if err != nil {
 		t.Fatal(err)
 	}

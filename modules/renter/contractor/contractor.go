@@ -1,12 +1,5 @@
 package contractor
 
-// TODO: We are in the middle of migrating the contractor to a new concurrency
-// model. The contractor should never call out to another package while under a
-// lock (except for the proto package). This is because the renter is going to
-// start calling contractor methods while holding the renter lock, so we need to
-// be absolutely confident that no contractor thread will attempt to grab a
-// renter lock.
-
 import (
 	"errors"
 	"fmt"
@@ -56,7 +49,6 @@ type Contractor struct {
 	pubKeysToContractID map[string]types.FileContractID
 	contractIDToPubKey  map[types.FileContractID]types.SiaPublicKey
 	renewing            map[types.FileContractID]bool // prevent revising during renewal
-	revising            map[types.FileContractID]bool // prevent overlapping revisions
 
 	// renewedFrom links the new contract's ID to the old contract's ID
 	// renewedTo links the old contract's ID to the new contract's ID
@@ -76,11 +68,12 @@ func (c *Contractor) Allowance() modules.Allowance {
 // PeriodSpending returns the amount spent on contracts during the current
 // billing period.
 func (c *Contractor) PeriodSpending() modules.ContractorSpending {
+	allContracts := c.staticContracts.ViewAll()
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	var spending modules.ContractorSpending
-	for _, contract := range c.staticContracts.ViewAll() {
+	for _, contract := range allContracts {
 		// Calculate ContractFees
 		spending.ContractFees = spending.ContractFees.Add(contract.ContractFee)
 		spending.ContractFees = spending.ContractFees.Add(contract.TxnFee)
@@ -221,7 +214,6 @@ func NewCustomContractor(cs consensusSet, w wallet, tp transactionPool, hdb host
 		contractIDToPubKey:  make(map[types.FileContractID]types.SiaPublicKey),
 		pubKeysToContractID: make(map[string]types.FileContractID),
 		renewing:            make(map[types.FileContractID]bool),
-		revising:            make(map[types.FileContractID]bool),
 		renewedFrom:         make(map[types.FileContractID]types.FileContractID),
 		renewedTo:           make(map[types.FileContractID]types.FileContractID),
 	}
@@ -242,16 +234,30 @@ func NewCustomContractor(cs consensusSet, w wallet, tp transactionPool, hdb host
 		return nil, err
 	}
 
-	// Subscribe to the consensus set.
-	err = cs.ConsensusSetSubscribe(c, c.lastChange, c.tg.StopChan())
-	if err == modules.ErrInvalidConsensusChangeID {
-		// Reset the contractor consensus variables and try rescanning.
-		c.blockHeight = 0
-		c.lastChange = modules.ConsensusChangeBeginning
+	if cs.SpvMode() {
+		// Subscribe to the consensus set.
+		err = cs.HeaderConsensusSetSubscribe(c, c.lastChange, c.tg.StopChan())
+		if err == modules.ErrInvalidConsensusChangeID {
+			// Reset the contractor consensus variables and try rescanning.
+			c.blockHeight = 0
+			c.lastChange = modules.ConsensusChangeBeginning
+			err = cs.HeaderConsensusSetSubscribe(c, c.lastChange, c.tg.StopChan())
+		}
+		if err != nil {
+			return nil, errors.New("contractor header subscription failed: " + err.Error())
+		}
+	} else {
+		// Subscribe to the consensus set.
 		err = cs.ConsensusSetSubscribe(c, c.lastChange, c.tg.StopChan())
-	}
-	if err != nil {
-		return nil, errors.New("contractor subscription failed: " + err.Error())
+		if err == modules.ErrInvalidConsensusChangeID {
+			// Reset the contractor consensus variables and try rescanning.
+			c.blockHeight = 0
+			c.lastChange = modules.ConsensusChangeBeginning
+			err = cs.ConsensusSetSubscribe(c, c.lastChange, c.tg.StopChan())
+		}
+		if err != nil {
+			return nil, errors.New("contractor subscription failed: " + err.Error())
+		}
 	}
 	// Unsubscribe from the consensus set upon shutdown.
 	c.tg.OnStop(func() {
@@ -277,5 +283,11 @@ func NewCustomContractor(cs consensusSet, w wallet, tp transactionPool, hdb host
 		c.pubKeysToContractID[string(contract.HostPublicKey.Key)] = contract.ID
 	}
 
+	// Update the allowance in the hostdb with the one that was loaded from
+	// disk.
+	err = c.hdb.SetAllowance(c.allowance)
+	if err != nil {
+		return nil, err
+	}
 	return c, nil
 }

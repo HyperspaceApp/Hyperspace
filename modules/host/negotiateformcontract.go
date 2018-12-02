@@ -33,7 +33,7 @@ func contractCollateral(settings modules.HostExternalSettings, fc types.FileCont
 // transaction, as well as any new parents that get added to the transaction
 // set. The builder that is used to add the collateral is also returned,
 // because the new transaction has not yet been signed.
-func (h *Host) managedAddCollateral(settings modules.HostExternalSettings, txnSet []types.Transaction) (builder modules.TransactionBuilder, newParents []types.Transaction, newInputs []types.SiacoinInput, err error) {
+func (h *Host) managedAddCollateral(settings modules.HostExternalSettings, txnSet []types.Transaction) (builder modules.TransactionBuilder, refundOutputs []types.SiacoinOutput, newInputs []types.SiacoinInput, err error) {
 	txn := txnSet[len(txnSet)-1]
 	parents := txnSet[:len(txnSet)-1]
 	fc := txn.FileContracts[0]
@@ -42,22 +42,23 @@ func (h *Host) managedAddCollateral(settings modules.HostExternalSettings, txnSe
 	if err != nil {
 		return
 	}
-	err = builder.FundSiacoins(hostPortion)
+
+	refundOutputs, err = builder.FundContract(hostPortion)
 	if err != nil {
 		builder.Drop()
 		return nil, nil, nil, extendErr("could not add collateral: ", ErrorInternal(err.Error()))
 	}
 
 	// Return which inputs and outputs have been added by the collateral call.
-	newParentIndices, newInputIndices, _ := builder.ViewAdded()
-	updatedTxn, updatedParents := builder.View()
-	for _, parentIndex := range newParentIndices {
-		newParents = append(newParents, updatedParents[parentIndex])
-	}
+	_, newInputIndices, _ := builder.ViewAdded()
+	updatedTxn, _ := builder.View()
+	// for _, parentIndex := range newParentIndices {
+	// 	newParents = append(newParents, updatedParents[parentIndex])
+	// }
 	for _, inputIndex := range newInputIndices {
 		newInputs = append(newInputs, updatedTxn.SiacoinInputs[inputIndex])
 	}
-	return builder, newParents, newInputs, nil
+	return builder, refundOutputs, newInputs, nil
 }
 
 // managedRPCFormContract accepts a file contract from a renter, checks the
@@ -121,7 +122,7 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 		return extendErr("contract verification failed: ", err)
 	}
 	// The host adds collateral to the transaction.
-	txnBuilder, newParents, newInputs, err := h.managedAddCollateral(settings, txnSet)
+	txnBuilder, newRefundOutputs, newInputs, err := h.managedAddCollateral(settings, txnSet)
 	if err != nil {
 		modules.WriteNegotiationRejection(conn, err) // Error ignored to preserve type in extendErr
 		return extendErr("failed to add collateral: ", err)
@@ -132,7 +133,7 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	if err != nil {
 		return extendErr("accepting verified contract failed: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.WriteObject(conn, newParents)
+	err = encoding.WriteObject(conn, newRefundOutputs)
 	if err != nil {
 		return extendErr("failed to write new parents: ", ErrorConnection(err.Error()))
 	}

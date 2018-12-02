@@ -22,8 +22,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
-	"github.com/sasha-s/go-deadlock"
 	"github.com/HyperspaceApp/threadgroup"
+	"github.com/sasha-s/go-deadlock"
 
 	// blank to load the sql driver for mysql
 	_ "github.com/go-sql-driver/mysql"
@@ -151,7 +151,7 @@ type Pool struct {
 	sqldb          *sql.DB
 	listener       net.Listener
 	log            *persist.Logger
-	yiilog         *persist.Logger
+	clientLog      *persist.Logger
 	mu             deadlock.RWMutex
 	dbConnectionMu deadlock.RWMutex
 	lucklock       deadlock.RWMutex
@@ -167,7 +167,7 @@ type Pool struct {
 	shiftTimestamp time.Time
 	clients        map[string]*Client //client name to client pointer mapping
 
-	clientSetupMutex deadlock.Mutex
+	clientSetupMutex map[string]*deadlock.Mutex
 	runningMutex     deadlock.RWMutex
 	running          bool
 }
@@ -328,9 +328,10 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 			minHeap:  false,
 		},
 
-		persistDir: persistDir,
-		stratumID:  rand.Uint64(),
-		clients:    make(map[string]*Client),
+		persistDir:       persistDir,
+		stratumID:        rand.Uint64(),
+		clients:          make(map[string]*Client),
+		clientSetupMutex: make(map[string]*deadlock.Mutex),
 	}
 	var err error
 
@@ -347,7 +348,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 	if err != nil {
 		return nil, err
 	}
-	p.yiilog, err = dependencies.newLogger(filepath.Join(p.persistDir, yiilogFile))
+	p.clientLog, err = dependencies.newLogger(filepath.Join(p.persistDir, clientLogFile))
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +425,7 @@ func newPool(dependencies dependencies, cs modules.ConsensusSet, tpool modules.T
 
 	p.runningMutex.Lock()
 	p.dispatcher = &Dispatcher{handlers: make(map[string]*Handler), mu: deadlock.RWMutex{}, p: p}
-	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "stratum.log"))
+	p.dispatcher.log, _ = dependencies.newLogger(filepath.Join(p.persistDir, "dispatcher.log"))
 	p.running = true
 	p.runningMutex.Unlock()
 

@@ -92,8 +92,9 @@ type NodeParams struct {
 	Allowance modules.Allowance
 
 	// The following fields are used to skip parts of the node set up
-	SkipSetAllowance  bool
-	SkipHostDiscovery bool
+	SkipSetAllowance     bool
+	SkipHostDiscovery    bool
+	SkipHostAnnouncement bool
 
 	// The high level directory where all the persistence gets stored for the
 	// modules.
@@ -186,7 +187,7 @@ func New(params NodeParams) (*Node, error) {
 			gateway.NewDeps(...
 		}
 		*/
-		return gateway.New("localhost:0", false, filepath.Join(dir, modules.GatewayDir))
+		return gateway.New("localhost:0", false, filepath.Join(dir, modules.GatewayDir), false)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create gateway"))
@@ -203,7 +204,7 @@ func New(params NodeParams) (*Node, error) {
 		if !params.CreateConsensusSet {
 			return nil, nil
 		}
-		return consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir))
+		return consensus.New(g, false, filepath.Join(dir, modules.ConsensusDir), false)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create consensus set"))
@@ -241,7 +242,7 @@ func New(params NodeParams) (*Node, error) {
 		if walletDeps == nil {
 			walletDeps = modules.ProdDependencies
 		}
-		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), walletDeps)
+		return wallet.NewCustomWallet(cs, tp, filepath.Join(dir, modules.WalletDir), modules.DefaultAddressGapLimit, false, walletDeps)
 	}()
 	if err != nil {
 		return nil, errors.Extend(err, errors.New("unable to create wallet"))

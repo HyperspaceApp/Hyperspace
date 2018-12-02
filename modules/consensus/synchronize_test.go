@@ -544,7 +544,7 @@ func TestRPCSendBlockSendsOnlyNecessaryBlocks(t *testing.T) {
 	// can connect it to the remote peer before calling consensus.New so as to
 	// prevent SendBlocks from triggering on Connect.
 	testdir := build.TempDir(modules.ConsensusDir, t.Name()+" - local")
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -553,7 +553,7 @@ func TestRPCSendBlockSendsOnlyNecessaryBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -677,6 +677,10 @@ func (pc mockPeerConn) SetDeadline(time.Time) error {
 	return nil
 }
 
+func (pc mockPeerConn) Version() string {
+	return "test"
+}
+
 // Read is a mock implementation of modules.PeerConn.Read that always returns
 // an error.
 func (mockPeerConnFailingReader) Read([]byte) (int, error) {
@@ -687,6 +691,10 @@ func (mockPeerConnFailingReader) Read([]byte) (int, error) {
 // an error.
 func (mockPeerConnFailingWriter) Write([]byte) (int, error) {
 	return 0, errFailingWriter
+}
+
+func (mockPeerConnFailingReader) Version() string {
+	return ""
 }
 
 // TestSendBlk probes the ConsensusSet.rpcSendBlk method and tests that it

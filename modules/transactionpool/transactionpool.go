@@ -3,8 +3,8 @@ package transactionpool
 import (
 	"errors"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/demotemutex"
+	"github.com/coreos/bbolt"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -33,6 +33,9 @@ type (
 		// Dependencies of the transaction pool.
 		consensusSet modules.ConsensusSet
 		gateway      modules.Gateway
+
+		// getWalletKeysFunc will help check block addresses in wallet keys or not
+		getWalletKeysFunc func() (map[types.UnlockHash]bool, error)
 
 		// To prevent double spends in the unconfirmed transaction set, the
 		// transaction pool keeps a list of all objects that have either been
@@ -103,11 +106,14 @@ func New(cs modules.ConsensusSet, g modules.Gateway, persistDir string) (*Transa
 		return nil, err
 	}
 
-	// Register RPCs
-	g.RegisterRPC(modules.RelayTransactionSetCmd, tp.relayTransactionSet)
-	tp.tg.OnStop(func() {
-		tp.gateway.UnregisterRPC(modules.RelayTransactionSetCmd)
-	})
+	// NOTE: don't relay tp when spv
+	if !tp.consensusSet.SpvMode() {
+		// Register RPCs
+		g.RegisterRPC(modules.RelayTransactionSetCmd, tp.relayTransactionSet)
+		tp.tg.OnStop(func() {
+			tp.gateway.UnregisterRPC(modules.RelayTransactionSetCmd)
+		})
+	}
 	return tp, nil
 }
 
@@ -270,4 +276,9 @@ func (tp *TransactionPool) TransactionSet(oid crypto.Hash) []types.Transaction {
 // peers.
 func (tp *TransactionPool) Broadcast(ts []types.Transaction) {
 	go tp.gateway.Broadcast("RelayTransactionSet", ts, tp.gateway.Peers())
+}
+
+// SetGetWalletKeysFunc set the getWalletKeysFunc callback
+func (tp *TransactionPool) SetGetWalletKeysFunc(f func() (map[types.UnlockHash]bool, error)) {
+	tp.getWalletKeysFunc = f
 }

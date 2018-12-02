@@ -203,17 +203,9 @@ func (h *Host) initNetworking(address string) (err error) {
 		}
 		defer h.tg.Done()
 
-		err = h.managedForwardPort(port)
+		err = h.g.ForwardPort(port)
 		if err != nil {
 			h.log.Println("ERROR: failed to forward port:", err)
-		} else {
-			// Clear the port that was forwarded at startup.
-			h.tg.OnStop(func() {
-				err := h.managedClearPort()
-				if err != nil {
-					h.log.Println("ERROR: failed to clear port:", err)
-				}
-			})
 		}
 
 		threadedUpdateHostnameClosedChan := make(chan struct{})
@@ -273,7 +265,7 @@ func (h *Host) threadedHandleConn(conn net.Conn) {
 	var id types.Specifier
 	if err := encoding.ReadObject(conn, &id, 16); err != nil {
 		atomic.AddUint64(&h.atomicUnrecognizedCalls, 1)
-		h.log.Debugf("WARN: incoming conn %v was malformed: %v", conn.RemoteAddr(), err)
+		h.log.Debugf("WARN: incoming conn %v was malformed: %v\n", conn.RemoteAddr(), err)
 		return
 	}
 

@@ -2,9 +2,11 @@ package modules
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
@@ -12,9 +14,79 @@ import (
 	"regexp"
 )
 
-// ErrHostFault is an error that is usually extended to indicate that an error
-// is the host's fault.
-var ErrHostFault = errors.New("host has returned an error")
+var (
+	// DefaultAllowance is the set of default allowance settings that will be
+	// used when allowances are not set or not fully set
+	DefaultAllowance = Allowance{
+		Funds:       types.SiacoinPrecision.Mul64(500),
+		Hosts:       uint64(PriceEstimationScope),
+		Period:      types.BlockHeight(3 * types.BlocksPerMonth),
+		RenewWindow: types.BlockHeight(types.BlocksPerMonth),
+
+		ExpectedStorage:    1e12,                                 // 1 TB
+		ExpectedUpload:     uint64(200e9) / types.BlocksPerMonth, // 200 GB per month
+		ExpectedDownload:   uint64(100e9) / types.BlocksPerMonth, // 100 GB per month
+		ExpectedRedundancy: 3.0,                                  // default is 10/30 erasure coding
+	}
+	// ErrHostFault indicates if an error is the host's fault.
+	ErrHostFault = errors.New("host has returned an error")
+
+	// PriceEstimationScope is the number of hosts that get queried by the
+	// renter when providing price estimates. Especially for the 'Standard'
+	// variable, there should be congruence with the number of contracts being
+	// used in the renter allowance.
+	PriceEstimationScope = build.Select(build.Var{
+		Standard: int(50),
+		Dev:      int(12),
+		Testing:  int(4),
+	}).(int)
+)
+
+// FilterMode is the helper type for the enum constants for the HostDB filter
+// mode
+type FilterMode int
+
+// HostDBFilterError HostDBDisableFilter HostDBActivateBlacklist and
+// HostDBActiveWhitelist are the constants used to enable and disable the filter
+// mode of the renter's hostdb
+const (
+	HostDBFilterError FilterMode = iota
+	HostDBDisableFilter
+	HostDBActivateBlacklist
+	HostDBActiveWhitelist
+)
+
+// String returns the string value for the FilterMode
+func (fm FilterMode) String() string {
+	switch fm {
+	case HostDBFilterError:
+		return "error"
+	case HostDBDisableFilter:
+		return "disable"
+	case HostDBActivateBlacklist:
+		return "blacklist"
+	case HostDBActiveWhitelist:
+		return "whitelist"
+	default:
+		return ""
+	}
+}
+
+// FromString assigned the FilterMode from the provide string
+func (fm *FilterMode) FromString(s string) error {
+	switch s {
+	case "disable":
+		*fm = HostDBDisableFilter
+	case "blacklist":
+		*fm = HostDBActivateBlacklist
+	case "whitelist":
+		*fm = HostDBActiveWhitelist
+	default:
+		*fm = HostDBFilterError
+		return fmt.Errorf("Could not assigned FilterMode from string %v", s)
+	}
+	return nil
+}
 
 // IsHostsFault indicates if a returned error is the host's fault.
 func IsHostsFault(err error) bool {
@@ -32,6 +104,11 @@ const (
 	// the host and the renter, and will also contain a file contract and file
 	// contract revision that have each been signed by all parties.
 	EstimatedFileContractTransactionSetSize = 2048
+
+	// EstimatedFileContractRevisionAndProofTransactionSetSize is the
+	// estimated blockchain size of a transaction set used by the host to
+	// provide the storage proof at the end of the contract duration.
+	EstimatedFileContractRevisionAndProofTransactionSetSize = 5000
 )
 
 // An ErasureCoder is an error-correcting encoder and decoder.
@@ -49,7 +126,7 @@ type ErasureCoder interface {
 
 	// EncodeShards encodes the input data like Encode but accepts an already
 	// sharded input.
-	EncodeShards(data [][]byte) ([][]byte, error)
+	EncodeShards(data [][]byte, pieceSize uint64) ([][]byte, error)
 
 	// Recover recovers the original data from pieces and writes it to w.
 	// pieces should be identical to the slice returned by Encode (length and
@@ -66,6 +143,20 @@ type Allowance struct {
 	Hosts       uint64            `json:"hosts"`
 	Period      types.BlockHeight `json:"period"`
 	RenewWindow types.BlockHeight `json:"renewwindow"`
+
+	// ExpectedStorage is the amount of data that we expect to have in a contract.
+	ExpectedStorage uint64 `json:"expectedstorage"`
+
+	// ExpectedUpload is the expected amount of data uploaded through the API,
+	// before redundancy, per block.
+	ExpectedUpload uint64 `json:"expectedupload"`
+
+	// ExpectedDownload is the expected amount of data downloaded through the
+	// API per block.
+	ExpectedDownload uint64 `json:"expecteddownload"`
+
+	// ExpectedRedundancy is the average redundancy of files being uploaded.
+	ExpectedRedundancy float64 `json:"expectedredundancy"`
 }
 
 // ContractUtility contains metrics internal to the contractor that reflect the
@@ -100,20 +191,27 @@ type FileUploadParams struct {
 	Source      string
 	SiaPath     string
 	ErasureCode ErasureCoder
-	Overwrite	bool
+	Force       bool
 }
 
 // FileInfo provides information about a file.
 type FileInfo struct {
-	SiaPath        string            `json:"hyperspacepath"`
-	LocalPath      string            `json:"localpath"`
-	Filesize       uint64            `json:"filesize"`
+	AccessTime     time.Time         `json:"accesstime"`
 	Available      bool              `json:"available"`
-	Renewing       bool              `json:"renewing"`
+	ChangeTime     time.Time         `json:"changetime"`
+	CipherType     string            `json:"ciphertype"`
+	CreateTime     time.Time         `json:"createtime"`
+	Expiration     types.BlockHeight `json:"expiration"`
+	Filesize       uint64            `json:"filesize"`
+	LocalPath      string            `json:"localpath"`
+	ModTime        time.Time         `json:"modtime"`
+	OnDisk         bool              `json:"ondisk"`
+	Recoverable    bool              `json:"recoverable"`
 	Redundancy     float64           `json:"redundancy"`
+	Renewing       bool              `json:"renewing"`
+	SiaPath        string            `json:"siapath"`
 	UploadedBytes  uint64            `json:"uploadedbytes"`
 	UploadProgress float64           `json:"uploadprogress"`
-	Expiration     types.BlockHeight `json:"expiration"`
 }
 
 // A HostDBEntry represents one host entry in the Renter's host DB. It
@@ -131,16 +229,25 @@ type HostDBEntry struct {
 	HistoricUptime   time.Duration `json:"historicuptime"`
 	ScanHistory      HostDBScans   `json:"scanhistory"`
 
+	// Measurements that are taken whenever we interact with a host.
 	HistoricFailedInteractions     float64 `json:"historicfailedinteractions"`
 	HistoricSuccessfulInteractions float64 `json:"historicsuccessfulinteractions"`
 	RecentFailedInteractions       float64 `json:"recentfailedinteractions"`
 	RecentSuccessfulInteractions   float64 `json:"recentsuccessfulinteractions"`
 
-	LastHistoricUpdate types.BlockHeight
+	LastHistoricUpdate types.BlockHeight `json:"lasthistoricupdate"`
+
+	// Measurements related to the IP subnet mask.
+	IPNets          []string  `json:"ipnets"`
+	LastIPNetChange time.Time `json:"lastipnetchange"`
 
 	// The public key of the host, stored separately to minimize risk of certain
 	// MitM based vulnerabilities.
 	PublicKey types.SiaPublicKey `json:"publickey"`
+
+	// Filtered says whether or not a HostDBEntry is being filtered out of the
+	// filtered hosttree due to the filter mode of the hosttree
+	Filtered bool `json:"filtered"`
 }
 
 // HostDBScan represents a single scan event.
@@ -189,10 +296,11 @@ type RenterPriceEstimation struct {
 
 // RenterSettings control the behavior of the Renter.
 type RenterSettings struct {
-	Allowance        Allowance `json:"allowance"`
-	MaxUploadSpeed   int64     `json:"maxuploadspeed"`
-	MaxDownloadSpeed int64     `json:"maxdownloadspeed"`
-	StreamCacheSize  uint64    `json:"streamcachesize"`
+	Allowance         Allowance `json:"allowance"`
+	IPViolationsCheck bool      `json:"ipviolationcheck"`
+	MaxUploadSpeed    int64     `json:"maxuploadspeed"`
+	MaxDownloadSpeed  int64     `json:"maxdownloadspeed"`
+	StreamCacheSize   uint64    `json:"streamcachesize"`
 }
 
 // HostDBScans represents a sortable slice of scans.
@@ -326,6 +434,9 @@ type Renter interface {
 	// Close closes the Renter.
 	Close() error
 
+	// CancelContract cancels a specific contract of the renter.
+	CancelContract(id types.FileContractID) error
+
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []RenterContract
 
@@ -367,6 +478,9 @@ type Renter interface {
 	// FileList returns information on all of the files stored by the renter.
 	FileList(filter ...*regexp.Regexp) []FileInfo
 
+	// SetFilterMode sets the renter's hostdb filter mode
+	SetFilterMode(fm FilterMode, hosts []types.SiaPublicKey) error
+
 	// Host provides the DB entry and score breakdown for the requested host.
 	Host(pk types.SiaPublicKey) (HostDBEntry, bool)
 
@@ -384,14 +498,14 @@ type Renter interface {
 
 	// PriceEstimation estimates the cost in siacoins of performing various
 	// storage and data operations.
-	PriceEstimation() RenterPriceEstimation
+	PriceEstimation(allowance Allowance) (RenterPriceEstimation, Allowance, error)
 
 	// RenameFile changes the path of a file.
 	RenameFile(path, newPath string) error
 
 	// EstimateHostScore will return the score for a host with the provided
 	// settings, assuming perfect age and uptime adjustments
-	EstimateHostScore(entry HostDBEntry) HostScoreBreakdown
+	EstimateHostScore(entry HostDBEntry, allowance Allowance) HostScoreBreakdown
 
 	// ScoreBreakdown will return the score for a host db entry using the
 	// hostdb's weighting algorithm.
@@ -402,6 +516,10 @@ type Renter interface {
 
 	// SetSettings sets the Renter's settings.
 	SetSettings(RenterSettings) error
+
+	// SetFileTrackingPath sets the on-disk location of an uploaded file to a
+	// new value. Useful if files need to be moved on disk.
+	SetFileTrackingPath(siaPath, newPath string) error
 
 	// ShareFiles creates a '.sia' file that can be shared with others.
 	ShareFiles(paths []string, shareDest string) error
@@ -416,6 +534,9 @@ type Renter interface {
 
 	// Upload uploads a file using the input parameters.
 	Upload(FileUploadParams) error
+
+	// CreateDir creates a directory for the renter
+	CreateDir(siaPath string) error
 }
 
 // RenterDownloadParameters defines the parameters passed to the Renter's

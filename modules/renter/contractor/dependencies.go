@@ -13,8 +13,10 @@ import (
 type (
 	consensusSet interface {
 		ConsensusSetSubscribe(modules.ConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error
+		HeaderConsensusSetSubscribe(modules.HeaderConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error
 		Synced() bool
 		Unsubscribe(modules.ConsensusSetSubscriber)
+		SpvMode() bool
 	}
 	// In order to restrict the modules.TransactionBuilder interface, we must
 	// provide a shim to bridge the gap between modules.Wallet and
@@ -37,6 +39,7 @@ type (
 		AddTransactionSignature(types.TransactionSignature) uint64
 		Drop()
 		FundSiacoins(types.Currency) error
+		FundContract(types.Currency) ([]types.SiacoinOutput, error)
 		Sign(bool) ([]types.Transaction, error)
 		UnconfirmedParents() ([]types.Transaction, error)
 		View() (types.Transaction, []types.Transaction)
@@ -50,11 +53,15 @@ type (
 	hostDB interface {
 		AllHosts() []modules.HostDBEntry
 		ActiveHosts() []modules.HostDBEntry
+		CheckForIPViolations([]types.SiaPublicKey) []types.SiaPublicKey
+		Filter() (modules.FilterMode, map[string]types.SiaPublicKey)
+		SetFilterMode(fm modules.FilterMode, hosts []types.SiaPublicKey) error
 		Host(types.SiaPublicKey) (modules.HostDBEntry, bool)
 		IncrementSuccessfulInteractions(key types.SiaPublicKey)
 		IncrementFailedInteractions(key types.SiaPublicKey)
-		RandomHosts(n int, exclude []types.SiaPublicKey) ([]modules.HostDBEntry, error)
+		RandomHosts(n int, blacklist, addressBlacklist []types.SiaPublicKey) ([]modules.HostDBEntry, error)
 		ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown
+		SetAllowance(allowance modules.Allowance) error
 	}
 
 	persister interface {

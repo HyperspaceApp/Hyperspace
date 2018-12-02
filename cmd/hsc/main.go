@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +17,7 @@ import (
 
 var (
 	// Flags.
+	dictionaryLanguage     string // dictionary for seed utils
 	hostContractOutputType string // output type for host contracts
 	hostVerbose            bool   // display additional host info
 	initForce              bool   // destroy and re-encrypt the wallet on init if it already exists
@@ -24,7 +27,17 @@ var (
 	renterDownloadAsync    bool   // Downloads files asynchronously
 	renterListVerbose      bool   // Show additional info about uploaded files.
 	renterShowHistory      bool   // Show download history in addition to download queue.
+	siaDir                 string // Path to sia data dir
 	walletRawTxn           bool   // Encode/decode transactions in base64-encoded binary.
+
+	allowanceFunds              string // amount of money to be used within a period
+	allowancePeriod             string // length of period
+	allowanceHosts              string // number of hosts to form contracts with
+	allowanceRenewWindow        string // renew window of allowance
+	allowanceExpectedStorage    string // expected storage stored on hosts before redundancy
+	allowanceExpectedUpload     string // expected data uploaded within period
+	allowanceExpectedDownload   string // expected data downloaded within period
+	allowanceExpectedRedundancy string // expected redundancy of most uploaded files
 )
 
 var (
@@ -120,8 +133,8 @@ func main() {
 	stratumminerCmd.AddCommand(stratumminerStartCmd, stratumminerStopCmd)
 
 	root.AddCommand(walletCmd)
-	walletCmd.AddCommand(walletAddressCmd, walletAddressesCmd, walletChangepasswordCmd, walletInitCmd, walletInitSeedCmd,
-		walletLoadCmd, walletLockCmd, walletSeedsCmd, walletSendCmd, walletSweepCmd, walletSignCmd,
+	walletCmd.AddCommand(walletAddressesCmd, walletChangepasswordCmd, walletGetAddressCmd, walletInitCmd, walletInitSeedCmd,
+		walletLoadCmd, walletLockCmd, walletNewAddressCmd, walletSeedsCmd, walletSendCmd, walletSweepCmd, walletSignCmd,
 		walletBalanceCmd, walletBroadcastCmd, walletTransactionsCmd, walletUnlockCmd)
 	walletInitCmd.Flags().BoolVarP(&initPassword, "password", "p", false, "Prompt for a custom password")
 	walletInitCmd.Flags().BoolVarP(&initForce, "force", "", false, "destroy the existing wallet and re-encrypt")
@@ -149,25 +162,47 @@ func main() {
 	renterFilesListCmd.Flags().BoolVarP(&renterListVerbose, "verbose", "v", false, "Show additional file info such as redundancy")
 	renterExportCmd.AddCommand(renterExportContractTxnsCmd)
 
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceFunds, "amount", "", "amount of money in allowance, specified in currency units")
+	renterSetAllowanceCmd.Flags().StringVar(&allowancePeriod, "period", "", "period of allowance in blocks (b), hours (h), days (d) or weeks (w)")
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceHosts, "hosts", "", "number of hosts the renter will spread the uploaded data across")
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceRenewWindow, "renew-window", "", "renew window in blocks (b), hours (h), days (d) or weeks (w)")
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceExpectedStorage, "expected-storage", "", "expected storage in bytes (B), kilobytes (KB), megabytes (MB) etc. up to yottabytes (YB)")
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceExpectedUpload, "expected-upload", "", "expected upload in period in bytes (B), kilobytes (KB), megabytes (MB) etc. up to yottabytes (YB)")
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceExpectedDownload, "expected-download", "", "expected download in period in bytes (B), kilobytes (KB), megabytes (MB) etc. up to yottabytes (YB)")
+	renterSetAllowanceCmd.Flags().StringVar(&allowanceExpectedRedundancy, "expected-redundancy", "", "expected redundancy of most uploaded files")
+
 	root.AddCommand(gatewayCmd)
 	gatewayCmd.AddCommand(gatewayConnectCmd, gatewayDisconnectCmd, gatewayAddressCmd, gatewayListCmd)
 
 	root.AddCommand(consensusCmd)
 
-	root.AddCommand(bashcomplCmd)
-	root.AddCommand(mangenCmd)
+	utilsCmd.AddCommand(bashcomplCmd, mangenCmd, utilsHastingsCmd, utilsEncodeRawTxnCmd, utilsDecodeRawTxnCmd,
+		utilsSigHashCmd, utilsCheckSigCmd, utilsVerifySeedCmd)
+	utilsVerifySeedCmd.Flags().StringVarP(&dictionaryLanguage, "language", "l", "english", "which dictionary you want to use")
+	root.AddCommand(utilsCmd)
 
 	// initialize client
 	root.PersistentFlags().StringVarP(&httpClient.Address, "addr", "a", config.DefaultAPIAddr, "which host/port to communicate with (i.e. the host/port hsd is listening on)")
 	root.PersistentFlags().StringVarP(&httpClient.Password, "apipassword", "", "", "the password for the API's http authentication")
 	root.PersistentFlags().StringVarP(&httpClient.UserAgent, "useragent", "", "Hyperspace-Agent", "the useragent used by hsc to connect to the daemon's API")
 	root.PersistentFlags().BoolVarP(&httpClient.UseTestnet, "testnet", "", false, fmt.Sprintf("use the Hyperspace testnet and default testnet API port (%d)", config.TestnetAPIPort))
+	root.PersistentFlags().StringVarP(&siaDir, "hyperspace-directory", "d", build.DefaultSiaDir(), "location of the hyperspace directory")
 
 	// Check if the api password environment variable is set.
 	apiPassword := os.Getenv("HYPERSPACE_API_PASSWORD")
 	if apiPassword != "" {
 		httpClient.Password = apiPassword
 		fmt.Println("Using HYPERSPACE_API_PASSWORD environment variable")
+	}
+
+	// If the API password wasn't set we try to read it from the file. If
+	// reading fails, continue silently; but in the next release, this will
+	// be an error.
+	if httpClient.Password == "" {
+		pw, err := ioutil.ReadFile(build.APIPasswordFile(siaDir))
+		if err == nil {
+			httpClient.Password = strings.TrimSpace(string(pw))
+		}
 	}
 
 	// run

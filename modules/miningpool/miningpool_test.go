@@ -44,7 +44,7 @@ type poolTester struct {
 	cs        modules.ConsensusSet
 	tpool     modules.TransactionPool
 	wallet    modules.Wallet
-	walletKey crypto.TwofishKey
+	walletKey crypto.CipherKey
 
 	mpool *Pool
 
@@ -67,16 +67,16 @@ func GetFreePort() (int, error) {
 }
 
 func newPoolTester(name string, port int) (*poolTester, error) {
-	fmt.Printf("newPoolTester: %s, port %d\n", name, port)
+	// fmt.Printf("newPoolTester: %s, port %d\n", name, port)
 	testdir := build.TempDir(modules.PoolDir, name)
-	fmt.Printf("temp path: %s\n", testdir)
+	// fmt.Printf("temp path: %s\n", testdir)
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -84,12 +84,13 @@ func newPoolTester(name string, port int) (*poolTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
-	var key crypto.TwofishKey
-	fastrand.Read(key[:])
+	var entropy [crypto.EntropySize]byte
+	fastrand.Read(entropy[:])
+	key, _ := crypto.NewSiaKey(crypto.TypeThreefish, entropy[:])
 	_, err = w.Encrypt(key)
 	if err != nil {
 		return nil, err

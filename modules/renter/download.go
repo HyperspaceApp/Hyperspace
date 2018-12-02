@@ -125,6 +125,7 @@ package renter
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -165,7 +166,6 @@ type (
 
 		// Retrieval settings for the file.
 		staticLatencyTarget time.Duration // In milliseconds. Lower latency results in lower total system throughput.
-		staticOverdrive     int           // How many extra pieces to download to prevent slow hosts from being a bottleneck.
 		staticPriority      uint64        // Downloads with higher priority will complete first.
 
 		// Utilities.
@@ -316,6 +316,15 @@ func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download,
 		destinationType = "file"
 	}
 
+	// If the destination is a httpWriter, we set the Content-Length in the
+	// header.
+	if isHTTPResp {
+		w, ok := p.Httpwriter.(http.ResponseWriter)
+		if ok {
+			w.Header().Set("Content-Length", fmt.Sprint(p.Length))
+		}
+	}
+
 	// Create the download object.
 	d, err := r.managedNewDownload(downloadParams{
 		destination:       dw,
@@ -372,7 +381,6 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 		staticLatencyTarget:   params.latencyTarget,
 		staticLength:          params.length,
 		staticOffset:          params.offset,
-		staticOverdrive:       params.overdrive,
 		staticSiaPath:         params.file.SiaPath(),
 		staticPriority:        params.priority,
 
@@ -383,9 +391,6 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 	// Determine which chunks to download.
 	minChunk, minChunkOffset := params.file.ChunkIndexByOffset(params.offset)
 	maxChunk, maxChunkOffset := params.file.ChunkIndexByOffset(params.offset + params.length)
-	if minChunk == params.file.NumChunks() || maxChunk == params.file.NumChunks() {
-		return nil, errors.New("download is requesting a chunk that is past the boundary of the file")
-	}
 	// If the maxChunkOffset is exactly 0 we need to subtract 1 chunk. e.g. if
 	// the chunkSize is 100 bytes and we want to download 100 bytes from offset
 	// 0, maxChunk would be 1 and maxChunkOffset would be 0. We want maxChunk
@@ -393,9 +398,9 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 	if maxChunk > 0 && maxChunkOffset == 0 {
 		maxChunk--
 	}
-	// Protect maxChunk underflow on tiny files
-	if params.file.Size() < 4096 {
-		maxChunk = 0
+	// Make sure the requested chunks are within the boundaries.
+	if minChunk == params.file.NumChunks() || maxChunk == params.file.NumChunks() {
+		return nil, errors.New("download is requesting a chunk that is past the boundary of the file")
 	}
 
 	// For each chunk, assemble a mapping from the contract id to the index of
@@ -431,13 +436,13 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 	for i := minChunk; i <= maxChunk; i++ {
 		udc := &unfinishedDownloadChunk{
 			destination: params.destination,
-			erasureCode: params.file.ErasureCode(i),
+			erasureCode: params.file.ErasureCode(),
 			masterKey:   params.file.MasterKey(),
 
 			staticChunkIndex: i,
 			staticCacheID:    fmt.Sprintf("%v:%v", d.staticSiaPath, i),
 			staticChunkMap:   chunkMaps[i-minChunk],
-			staticChunkSize:  params.file.ChunkSize(i),
+			staticChunkSize:  params.file.ChunkSize(),
 			staticPieceSize:  params.file.PieceSize(),
 
 			// TODO: 25ms is just a guess for a good default. Really, we want to
@@ -453,10 +458,12 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 			staticNeedsMemory:   params.needsMemory,
 			staticPriority:      params.priority,
 
-			physicalChunkData: make([][]byte, params.file.ErasureCode(i).NumPieces()),
-			pieceUsage:        make([]bool, params.file.ErasureCode(i).NumPieces()),
+			completedPieces:   make([]bool, params.file.ErasureCode().NumPieces()),
+			physicalChunkData: make([][]byte, params.file.ErasureCode().NumPieces()),
+			pieceUsage:        make([]bool, params.file.ErasureCode().NumPieces()),
 
 			download:          d,
+			renterFile:        params.file,
 			staticStreamCache: r.staticStreamCache,
 		}
 
@@ -472,7 +479,7 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 		if i == maxChunk && maxChunkOffset != 0 {
 			udc.staticFetchLength = maxChunkOffset - udc.staticFetchOffset
 		} else {
-			udc.staticFetchLength = params.file.ChunkSize(i) - udc.staticFetchOffset
+			udc.staticFetchLength = params.file.ChunkSize() - udc.staticFetchOffset
 		}
 		// Set the writeOffset within the destination for where the data should
 		// be written.

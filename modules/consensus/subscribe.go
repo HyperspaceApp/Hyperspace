@@ -7,8 +7,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 
-	"github.com/coreos/bbolt"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
+	"github.com/coreos/bbolt"
 )
 
 // computeConsensusChange computes the consensus change from the change entry
@@ -69,7 +69,7 @@ func (cs *ConsensusSet) computeConsensusChange(tx *bolt.Tx, ce changeEntry) (mod
 		cs.log.Critical("could not find process block for known block")
 	}
 	cc.ChildTarget = pb.ChildTarget
-	cc.MinimumValidChildTimestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb)
+	cc.MinimumValidChildTimestamp = cs.blockRuleHelper.minimumValidChildTimestamp(tx.Bucket(BlockMap), pb.Block.ParentID, pb.Block.Timestamp)
 
 	currentBlock := currentBlockID(tx)
 	if cs.synced && recentBlock == currentBlock {

@@ -223,7 +223,9 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 	so.SectorRoots = []crypto.Hash{sectorRoot}
 	sectorCost := types.SiacoinPrecision.Mul64(550)
 	so.PotentialStorageRevenue = so.PotentialStorageRevenue.Add(sectorCost)
+	ht.host.mu.Lock()
 	ht.host.financialMetrics.PotentialStorageRevenue = ht.host.financialMetrics.PotentialStorageRevenue.Add(sectorCost)
+	ht.host.mu.Unlock()
 	validPayouts, missedPayouts := so.payouts()
 	validPayouts[0].Value = validPayouts[0].Value.Sub(sectorCost)
 	validPayouts[1].Value = validPayouts[1].Value.Add(sectorCost)
@@ -245,7 +247,9 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 		}},
 	}}
 	ht.host.managedLockStorageObligation(so.id())
+	ht.host.mu.Lock()
 	err = ht.host.modifyStorageObligation(so, nil, []crypto.Hash{sectorRoot}, [][]byte{sectorData})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,30 +268,46 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 	}
 	// Load the storage obligation from the database, see if it updated
 	// correctly.
-	err = ht.host.db.View(func(tx *bolt.Tx) error {
-		so, err = getStorageObligation(tx, so.id())
+	err = build.Retry(100, 100*time.Millisecond, func() error {
+		ht.host.mu.Lock()
+		err := ht.host.db.View(func(tx *bolt.Tx) error {
+			so, err = getStorageObligation(tx, so.id())
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		ht.host.mu.Unlock()
 		if err != nil {
 			return err
+		}
+		if !so.OriginConfirmed {
+			return errors.New("origin transaction for storage obligation was not confirmed after a block was mined")
+		}
+		if !so.RevisionConfirmed {
+			return errors.New("revision transaction for storage obligation was not confirmed after a block was mined")
 		}
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !so.OriginConfirmed {
-		t.Fatal("origin transaction for storage obligation was not confirmed after a block was mined")
-	}
-	if !so.RevisionConfirmed {
-		t.Fatal("revision transaction for storage obligation was not confirmed after a block was mined")
-	}
 
 	// Mine until the host submits a storage proof.
-	for i := ht.host.blockHeight; i <= so.expiration()+resubmissionTimeout; i++ {
+	ht.host.mu.Lock()
+	bh := ht.host.blockHeight
+	ht.host.mu.Unlock()
+	for i := bh; i < so.expiration()+resubmissionTimeout; i++ {
 		_, err := ht.miner.AddBlock()
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
+
+	// Need Sleep for online CI, otherwise threadedHandleActionItem thread group
+	// is not added in time and Flush() does not block
+	time.Sleep(time.Second)
+
 	// Flush the host - flush will block until the host has submitted the
 	// storage proof to the transaction pool.
 	err = ht.host.tg.Flush()
@@ -302,6 +322,7 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 	}
 
 	// Grab the storage proof and inspect the contents.
+	ht.host.mu.Lock()
 	err = ht.host.db.View(func(tx *bolt.Tx) error {
 		so, err = getStorageObligation(tx, so.id())
 		if err != nil {
@@ -309,6 +330,7 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 		}
 		return nil
 	})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,6 +352,7 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	ht.host.mu.Lock()
 	err = ht.host.db.View(func(tx *bolt.Tx) error {
 		so, err = getStorageObligation(tx, so.id())
 		if err != nil {
@@ -343,10 +366,14 @@ func TestSingleSectorStorageObligationStack(t *testing.T) {
 		}
 		return nil
 	})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ht.host.financialMetrics.StorageRevenue.Equals(sectorCost) {
+	ht.host.mu.Lock()
+	storageRevenue := ht.host.financialMetrics.StorageRevenue
+	ht.host.mu.Unlock()
+	if !storageRevenue.Equals(sectorCost) {
 		t.Fatal("the host should be reporting revenue after a successful storage proof")
 	}
 }
@@ -394,6 +421,7 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 	}
 	// Load the storage obligation from the database, see if it updated
 	// correctly.
+	ht.host.mu.Lock()
 	err = ht.host.db.View(func(tx *bolt.Tx) error {
 		so, err = getStorageObligation(tx, so.id())
 		if err != nil {
@@ -401,6 +429,7 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 		}
 		return nil
 	})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -414,7 +443,9 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 	so.SectorRoots = []crypto.Hash{sectorRoot}
 	sectorCost := types.SiacoinPrecision.Mul64(550)
 	so.PotentialStorageRevenue = so.PotentialStorageRevenue.Add(sectorCost)
+	ht.host.mu.Lock()
 	ht.host.financialMetrics.PotentialStorageRevenue = ht.host.financialMetrics.PotentialStorageRevenue.Add(sectorCost)
+	ht.host.mu.Unlock()
 	validPayouts, missedPayouts := so.payouts()
 	validPayouts[0].Value = validPayouts[0].Value.Sub(sectorCost)
 	validPayouts[1].Value = validPayouts[1].Value.Add(sectorCost)
@@ -436,7 +467,9 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 		}},
 	}}
 	ht.host.managedLockStorageObligation(so.id())
+	ht.host.mu.Lock()
 	err = ht.host.modifyStorageObligation(so, nil, []crypto.Hash{sectorRoot}, [][]byte{sectorData})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +491,9 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 	so.SectorRoots = []crypto.Hash{sectorRoot, sectorRoot2}
 	sectorCost2 := types.SiacoinPrecision.Mul64(650)
 	so.PotentialStorageRevenue = so.PotentialStorageRevenue.Add(sectorCost2)
+	ht.host.mu.Lock()
 	ht.host.financialMetrics.PotentialStorageRevenue = ht.host.financialMetrics.PotentialStorageRevenue.Add(sectorCost2)
+	ht.host.mu.Unlock()
 	validPayouts, missedPayouts = so.payouts()
 	validPayouts[0].Value = validPayouts[0].Value.Sub(sectorCost2)
 	validPayouts[1].Value = validPayouts[1].Value.Add(sectorCost2)
@@ -482,7 +517,9 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 		}},
 	}}
 	ht.host.managedLockStorageObligation(so.id())
+	ht.host.mu.Lock()
 	err = ht.host.modifyStorageObligation(so, nil, []crypto.Hash{sectorRoot2}, [][]byte{sectorData2})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,43 +538,60 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 	}
 	// Load the storage obligation from the database, see if it updated
 	// correctly.
-	err = ht.host.db.View(func(tx *bolt.Tx) error {
-		so, err = getStorageObligation(tx, so.id())
+	err = build.Retry(100, 100*time.Millisecond, func() error {
+		ht.host.mu.Lock()
+		err := ht.host.db.View(func(tx *bolt.Tx) error {
+			so, err = getStorageObligation(tx, so.id())
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+		ht.host.mu.Unlock()
 		if err != nil {
 			return err
+		}
+		if !so.OriginConfirmed {
+			return errors.New("origin transaction for storage obligation was not confirmed after a block was mined")
+		}
+		if !so.RevisionConfirmed {
+			return errors.New("revision transaction for storage obligation was not confirmed after a block was mined")
 		}
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !so.OriginConfirmed {
-		t.Fatal("origin transaction for storage obligation was not confirmed after a block was mined")
-	}
-	if !so.RevisionConfirmed {
-		t.Fatal("revision transaction for storage obligation was not confirmed after a block was mined")
-	}
 
 	// Mine until the host submits a storage proof.
-	for i := ht.host.blockHeight; i <= so.expiration()+resubmissionTimeout; i++ {
+	ht.host.mu.Lock()
+	bh := ht.host.blockHeight
+	ht.host.mu.Unlock()
+	for i := bh; i < so.expiration()+resubmissionTimeout; i++ {
 		_, err := ht.miner.AddBlock()
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
+
+	// Need Sleep for online CI, otherwise threadedHandleActionItem thread group
+	// is not added in time and Flush() does not block
+	time.Sleep(time.Second)
+
 	// Flush the host - flush will block until the host has submitted the
 	// storage proof to the transaction pool.
 	err = ht.host.tg.Flush()
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	// Mine another block, to get the storage proof from the transaction pool
 	// into the blockchain.
 	_, err = ht.miner.AddBlock()
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	ht.host.mu.Lock()
 	err = ht.host.db.View(func(tx *bolt.Tx) error {
 		so, err = getStorageObligation(tx, so.id())
 		if err != nil {
@@ -545,6 +599,7 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 		}
 		return nil
 	})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -566,6 +621,7 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	ht.host.mu.Lock()
 	err = ht.host.db.View(func(tx *bolt.Tx) error {
 		so, err = getStorageObligation(tx, so.id())
 		if err != nil {
@@ -579,6 +635,7 @@ func TestMultiSectorStorageObligationStack(t *testing.T) {
 		}
 		return nil
 	})
+	ht.host.mu.Unlock()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -660,36 +717,21 @@ func TestAutoRevisionSubmission(t *testing.T) {
 	// Unlike the other tests, this test does not submit the file contract
 	// revision to the transaction pool for the host, the host is expected to
 	// do it automatically.
-
-	// Mine until the host submits a storage proof.
-	for i := types.BlockHeight(0); i <= revisionSubmissionBuffer+2+resubmissionTimeout; i++ {
-		_, err := ht.miner.AddBlock()
-		if err != nil {
-			t.Fatal(err)
+	count := 0
+	err = build.Retry(500, 100*time.Millisecond, func() error {
+		// Mine another block every 10 iterations, to get the storage proof from
+		// the transaction pool into the blockchain.
+		if count%10 == 0 {
+			_, err = ht.miner.AddBlock()
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = ht.host.tg.Flush()
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
-		err = ht.host.tg.Flush()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	// Flush the host - flush will block until the host has submitted the
-	// storage proof to the transaction pool.
-	err = ht.host.tg.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Mine another block, to get the storage proof from the transaction pool
-	// into the blockchain.
-	_, err = ht.miner.AddBlock()
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ht.host.tg.Flush()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = build.Retry(50, 250*time.Millisecond, func() error {
+		count++
 		err = ht.host.db.View(func(tx *bolt.Tx) error {
 			so, err = getStorageObligation(tx, so.id())
 			if err != nil {

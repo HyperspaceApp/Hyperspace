@@ -2,6 +2,7 @@ package contractor
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -19,8 +20,12 @@ type newStub struct{}
 func (newStub) ConsensusSetSubscribe(modules.ConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error {
 	return nil
 }
+func (newStub) HeaderConsensusSetSubscribe(modules.HeaderConsensusSetSubscriber, modules.ConsensusChangeID, <-chan struct{}) error {
+	return nil
+}
 func (newStub) Synced() bool                               { return true }
 func (newStub) Unsubscribe(modules.ConsensusSetSubscriber) { return }
+func (newStub) SpvMode() bool                              { return false }
 
 // wallet stubs
 func (newStub) NextAddress() (uc types.UnlockConditions, err error)          { return }
@@ -31,15 +36,23 @@ func (newStub) AcceptTransactionSet([]types.Transaction) error      { return nil
 func (newStub) FeeEstimation() (a types.Currency, b types.Currency) { return }
 
 // hdb stubs
-func (newStub) AllHosts() []modules.HostDBEntry                                      { return nil }
-func (newStub) ActiveHosts() []modules.HostDBEntry                                   { return nil }
-func (newStub) Host(types.SiaPublicKey) (settings modules.HostDBEntry, ok bool)      { return }
-func (newStub) IncrementSuccessfulInteractions(key types.SiaPublicKey)               { return }
-func (newStub) IncrementFailedInteractions(key types.SiaPublicKey)                   { return }
-func (newStub) RandomHosts(int, []types.SiaPublicKey) ([]modules.HostDBEntry, error) { return nil, nil }
+func (newStub) AllHosts() []modules.HostDBEntry                                { return nil }
+func (newStub) ActiveHosts() []modules.HostDBEntry                             { return nil }
+func (newStub) CheckForIPViolations([]types.SiaPublicKey) []types.SiaPublicKey { return nil }
+func (newStub) Filter() (modules.FilterMode, map[string]types.SiaPublicKey) {
+	return 0, make(map[string]types.SiaPublicKey)
+}
+func (newStub) SetFilterMode(fm modules.FilterMode, hosts []types.SiaPublicKey) error { return nil }
+func (newStub) Host(types.SiaPublicKey) (settings modules.HostDBEntry, ok bool)       { return }
+func (newStub) IncrementSuccessfulInteractions(key types.SiaPublicKey)                { return }
+func (newStub) IncrementFailedInteractions(key types.SiaPublicKey)                    { return }
+func (newStub) RandomHosts(int, []types.SiaPublicKey, []types.SiaPublicKey) ([]modules.HostDBEntry, error) {
+	return nil, nil
+}
 func (newStub) ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown {
 	return modules.HostScoreBreakdown{}
 }
+func (newStub) SetAllowance(allowance modules.Allowance) error { return nil }
 
 // TestNew tests the New function.
 func TestNew(t *testing.T) {
@@ -103,16 +116,24 @@ func TestAllowance(t *testing.T) {
 // its methods.
 type stubHostDB struct{}
 
-func (stubHostDB) AllHosts() (hs []modules.HostDBEntry)                                      { return }
-func (stubHostDB) ActiveHosts() (hs []modules.HostDBEntry)                                   { return }
-func (stubHostDB) Host(types.SiaPublicKey) (h modules.HostDBEntry, ok bool)                  { return }
-func (stubHostDB) IncrementSuccessfulInteractions(key types.SiaPublicKey)                    { return }
-func (stubHostDB) IncrementFailedInteractions(key types.SiaPublicKey)                        { return }
-func (stubHostDB) PublicKey() (spk types.SiaPublicKey)                                       { return }
-func (stubHostDB) RandomHosts(int, []types.SiaPublicKey) (hs []modules.HostDBEntry, _ error) { return }
+func (stubHostDB) AllHosts() (hs []modules.HostDBEntry)                           { return }
+func (stubHostDB) ActiveHosts() (hs []modules.HostDBEntry)                        { return }
+func (stubHostDB) CheckForIPViolations([]types.SiaPublicKey) []types.SiaPublicKey { return nil }
+func (stubHostDB) Filter() (modules.FilterMode, map[string]types.SiaPublicKey) {
+	return 0, make(map[string]types.SiaPublicKey)
+}
+func (stubHostDB) SetFilterMode(fm modules.FilterMode, hosts []types.SiaPublicKey) error { return nil }
+func (stubHostDB) Host(types.SiaPublicKey) (h modules.HostDBEntry, ok bool)              { return }
+func (stubHostDB) IncrementSuccessfulInteractions(key types.SiaPublicKey)                { return }
+func (stubHostDB) IncrementFailedInteractions(key types.SiaPublicKey)                    { return }
+func (stubHostDB) PublicKey() (spk types.SiaPublicKey)                                   { return }
+func (stubHostDB) RandomHosts(int, []types.SiaPublicKey, []types.SiaPublicKey) (hs []modules.HostDBEntry, _ error) {
+	return
+}
 func (stubHostDB) ScoreBreakdown(modules.HostDBEntry) modules.HostScoreBreakdown {
 	return modules.HostScoreBreakdown{}
 }
+func (stubHostDB) SetAllowance(allowance modules.Allowance) error { return nil }
 
 // TestAllowanceSpending verifies that the contractor will not spend more or
 // less than the allowance if uploading causes repeated early renewal, and that
@@ -146,7 +167,7 @@ func TestAllowanceSpending(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = build.Retry(50, 100*time.Millisecond, func() error {
-		hosts, err := c.hdb.RandomHosts(1, nil)
+		hosts, err := c.hdb.RandomHosts(1, nil, nil)
 		if err != nil {
 			return err
 		}
@@ -161,10 +182,14 @@ func TestAllowanceSpending(t *testing.T) {
 
 	// set an allowance
 	testAllowance := modules.Allowance{
-		Funds:       types.SiacoinPrecision.Mul64(6000),
-		RenewWindow: 100,
-		Hosts:       1,
-		Period:      200,
+		Funds:              types.SiacoinPrecision.Mul64(6000),
+		RenewWindow:        100,
+		Hosts:              1,
+		Period:             200,
+		ExpectedStorage:    modules.DefaultAllowance.ExpectedStorage,
+		ExpectedUpload:     modules.DefaultAllowance.ExpectedUpload,
+		ExpectedDownload:   modules.DefaultAllowance.ExpectedDownload,
+		ExpectedRedundancy: modules.DefaultAllowance.ExpectedRedundancy,
 	}
 	err = c.SetAllowance(testAllowance)
 	if err != nil {
@@ -281,7 +306,7 @@ func TestIntegrationSetAllowance(t *testing.T) {
 	}
 
 	// wait for hostdb to scan
-	hosts, err := c.hdb.RandomHosts(1, nil)
+	hosts, err := c.hdb.RandomHosts(1, nil, nil)
 	if err != nil {
 		t.Fatal("failed to get hosts", err)
 	}
@@ -312,10 +337,30 @@ func TestIntegrationSetAllowance(t *testing.T) {
 	if err != errAllowanceWindowSize {
 		t.Errorf("expected %q, got %q", errAllowanceWindowSize, err)
 	}
+	a.RenewWindow = 10
+	err = c.SetAllowance(a)
+	if err != errAllowanceZeroExpectedStorage {
+		t.Errorf("expected %q, got %q", errAllowanceZeroExpectedStorage, err)
+	}
+	a.ExpectedStorage = modules.DefaultAllowance.ExpectedStorage
+	err = c.SetAllowance(a)
+	if err != errAllowanceZeroExpectedUpload {
+		t.Errorf("expected %q, got %q", errAllowanceZeroExpectedUpload, err)
+	}
+	a.ExpectedUpload = modules.DefaultAllowance.ExpectedUpload
+	err = c.SetAllowance(a)
+	if err != errAllowanceZeroExpectedDownload {
+		t.Errorf("expected %q, got %q", errAllowanceZeroExpectedDownload, err)
+	}
+	a.ExpectedDownload = modules.DefaultAllowance.ExpectedDownload
+	err = c.SetAllowance(a)
+	if err != errAllowanceZeroExpectedRedundancy {
+		t.Errorf("expected %q, got %q", errAllowanceZeroExpectedRedundancy, err)
+	}
+	a.ExpectedRedundancy = modules.DefaultAllowance.ExpectedRedundancy
 
 	// reasonable values; should succeed
 	a.Funds = types.SiacoinPrecision.Mul64(100)
-	a.RenewWindow = 10
 	err = c.SetAllowance(a)
 	if err != nil {
 		t.Fatal(err)
@@ -400,6 +445,138 @@ func TestIntegrationSetAllowance(t *testing.T) {
 	}
 }
 
+// TestHostMaxDuration tests that a host will not be used if their max duration
+// is not sufficient when renewing contracts
+func TestHostMaxDuration(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+
+	// create testing trio
+	h, c, m, err := newTestingTrio(t.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set host's MaxDuration to 5 to test if host will be skipped when contract
+	// is formed
+	settings := h.InternalSettings()
+	settings.MaxDuration = types.BlockHeight(5)
+	if err := h.SetInternalSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	// Let host settings permeate
+	err = build.Retry(50, 100*time.Millisecond, func() error {
+		host, _ := c.hdb.Host(h.PublicKey())
+		if settings.MaxDuration != host.MaxDuration {
+			return fmt.Errorf("host max duration not set, expected %v, got %v", settings.MaxDuration, host.MaxDuration)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create allowance
+	a := modules.Allowance{
+		Funds:              types.SiacoinPrecision.Mul64(100),
+		Hosts:              1,
+		Period:             30,
+		RenewWindow:        20,
+		ExpectedStorage:    modules.DefaultAllowance.ExpectedStorage,
+		ExpectedUpload:     modules.DefaultAllowance.ExpectedUpload,
+		ExpectedDownload:   modules.DefaultAllowance.ExpectedDownload,
+		ExpectedRedundancy: modules.DefaultAllowance.ExpectedRedundancy,
+	}
+	err = c.SetAllowance(a)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for and confirm no Contract creation
+	err = build.Retry(50, 100*time.Millisecond, func() error {
+		if len(c.Contracts()) == 0 {
+			return errors.New("no contract created")
+		}
+		return nil
+	})
+	if err == nil {
+		t.Fatal("Contract should not have been created")
+	}
+
+	// Set host's MaxDuration to 50 to test if host will now form contract
+	settings = h.InternalSettings()
+	settings.MaxDuration = types.BlockHeight(50)
+	if err := h.SetInternalSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	// Let host settings permeate
+	err = build.Retry(50, 100*time.Millisecond, func() error {
+		host, _ := c.hdb.Host(h.PublicKey())
+		if settings.MaxDuration != host.MaxDuration {
+			return fmt.Errorf("host max duration not set, expected %v, got %v", settings.MaxDuration, host.MaxDuration)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = m.AddBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for Contract creation
+	err = build.Retry(600, 100*time.Millisecond, func() error {
+		if len(c.Contracts()) != 1 {
+			return errors.New("no contract created")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Set host's MaxDuration to 5 to test if host will be skipped when contract
+	// is renewed
+	settings = h.InternalSettings()
+	settings.MaxDuration = types.BlockHeight(5)
+	if err := h.SetInternalSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+	// Let host settings permeate
+	err = build.Retry(50, 100*time.Millisecond, func() error {
+		host, _ := c.hdb.Host(h.PublicKey())
+		if settings.MaxDuration != host.MaxDuration {
+			return fmt.Errorf("host max duration not set, expected %v, got %v", settings.MaxDuration, host.MaxDuration)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Mine blocks to renew contract
+	for i := types.BlockHeight(0); i <= c.allowance.Period-c.allowance.RenewWindow; i++ {
+		_, err = m.AddBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Confirm Contract is not renewed
+	err = build.Retry(50, 100*time.Millisecond, func() error {
+		if len(c.OldContracts()) == 0 {
+			return errors.New("no contract renewed")
+		}
+		return nil
+	})
+	if err == nil {
+		t.Fatal("Contract should not have been renewed")
+	}
+}
+
 // TestLinkedContracts tests that the contractors maps are updated correctly
 // when renewing contracts
 func TestLinkedContracts(t *testing.T) {
@@ -409,17 +586,21 @@ func TestLinkedContracts(t *testing.T) {
 	t.Parallel()
 
 	// create testing trio
-	_, c, m, err := newTestingTrio(t.Name())
+	h, c, m, err := newTestingTrio(t.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Create allowance
 	a := modules.Allowance{
-		Funds:       types.SiacoinPrecision.Mul64(100),
-		Hosts:       1,
-		Period:      20,
-		RenewWindow: 10,
+		Funds:              types.SiacoinPrecision.Mul64(100),
+		Hosts:              1,
+		Period:             20,
+		RenewWindow:        10,
+		ExpectedStorage:    modules.DefaultAllowance.ExpectedStorage,
+		ExpectedUpload:     modules.DefaultAllowance.ExpectedUpload,
+		ExpectedDownload:   modules.DefaultAllowance.ExpectedDownload,
+		ExpectedRedundancy: modules.DefaultAllowance.ExpectedRedundancy,
 	}
 	err = c.SetAllowance(a)
 	if err != nil {
@@ -443,6 +624,14 @@ func TestLinkedContracts(t *testing.T) {
 	}
 	if len(c.renewedTo) != 0 {
 		t.Fatal("renewedTo map should be empty")
+	}
+
+	// Set host's uploadbandwidthprice to zero to test divide by zero check when
+	// contracts are renewed
+	settings := h.InternalSettings()
+	settings.MinUploadBandwidthPrice = types.ZeroCurrency
+	if err := h.SetInternalSettings(settings); err != nil {
+		t.Fatal(err)
 	}
 
 	// Mine blocks to renew contract

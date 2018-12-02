@@ -14,8 +14,12 @@ const (
 	MaxEncodedVersionLength = 100
 
 	// Version is the current version of hsd.
-	Version = "0.1.1"
+	Version = "0.2.3"
 )
+
+// ReleaseTag contains the release tag, such as "rc3". It is supplied at build
+// time. For full releases, this string is blank.
+var ReleaseTag string = "master"
 
 // IsVersion returns whether str is a valid version number.
 func IsVersion(str string) bool {

@@ -26,6 +26,16 @@ var (
 	DevFundDenom = NewCurrency64(10)
 	// DevFundUnlockHash is the unlock hash for the dev fund subsidy
 	DevFundUnlockHash = UnlockHash{122, 187, 109, 95, 232, 79, 59, 94, 168, 154, 242, 9, 73, 45, 6, 21, 151, 78, 195, 98, 197, 65, 115, 155, 229, 181, 208, 12, 31, 116, 69, 196}
+	// BlocksPerHour is the number of blocks expected to be mined per hour.
+	BlocksPerHour = uint64(6)
+	// BlocksPerDay is the number of blocks expected to be mined per day.
+	BlocksPerDay = 24 * BlocksPerHour
+	// BlocksPerWeek is the number of blocks expected to be mined per week.
+	BlocksPerWeek = 7 * BlocksPerDay
+	// BlocksPerMonth is the number of blocks expected to be mined per month.
+	BlocksPerMonth = 30 * BlocksPerDay
+	// BlocksPerYear is the number of blocks expected to be mined per year.
+	BlocksPerYear = 365 * BlocksPerDay
 
 	// EndOfTime is value to be used when a date in the future is needed for
 	// validation

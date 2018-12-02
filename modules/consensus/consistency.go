@@ -253,20 +253,64 @@ func (cs *ConsensusSet) checkRevertApply(tx *bolt.Tx) {
 	if current.Height != parent.Height+1 {
 		manageErr(tx, errors.New("parent structure of a block is incorrect"))
 	}
-	_, _, err = cs.forkBlockchain(tx, parent)
+	_, _, err = cs.forkBlockchain(tx, parent, nil)
 	if err != nil {
 		manageErr(tx, err)
 	}
 	if consensusChecksum(tx) != parent.ConsensusChecksum {
 		manageErr(tx, errors.New("consensus checksum mismatch after reverting"))
 	}
-	_, _, err = cs.forkBlockchain(tx, current)
+	_, _, err = cs.forkBlockchain(tx, current, nil)
 	if err != nil {
 		manageErr(tx, err)
 	}
 	if consensusChecksum(tx) != current.ConsensusChecksum {
 		manageErr(tx, errors.New("consensus checksum mismatch after re-applying"))
 	}
+}
+
+func (cs *ConsensusSet) checkHeaderRevertApply(tx *bolt.Tx) {
+	current := currentProcessedHeader(tx)
+	// Don't perform the check if this block is the genesis block.
+	if current.BlockHeader.ID() == cs.blockRoot.Block.ID() {
+		return
+	}
+
+	parent, err := getBlockHeaderMap(tx, current.BlockHeader.ParentID)
+	if err != nil {
+		manageErr(tx, err)
+	}
+	if current.Height != parent.Height+1 {
+		manageErr(tx, errors.New("parent structure of a block is incorrect"))
+	}
+	_, _, err = cs.forkHeadersBlockchain(tx, parent)
+	if err != nil {
+		manageErr(tx, err)
+	}
+	// if consensusChecksum(tx) != parent.ConsensusChecksum {
+	// 	manageErr(tx, errors.New("consensus checksum mismatch after reverting"))
+	// }
+	_, _, err = cs.forkHeadersBlockchain(tx, current)
+	if err != nil {
+		manageErr(tx, err)
+	}
+	// if consensusChecksum(tx) != current.ConsensusChecksum {
+	// 	manageErr(tx, errors.New("consensus checksum mismatch after re-applying"))
+	// }
+}
+
+func (cs *ConsensusSet) checkHeaderConsistency(tx *bolt.Tx) {
+	if cs.checkingConsistency {
+		return
+	}
+
+	cs.checkingConsistency = true
+	// checkDSCOs(tx)
+	// checkSiacoinCount(tx)
+	if build.DEBUG {
+		cs.checkHeaderRevertApply(tx)
+	}
+	cs.checkingConsistency = false
 }
 
 // checkConsistency runs a series of checks to make sure that the consensus set
@@ -292,6 +336,12 @@ func (cs *ConsensusSet) checkConsistency(tx *bolt.Tx) {
 func (cs *ConsensusSet) maybeCheckConsistency(tx *bolt.Tx) {
 	if fastrand.Intn(1000) == 0 {
 		cs.checkConsistency(tx)
+	}
+}
+
+func (cs *ConsensusSet) maybeCheckHeaderConsistency(tx *bolt.Tx) {
+	if fastrand.Intn(1000) == 0 {
+		cs.checkHeaderConsistency(tx)
 	}
 }
 

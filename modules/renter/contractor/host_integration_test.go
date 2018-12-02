@@ -19,19 +19,19 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/miner"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
-	"github.com/HyperspaceApp/Hyperspace/types"
 	modWallet "github.com/HyperspaceApp/Hyperspace/modules/wallet"
+	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/fastrand"
 )
 
 // newTestingWallet is a helper function that creates a ready-to-use wallet
 // and mines some coins into it.
 func newTestingWallet(testdir string, cs modules.ConsensusSet, tp modules.TransactionPool) (modules.Wallet, error) {
-	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	encrypted, err := w.Encrypted()
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func newTestingWallet(testdir string, cs modules.ConsensusSet, tp modules.Transa
 
 // newTestingHost is a helper function that creates a ready-to-use host.
 func newTestingHost(testdir string, cs modules.ConsensusSet, tp modules.TransactionPool) (modules.Host, error) {
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +117,11 @@ func newTestingTrio(name string) (modules.Host, *Contractor, modules.TestMiner, 
 	testdir := build.TempDir("contractor", name)
 
 	// create miner
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -129,11 +129,11 @@ func newTestingTrio(name string) (modules.Host, *Contractor, modules.TestMiner, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := modWallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	key := crypto.GenerateTwofishKey()
+	key := crypto.GenerateSiaKey(crypto.TypeDefaultWallet)
 	encrypted, err := w.Encrypted()
 	if err != nil {
 		return nil, nil, nil, err
@@ -206,6 +206,12 @@ func TestIntegrationFormContract(t *testing.T) {
 		t.Fatal("no entry for host in db")
 	}
 
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
+
 	// form a contract with the host
 	_, _, err = c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
 	if err != nil {
@@ -233,6 +239,12 @@ func TestIntegrationReviseContract(t *testing.T) {
 	if !ok {
 		t.Fatal("no entry for host in db")
 	}
+
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
 
 	// form a contract with the host
 	_, contract, err := c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
@@ -276,6 +288,12 @@ func TestIntegrationUploadDownload(t *testing.T) {
 	if !ok {
 		t.Fatal("no entry for host in db")
 	}
+
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
 
 	// form a contract with the host
 	_, contract, err := c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
@@ -336,6 +354,12 @@ func TestIntegrationRenew(t *testing.T) {
 	if !ok {
 		t.Fatal("no entry for host in db")
 	}
+
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
 
 	// form a contract with the host
 	_, contract, err := c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
@@ -450,6 +474,12 @@ func TestIntegrationDownloaderCaching(t *testing.T) {
 		t.Fatal("no entry for host in db")
 	}
 
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
+
 	// form a contract with the host
 	_, contract, err := c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
 	if err != nil {
@@ -541,6 +571,12 @@ func TestIntegrationEditorCaching(t *testing.T) {
 		t.Fatal("no entry for host in db")
 	}
 
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
+
 	// form a contract with the host
 	_, contract, err := c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(50), c.blockHeight+100)
 	if err != nil {
@@ -631,6 +667,12 @@ func TestContractPresenceLeak(t *testing.T) {
 	if !ok {
 		t.Fatal("no entry for host in db")
 	}
+
+	// set an allowance but don't use SetAllowance to avoid automatic contract
+	// formation.
+	c.mu.Lock()
+	c.allowance = modules.DefaultAllowance
+	c.mu.Unlock()
 
 	// form a contract with the host
 	_, contract, err := c.managedNewContract(hostEntry, types.SiacoinPrecision.Mul64(10), c.blockHeight+100)

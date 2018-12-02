@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
-	"github.com/HyperspaceApp/Hyperspace/crypto"
-	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 var (
@@ -47,9 +45,6 @@ var (
 		}
 		panic("undefined defaultParityPieces")
 	}()
-
-	// Erasure-coded piece size
-	pieceSize = modules.SectorSize - crypto.TwofishOverhead
 )
 
 const (
@@ -86,6 +81,10 @@ const (
 	// DefaultMaxUploadSpeed is set to zero to indicate no limit, the user
 	// can set a custom MaxUploadSpeed through the API
 	DefaultMaxUploadSpeed = 0
+
+	// PriceEstimationSafetyFactor is the factor of safety used in the price
+	// estimation to account for any missed costs
+	PriceEstimationSafetyFactor = 1.2
 )
 
 var (

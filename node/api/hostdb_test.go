@@ -238,7 +238,7 @@ func TestHostDBHostsHandler(t *testing.T) {
 
 // assembleHostHostname is assembleServerTester but you can specify which
 // hostname the host should use.
-func assembleHostPort(key crypto.TwofishKey, hostHostname string, testdir string) (*serverTester, error) {
+func assembleHostPort(key crypto.CipherKey, hostHostname string, testdir string) (*serverTester, error) {
 	// assembleServerTester should not get called during short tests, as it
 	// takes a long time to run.
 	if testing.Short() {
@@ -246,11 +246,11 @@ func assembleHostPort(key crypto.TwofishKey, hostHostname string, testdir string
 	}
 
 	// Create the modules.
-	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir))
+	g, err := gateway.New("localhost:0", false, filepath.Join(testdir, modules.GatewayDir), false)
 	if err != nil {
 		return nil, err
 	}
-	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir))
+	cs, err := consensus.New(g, false, filepath.Join(testdir, modules.ConsensusDir), false)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func assembleHostPort(key crypto.TwofishKey, hostHostname string, testdir string
 	if err != nil {
 		return nil, err
 	}
-	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir))
+	w, err := wallet.New(cs, tp, filepath.Join(testdir, modules.WalletDir), modules.DefaultAddressGapLimit, false)
 	if err != nil {
 		return nil, err
 	}

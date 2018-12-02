@@ -1,9 +1,12 @@
 package modules
 
 import (
+	"bytes"
 	"errors"
+	"math/big"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -36,6 +39,8 @@ var (
 	// database.
 	ErrBlockKnown = errors.New("block already present in database")
 
+	ErrHeaderKnown = errors.New("header already present in database")
+
 	// ErrBlockUnsolved indicates that a block did not meet the required POW
 	// target.
 	ErrBlockUnsolved = errors.New("block does not meet target")
@@ -57,6 +62,9 @@ type (
 	// ConsensusChangeID is the id of a consensus change.
 	ConsensusChangeID crypto.Hash
 
+	// HeaderConsensusChangeID is the id of a header consensus change.
+	// HeaderConsensusChangeID crypto.Hash
+
 	// A DiffDirection indicates the "direction" of a diff, either applied or
 	// reverted. A bool is used to restrict the value to these two possibilities.
 	DiffDirection bool
@@ -69,6 +77,55 @@ type (
 		// There may not be any reverted blocks, but there will always be
 		// applied blocks.
 		ProcessConsensusChange(ConsensusChange)
+	}
+
+	// HeaderConsensusSetSubscriber sends a consensus update to subscriber
+	HeaderConsensusSetSubscriber interface {
+		// In addition to a HeaderConsensusChange, returns a callback where a
+		// user can retrieve a set of SiacoinOutputDiffs - reverted or
+		// otherwise
+		ProcessHeaderConsensusChange(HeaderConsensusChange)
+	}
+
+	// HeaderConsensusChange is the header consensus change
+	HeaderConsensusChange struct {
+		// ID is a unique id for the consensus change derived from the reverted
+		// and applied blocks.
+		ID ConsensusChangeID
+
+		// RevertedBlockHeaders
+		RevertedBlockHeaders []ProcessedBlockHeader
+
+		// AppliedBlockHeaders
+		AppliedBlockHeaders []ProcessedBlockHeader
+
+		// MaturedSiacoinOutputDiffs contains the set of siacoin diffs that were applied
+		// to the consensus set via maturation in the recent change. The direction for
+		// the set of diffs is 'DiffApply'.
+		MaturedSiacoinOutputDiffs []SiacoinOutputDiff
+
+		// DelayedSiacoinOutputDiffs contains the set of delayed siacoin output
+		// diffs that were applied to the consensus set in the recent change.
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+
+		// Synced indicates whether or not the ConsensusSet is synced with its
+		// peers.
+		Synced bool
+
+		// GetSiacoinOutputDiff will return the outputdiffs requested
+		GetSiacoinOutputDiff func(types.BlockID, DiffDirection) ([]SiacoinOutputDiff, error)
+
+		// GetBlockByID will return the block requested
+		GetBlockByID func(types.BlockID) (types.Block, bool)
+
+		// TryTransactionSet is an unlocked version of
+		// ConsensusSet.TryTransactionSet. This allows the TryTransactionSet
+		// function to be called by a subscriber during
+		// ProcessConsensusChange.
+		TryTransactionSet func([]types.Transaction) (ConsensusChange, error)
+
+		// ConsensusDBTx is the update cursor of consensus.db
+		// ConsensusDBTx *bolt.Tx
 	}
 
 	// A ConsensusChange enumerates a set of changes that occurred to the consensus set.
@@ -149,6 +206,25 @@ type (
 		MaturityHeight types.BlockHeight     `json:"mh"`
 	}
 
+	// ProcessedBlockHeader is a header with more info
+	ProcessedBlockHeader struct {
+		BlockHeader               types.BlockHeader
+		Height                    types.BlockHeight
+		Depth                     types.Target
+		ChildTarget               types.Target
+		GCSFilter                 types.GCSFilter
+		SiacoinOutputDiffs        []SiacoinOutputDiff
+		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
+		Announcements             []HostAnnouncement
+	}
+
+	// TransmittedBlockHeader is a header to send to spv peers
+	TransmittedBlockHeader struct {
+		BlockHeader   types.BlockHeader
+		GCSFilter     types.GCSFilter
+		Announcements []HostAnnouncement
+	}
+
 	// A ConsensusSet accepts blocks and builds an understanding of network
 	// consensus.
 	ConsensusSet interface {
@@ -184,9 +260,16 @@ type (
 		// A channel can be provided to abort the subscription process.
 		ConsensusSetSubscribe(ConsensusSetSubscriber, ConsensusChangeID, <-chan struct{}) error
 
+		// HeaderConsensusSetSubscribe adds a subscriber to the list of subscribers
+		// and gives them every consensus change
+		HeaderConsensusSetSubscribe(HeaderConsensusSetSubscriber, ConsensusChangeID, <-chan struct{}) error
+
 		// CurrentBlock returns the latest block in the heaviest known
 		// blockchain.
 		CurrentBlock() types.Block
+
+		// CurrentHeader returns the latest header in the heaviest known blockchain
+		CurrentHeader() types.BlockHeader
 
 		// Flush will cause the consensus set to finish all in-progress
 		// routines.
@@ -223,7 +306,16 @@ type (
 		// not found in the subscriber database, no action is taken.
 		Unsubscribe(ConsensusSetSubscriber)
 
+		// HeaderUnsubscribe unsubscribe header change
+		HeaderUnsubscribe(HeaderConsensusSetSubscriber)
+
 		Db() *persist.BoltDatabase
+
+		// SpvMode return true if the consensus set is in spv mode
+		SpvMode() bool
+
+		// SetGetWalletKeysFuc setup the function for consensus to fetch keys from wallet
+		SetGetWalletKeysFunc(func() ([][]byte, error))
 	}
 )
 
@@ -239,4 +331,136 @@ func (cc ConsensusChange) Append(cc2 ConsensusChange) ConsensusChange {
 		FileContractDiffs:         append(cc.FileContractDiffs, cc2.FileContractDiffs...),
 		DelayedSiacoinOutputDiffs: append(cc.DelayedSiacoinOutputDiffs, cc2.DelayedSiacoinOutputDiffs...),
 	}
+}
+
+// TODO move this back into the consensus package
+// SurpassThreshold is a percentage that dictates how much heavier a competing
+// chain has to be before the node will switch to mining on that chain. This is
+// not a consensus rule. This percentage is only applied to the most recent
+// block, not the entire chain; see blockNode.heavierThan.
+//
+// If no threshold were in place, it would be possible to manipulate a block's
+// timestamp to produce a sufficiently heavier block.
+var SurpassThreshold = big.NewRat(20, 100)
+
+// HeavierThan compare processed header difficulty
+func (pbh *ProcessedBlockHeader) HeavierThan(cmp *ProcessedBlockHeader) bool {
+	requirement := cmp.Depth.AddDifficulties(cmp.ChildTarget.MulDifficulty(SurpassThreshold))
+	return requirement.Cmp(pbh.Depth) > 0
+}
+
+// ChildDepth returns the depth of a headerNode's child nodes. The depth is the
+// "sum" of the current depth and current difficulty. See target.Add for more
+// detailed information.
+func (pbh *ProcessedBlockHeader) ChildDepth() types.Target {
+	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
+}
+
+// ForSend will only reserve BlockHeader, GCSFilter, Announcements
+func (pbh ProcessedBlockHeader) ForSend() *TransmittedBlockHeader {
+	return &TransmittedBlockHeader{
+		BlockHeader:   pbh.BlockHeader,
+		GCSFilter:     pbh.GCSFilter,
+		Announcements: pbh.Announcements,
+	}
+}
+
+func (pbh *ProcessedBlockHeader) childDepth() types.Target {
+	return pbh.Depth.AddDifficulties(pbh.ChildTarget)
+}
+
+// FindHostAnnouncementsFromBlock extract announcements from block
+func FindHostAnnouncementsFromBlock(b types.Block) (has []HostAnnouncement) {
+	for _, t := range b.Transactions {
+		// the HostAnnouncement must be prefaced by the standard host
+		// announcement string
+		for _, arb := range t.ArbitraryData {
+			ha, err := DecodeAnnouncementForAnnouncement(arb)
+			if err != nil {
+				continue
+			}
+			has = append(has, ha)
+		}
+	}
+	return
+}
+
+// DecodeAnnouncementForAnnouncement decodes announcement bytes into a host announcement,
+// verifying the prefix and the signature. and return the struct
+func DecodeAnnouncementForAnnouncement(fullAnnouncement []byte) (ha HostAnnouncement, err error) {
+	// Read the first part of the announcement to get the intended host
+	// announcement.
+	dec := encoding.NewDecoder(bytes.NewReader(fullAnnouncement))
+	err = dec.Decode(&ha)
+	if err != nil {
+		return
+	}
+
+	// Check that the announcement was registered as a host announcement.
+	if ha.Specifier != PrefixHostAnnouncement {
+		err = ErrAnnNotAnnouncement
+		return
+	}
+	// Check that the public key is a recognized type of public key.
+	if ha.PublicKey.Algorithm != types.SignatureEd25519 {
+		err = ErrAnnUnrecognizedSignature
+		return
+	}
+
+	// Read the signature out of the reader.
+	var sig crypto.Signature
+	err = dec.Decode(&sig)
+	if err != nil {
+		return
+	}
+	// Verify the signature.
+	var pk crypto.PublicKey
+	copy(pk[:], ha.PublicKey.Key)
+	annHash := crypto.HashObject(ha)
+	err = crypto.VerifyHash(annHash, pk, sig)
+	if err != nil {
+		return
+	}
+	return
+}
+
+// FetchSpaceCashOutputDiffs retrieves output diffs relevant to the addresses
+// given from the header consensus change. If the output diffs are in block
+// connected to the header but the block has not yet been downloaded,
+// FetchSpaceCashOutputDiffs will download the block, parse it for the scods,
+// and then return the result.
+func (hcc *HeaderConsensusChange) FetchSpaceCashOutputDiffs(addresses [][]byte) ([]SiacoinOutputDiff, error) {
+	var siacoinOutputDiffs []SiacoinOutputDiff
+	// grab matured outputs
+	siacoinOutputDiffs = append(siacoinOutputDiffs, hcc.MaturedSiacoinOutputDiffs...)
+
+	// grab applied active outputs from full blocks
+	for _, pbh := range hcc.AppliedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		// log.Printf("Appling: %d %s", pbh.Height, blockID)
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
+			// log.Printf("Matched: %d %s", pbh.Height, blockID)
+			// read the block, process the output
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffApply)
+			if err != nil {
+				return nil, err
+			}
+			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+		}
+	}
+
+	// grab reverted active outputs from full blocks
+	for _, pbh := range hcc.RevertedBlockHeaders {
+		blockID := pbh.BlockHeader.ID()
+		if pbh.GCSFilter.MatchUnlockHash(blockID[:], addresses) {
+			// log.Printf("revert block: %d", pbh.Height)
+			blockSiacoinOutputDiffs, err := hcc.GetSiacoinOutputDiff(blockID, DiffRevert)
+			if err != nil {
+				return nil, err
+			}
+			siacoinOutputDiffs = append(siacoinOutputDiffs, blockSiacoinOutputDiffs...)
+		}
+	}
+
+	return siacoinOutputDiffs, nil
 }

@@ -18,6 +18,7 @@ type (
 		AddSiacoinOutput(types.SiacoinOutput) uint64
 		AddTransactionSignature(types.TransactionSignature) uint64
 		FundSiacoins(types.Currency) error
+		FundContract(types.Currency) ([]types.SiacoinOutput, error)
 		Sign(bool) ([]types.Transaction, error)
 		UnconfirmedParents() ([]types.Transaction, error)
 		View() (types.Transaction, []types.Transaction)
@@ -37,6 +38,7 @@ type (
 
 // ContractParams are supplied as an argument to FormContract.
 type ContractParams struct {
+	Allowance     modules.Allowance
 	Host          modules.HostDBEntry
 	Funding       types.Currency
 	StartHeight   types.BlockHeight

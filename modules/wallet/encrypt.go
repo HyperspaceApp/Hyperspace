@@ -31,13 +31,14 @@ var (
 
 // uidEncryptionKey creates an encryption key that is used to decrypt a
 // specific key file.
-func uidEncryptionKey(masterKey crypto.TwofishKey, uid uniqueID) crypto.TwofishKey {
-	return crypto.TwofishKey(crypto.HashAll(masterKey, uid))
+func uidEncryptionKey(masterKey crypto.CipherKey, uid uniqueID) (key crypto.CipherKey) {
+	key = crypto.NewWalletKey(crypto.HashAll(masterKey, uid))
+	return
 }
 
 // verifyEncryption verifies that key properly decrypts the ciphertext to a
 // preset plaintext.
-func verifyEncryption(key crypto.TwofishKey, encrypted crypto.Ciphertext) error {
+func verifyEncryption(key crypto.CipherKey, encrypted crypto.Ciphertext) error {
 	verification, err := key.DecryptBytes(encrypted)
 	if err != nil {
 		return modules.ErrBadEncryptionKey
@@ -49,14 +50,17 @@ func verifyEncryption(key crypto.TwofishKey, encrypted crypto.Ciphertext) error 
 }
 
 // checkMasterKey verifies that the masterKey is the key used to encrypt the wallet.
-func checkMasterKey(tx *bolt.Tx, masterKey crypto.TwofishKey) error {
+func checkMasterKey(tx *bolt.Tx, masterKey crypto.CipherKey) error {
+	if masterKey == nil {
+		return modules.ErrBadEncryptionKey
+	}
 	uk := uidEncryptionKey(masterKey, dbGetWalletUID(tx))
 	encryptedVerification := tx.Bucket(bucketWallet).Get(keyEncryptionVerification)
 	return verifyEncryption(uk, encryptedVerification)
 }
 
 // initEncryption initializes and encrypts the primary SeedFile.
-func (w *Wallet) initEncryption(masterKey crypto.TwofishKey, seed modules.Seed, progress uint64) (modules.Seed, error) {
+func (w *Wallet) initEncryption(masterKey crypto.CipherKey, seed modules.Seed, internalIndex uint64) (modules.Seed, error) {
 	wb := w.dbTx.Bucket(bucketWallet)
 	// Check if the wallet encryption key has already been set.
 	if wb.Get(keyEncryptionVerification) != nil {
@@ -71,7 +75,11 @@ func (w *Wallet) initEncryption(masterKey crypto.TwofishKey, seed modules.Seed, 
 	if err != nil {
 		return modules.Seed{}, err
 	}
-	err = wb.Put(keyPrimarySeedProgress, encoding.Marshal(progress))
+	err = dbPutPrimarySeedMaximumInternalIndex(w.dbTx, internalIndex)
+	if err != nil {
+		return modules.Seed{}, err
+	}
+	err = dbPutPrimarySeedMaximumExternalIndex(w.dbTx, internalIndex)
 	if err != nil {
 		return modules.Seed{}, err
 	}
@@ -79,10 +87,15 @@ func (w *Wallet) initEncryption(masterKey crypto.TwofishKey, seed modules.Seed, 
 	// Establish the encryption verification using the masterKey. After this
 	// point, the wallet is encrypted.
 	uk := uidEncryptionKey(masterKey, dbGetWalletUID(w.dbTx))
+	if err != nil {
+		return modules.Seed{}, err
+	}
 	err = wb.Put(keyEncryptionVerification, uk.EncryptBytes(verificationPlaintext))
 	if err != nil {
 		return modules.Seed{}, err
 	}
+
+	w.lookahead.Initialize(seed, internalIndex)
 
 	// on future startups, this field will be set by w.initPersist
 	w.encrypted = true
@@ -93,7 +106,7 @@ func (w *Wallet) initEncryption(masterKey crypto.TwofishKey, seed modules.Seed, 
 // managedUnlock loads all of the encrypted file structures into wallet memory. Even
 // after loading, the structures are kept encrypted, but some data such as
 // addresses are decrypted so that the wallet knows what to track.
-func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
+func (w *Wallet) managedUnlock(masterKey crypto.CipherKey) error {
 	w.mu.RLock()
 	unlocked := w.unlocked
 	encrypted := w.encrypted
@@ -107,7 +120,7 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 	// Load db objects into memory.
 	var lastChange modules.ConsensusChangeID
 	var primarySeedFile seedFile
-	var primarySeedProgress uint64
+	var externalIndex, internalIndex uint64
 	var auxiliarySeedFiles []seedFile
 	var unseededKeyFiles []spendableKeyFile
 	var watchedAddrs []types.UnlockHash
@@ -124,13 +137,20 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		// lastChange
 		lastChange = dbGetConsensusChangeID(w.dbTx)
 
-		// primarySeedFile + primarySeedProgress
+		// primarySeedFile + internalIndex
 		wb := w.dbTx.Bucket(bucketWallet)
 		err = encoding.Unmarshal(wb.Get(keyPrimarySeedFile), &primarySeedFile)
 		if err != nil {
 			return err
 		}
-		err = encoding.Unmarshal(wb.Get(keyPrimarySeedProgress), &primarySeedProgress)
+
+		externalIndex, err = dbGetPrimarySeedMaximumExternalIndex(w.dbTx)
+		if err != nil {
+			return err
+		}
+
+		internalIndex, err = dbGetPrimarySeedMaximumInternalIndex(w.dbTx)
+		// log.Printf("unlock internalIndex: %d,externalIndex: %d", internalIndex, externalIndex)
 		if err != nil {
 			return err
 		}
@@ -169,9 +189,14 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		if err != nil {
 			return err
 		}
-		w.integrateSeed(primarySeed, primarySeedProgress)
+		w.integrateSeed(primarySeed, internalIndex)
 		w.primarySeed = primarySeed
-		w.regenerateLookahead(primarySeedProgress)
+		// Sometimes the lookahead has already been initialized before we
+		// unlock - this is the case when we just created or loaded a new
+		// seed. If it is not, we need to initialize it
+		if !w.lookahead.Initialized() {
+			w.lookahead.Initialize(primarySeed, externalIndex)
+		}
 
 		// auxiliarySeedFiles
 		for _, sf := range auxiliarySeedFiles {
@@ -215,8 +240,11 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 		done := make(chan struct{})
 		go w.rescanMessage(done)
 		defer close(done)
-
-		err = w.cs.ConsensusSetSubscribe(w, lastChange, w.tg.StopChan())
+		if w.cs.SpvMode() {
+			err = w.cs.HeaderConsensusSetSubscribe(w, lastChange, w.tg.StopChan())
+		} else {
+			err = w.cs.ConsensusSetSubscribe(w, lastChange, w.tg.StopChan())
+		}
 		if err == modules.ErrInvalidConsensusChangeID {
 			// something went wrong; resubscribe from the beginning
 			err = dbPutConsensusChangeID(w.dbTx, modules.ConsensusChangeBeginning)
@@ -227,12 +255,22 @@ func (w *Wallet) managedUnlock(masterKey crypto.TwofishKey) error {
 			if err != nil {
 				return fmt.Errorf("failed to reset db during rescan: %v", err)
 			}
-			err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+			if w.cs.SpvMode() {
+				err = w.cs.HeaderConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+			} else {
+				err = w.cs.ConsensusSetSubscribe(w, modules.ConsensusChangeBeginning, w.tg.StopChan())
+			}
 		}
 		if err != nil {
 			return fmt.Errorf("wallet subscription failed: %v", err)
 		}
 		w.tpool.TransactionPoolSubscribe(w)
+		if w.cs.SpvMode() {
+			err = w.tpool.StartSubscribeHeaders()
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	w.mu.Lock()
@@ -309,7 +347,7 @@ func (w *Wallet) Encrypted() (bool, error) {
 // return an error on subsequent calls (even after restarting the wallet). To
 // reset the wallet, the wallet files must be moved to a different directory
 // or deleted.
-func (w *Wallet) Encrypt(masterKey crypto.TwofishKey) (modules.Seed, error) {
+func (w *Wallet) Encrypt(masterKey crypto.CipherKey) (modules.Seed, error) {
 	if err := w.tg.Add(); err != nil {
 		return modules.Seed{}, err
 	}
@@ -322,8 +360,8 @@ func (w *Wallet) Encrypt(masterKey crypto.TwofishKey) (modules.Seed, error) {
 	fastrand.Read(seed[:])
 
 	// If masterKey is blank, use the hash of the seed.
-	if masterKey == (crypto.TwofishKey{}) {
-		masterKey = crypto.TwofishKey(crypto.HashObject(seed))
+	if masterKey == nil {
+		masterKey = crypto.NewWalletKey(crypto.HashObject(seed))
 	}
 	// Initial seed progress is 0.
 	return w.initEncryption(masterKey, seed, 0)
@@ -354,7 +392,7 @@ func (w *Wallet) Reset() error {
 	}
 	w.wipeSecrets()
 	w.keys = make(map[types.UnlockHash]spendableKey)
-	w.lookahead = make(map[types.UnlockHash]uint64)
+	w.lookahead = newLookahead(w.addressGapLimit)
 	w.seeds = []modules.Seed{}
 	w.unconfirmedProcessedTransactions = []modules.ProcessedTransaction{}
 	w.unlocked = false
@@ -364,11 +402,11 @@ func (w *Wallet) Reset() error {
 	return nil
 }
 
-// InitFromSeed functions like Init, but using a specified seed. Unlike Init,
+// InitFromSeed functions like Encrypt, but using a specified seed. Unlike Encrypt,
 // the blockchain will be scanned to determine the seed's progress. For this
 // reason, InitFromSeed should not be called until the blockchain is fully
 // synced.
-func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) error {
+func (w *Wallet) InitFromSeed(masterKey crypto.CipherKey, seed modules.Seed) error {
 	if err := w.tg.Add(); err != nil {
 		return err
 	}
@@ -379,8 +417,9 @@ func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) er
 	}
 
 	// If masterKey is blank, use the hash of the seed.
-	if masterKey == (crypto.TwofishKey{}) {
-		masterKey = crypto.TwofishKey(crypto.HashObject(seed))
+	var err error
+	if masterKey == nil {
+		masterKey = crypto.NewWalletKey(crypto.HashObject(seed))
 	}
 
 	if !w.scanLock.TryLock() {
@@ -389,22 +428,16 @@ func (w *Wallet) InitFromSeed(masterKey crypto.TwofishKey, seed modules.Seed) er
 	defer w.scanLock.Unlock()
 
 	// estimate the primarySeedProgress by scanning the blockchain
-	s := newSeedScanner(seed, w.log)
-	if err := s.scan(w.cs, w.tg.StopChan()); err != nil {
+	s := newSeedScanner(seed, w.addressGapLimit, w.cs, w.log, w.scanAirdrop)
+	if err := s.scan(w.tg.StopChan()); err != nil {
 		return err
 	}
-	// NOTE: each time the wallet generates a key for index n, it sets its
-	// progress to n+1, so the progress should be the largest index seen + 1.
-	// We also add 10% as a buffer because the seed may have addresses in the
-	// wild that have not appeared in the blockchain yet.
-	progress := s.largestIndexSeen + 1
-	progress += progress / 10
-	w.log.Printf("INFO: found key index %v in blockchain. Setting primary seed progress to %v", s.largestIndexSeen, progress)
+	// w.log.Printf("INFO: found key index %v in blockchain. Maximum internal index: %v", s.getMaximumExternalIndex(), s.maximumInternalIndex)
 
 	// initialize the wallet with the appropriate seed progress
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	_, err := w.initEncryption(masterKey, seed, progress)
+	_, err = w.initEncryption(masterKey, seed, s.getMaximumExternalIndex())
 	return err
 }
 
@@ -430,7 +463,7 @@ func (w *Wallet) Lock() error {
 }
 
 // ChangeKey changes the wallet's encryption key from masterKey to newKey.
-func (w *Wallet) ChangeKey(masterKey crypto.TwofishKey, newKey crypto.TwofishKey) error {
+func (w *Wallet) ChangeKey(masterKey crypto.CipherKey, newKey crypto.CipherKey) error {
 	if err := w.tg.Add(); err != nil {
 		return err
 	}
@@ -441,7 +474,7 @@ func (w *Wallet) ChangeKey(masterKey crypto.TwofishKey, newKey crypto.TwofishKey
 
 // Unlock will decrypt the wallet seed and load all of the addresses into
 // memory.
-func (w *Wallet) Unlock(masterKey crypto.TwofishKey) error {
+func (w *Wallet) Unlock(masterKey crypto.CipherKey) error {
 	// By having the wallet's ThreadGroup track the Unlock method, we ensure
 	// that Unlock will never unlock the wallet once the ThreadGroup has been
 	// stopped. Without this precaution, the wallet's Close method would be
@@ -467,7 +500,7 @@ func (w *Wallet) Unlock(masterKey crypto.TwofishKey) error {
 
 // managedChangeKey safely performs the database operations required to change
 // the wallet's encryption key.
-func (w *Wallet) managedChangeKey(masterKey crypto.TwofishKey, newKey crypto.TwofishKey) error {
+func (w *Wallet) managedChangeKey(masterKey crypto.CipherKey, newKey crypto.CipherKey) error {
 	w.mu.Lock()
 	encrypted := w.encrypted
 	w.mu.Unlock()
@@ -547,7 +580,8 @@ func (w *Wallet) managedChangeKey(masterKey crypto.TwofishKey, newKey crypto.Two
 
 	newPrimarySeedFile = createSeedFile(newKey, primarySeed)
 	for _, seed := range auxiliarySeeds {
-		newAuxiliarySeedFiles = append(newAuxiliarySeedFiles, createSeedFile(newKey, seed))
+		sf := createSeedFile(newKey, seed)
+		newAuxiliarySeedFiles = append(newAuxiliarySeedFiles, sf)
 	}
 	for _, sk := range spendableKeys {
 		var skf spendableKeyFile

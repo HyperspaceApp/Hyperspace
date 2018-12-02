@@ -8,6 +8,8 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,13 +25,6 @@ import (
 )
 
 var (
-	walletAddressCmd = &cobra.Command{
-		Use:   "address",
-		Short: "Get a new wallet address",
-		Long:  "Generate a new wallet address from the wallet's primary seed.",
-		Run:   wrap(walletaddresscmd),
-	}
-
 	walletAddressesCmd = &cobra.Command{
 		Use:   "addresses",
 		Short: "List all addresses",
@@ -47,8 +42,9 @@ var (
 	walletBroadcastCmd = &cobra.Command{
 		Use:   "broadcast [txn]",
 		Short: "Broadcast a transaction",
-		Long:  "Broadcast a transaction to connected peers. The transaction must be valid.",
-		Run:   wrap(walletbroadcastcmd),
+		Long: `Broadcast a JSON-encoded transaction to connected peers. The transaction must
+be valid. txn may be either JSON, base64, or a file containing either.`,
+		Run: wrap(walletbroadcastcmd),
 	}
 
 	walletChangepasswordCmd = &cobra.Command{
@@ -69,12 +65,19 @@ The smallest unit of SPACE is the hasting. One space cash is 10^24 hastings. Oth
   nS (nano,  10^-9 SPACE)
   uS (micro, 10^-6 SPACE)
   mS (milli, 10^-3 SPACE)
-  SPACE
+  S  (1 SPACE)
   KS (kilo, 10^3 SPACE)
   MS (mega, 10^6 SPACE)
   GS (giga, 10^9 SPACE)
   TS (tera, 10^12 SPACE)`,
 		Run: wrap(walletbalancecmd),
+	}
+
+	walletGetAddressCmd = &cobra.Command{
+		Use:   "get-address",
+		Short: "Get an unused wallet address",
+		Long:  "Get a wallet address that hasn't been seen on the blockchain yet from the wallet's primary seed.",
+		Run:   wrap(walletgetaddresscmd),
 	}
 
 	walletInitCmd = &cobra.Command{
@@ -121,6 +124,13 @@ By default the wallet encryption / unlock password is the same as the generated 
 		Run:   wrap(walletlockcmd),
 	}
 
+	walletNewAddressCmd = &cobra.Command{
+		Use:   "new-address",
+		Short: "Create a new wallet address",
+		Long:  "Create a new wallet address from the wallet's primary seed.",
+		Run:   wrap(walletnewaddresscmd),
+	}
+
 	walletSeedsCmd = &cobra.Command{
 		Use:   "seeds",
 		Short: "View information about your seeds",
@@ -150,9 +160,15 @@ A dynamic transaction fee is applied depending on the size of the transaction an
 	walletSignCmd = &cobra.Command{
 		Use:   "sign [txn] [tosign]",
 		Short: "Sign a transaction",
-		Long: `Sign the specified inputs of a transaction. If siad is running with an
-unlocked wallet, the /wallet/sign API call will be used. Otherwise, sign will
-prompt for the wallet seed, and the signing key(s) will be regenerated.`,
+		Long: `Sign a transaction. If siad is running with an unlocked wallet, the
+/wallet/sign API call will be used. Otherwise, sign will prompt for the wallet
+seed, and the signing key(s) will be regenerated.
+
+txn may be either JSON, base64, or a file containing either.
+
+tosign is an optional list of indices. Each index corresponds to a
+TransactionSignature in the txn that will be filled in. If no indices are
+provided, the wallet will fill in every TransactionSignature it has keys for.`,
 		Run: walletsigncmd,
 	}
 
@@ -211,16 +227,6 @@ func confirmPassword(prev string) error {
 	return nil
 }
 
-// walletaddresscmd fetches a new address from the wallet that will be able to
-// receive coins.
-func walletaddresscmd() {
-	addr, err := httpClient.WalletAddressGet()
-	if err != nil {
-		die("Could not generate new address:", err)
-	}
-	fmt.Printf("Created new address: %s\n", addr.Address)
-}
-
 // walletaddressescmd fetches the list of addresses that the wallet knows.
 func walletaddressescmd() {
 	addrs, err := httpClient.WalletAddressesGet()
@@ -249,6 +255,16 @@ func walletchangepasswordcmd() {
 		die("Changing the password failed:", err)
 	}
 	fmt.Println("Password changed successfully.")
+}
+
+// walletgetaddresscmd fetches a new address from the wallet that will be able to
+// receive coins.
+func walletgetaddresscmd() {
+	addr, err := httpClient.WalletAddressGet()
+	if err != nil {
+		die("Could not get unused address:", err)
+	}
+	fmt.Printf("Got unused address: %s\n", addr.Address)
 }
 
 // walletinitcmd encrypts the wallet with the given password
@@ -337,6 +353,16 @@ func walletlockcmd() {
 	if err != nil {
 		die("Could not lock wallet:", err)
 	}
+}
+
+// walletnewaddresscmd fetches a new address from the wallet that will be able to
+// receive coins.
+func walletnewaddresscmd() {
+	addr, err := httpClient.WalletAddressPost()
+	if err != nil {
+		die("Could not create a new address:", err)
+	}
+	fmt.Printf("Created new address: %s\n", addr.Address)
 }
 
 // walletseedcmd returns the current seed {
@@ -428,17 +454,7 @@ Estimated Fee:       %v / KB
 
 // walletbroadcastcmd broadcasts a transaction.
 func walletbroadcastcmd(txnStr string) {
-	var txn types.Transaction
-	var err error
-	if walletRawTxn {
-		var txnBytes []byte
-		txnBytes, err = base64.StdEncoding.DecodeString(txnStr)
-		if err == nil {
-			err = encoding.Unmarshal(txnBytes, &txn)
-		}
-	} else {
-		err = json.Unmarshal([]byte(txnStr), &txn)
-	}
+	txn, err := parseTxn(txnStr)
 	if err != nil {
 		die("Could not decode transaction:", err)
 	}
@@ -446,7 +462,7 @@ func walletbroadcastcmd(txnStr string) {
 	if err != nil {
 		die("Could not broadcast transaction:", err)
 	}
-	fmt.Println("Transaction broadcast successfully")
+	fmt.Println("Transaction has been broadcast successfully")
 }
 
 // walletsweepcmd sweeps coins and funds from a seed.
@@ -465,23 +481,25 @@ func walletsweepcmd() {
 
 // walletsigncmd signs a transaction.
 func walletsigncmd(cmd *cobra.Command, args []string) {
-	if len(args) < 1 || len(args) > 2 {
+	if len(args) < 1 {
 		cmd.UsageFunc()(cmd)
 		os.Exit(exitCodeUsage)
 	}
 
-	var txn types.Transaction
-	err := json.Unmarshal([]byte(args[0]), &txn)
+	txn, err := parseTxn(args[0])
 	if err != nil {
-		die("Invalid transaction:", err)
+		die("Could not decode transaction:", err)
 	}
 
 	var toSign []crypto.Hash
-	if len(args) == 2 {
-		err = json.Unmarshal([]byte(args[1]), &toSign)
+	for _, arg := range args[1:] {
+		index, err := strconv.ParseUint(arg, 10, 32)
 		if err != nil {
-			die("Invalid signature request:", err)
+			die("Invalid signature index", index, "(must be an non-negative integer)")
+		} else if index >= uint64(len(txn.TransactionSignatures)) {
+			die("Invalid signature index", index, "(transaction only has", len(txn.TransactionSignatures), "signatures)")
 		}
+		toSign = append(toSign, txn.TransactionSignatures[index].ParentID)
 	}
 
 	// try API first
@@ -489,21 +507,14 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 	if err == nil {
 		txn = wspr.Transaction
 	} else {
-		// fallback to offline keygen
-		fmt.Println("Signing via API failed: either siad is not running, or your wallet is locked.")
-		fmt.Println("Enter your wallet seed to generate the signing key(s) now and sign without siad.")
-		seedString, err := passwordPrompt("Seed: ")
-		if err != nil {
-			die("Reading seed failed:", err)
+		// if siad is running, but the wallet is locked, assume the user
+		// wanted to sign with siad
+		if strings.Contains(err.Error(), modules.ErrLockedWallet.Error()) {
+			die("Signing via API failed: siad is running, but the wallet is locked.")
 		}
-		seed, err := modules.StringToSeed(seedString, mnemonics.English)
-		if err != nil {
-			die("Invalid seed:", err)
-		}
-		err = wallet.SignTransaction(&txn, seed, toSign)
-		if err != nil {
-			die("Failed to sign transaction:", err)
-		}
+
+		// siad is not running; fallback to offline keygen
+		walletsigncmdoffline(&txn, toSign)
 	}
 
 	if walletRawTxn {
@@ -512,6 +523,36 @@ func walletsigncmd(cmd *cobra.Command, args []string) {
 		json.NewEncoder(os.Stdout).Encode(txn)
 	}
 	fmt.Println()
+}
+
+// walletsigncmdoffline is a helper for walletsigncmd that handles signing
+// transactions without siad.
+func walletsigncmdoffline(txn *types.Transaction, toSign []crypto.Hash) {
+	fmt.Println("Enter your wallet seed to generate the signing key(s) now and sign without siad.")
+	seedString, err := passwordPrompt("Seed: ")
+	if err != nil {
+		die("Reading seed failed:", err)
+	}
+	seed, err := modules.StringToSeed(seedString, mnemonics.English)
+	if err != nil {
+		die("Invalid seed:", err)
+	}
+	// signing via seed may take a while, since we need to regenerate
+	// keys. If it takes longer than a second, print a message to assure
+	// the user that this is normal.
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-time.After(time.Second):
+			fmt.Println("Generating keys; this may take a few seconds...")
+		case <-done:
+		}
+	}()
+	err = wallet.SignTransaction(txn, seed, toSign)
+	if err != nil {
+		die("Failed to sign transaction:", err)
+	}
+	close(done)
 }
 
 // wallettransactionscmd lists all of the transactions related to the wallet,

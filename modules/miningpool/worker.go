@@ -1,7 +1,6 @@
 package pool
 
 import (
-	"path/filepath"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -35,23 +34,28 @@ func newWorker(c *Client, name string, s *Session) (*Worker, error) {
 			name:   name,
 			parent: c,
 		},
-		s: s,
+		s:   s,
+		log: p.clientLog,
 	}
 
-	var err error
+	// var err error
 
-	// Create the perist directory if it does not yet exist.
-	dirname := filepath.Join(p.persistDir, "clients", c.Name())
-	err = p.dependencies.mkdirAll(dirname, 0700)
-	if err != nil {
-		return nil, err
-	}
+	// // Create the perist directory if it does not yet exist.
+	// dirname := filepath.Join(p.persistDir, "clients", c.Name())
+	// err = p.dependencies.mkdirAll(dirname, 0700)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	// Initialize the logger, and set up the stop call that will close the
-	// logger.
-	w.log, err = p.dependencies.newLogger(filepath.Join(dirname, name+".log"))
+	// // Initialize the logger, and set up the stop call that will close the
+	// // logger.
+	// namelen := len(name)
+	// w.log, err = p.dependencies.newLogger(filepath.Join(dirname, "defaultworker.log"))
+	// if namelen > 0 {
+	// 	w.log, err = p.dependencies.newLogger(filepath.Join(dirname, name+".log"))
+	// }
 
-	return w, err
+	return w, nil
 }
 
 func (w *Worker) printID() string {

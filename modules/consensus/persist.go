@@ -30,7 +30,7 @@ func (cs *ConsensusSet) loadDB() error {
 	}
 
 	// Walk through initialization for Sia.
-	return cs.db.Update(func(tx *bolt.Tx) error {
+	err = cs.db.Update(func(tx *bolt.Tx) error {
 		// Check if the database has been initialized.
 		err = cs.initDB(tx)
 		if err != nil {
@@ -55,6 +55,18 @@ func (cs *ConsensusSet) loadDB() error {
 		}
 		if genesisID != cs.blockRoot.Block.ID() {
 			return errors.New("Blockchain has wrong genesis block, exiting.")
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return cs.db.Update(func(tx *bolt.Tx) error {
+		// load processed block headers
+		err = cs.loadProcessedBlockHeader(tx)
+		if err != nil {
+			return err
 		}
 		return nil
 	})

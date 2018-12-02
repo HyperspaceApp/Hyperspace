@@ -265,7 +265,7 @@ func (p *Pool) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 		p.newSourceBlock()
 		if p.dispatcher != nil {
-			p.log.Printf("Notifying clients\n")
+			// p.log.Printf("Notifying clients\n")
 			p.dispatcher.ClearJobAndNotifyClients()
 		}
 	}
@@ -284,7 +284,7 @@ func (p *Pool) ReceiveUpdatedUnconfirmedTransactions(diff *modules.TransactionPo
 		p.log.Printf("Block update detected\n")
 		p.newSourceBlock()
 		if p.dispatcher != nil {
-			p.log.Printf("Notifying clients\n")
+			// p.log.Printf("Notifying clients\n")
 			p.dispatcher.NotifyClients()
 		}
 	}

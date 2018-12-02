@@ -19,6 +19,10 @@ const (
 	SendBlocksCmd = "SendBlocks"
 	// SendBlockCmd requests that a node send us a specific consensus block
 	SendBlockCmd = "SendBlk"
+	// SendHeadersCmd requests that a node send us a list of headers
+	SendHeadersCmd = "SndHdrs"
+	// SendHeaderCmd requests that a node send us a specific header
+	SendHeaderCmd = "SndHdr"
 	// RelayHeaderCmd sends a block header to a peer with the expectation
 	// that the peer will pass on the header to other nodes
 	RelayHeaderCmd = "RelayHeader"
@@ -39,12 +43,15 @@ var (
 	// chosen to hardcode known-stable peers.
 	BootstrapPeers = build.Select(build.Var{
 		Standard: []NetAddress{
-			"45.33.42.181:5581",
+			"47.75.72.189:5581",
+			"47.75.72.189:25581",
 			"139.162.118.62:5581",
+			"139.162.198.80:5581",
+			"50.116.37.123:5581",
+			"45.33.42.181:5581",
 			"172.104.155.40:5581",
 			"172.104.188.185:5581",
 			"47.100.43.104:5581",
-			"47.75.72.189:5581",
 			"47.90.212.141:5581",
 			"69.195.141.178:5581",
 			"45.76.30.176:5581",
@@ -52,6 +59,7 @@ var (
 			"178.128.65.120:5581",
 			"52.39.226.32:5581",
 			"68.175.125.235:5581",
+			"59.167.191.60:5581",
 		},
 		Dev: []NetAddress{
 			"45.33.42.181:5581",
@@ -60,6 +68,7 @@ var (
 			"172.104.188.185:5581",
 			"47.100.43.104:5581",
 			"47.75.72.189:5581",
+			"47.75.72.189:25581",
 			"47.90.212.141:5581",
 		},
 		Testing: []NetAddress(nil),
@@ -73,6 +82,29 @@ var (
 		"172.104.155.40:5591",
 		"172.104.188.185:5591",
 	}
+	// SPVBootstrapPeers is the bootstrap nodes for spv
+	SPVBootstrapPeers = build.Select(build.Var{
+		Standard: []NetAddress{
+			"47.75.72.189:5581",
+			"47.75.72.189:25581",
+			"139.162.118.62:5581",
+			"139.162.198.80:5581",
+			"47.100.43.104:5581",
+			"50.116.37.123:5581",
+			"59.167.191.60:5581",
+			"45.33.42.181:5581",
+		},
+		Dev: []NetAddress{
+			"47.75.72.189:5581",
+			"47.75.72.189:25581",
+			"139.162.118.62:5581",
+			"139.162.198.80:5581",
+			"47.100.43.104:5581",
+			"50.116.37.123:5581",
+			"45.33.42.181:5581",
+		},
+		Testing: []NetAddress(nil),
+	}).([]NetAddress)
 )
 
 type (
@@ -92,6 +124,7 @@ type (
 	PeerConn interface {
 		net.Conn
 		RPCAddr() NetAddress
+		Version() string
 	}
 
 	// RPCFunc is the type signature of functions that handle RPCs. It is used for
@@ -116,13 +149,20 @@ type (
 		// of the gateway. Contrary to Address, DiscoverAddress is blocking and
 		// might take multiple minutes to return. A channel to cancel the
 		// discovery can be supplied optionally.
-		DiscoverAddress(cancel <-chan struct{}) (NetAddress, error)
+		DiscoverAddress(cancel <-chan struct{}) (net.IP, error)
+
+		// ForwardPort adds a port mapping to the router. It will block until
+		// the mapping is established or until it is interrupted by a shutdown.
+		ForwardPort(port string) error
 
 		// Address returns the Gateway's address.
 		Address() NetAddress
 
 		// Peers returns the addresses that the Gateway is currently connected to.
 		Peers() []Peer
+
+		// RandomPeer returns a random peer currently connected to the Gateway.
+		RandomPeer() (Peer, error)
 
 		// RegisterRPC registers a function to handle incoming connections that
 		// supply the given RPC ID.
