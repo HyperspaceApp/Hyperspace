@@ -21,7 +21,7 @@ func TestEd25519PublicKey(t *testing.T) {
 
 // TestUnlockHash runs the UnlockHash code.
 func TestUnlockHash(t *testing.T) {
-	uc := UnlockConditions{
+	uc := UnlockConditionsV0{
 		Timelock: 1,
 		PublicKeys: []SiaPublicKey{
 			{
@@ -184,7 +184,7 @@ func TestTransactionValidSignatures(t *testing.T) {
 	// possible key is a standard signature. The second key is an unknown
 	// signature type, which should always be accepted. The final type is an
 	// entropy type, which should never be accepted.
-	uc := UnlockConditions{
+	uc := UnlockConditionsV0{
 		PublicKeys: []SiaPublicKey{
 			{Algorithm: SignatureEd25519, Key: pk[:]},
 			{},
@@ -194,7 +194,7 @@ func TestTransactionValidSignatures(t *testing.T) {
 	}
 
 	// Create a transaction with each type of unlock condition.
-	txn := Transaction{
+	txn := TransactionV0{
 		SiacoinInputs: []SiacoinInput{
 			{UnlockConditions: uc},
 		},

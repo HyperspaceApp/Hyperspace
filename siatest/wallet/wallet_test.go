@@ -237,7 +237,6 @@ func TestWatchOnly(t *testing.T) {
 	sk, pk := crypto.GenerateKeyPair()
 	uc := types.UnlockConditions{
 		PublicKeys:         []types.SiaPublicKey{types.Ed25519PublicKey(pk)},
-		SignaturesRequired: 1,
 	}
 	addr := uc.UnlockHash()
 

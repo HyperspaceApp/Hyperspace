@@ -393,7 +393,6 @@ func (cst *consensusSetTester) testFileContractRevision() {
 			Algorithm: types.SignatureEd25519,
 			Key:       pk[:],
 		}},
-		SignaturesRequired: 1,
 	}
 
 	// Create a file contract that will be revised.

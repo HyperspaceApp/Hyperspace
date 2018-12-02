@@ -19,16 +19,16 @@ func hashStr(v interface{}) string {
 }
 
 // heavyBlock is a complex block that fills every possible field with data.
-var heavyBlock = func() Block {
-	b := Block{
+var heavyBlock = func() BlockV0 {
+	b := BlockV0{
 		MinerPayouts: []SiacoinOutput{
 			{Value: CalculateCoinbase(0)},
 			{Value: CalculateCoinbase(1)},
 		},
-		Transactions: []Transaction{
+		Transactions: []TransactionV0{
 			{
-				SiacoinInputs: []SiacoinInput{{
-					UnlockConditions: UnlockConditions{
+				SiacoinInputs: []SiacoinInputV0{{
+					UnlockConditions: UnlockConditionsV0{
 						PublicKeys: []SiaPublicKey{{
 							Algorithm: SignatureEd25519,
 							Key:       fastrand.Bytes(32),
@@ -540,12 +540,12 @@ func TestTransactionSignatureEncoding(t *testing.T) {
 // TestUnlockConditionsEncoding tests that optimizations applied to the
 // encoding of the UnlockConditions type do not change its encoding.
 func TestUnlockConditionsEncoding(t *testing.T) {
-	var uc UnlockConditions
+	var uc UnlockConditionsV0
 	if h := hashStr(uc); h != "19ea4a516c66775ea1f648d71f6b8fa227e8b0c1a0c9203f82c33b89c4e759b5" {
 		t.Error("encoding mismatch:", h)
 	}
 
-	uc = UnlockConditions{
+	uc = UnlockConditionsV0{
 		Timelock:           1,
 		PublicKeys:         []SiaPublicKey{{}},
 		SignaturesRequired: 3,
@@ -559,7 +559,7 @@ func TestUnlockConditionsEncoding(t *testing.T) {
 // and unmarshalled using JSON, the result is what is expected.
 func TestUnlockHashJSONMarshalling(t *testing.T) {
 	// Create an unlock hash.
-	uc := UnlockConditions{
+	uc := UnlockConditionsV0{
 		Timelock:           5,
 		SignaturesRequired: 3,
 	}
@@ -609,7 +609,7 @@ func TestUnlockHashJSONMarshalling(t *testing.T) {
 // is expected.
 func TestUnlockHashStringMarshalling(t *testing.T) {
 	// Create an unlock hash.
-	uc := UnlockConditions{
+	uc := UnlockConditionsV0{
 		Timelock:           2,
 		SignaturesRequired: 7,
 	}

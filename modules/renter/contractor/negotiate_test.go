@@ -186,7 +186,6 @@ func TestReviseContract(t *testing.T) {
 
 	uc := types.UnlockConditions{
 		PublicKeys:         []types.SiaPublicKey{renterPubKey, renterPubKey},
-		SignaturesRequired: 1,
 	}
 
 	// create file contract
