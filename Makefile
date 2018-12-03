@@ -120,6 +120,8 @@ test-pool:
 	go test -short -parallel=1 -tags='testing debug pool' -timeout=120s ./modules/miningpool -run=$(run)
 test-spv:
 	go test -v -tags='testing debug pool spv long' -timeout=60s ./modules/consensus/ -run=^TestSPV.*$
+test-api:
+	go test -v -tags='testing debug pool spv long' -timeout=260s ./node/api/ -run=^Test.*$
 test-spv-renter: test-spv
 	go test -v -tags='testing debug pool spv long' -timeout=60s ./node/api/ -run=^TestSPVRenter.*$
 test-module:

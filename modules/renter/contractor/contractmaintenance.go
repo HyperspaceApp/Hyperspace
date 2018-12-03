@@ -315,7 +315,7 @@ func (c *Contractor) managedNewContract(host modules.HostDBEntry, contractFundin
 	// get an address to use for negotiation
 	uc, err := c.wallet.NextAddress()
 	if err != nil {
-		c.log.Printf("Attempted to form a contract with %v, next address failed: reason: %v, try get address\n", host.NetAddress, err)
+		c.log.Printf("Attempted to form a contract with %v(%s), next address failed: reason: %v, try get address\n", host.NetAddress, host.Version, err)
 		uc, err = c.wallet.GetAddress()
 		if err != nil {
 			return types.ZeroCurrency, modules.RenterContract{}, err
@@ -447,7 +447,11 @@ func (c *Contractor) managedRenew(sc *proto.SafeContract, contractFunding types.
 	// get an address to use for negotiation
 	uc, err := c.wallet.NextAddress()
 	if err != nil {
-		return modules.RenterContract{}, err
+		c.log.Printf("Attempted to renew a contract with %v(%s), next address failed: reason: %v, try get address\n", host.NetAddress, host.Version, err)
+		uc, err = c.wallet.GetAddress()
+		if err != nil {
+			return modules.RenterContract{}, err
+		}
 	}
 
 	// create contract params
@@ -885,7 +889,7 @@ func (c *Contractor) threadedContractMaintenance() {
 		// Attempt forming a contract with this host.
 		fundsSpent, newContract, err := c.managedNewContract(host, initialContractFunds, endHeight)
 		if err != nil {
-			c.log.Printf("Attempted to form a contract with %v, but negotiation failed: %v\n", host.NetAddress, err)
+			c.log.Printf("Attempted to form a contract with %v(%s), but negotiation failed: %v\n", host.NetAddress, host.Version, err)
 			continue
 		}
 		fundsRemaining = fundsRemaining.Sub(fundsSpent)

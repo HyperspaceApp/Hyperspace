@@ -7,23 +7,23 @@ import (
 
 // TestExplorerPreset checks that the default configuration for the explorer is
 // working correctly.
-func TestExplorerPreset(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	st, err := createExplorerServerTester(t.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer st.server.panicClose()
+// func TestExplorerPreset(t *testing.T) {
+// 	if testing.Short() {
+// 		t.SkipNow()
+// 	}
+// 	t.Parallel()
+// 	st, err := createExplorerServerTester(t.Name())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer st.server.panicClose()
 
-	// Try calling a legal endpoint without a user agent.
-	err = st.stdGetAPIUA("/explorer", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-}
+// 	// Try calling a legal endpoint without a user agent.
+// 	err = st.stdGetAPIUA("/explorer", "")
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// }
 
 // TestReloading reloads a server and does smoke testing to see that modules
 // are still working after reload.

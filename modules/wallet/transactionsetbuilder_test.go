@@ -177,7 +177,7 @@ func TestFundOutputsFillWalletTransactionSet(t *testing.T) {
 	}
 
 	err = tbuilder.FundOutputs(outputs, types.NewCurrency64(10))
-	if (err != nil) {
+	if err != nil {
 		t.Fatal(err)
 	}
 

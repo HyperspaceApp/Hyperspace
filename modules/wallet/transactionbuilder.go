@@ -3,7 +3,6 @@ package wallet
 import (
 	"bytes"
 	"errors"
-	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
@@ -384,7 +383,6 @@ func (tb *transactionBuilder) FundContract(amount types.Currency) ([]types.Siaco
 	if !amount.Equals(fund) {
 		refundUnlockConditions, err := tb.wallet.nextPrimarySeedAddress(tb.wallet.dbTx)
 		if err != nil {
-			log.Printf("next address failed, try to get an address: %s", err.Error())
 			refundUnlockConditions, err = tb.wallet.GetAddress() // try get address if generate address failed when funding contracts
 			if err != nil {
 				return nil, err
