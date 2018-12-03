@@ -834,15 +834,15 @@ func TestBuriedBadTransaction(t *testing.T) {
 
 	// Create a good transaction using the wallet.
 	txnValue := types.NewCurrency64(1200)
-	txnBuilder, err := cst.wallet.StartTransaction()
+	txnBuilder, err := cst.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = txnBuilder.FundSiacoins(txnValue)
+	err = txnBuilder.FundOutputNoFee(types.SiacoinOutput{Value: txnValue})
 	if err != nil {
 		t.Fatal(err)
 	}
-	txnBuilder.AddSiacoinOutput(types.SiacoinOutput{Value: txnValue})
+
 	txnSet, err := txnBuilder.Sign(true)
 	if err != nil {
 		t.Fatal(err)
