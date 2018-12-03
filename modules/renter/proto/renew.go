@@ -78,7 +78,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	}
 
 	// build transaction containing fc
-	err = txnBuilder.FundSiacoins(funding)
+	_, err = txnBuilder.FundContract(funding)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}
