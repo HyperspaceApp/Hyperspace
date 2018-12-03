@@ -507,6 +507,10 @@ type (
 		// RegisterTransaction(types.Transaction{}, nil)
 		StartTransaction() (TransactionBuilder, error)
 
+		// StartTransactionSet is a convenience method that calls
+		// RegisterTransactionSet(types.Transaction{}, nil)
+		StartTransactionSet() (TransactionSetBuilder, error)
+
 		// SendSiacoins is a tool for sending space cash from the wallet to an
 		// address. Sending money usually results in multiple transactions. The
 		// transactions are automatically given to the transaction pool, and
