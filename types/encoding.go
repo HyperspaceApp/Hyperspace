@@ -592,27 +592,16 @@ func (spk *SiaPublicKey) UnmarshalJSON(b []byte) error {
 
 // MarshalJSON marshals a specifier as a string.
 func (s Specifier) MarshalJSON() ([]byte, error) {
-	// Workaround for the specifier size problem (issue #13).
-	// The problem is that the code directly convert
-	// the encoded specifier to string, thus trimming
-	// anything above 15 characters. Since at the moment
-	// only SpecifierSiacoinOutput is affected we just add
-	// the missing character.
-	// NOTE: printing the specifier directly will still be
-	// broken as Specifier.String() isn't fixed, as it would
-	// break also the raw specifier encoding.
-	// TODO: We need to separate the specifier raw representation
-	// from the string representation. Need a review of the code
-	// to avoid breaking the blockchain.
-	if s == SpecifierSiacoinOutput {
-		return json.Marshal(s.String() + "t")
-	}
-
 	return json.Marshal(s.String())
 }
 
 // String returns the specifier as a string, trimming any trailing zeros.
 func (s Specifier) String() string {
+	// See issue #13
+	if (s == SpecifierSiacoinOutput) {
+		return "siacoin output";
+	}
+
 	var i int
 	for i = range s {
 		if s[i] == 0 {
@@ -627,11 +616,6 @@ func (s *Specifier) UnmarshalJSON(b []byte) error {
 	var str string
 	if err := json.Unmarshal(b, &str); err != nil {
 		return err
-	}
-	// read comment in MarshalJSON.
-	// this method only trim the suffix if it's found.
-	if *s == SpecifierSiacoinOutput {
-		strings.TrimSuffix(str, "t")
 	}
 	copy(s[:], str)
 	return nil
