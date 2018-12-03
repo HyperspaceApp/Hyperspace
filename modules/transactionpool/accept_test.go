@@ -527,7 +527,7 @@ func TestAcceptFCAndConflictingRevision(t *testing.T) {
 		t.Fatal(err)
 	}
 	payout := types.NewCurrency64(1e9)
-	err = builder.FundSiacoins(payout)
+	_, err = builder.FundContract(payout)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,7 +586,7 @@ func TestPartialConfirmation(t *testing.T) {
 		t.Fatal(err)
 	}
 	payout := types.NewCurrency64(1e9)
-	err = builder.FundSiacoins(payout)
+	_, err = builder.FundContract(payout)
 	if err != nil {
 		t.Fatal(err)
 	}
