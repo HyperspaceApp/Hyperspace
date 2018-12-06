@@ -312,7 +312,7 @@ func TestRenterFileListLocalPath(t *testing.T) {
 	if err := f.SetLocalPath("TestPath"); err != nil {
 		t.Fatal(err)
 	}
-	rt.renter.files[f.SiaPath()] = f
+	rt.renter.files[f.HyperspacePath()] = f
 	rt.renter.mu.Unlock(id)
 	files := rt.renter.FileList()
 	if len(files) != 1 {
@@ -342,14 +342,14 @@ func TestRenterDeleteFile(t *testing.T) {
 
 	// Put a file in the renter.
 	file1 := newTestingFile()
-	rt.renter.files[file1.SiaPath()] = file1
+	rt.renter.files[file1.HyperspacePath()] = file1
 	// Delete a different file.
 	err = rt.renter.DeleteFile("one")
 	if err != ErrUnknownPath {
 		t.Error("Expected ErrUnknownPath, got", err)
 	}
 	// Delete the file.
-	err = rt.renter.DeleteFile(file1.SiaPath())
+	err = rt.renter.DeleteFile(file1.HyperspacePath())
 	if err != nil {
 		t.Error(err)
 	}
@@ -360,8 +360,8 @@ func TestRenterDeleteFile(t *testing.T) {
 	// Put a file in the renter, then rename it.
 	f := newTestingFile()
 	f.Rename("1", filepath.Join(rt.renter.persistDir, "1"+ShareExtension)) // set name to "1"
-	rt.renter.files[f.SiaPath()] = f
-	rt.renter.RenameFile(f.SiaPath(), "one")
+	rt.renter.files[f.HyperspacePath()] = f
+	rt.renter.RenameFile(f.HyperspacePath(), "one")
 	// Call delete on the previous name.
 	err = rt.renter.DeleteFile("1")
 	if err != ErrUnknownPath {
@@ -407,11 +407,11 @@ func TestRenterFileList(t *testing.T) {
 
 	// Put a file in the renter.
 	file1 := newTestingFile()
-	rt.renter.files[file1.SiaPath()] = file1
+	rt.renter.files[file1.HyperspacePath()] = file1
 	if len(rt.renter.FileList()) != 1 {
 		t.Error("FileList is not returning the only file in the renter")
 	}
-	if rt.renter.FileList()[0].SiaPath != file1.SiaPath() {
+	if rt.renter.FileList()[0].HyperspacePath != file1.HyperspacePath() {
 		t.Error("FileList is not returning the correct filename for the only file")
 	}
 
@@ -422,10 +422,10 @@ func TestRenterFileList(t *testing.T) {
 		t.Error("FileList is not returning both files in the renter")
 	}
 	files := rt.renter.FileList()
-	if !((files[0].SiaPath == file1.SiaPath() || files[0].SiaPath == file2.SiaPath()) &&
-		(files[1].SiaPath == file1.SiaPath() || files[1].SiaPath == file2.SiaPath()) &&
-		(files[0].SiaPath != files[1].SiaPath)) {
-		t.Error("FileList is returning wrong names for the files:", files[0].SiaPath, files[1].SiaPath)
+	if !((files[0].HyperspacePath == file1.HyperspacePath() || files[0].HyperspacePath == file2.HyperspacePath()) &&
+		(files[1].HyperspacePath == file1.HyperspacePath() || files[1].HyperspacePath == file2.HyperspacePath()) &&
+		(files[0].HyperspacePath != files[1].HyperspacePath)) {
+		t.Error("FileList is returning wrong names for the files:", files[0].HyperspacePath, files[1].HyperspacePath)
 	}
 }
 
@@ -458,8 +458,8 @@ func TestRenterRenameFile(t *testing.T) {
 	if len(files) != 1 {
 		t.Fatal("FileList has unexpected number of files:", len(files))
 	}
-	if files[0].SiaPath != "1a" {
-		t.Errorf("RenameFile failed: expected 1a, got %v", files[0].SiaPath)
+	if files[0].HyperspacePath != "1a" {
+		t.Errorf("RenameFile failed: expected 1a, got %v", files[0].HyperspacePath)
 	}
 
 	// Rename a file to an existing name.
@@ -506,10 +506,10 @@ func TestRenterFileListWithFilter(t *testing.T) {
 	{
 		filter, _ := regexp.Compile(".*")
 		files := rt.renter.FileList(filter)
-		if !((files[0].SiaPath == "one" || files[0].SiaPath == "two") &&
-			(files[1].SiaPath == "one" || files[1].SiaPath == "two") &&
-			(files[0].SiaPath != files[1].SiaPath)) {
-			t.Error("FileList is returning wrong names for filtered files:", files[0].SiaPath, files[1].SiaPath)
+		if !((files[0].HyperspacePath == "one" || files[0].HyperspacePath == "two") &&
+			(files[1].HyperspacePath == "one" || files[1].HyperspacePath == "two") &&
+			(files[0].HyperspacePath != files[1].HyperspacePath)) {
+			t.Error("FileList is returning wrong names for filtered files:", files[0].HyperspacePath, files[1].HyperspacePath)
 		}
 	}
 
@@ -521,8 +521,8 @@ func TestRenterFileListWithFilter(t *testing.T) {
 			t.Error("FileList is returning incorrect filtered length:", len(files))
 		}
 
-		if files[0].SiaPath != "one" {
-			t.Error("FileList is returning incorrect filtered items:", files[0].SiaPath)
+		if files[0].HyperspacePath != "one" {
+			t.Error("FileList is returning incorrect filtered items:", files[0].HyperspacePath)
 		}
 	}
 }

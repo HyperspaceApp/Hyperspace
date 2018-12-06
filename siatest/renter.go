@@ -122,7 +122,7 @@ func (tn *TestNode) DownloadInfo(lf *LocalFile, rf *RemoteFile) (*api.DownloadIn
 	}
 	var di *api.DownloadInfo
 	for _, d := range rdq.Downloads {
-		if rf.siaPath == d.SiaPath && lf.path == d.Destination {
+		if rf.siaPath == d.HyperspacePath && lf.path == d.Destination {
 			di = &d
 			break
 		}
@@ -172,7 +172,7 @@ func (tn *TestNode) FileInfo(rf *RemoteFile) (modules.FileInfo, error) {
 		return modules.FileInfo{}, err
 	}
 	for _, file := range files {
-		if file.SiaPath == rf.siaPath {
+		if file.HyperspacePath == rf.siaPath {
 			return file, nil
 		}
 	}
@@ -182,14 +182,14 @@ func (tn *TestNode) FileInfo(rf *RemoteFile) (modules.FileInfo, error) {
 // Upload uses the node to upload the file.
 func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64) (*RemoteFile, error) {
 	// Upload file
-	siapath := tn.SiaPath(lf.path)
-	err := tn.RenterUploadPost(lf.path, siapath, dataPieces, parityPieces)
+	hyperspacepath := tn.HyperspacePath(lf.path)
+	err := tn.RenterUploadPost(lf.path, hyperspacepath, dataPieces, parityPieces)
 	if err != nil {
 		return nil, err
 	}
 	// Create remote file object
 	rf := &RemoteFile{
-		siaPath:  siapath,
+		siaPath:  hyperspacepath,
 		checksum: lf.checksum,
 	}
 	// Make sure renter tracks file
@@ -203,15 +203,15 @@ func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64) (*Rem
 // UploadDirectory uses the node to upload a directory
 func (tn *TestNode) UploadDirectory(ld *LocalDir) (*RemoteDir, error) {
 	// Upload Directory
-	siapath := tn.SiaPath(ld.path)
-	err := tn.RenterDirCreatePost(siapath)
+	hyperspacepath := tn.HyperspacePath(ld.path)
+	err := tn.RenterDirCreatePost(hyperspacepath)
 	if err != nil {
 		return nil, errors.AddContext(err, "failed to upload directory")
 	}
 
 	// Create remote directory object
 	rd := &RemoteDir{
-		siapath: siapath,
+		hyperspacepath: hyperspacepath,
 	}
 	return rd, nil
 }

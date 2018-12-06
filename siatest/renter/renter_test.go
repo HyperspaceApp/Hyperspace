@@ -216,7 +216,7 @@ func testSiafileTimestamps(t *testing.T, tg *siatest.TestGroup) {
 	beforeRenameTime := time.Now()
 
 	// Rename the file and check that only the ChangeTime changed.
-	rf, err = r.Rename(rf, "newsiapath")
+	rf, err = r.Rename(rf, "newhyperspacepath")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func testClearDownloadHistory(t *testing.T, tg *siatest.TestGroup) {
 		// Download files to build download history
 		dest := filepath.Join(siatest.SiaTestingDir, strconv.Itoa(fastrand.Intn(math.MaxInt32)))
 		for i := 0; i < remainingDownloads; i++ {
-			err = r.RenterDownloadGet(rf.Files[0].SiaPath, dest, 0, rf.Files[0].Filesize, false)
+			err = r.RenterDownloadGet(rf.Files[0].HyperspacePath, dest, 0, rf.Files[0].Filesize, false)
 			if err != nil {
 				t.Fatal("Could not Download file:", err)
 			}
@@ -419,7 +419,7 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	assertFileExists(r.RenterDir(), metadata, t)
 
 	// Check new directory
-	assertFileExists(filepath.Join(r.RenterDir(), rd.SiaPath()), metadata, t)
+	assertFileExists(filepath.Join(r.RenterDir(), rd.HyperspacePath()), metadata, t)
 
 	// Check uploading file to new subdirectory
 	// Create local file
@@ -680,7 +680,7 @@ func testSingleFileGet(t *testing.T, tg *siatest.TestGroup) {
 			continue
 		}
 		checks++
-		file, err = renter.File(f.SiaPath)
+		file, err = renter.File(f.HyperspacePath)
 		if err != nil {
 			t.Fatal("Failed to request single file", err)
 		}
@@ -704,9 +704,9 @@ func testSingleFileGet(t *testing.T, tg *siatest.TestGroup) {
 			t.Log("File from File() LocalPath:", file.LocalPath)
 			t.Fatal("Single file queries does not match file previously requested.")
 		}
-		if f.SiaPath != file.SiaPath {
-			t.Log("File from Files() SiaPath:", f.SiaPath)
-			t.Log("File from File() SiaPath:", file.SiaPath)
+		if f.HyperspacePath != file.HyperspacePath {
+			t.Log("File from Files() HyperspacePath:", f.HyperspacePath)
+			t.Log("File from File() HyperspacePath:", file.HyperspacePath)
 			t.Fatal("Single file queries does not match file previously requested.")
 		}
 	}
@@ -1519,7 +1519,7 @@ func testRenterCancelAllowance(t *testing.T, tg *siatest.TestGroup) {
 	if len(renterFiles.Files) != 2 {
 		t.Fatal("There should be exactly 2 tracked files")
 	}
-	fileInfo, err := renter.File(rf2.SiaPath())
+	fileInfo, err := renter.File(rf2.HyperspacePath())
 	if err != nil {
 		t.Fatal(err)
 	}

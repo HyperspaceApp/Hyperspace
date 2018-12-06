@@ -136,8 +136,8 @@ func (tn *TestNode) initRootDirs() error {
 	return nil
 }
 
-// SiaPath returns the siapath of a local file or directory to be used for
+// HyperspacePath returns the hyperspacepath of a local file or directory to be used for
 // uploading
-func (tn *TestNode) SiaPath(path string) string {
+func (tn *TestNode) HyperspacePath(path string) string {
 	return strings.TrimPrefix(path, tn.RenterDir()+"/")
 }

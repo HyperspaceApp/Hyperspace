@@ -181,14 +181,14 @@ func (f *file) UnmarshalSia(r io.Reader) error {
 }
 
 // createDir creates directory in the renter directory
-func (r *Renter) createDir(siapath string) error {
+func (r *Renter) createDir(hyperspacepath string) error {
 	// Enforce nickname rules.
-	if err := validateSiapath(siapath); err != nil {
+	if err := validateSiapath(hyperspacepath); err != nil {
 		return err
 	}
 
 	// Create direcotry
-	path := filepath.Join(r.persistDir, siapath)
+	path := filepath.Join(r.persistDir, hyperspacepath)
 	if err := os.MkdirAll(path, 0700); err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func (r *Renter) loadSiaFiles() error {
 			r.log.Println("ERROR: could not open .sia file:", err)
 			return nil
 		}
-		r.files[sf.SiaPath()] = sf
+		r.files[sf.HyperspacePath()] = sf
 		return nil
 	})
 }

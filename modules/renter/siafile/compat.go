@@ -57,7 +57,7 @@ func NewFromFileData(fd FileData) (*SiaFile, error) {
 			StaticErasureCodeType:   ecType,
 			StaticErasureCodeParams: ecParams,
 			StaticPieceSize:         fd.PieceSize,
-			SiaPath:                 fd.Name,
+			HyperspacePath:          fd.Name,
 		},
 		deleted:   fd.Deleted,
 		staticUID: fd.UID,

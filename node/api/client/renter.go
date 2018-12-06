@@ -12,10 +12,10 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
-// escapeSiaPath escapes the siapath to make it safe to use within a URL. This
-// should only be used on SiaPaths which are used as part of the URL path.
+// escapeHyperspacePath escapes the hyperspacepath to make it safe to use within a URL. This
+// should only be used on HyperspacePaths which are used as part of the URL path.
 // Paths within the query have to be escaped with net.QueryEscape.
-func escapeSiaPath(siaPath string) string {
+func escapeHyperspacePath(siaPath string) string {
 	pathSegments := strings.Split(siaPath, "/")
 
 	escapedSegments := make([]string, 0, len(pathSegments))
@@ -25,8 +25,8 @@ func escapeSiaPath(siaPath string) string {
 	return strings.Join(escapedSegments, "/")
 }
 
-// trimSiaPath trims potential leading slashes within the siaPath.
-func trimSiaPath(siaPath string) string {
+// trimHyperspacePath trims potential leading slashes within the siaPath.
+func trimHyperspacePath(siaPath string) string {
 	return strings.TrimPrefix(siaPath, "/")
 }
 
@@ -66,7 +66,7 @@ func (c *Client) RenterExpiredContractsGet() (rc api.RenterContracts, err error)
 
 // RenterDeletePost uses the /renter/delete endpoint to delete a file.
 func (c *Client) RenterDeletePost(siaPath string) (err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	err = c.post(fmt.Sprintf("/renter/delete/%s", siaPath), "", nil)
 	return err
 }
@@ -74,7 +74,7 @@ func (c *Client) RenterDeletePost(siaPath string) (err error) {
 // RenterDownloadGet uses the /renter/download endpoint to download a file to a
 // destination on disk.
 func (c *Client) RenterDownloadGet(siaPath, destination string, offset, length uint64, async bool) (err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	values := url.Values{}
 	values.Set("destination", url.QueryEscape(destination))
 	values.Set("offset", fmt.Sprint(offset))
@@ -87,7 +87,7 @@ func (c *Client) RenterDownloadGet(siaPath, destination string, offset, length u
 // RenterDownloadFullGet uses the /renter/download endpoint to download a full
 // file.
 func (c *Client) RenterDownloadFullGet(siaPath, destination string, async bool) (err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	values := url.Values{}
 	values.Set("destination", url.QueryEscape(destination))
 	values.Set("httpresp", fmt.Sprint(false))
@@ -140,7 +140,7 @@ func (c *Client) RenterDownloadsGet() (rdq api.RenterDownloadQueue, err error) {
 // RenterDownloadHTTPResponseGet uses the /renter/download endpoint to download
 // a file and return its data.
 func (c *Client) RenterDownloadHTTPResponseGet(siaPath string, offset, length uint64) (resp []byte, err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	values := url.Values{}
 	values.Set("offset", fmt.Sprint(offset))
 	values.Set("length", fmt.Sprint(length))
@@ -151,7 +151,7 @@ func (c *Client) RenterDownloadHTTPResponseGet(siaPath string, offset, length ui
 
 // RenterFileGet uses the /renter/file/:hyperspacepath endpoint to query a file.
 func (c *Client) RenterFileGet(siaPath string) (rf api.RenterFile, err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	err = c.get("/renter/file/"+siaPath, &rf)
 	return
 }
@@ -210,9 +210,9 @@ func (c *Client) RenterPostRateLimit(readBPS, writeBPS int64) (err error) {
 
 // RenterRenamePost uses the /renter/rename/:hyperspacepath endpoint to rename a file.
 func (c *Client) RenterRenamePost(siaPathOld, siaPathNew string) (err error) {
-	siaPathOld = escapeSiaPath(trimSiaPath(siaPathOld))
+	siaPathOld = escapeHyperspacePath(trimHyperspacePath(siaPathOld))
 	values := url.Values{}
-	values.Set("newhyperspacepath", fmt.Sprintf("/%s", trimSiaPath(siaPathNew)))
+	values.Set("newhyperspacepath", fmt.Sprintf("/%s", trimHyperspacePath(siaPathNew)))
 	err = c.post(fmt.Sprintf("/renter/rename/%s", siaPathOld), values.Encode(), nil)
 	return
 }
@@ -229,7 +229,7 @@ func (c *Client) RenterSetStreamCacheSizePost(cacheSize uint64) (err error) {
 // RenterStreamGet uses the /renter/stream endpoint to download data as a
 // stream.
 func (c *Client) RenterStreamGet(siaPath string) (resp []byte, err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	resp, err = c.getRawResponse(fmt.Sprintf("/renter/stream/%s", siaPath))
 	return
 }
@@ -237,7 +237,7 @@ func (c *Client) RenterStreamGet(siaPath string) (resp []byte, err error) {
 // RenterStreamPartialGet uses the /renter/stream endpoint to download a part
 // of data as a stream.
 func (c *Client) RenterStreamPartialGet(siaPath string, start, end uint64) (resp []byte, err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	resp, err = c.getRawPartialResponse(fmt.Sprintf("/renter/stream/%s", siaPath), start, end)
 	return
 }
@@ -253,7 +253,7 @@ func (c *Client) RenterSetRepairPathPost(siaPath, newPath string) (err error) {
 
 // RenterUploadPost uses the /renter/upload endpoint to upload a file
 func (c *Client) RenterUploadPost(path, siaPath string, dataPieces, parityPieces uint64) (err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	values := url.Values{}
 	values.Set("source", path)
 	values.Set("datapieces", strconv.FormatUint(dataPieces, 10))
@@ -265,7 +265,7 @@ func (c *Client) RenterUploadPost(path, siaPath string, dataPieces, parityPieces
 // RenterUploadDefaultPost uses the /renter/upload endpoint with default
 // redundancy settings to upload a file.
 func (c *Client) RenterUploadDefaultPost(path, siaPath string) (err error) {
-	siaPath = escapeSiaPath(trimSiaPath(siaPath))
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
 	values := url.Values{}
 	values.Set("source", path)
 	err = c.post(fmt.Sprintf("/renter/upload/%s", siaPath), values.Encode(), nil)
@@ -290,9 +290,9 @@ func (c *Client) RenterDirDeletePost(siaPath string) (err error) {
 
 // RenterDirRenamePost uses the /renter/dir/ endpoint to rename a directory for the
 // renter
-func (c *Client) RenterDirRenamePost(siaPath, newSiaPath string) (err error) {
+func (c *Client) RenterDirRenamePost(siaPath, newHyperspacePath string) (err error) {
 	siaPath = strings.TrimPrefix(siaPath, "/")
-	newSiaPath = strings.TrimPrefix(newSiaPath, "/")
-	err = c.post(fmt.Sprintf("/renter/dir/%s?newsiapath=%s", siaPath, newSiaPath), "action=rename", nil)
+	newHyperspacePath = strings.TrimPrefix(newHyperspacePath, "/")
+	err = c.post(fmt.Sprintf("/renter/dir/%s?newhyperspacepath=%s", siaPath, newHyperspacePath), "action=rename", nil)
 	return
 }

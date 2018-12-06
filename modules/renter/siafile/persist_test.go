@@ -272,12 +272,12 @@ func TestRename(t *testing.T) {
 	sf := newTestFile()
 
 	// Create new paths for the file.
-	newSiaPath := sf.staticMetadata.SiaPath + "1"
+	newHyperspacePath := sf.staticMetadata.HyperspacePath + "1"
 	newSiaFilePath := sf.siaFilePath + "1"
 	oldSiaFilePath := sf.siaFilePath
 
 	// Rename file
-	if err := sf.Rename(newSiaPath, newSiaFilePath); err != nil {
+	if err := sf.Rename(newHyperspacePath, newSiaFilePath); err != nil {
 		t.Fatal("Failed to rename file", err)
 	}
 
@@ -296,8 +296,8 @@ func TestRename(t *testing.T) {
 	if sf.siaFilePath != newSiaFilePath {
 		t.Fatal("SiaFilePath wasn't updated correctly")
 	}
-	if sf.staticMetadata.SiaPath != newSiaPath {
-		t.Fatal("SiaPath wasn't updated correctly")
+	if sf.staticMetadata.HyperspacePath != newHyperspacePath {
+		t.Fatal("HyperspacePath wasn't updated correctly")
 	}
 }
 

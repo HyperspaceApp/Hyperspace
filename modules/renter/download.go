@@ -161,7 +161,7 @@ type (
 		staticDestinationType string // "memory buffer", "http stream", "file", etc.
 		staticLength          uint64 // Length to download starting from the offset.
 		staticOffset          uint64 // Offset within the file to start the download.
-		staticSiaPath         string // The path of the siafile at the time the download started.
+		staticHyperspacePath         string // The path of the siafile at the time the download started.
 
 		// Retrieval settings for the file.
 		staticLatencyTarget time.Duration // In milliseconds. Lower latency results in lower total system throughput.
@@ -266,10 +266,10 @@ func (r *Renter) DownloadAsync(p modules.RenterDownloadParameters) error {
 func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download, error) {
 	// Lookup the file associated with the nickname.
 	lockID := r.mu.RLock()
-	file, exists := r.files[p.SiaPath]
+	file, exists := r.files[p.HyperspacePath]
 	r.mu.RUnlock(lockID)
 	if !exists {
-		return nil, fmt.Errorf("no file with that path: %s", p.SiaPath)
+		return nil, fmt.Errorf("no file with that path: %s", p.HyperspacePath)
 	}
 
 	// Validate download parameters.
@@ -373,7 +373,7 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 		staticLength:          params.length,
 		staticOffset:          params.offset,
 		staticOverdrive:       params.overdrive,
-		staticSiaPath:         params.file.SiaPath(),
+		staticHyperspacePath:         params.file.HyperspacePath(),
 		staticPriority:        params.priority,
 
 		log:           r.log,
@@ -432,7 +432,7 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 			masterKey:   params.file.MasterKey(),
 
 			staticChunkIndex: i,
-			staticCacheID:    fmt.Sprintf("%v:%v", d.staticSiaPath, i),
+			staticCacheID:    fmt.Sprintf("%v:%v", d.staticHyperspacePath, i),
 			staticChunkMap:   chunkMaps[i-minChunk],
 			staticChunkSize:  params.file.ChunkSize(),
 			staticPieceSize:  params.file.PieceSize(),
@@ -517,7 +517,7 @@ func (r *Renter) DownloadHistory() []modules.DownloadInfo {
 			DestinationType: d.staticDestinationType,
 			Length:          d.staticLength,
 			Offset:          d.staticOffset,
-			SiaPath:         d.staticSiaPath,
+			HyperspacePath:         d.staticHyperspacePath,
 
 			Completed:            d.staticComplete(),
 			EndTime:              d.endTime,
