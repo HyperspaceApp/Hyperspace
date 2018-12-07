@@ -155,7 +155,7 @@ type (
 		Filesize        uint64 `json:"filesize"`        // DEPRECATED. Same as 'Length'.
 		Length          uint64 `json:"length"`          // The length requested for the download.
 		Offset          uint64 `json:"offset"`          // The offset within the siafile requested for the download.
-		SiaPath         string `json:"hyperspacepath"`  // The hyperspacepath of the file used for the download.
+		HyperspacePath         string `json:"hyperspacepath"`  // The hyperspacepath of the file used for the download.
 
 		Completed            bool      `json:"completed"`            // Whether or not the download has completed.
 		EndTime              time.Time `json:"endtime"`              // The time when the download fully completed.
@@ -506,7 +506,7 @@ func (api *API) renterDownloadsHandler(w http.ResponseWriter, _ *http.Request, _
 			Filesize:        di.Length,
 			Length:          di.Length,
 			Offset:          di.Offset,
-			SiaPath:         di.SiaPath,
+			HyperspacePath:         di.HyperspacePath,
 
 			Completed:            di.Completed,
 			EndTime:              di.EndTime,
@@ -558,12 +558,12 @@ func (api *API) renterLoadASCIIHandler(w http.ResponseWriter, req *http.Request,
 // renterRenameHandler handles the API call to rename a file entry in the
 // renter.
 func (api *API) renterRenameHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	newSiaPath, err := url.QueryUnescape(req.FormValue("newhyperspacepath"))
+	newHyperspacePath, err := url.QueryUnescape(req.FormValue("newhyperspacepath"))
 	if err != nil {
 		WriteError(w, Error{"failed to unescape newhyperspacepath"}, http.StatusBadRequest)
 		return
 	}
-	err = api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), strings.TrimPrefix(newSiaPath, "/"))
+	err = api.renter.RenameFile(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"), strings.TrimPrefix(newHyperspacePath, "/"))
 	if err != nil {
 		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
 		return
@@ -593,8 +593,8 @@ func (api *API) renterFileHandlerPOST(w http.ResponseWriter, req *http.Request, 
 
 	// Handle changing the tracking path of a file.
 	if newTrackingPath != "" {
-		siapath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
-		if err := api.renter.SetFileTrackingPath(siapath, newTrackingPath); err != nil {
+		hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/")
+		if err := api.renter.SetFileTrackingPath(hyperspacepath, newTrackingPath); err != nil {
 			WriteError(w, Error{fmt.Sprintf("unable set tracking path: %v", err)}, http.StatusBadRequest)
 			return
 		}
@@ -800,7 +800,7 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 		Async:       async,
 		Length:      length,
 		Offset:      offset,
-		SiaPath:     hyperspacepath,
+		HyperspacePath:     hyperspacepath,
 	}
 	if httpresp {
 		dp.Httpwriter = w
@@ -924,7 +924,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 	// Call the renter to upload the file.
 	err = api.renter.Upload(modules.FileUploadParams{
 		Source:      source,
-		SiaPath:     strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
+		HyperspacePath:     strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
 		ErasureCode: ec,
 		Force:       force,
 	})
@@ -961,7 +961,7 @@ func (api *API) renterDirHandlerPOST(w http.ResponseWriter, req *http.Request, p
 	}
 	if action == "rename" {
 		fmt.Println("rename")
-		// newsiapath := ps.ByName("newsiapath")
+		// newhyperspacepath := ps.ByName("newhyperspacepath")
 		// TODO - implement
 		WriteError(w, Error{"not implemented"}, http.StatusNotImplemented)
 		return

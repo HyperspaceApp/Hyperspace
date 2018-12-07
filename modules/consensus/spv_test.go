@@ -304,7 +304,6 @@ func TestSPVDelayedOutputDiff(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer cst2.Close()
-	// 2 wallet with same seed
 
 	uc, err := cst1.wallet.NextAddress()
 	if err != nil {

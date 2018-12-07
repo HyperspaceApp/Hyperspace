@@ -31,8 +31,8 @@ func equalFiles(f1, f2 *siafile.SiaFile) error {
 	if f1 == nil || f2 == nil {
 		return fmt.Errorf("one or both files are nil")
 	}
-	if f1.SiaPath() != f2.SiaPath() {
-		return fmt.Errorf("names do not match: %v %v", f1.SiaPath(), f2.SiaPath())
+	if f1.HyperspacePath() != f2.HyperspacePath() {
+		return fmt.Errorf("names do not match: %v %v", f1.HyperspacePath(), f2.HyperspacePath())
 	}
 	if f1.Size() != f2.Size() {
 		return fmt.Errorf("sizes do not match: %v %v", f1.Size(), f2.Size())
@@ -176,13 +176,13 @@ func TestRenterPaths(t *testing.T) {
 	}
 
 	// Check that the files were loaded properly.
-	if err := equalFiles(f1, rt.renter.files[f1.SiaPath()]); err != nil {
+	if err := equalFiles(f1, rt.renter.files[f1.HyperspacePath()]); err != nil {
 		t.Fatal(err)
 	}
-	if err := equalFiles(f2, rt.renter.files[f2.SiaPath()]); err != nil {
+	if err := equalFiles(f2, rt.renter.files[f2.HyperspacePath()]); err != nil {
 		t.Fatal(err)
 	}
-	if err := equalFiles(f3, rt.renter.files[f3.SiaPath()]); err != nil {
+	if err := equalFiles(f3, rt.renter.files[f3.HyperspacePath()]); err != nil {
 		t.Fatal(err)
 	}
 
@@ -200,7 +200,7 @@ func TestRenterPaths(t *testing.T) {
 		return nil
 	})
 	// walk will descend into foo/bar/, reading baz, bar, and finally foo
-	expWalkStr := (f3.SiaPath() + ".sia") + (f2.SiaPath() + ".sia") + (f1.SiaPath() + ".sia")
+	expWalkStr := (f3.HyperspacePath() + ".sia") + (f2.HyperspacePath() + ".sia") + (f1.HyperspacePath() + ".sia")
 	if filepath.ToSlash(walkStr) != expWalkStr {
 		t.Fatalf("Bad walk string: expected %v, got %v", expWalkStr, walkStr)
 	}

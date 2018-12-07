@@ -120,8 +120,8 @@ func setupSPVTestDownload(t *testing.T, size int, name string, waitOnAvailabilit
 // parameters, verifying that the parameters are applied correctly and the file
 // is downloaded successfully.
 func runSPVDownloadTest(t *testing.T, filesize, offset, length int64, useHttpResp bool, testName string) error {
-	ulSiaPath := testName + ".dat"
-	st, _, path := setupSPVTestDownload(t, int(filesize), ulSiaPath, true)
+	ulHyperspacePath := testName + ".dat"
+	st, _, path := setupSPVTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer func() {
 		st.server.panicClose()
 		os.Remove(path)
@@ -147,7 +147,7 @@ func runSPVDownloadTest(t *testing.T, filesize, offset, length int64, useHttpRes
 	downpath := filepath.Join(st.dir, fname)
 	defer os.Remove(downpath)
 
-	dlURL := fmt.Sprintf("/renter/download/%s?offset=%d&length=%d", ulSiaPath, offset, length)
+	dlURL := fmt.Sprintf("/renter/download/%s?offset=%d&length=%d", ulHyperspacePath, offset, length)
 
 	var downbytes bytes.Buffer
 
@@ -178,7 +178,7 @@ func runSPVDownloadTest(t *testing.T, filesize, offset, length int64, useHttpRes
 				return err
 			}
 			for _, download := range rdq.Downloads {
-				if download.Received == download.Filesize && download.SiaPath == ulSiaPath {
+				if download.Received == download.Filesize && download.HyperspacePath == ulHyperspacePath {
 					return nil
 				}
 			}
@@ -239,7 +239,7 @@ func TestSPVRenterDownloadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, download := range rdq.Downloads {
-		if download.SiaPath == "test.dat" && download.Received == download.Filesize && download.Error == expectedErr.Error() {
+		if download.HyperspacePath == "test.dat" && download.Received == download.Filesize && download.Error == expectedErr.Error() {
 			t.Fatal("download had unexpected error: ", download.Error)
 		}
 	}
@@ -296,16 +296,16 @@ func TestSPVValidDownloads(t *testing.T) {
 }
 
 func runSPVDownloadParamTest(t *testing.T, length, offset, filesize int) error {
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulSiaPath, true)
+	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 	defer hostTester.server.Close()
 
 	// Download the original file from offset 40 and length 10.
 	fname := "offsetsinglechunk.dat"
 	downpath := filepath.Join(st.dir, fname)
-	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s", ulSiaPath, downpath)
+	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s", ulHyperspacePath, downpath)
 	dlURL += fmt.Sprintf("&length=%d", length)
 	dlURL += fmt.Sprintf("&offset=%d", offset)
 	return st.getAPI(dlURL, nil)
@@ -345,15 +345,15 @@ func TestSPVRenterDownloadAsyncAndHttpRespError(t *testing.T) {
 	t.Parallel()
 
 	filesize := 1e4
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulSiaPath, true)
+	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 	defer hostTester.server.Close()
 
 	// Download the original file from offset 40 and length 10.
 	fname := "offsetsinglechunk.dat"
-	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s&async=true&httpresp=true", ulSiaPath, fname)
+	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s&async=true&httpresp=true", ulHyperspacePath, fname)
 	err := st.getAPI(dlURL, nil)
 	if err == nil {
 		t.Fatalf("/download not prompting error when only passing both async and httpresp fields.")
@@ -386,14 +386,14 @@ func TestSPVRenterDownloadAsyncAndNotDestinationError(t *testing.T) {
 	t.Parallel()
 
 	filesize := 1e4
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulSiaPath, true)
+	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 	defer hostTester.server.Close()
 
 	// Download the original file from offset 40 and length 10.
-	dlURL := fmt.Sprintf("/renter/download/%s?async=true", ulSiaPath)
+	dlURL := fmt.Sprintf("/renter/download/%s?async=true", ulHyperspacePath)
 	err := st.getAPI(dlURL, nil)
 	if err == nil {
 		t.Fatal("/download not prompting error when async is specified but destination is empty.")
@@ -407,15 +407,15 @@ func TestSPVRenterDownloadHttpRespAndDestinationError(t *testing.T) {
 	t.Parallel()
 
 	filesize := 1e4
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulSiaPath, true)
+	st, hostTester, _ := setupSPVTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 	defer hostTester.server.Close()
 
 	// Download the original file from offset 40 and length 10.
 	fname := "test.dat"
-	dlURL := fmt.Sprintf("/renter/download/%s?destination=%shttpresp=true", ulSiaPath, fname)
+	dlURL := fmt.Sprintf("/renter/download/%s?destination=%shttpresp=true", ulHyperspacePath, fname)
 	err := st.getAPI(dlURL, nil)
 	if err == nil {
 		t.Fatal("/download not prompting error when httpresp is specified and destination is non-empty.")
@@ -444,7 +444,7 @@ func TestSPVRenterAsyncDownloadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, download := range rdq.Downloads {
-		if download.SiaPath == "test.dat" && download.Received == download.Filesize && download.Error == "" {
+		if download.HyperspacePath == "test.dat" && download.Received == download.Filesize && download.Error == "" {
 			t.Fatal("download had nil error")
 		}
 	}
@@ -479,7 +479,7 @@ func TestSPVRenterAsyncDownload(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, download := range rdq.Downloads {
-			if download.Received == download.Filesize && download.SiaPath == "test.dat" {
+			if download.Received == download.Filesize && download.HyperspacePath == "test.dat" {
 				success = true
 			}
 		}

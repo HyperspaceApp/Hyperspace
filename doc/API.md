@@ -1178,7 +1178,7 @@ endpoint for changing file metadata.
 
 ###### Path Parameters [(with comments)](/doc/api/Renter.md#path-parameters-3)
 ```
-// SiaPath of the file on the network. The path must be non-empty, may not
+// HyperspacePath of the file on the network. The path must be non-empty, may not
 // include any path traversal strings ("./", "../"), and may not begin with a
 // forward-slash character.
 *hyperspacepath

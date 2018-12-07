@@ -47,7 +47,7 @@ func (r *Renter) Streamer(siaPath string) (string, io.ReadSeeker, error) {
 		file: file,
 		r:    r,
 	}
-	return file.SiaPath(), s, nil
+	return file.HyperspacePath(), s, nil
 }
 
 // Read implements the standard Read interface. It will download the requested

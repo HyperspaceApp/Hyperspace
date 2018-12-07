@@ -60,6 +60,7 @@ func makeHostDBEntry() modules.HostDBEntry {
 		Timestamp: time.Now(),
 		Success:   true,
 	}}
+	dbe.Version = build.Version
 	return dbe
 }
 

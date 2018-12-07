@@ -85,7 +85,7 @@ func New(siaFilePath, siaPath, source string, wal *writeaheadlog.WAL, erasureCod
 			StaticErasureCodeType:   ecType,
 			StaticErasureCodeParams: ecParams,
 			StaticPieceSize:         modules.SectorSize - masterKey.Type().Overhead(),
-			SiaPath:                 siaPath,
+			HyperspacePath:                 siaPath,
 		},
 		siaFilePath: siaFilePath,
 		staticUID:   hex.EncodeToString(fastrand.Bytes(20)),

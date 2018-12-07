@@ -109,8 +109,8 @@ func setupTestDownload(t *testing.T, size int, name string, waitOnAvailability b
 // parameters, verifying that the parameters are applied correctly and the file
 // is downloaded successfully.
 func runDownloadTest(t *testing.T, filesize, offset, length int64, useHttpResp bool, testName string) error {
-	ulSiaPath := testName + ".dat"
-	st, path := setupTestDownload(t, int(filesize), ulSiaPath, true)
+	ulHyperspacePath := testName + ".dat"
+	st, path := setupTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer func() {
 		st.server.panicClose()
 		os.Remove(path)
@@ -136,7 +136,7 @@ func runDownloadTest(t *testing.T, filesize, offset, length int64, useHttpResp b
 	downpath := filepath.Join(st.dir, fname)
 	defer os.Remove(downpath)
 
-	dlURL := fmt.Sprintf("/renter/download/%s?offset=%d&length=%d", ulSiaPath, offset, length)
+	dlURL := fmt.Sprintf("/renter/download/%s?offset=%d&length=%d", ulHyperspacePath, offset, length)
 
 	var downbytes bytes.Buffer
 
@@ -167,7 +167,7 @@ func runDownloadTest(t *testing.T, filesize, offset, length int64, useHttpResp b
 				return err
 			}
 			for _, download := range rdq.Downloads {
-				if download.Received == download.Filesize && download.SiaPath == ulSiaPath {
+				if download.Received == download.Filesize && download.HyperspacePath == ulHyperspacePath {
 					return nil
 				}
 			}
@@ -229,7 +229,7 @@ func TestRenterDownloadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, download := range rdq.Downloads {
-		if download.SiaPath == "test.dat" && download.Received == download.Filesize && download.Error == expectedErr.Error() {
+		if download.HyperspacePath == "test.dat" && download.Received == download.Filesize && download.Error == expectedErr.Error() {
 			t.Fatal("download had unexpected error: ", download.Error)
 		}
 	}
@@ -286,15 +286,15 @@ func TestValidDownloads(t *testing.T) {
 }
 
 func runDownloadParamTest(t *testing.T, length, offset, filesize int) error {
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, _ := setupTestDownload(t, int(filesize), ulSiaPath, true)
+	st, _ := setupTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 
 	// Download the original file from offset 40 and length 10.
 	fname := "offsetsinglechunk.dat"
 	downpath := filepath.Join(st.dir, fname)
-	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s", ulSiaPath, downpath)
+	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s", ulHyperspacePath, downpath)
 	dlURL += fmt.Sprintf("&length=%d", length)
 	dlURL += fmt.Sprintf("&offset=%d", offset)
 	return st.getAPI(dlURL, nil)
@@ -334,14 +334,14 @@ func TestRenterDownloadAsyncAndHttpRespError(t *testing.T) {
 	t.Parallel()
 
 	filesize := 1e4
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, _ := setupTestDownload(t, int(filesize), ulSiaPath, true)
+	st, _ := setupTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 
 	// Download the original file from offset 40 and length 10.
 	fname := "offsetsinglechunk.dat"
-	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s&async=true&httpresp=true", ulSiaPath, fname)
+	dlURL := fmt.Sprintf("/renter/download/%s?destination=%s&async=true&httpresp=true", ulHyperspacePath, fname)
 	err := st.getAPI(dlURL, nil)
 	if err == nil {
 		t.Fatalf("/download not prompting error when only passing both async and httpresp fields.")
@@ -374,13 +374,13 @@ func TestRenterDownloadAsyncAndNotDestinationError(t *testing.T) {
 	t.Parallel()
 
 	filesize := 1e4
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, _ := setupTestDownload(t, int(filesize), ulSiaPath, true)
+	st, _ := setupTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 
 	// Download the original file from offset 40 and length 10.
-	dlURL := fmt.Sprintf("/renter/download/%s?async=true", ulSiaPath)
+	dlURL := fmt.Sprintf("/renter/download/%s?async=true", ulHyperspacePath)
 	err := st.getAPI(dlURL, nil)
 	if err == nil {
 		t.Fatal("/download not prompting error when async is specified but destination is empty.")
@@ -394,14 +394,14 @@ func TestRenterDownloadHttpRespAndDestinationError(t *testing.T) {
 	t.Parallel()
 
 	filesize := 1e4
-	ulSiaPath := "test.dat"
+	ulHyperspacePath := "test.dat"
 
-	st, _ := setupTestDownload(t, int(filesize), ulSiaPath, true)
+	st, _ := setupTestDownload(t, int(filesize), ulHyperspacePath, true)
 	defer st.server.Close()
 
 	// Download the original file from offset 40 and length 10.
 	fname := "test.dat"
-	dlURL := fmt.Sprintf("/renter/download/%s?destination=%shttpresp=true", ulSiaPath, fname)
+	dlURL := fmt.Sprintf("/renter/download/%s?destination=%shttpresp=true", ulHyperspacePath, fname)
 	err := st.getAPI(dlURL, nil)
 	if err == nil {
 		t.Fatal("/download not prompting error when httpresp is specified and destination is non-empty.")
@@ -431,7 +431,7 @@ func TestRenterAsyncDownloadError(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, download := range rdq.Downloads {
-		if download.SiaPath == "test.dat" && download.Received == download.Filesize && download.Error == "" {
+		if download.HyperspacePath == "test.dat" && download.Received == download.Filesize && download.Error == "" {
 			t.Fatal("download had nil error")
 		}
 	}
@@ -464,7 +464,7 @@ func TestRenterAsyncDownload(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, download := range rdq.Downloads {
-			if download.Received == download.Filesize && download.SiaPath == "test.dat" {
+			if download.Received == download.Filesize && download.HyperspacePath == "test.dat" {
 				success = true
 			}
 		}
@@ -518,7 +518,7 @@ func TestRenterPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rf.Files) != 1 || rf.Files[0].SiaPath != "foo/bar/test" {
+	if len(rf.Files) != 1 || rf.Files[0].HyperspacePath != "foo/bar/test" {
 		t.Fatal("/renter/files did not return correct file:", rf)
 	}
 }
@@ -565,7 +565,7 @@ func TestRenterConflicts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rf.Files) != 1 || rf.Files[0].SiaPath != "foo/bar.sia/test" {
+	if len(rf.Files) != 1 || rf.Files[0].HyperspacePath != "foo/bar.sia/test" {
 		t.Fatal("/renter/files did not return correct file:", rf)
 	}
 

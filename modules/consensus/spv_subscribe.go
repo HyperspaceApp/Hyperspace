@@ -300,7 +300,7 @@ func (cs *ConsensusSet) computeHeaderConsensusChange(tx *bolt.Tx, ce changeEntry
 }
 
 func (cs *ConsensusSet) getSiacoinOutputDiff(id types.BlockID, direction modules.DiffDirection) (scods []modules.SiacoinOutputDiff, err error) {
-	// log.Printf("getOrDownloadBlock: %s", id)
+	cs.log.Printf("getOrDownloadBlock: %s", id)
 	pb, err := cs.getOrDownloadBlock(id)
 	if err == errNilItem { // assume it is not related block, so not locally exist
 		return nil, nil

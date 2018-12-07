@@ -13,7 +13,7 @@ type (
 	}
 )
 
-// SiaPath returns the siaPath of a remote file.
-func (rf RemoteFile) SiaPath() string {
+// HyperspacePath returns the siaPath of a remote file.
+func (rf RemoteFile) HyperspacePath() string {
 	return rf.siaPath
 }

@@ -56,7 +56,7 @@ func validateSource(sourcePath string) error {
 // automatically upload and repair tracked files using a background loop.
 func (r *Renter) Upload(up modules.FileUploadParams) error {
 	// Enforce nickname rules.
-	if err := validateSiapath(up.SiaPath); err != nil {
+	if err := validateSiapath(up.HyperspacePath); err != nil {
 		return err
 	}
 	// Enforce source rules.
@@ -66,19 +66,19 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 
 	// Delete existing file if overwrite flag is set. Ignore ErrUnknownPath.
 	if up.Force {
-		if err := r.DeleteFile(up.SiaPath); err != nil && err != ErrUnknownPath {
+		if err := r.DeleteFile(up.HyperspacePath); err != nil && err != ErrUnknownPath {
 			return err
 		}
 	}
 
 	// Check for a nickname conflict.
 	lockID := r.mu.RLock()
-	_, exists := r.files[up.SiaPath]
+	_, exists := r.files[up.HyperspacePath]
 	r.mu.RUnlock(lockID)
 	if exists {
 		// Remove existing file if overwrite is specified
 		if up.Force {
-			err := r.DeleteFile(up.SiaPath)
+			err := r.DeleteFile(up.HyperspacePath)
 			// Return of ErrUnknownPath should not prevent upload
 			if err != nil && err != ErrUnknownPath {
 				return err
@@ -109,27 +109,27 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 
 	// Create the directory path on disk. Renter directory is already present so
 	// only files not in top level directory need to have directories created
-	dir, _ := filepath.Split(up.SiaPath)
-	dirSiaPath := strings.TrimSuffix(dir, "/")
-	if dirSiaPath != "" {
-		if err := r.createDir(dirSiaPath); err != nil {
+	dir, _ := filepath.Split(up.HyperspacePath)
+	dirHyperspacePath := strings.TrimSuffix(dir, "/")
+	if dirHyperspacePath != "" {
+		if err := r.createDir(dirHyperspacePath); err != nil {
 			return err
 		}
 	}
 
 	// Create file object.
-	siaFilePath := filepath.Join(r.persistDir, up.SiaPath+ShareExtension)
+	siaFilePath := filepath.Join(r.persistDir, up.HyperspacePath+ShareExtension)
 	cipherType := crypto.TypeDefaultRenter
 
 	// Create the Siafile.
-	f, err := siafile.New(siaFilePath, up.SiaPath, up.Source, r.wal, up.ErasureCode, crypto.GenerateSiaKey(cipherType), uint64(fileInfo.Size()), fileInfo.Mode())
+	f, err := siafile.New(siaFilePath, up.HyperspacePath, up.Source, r.wal, up.ErasureCode, crypto.GenerateSiaKey(cipherType), uint64(fileInfo.Size()), fileInfo.Mode())
 	if err != nil {
 		return err
 	}
 
 	// Add file to renter.
 	lockID = r.mu.Lock()
-	r.files[up.SiaPath] = f
+	r.files[up.HyperspacePath] = f
 	r.mu.Unlock(lockID)
 
 	// Send the upload to the repair loop.

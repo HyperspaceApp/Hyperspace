@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
@@ -105,6 +106,7 @@ func makeHostDBEntry() modules.HostDBEntry {
 		Timestamp: time.Now(),
 		Success:   true,
 	}}
+	dbe.Version = build.Version
 
 	return dbe
 }

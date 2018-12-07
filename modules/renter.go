@@ -10,8 +10,9 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/HyperspaceApp/errors"
 	"regexp"
+
+	"github.com/HyperspaceApp/errors"
 )
 
 var (
@@ -174,7 +175,7 @@ type DownloadInfo struct {
 	DestinationType string `json:"destinationtype"` // Can be "file", "memory buffer", or "http stream".
 	Length          uint64 `json:"length"`          // The length requested for the download.
 	Offset          uint64 `json:"offset"`          // The offset within the siafile requested for the download.
-	SiaPath         string `json:"hyperspacepath"`  // The hyperspacepath of the file used for the download.
+	HyperspacePath         string `json:"hyperspacepath"`  // The hyperspacepath of the file used for the download.
 
 	Completed            bool      `json:"completed"`            // Whether or not the download has completed.
 	EndTime              time.Time `json:"endtime"`              // The time when the download fully completed.
@@ -189,7 +190,7 @@ type DownloadInfo struct {
 // file.
 type FileUploadParams struct {
 	Source      string
-	SiaPath     string
+	HyperspacePath     string
 	ErasureCode ErasureCoder
 	Force       bool
 }
@@ -209,7 +210,7 @@ type FileInfo struct {
 	Recoverable    bool              `json:"recoverable"`
 	Redundancy     float64           `json:"redundancy"`
 	Renewing       bool              `json:"renewing"`
-	SiaPath        string            `json:"siapath"`
+	HyperspacePath        string            `json:"hyperspacepath"`
 	UploadedBytes  uint64            `json:"uploadedbytes"`
 	UploadProgress float64           `json:"uploadprogress"`
 }
@@ -546,6 +547,6 @@ type RenterDownloadParameters struct {
 	Httpwriter  io.Writer
 	Length      uint64
 	Offset      uint64
-	SiaPath     string
+	HyperspacePath     string
 	Destination string
 }
