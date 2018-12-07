@@ -166,7 +166,7 @@ func (tn *TestNode) DownloadInfo(lf *LocalFile, rf *RemoteFile) (*api.DownloadIn
 	}
 	var di *api.DownloadInfo
 	for _, d := range rdq.Downloads {
-		if rf.siaPath == d.SiaPath && lf.path == d.Destination {
+		if rf.siaPath == d.HyperspacePath && lf.path == d.Destination {
 			di = &d
 			break
 		}
@@ -216,7 +216,7 @@ func (tn *TestNode) FileInfo(rf *RemoteFile) (modules.FileInfo, error) {
 		return modules.FileInfo{}, err
 	}
 	for _, file := range files {
-		if file.SiaPath == rf.siaPath {
+		if file.HyperspacePath == rf.siaPath {
 			return file, nil
 		}
 	}
@@ -246,15 +246,15 @@ func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64, force
 // UploadDirectory uses the node to upload a directory
 func (tn *TestNode) UploadDirectory(ld *LocalDir) (*RemoteDir, error) {
 	// Upload Directory
-	siapath := tn.SiaPath(ld.path)
-	err := tn.RenterDirCreatePost(siapath)
+	hyperspacepath := tn.HyperspacePath(ld.path)
+	err := tn.RenterDirCreatePost(hyperspacepath)
 	if err != nil {
 		return nil, errors.AddContext(err, "failed to upload directory")
 	}
 
 	// Create remote directory object
 	rd := &RemoteDir{
-		siapath: siapath,
+		hyperspacepath: hyperspacepath,
 	}
 	return rd, nil
 }

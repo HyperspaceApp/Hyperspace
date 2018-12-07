@@ -220,6 +220,12 @@ func testReceivedFieldEqualsFileSize(t *testing.T, tg *siatest.TestGroup) {
 
 	// Download fetchLen bytes of the file.
 	_, err = r.DownloadToDiskPartial(rf, lf, false, 0, fetchLen)
+
+	// TODO Once we can change the localPath using the API, check that it only
+	// changes the ChangeTime to do so.
+
+	// Rename the file and check that only the ChangeTime changed.
+	rf, err = r.Rename(rf, "newhyperspacepath")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +281,7 @@ func testClearDownloadHistory(t *testing.T, tg *siatest.TestGroup) {
 		// Download files to build download history
 		dest := filepath.Join(siatest.SiaTestingDir, strconv.Itoa(fastrand.Intn(math.MaxInt32)))
 		for i := 0; i < remainingDownloads; i++ {
-			err = r.RenterDownloadGet(rf.Files[0].SiaPath, dest, 0, rf.Files[0].Filesize, false)
+			err = r.RenterDownloadGet(rf.Files[0].HyperspacePath, dest, 0, rf.Files[0].Filesize, false)
 			if err != nil {
 				t.Fatal("Could not Download file:", err)
 			}
@@ -414,7 +420,7 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	assertFileExists(r.RenterDir(), metadata, t)
 
 	// Check new directory
-	assertFileExists(filepath.Join(r.RenterDir(), rd.SiaPath()), metadata, t)
+	assertFileExists(filepath.Join(r.RenterDir(), rd.HyperspacePath()), metadata, t)
 
 	// Check uploading file to new subdirectory
 	// Create local file
@@ -674,7 +680,7 @@ func testSingleFileGet(t *testing.T, tg *siatest.TestGroup) {
 			continue
 		}
 		checks++
-		rf, err := renter.RenterFileGet(f.SiaPath)
+		rf, err := renter.RenterFileGet(f.HyperspacePath)
 		if err != nil {
 			t.Fatal("Failed to request single file", err)
 		}
@@ -698,9 +704,9 @@ func testSingleFileGet(t *testing.T, tg *siatest.TestGroup) {
 			t.Log("File from File() LocalPath:", rf.File.LocalPath)
 			t.Fatal("Single file queries does not match file previously requested.")
 		}
-		if f.SiaPath != rf.File.SiaPath {
-			t.Log("File from Files() SiaPath:", f.SiaPath)
-			t.Log("File from File() SiaPath:", rf.File.SiaPath)
+		if f.HyperspacePath != rf.File.HyperspacePath {
+			t.Log("File from Files() HyperspacePath:", f.HyperspacePath)
+			t.Log("File from File() HyperspacePath:", rf.File.HyperspacePath)
 			t.Fatal("Single file queries does not match file previously requested.")
 		}
 	}

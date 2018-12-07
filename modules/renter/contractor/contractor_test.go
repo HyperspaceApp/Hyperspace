@@ -29,6 +29,7 @@ func (newStub) SpvMode() bool                              { return false }
 
 // wallet stubs
 func (newStub) NextAddress() (uc types.UnlockConditions, err error)          { return }
+func (newStub) GetAddress() (uc types.UnlockConditions, err error)           { return }
 func (newStub) StartTransaction() (tb modules.TransactionBuilder, err error) { return }
 
 // transaction pool stubs
@@ -689,6 +690,9 @@ type testWalletShim struct {
 // booleans to true, allowing tests to verify that they have been called.
 func (ws *testWalletShim) NextAddress() (types.UnlockConditions, error) {
 	ws.nextAddressCalled = true
+	return types.UnlockConditions{}, nil
+}
+func (ws *testWalletShim) GetAddress() (types.UnlockConditions, error) {
 	return types.UnlockConditions{}, nil
 }
 func (ws *testWalletShim) StartTransaction() (modules.TransactionBuilder, error) {

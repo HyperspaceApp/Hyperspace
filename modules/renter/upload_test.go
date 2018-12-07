@@ -32,9 +32,9 @@ func TestRenterUploadInode(t *testing.T) {
 		t.Fatal(err)
 	}
 	params := modules.FileUploadParams{
-		Source:      testUploadPath,
-		SiaPath:     "test",
-		ErasureCode: ec,
+		Source:         testUploadPath,
+		HyperspacePath: "test",
+		ErasureCode:    ec,
 	}
 	err = rt.renter.Upload(params)
 	if err == nil {

@@ -200,7 +200,7 @@ func renteruploadscmd() {
 	}
 	fmt.Println("Uploading", len(filteredFiles), "files:")
 	for _, file := range filteredFiles {
-		fmt.Printf("%13s  %s (uploading, %0.2f%%)\n", filesizeUnits(int64(file.Filesize)), file.SiaPath, file.UploadProgress)
+		fmt.Printf("%13s  %s (uploading, %0.2f%%)\n", filesizeUnits(int64(file.Filesize)), file.HyperspacePath, file.UploadProgress)
 	}
 }
 
@@ -224,7 +224,7 @@ func renterdownloadscmd() {
 	} else {
 		fmt.Println("Downloading", len(downloading), "files:")
 		for _, file := range downloading {
-			fmt.Printf("%s: %5.1f%% %s -> %s\n", file.StartTime.Format("Jan 02 03:04 PM"), 100*float64(file.Received)/float64(file.Filesize), file.SiaPath, file.Destination)
+			fmt.Printf("%s: %5.1f%% %s -> %s\n", file.StartTime.Format("Jan 02 03:04 PM"), 100*float64(file.Received)/float64(file.Filesize), file.HyperspacePath, file.Destination)
 		}
 	}
 	if !renterShowHistory {
@@ -243,7 +243,7 @@ func renterdownloadscmd() {
 	} else {
 		fmt.Println("Downloaded", len(downloaded), "files:")
 		for _, file := range downloaded {
-			fmt.Printf("%s: %s -> %s\n", file.StartTime.Format("Jan 02 03:04 PM"), file.SiaPath, file.Destination)
+			fmt.Printf("%s: %s -> %s\n", file.StartTime.Format("Jan 02 03:04 PM"), file.HyperspacePath, file.Destination)
 		}
 	}
 }
@@ -611,7 +611,7 @@ func rentercontractscmd() {
 	Total Remaining:      %v
 	Total Spent:          %v
 	Total Fees:           %v
-			
+
 	`, len(rce.ExpiredContracts), filesizeUnits(int64(expiredTotalStored)), currencyUnits(expiredTotalWithheld), currencyUnits(expiredTotalSpent), currencyUnits(expiredTotalFees))
 			w := tabwriter.NewWriter(os.Stdout, 2, 0, 2, ' ', 0)
 			fmt.Fprintln(w, "  Host\tWithheld Funds\tSpent Funds\tSpent Fees\tData\tEnd Height\tID\tGoodForUpload\tGoodForRenew")
@@ -748,7 +748,7 @@ func bandwidthUnit(bps uint64) string {
 
 // downloadprogress will display the progress of the provided download to the
 // user, and return an error when the download is finished.
-func downloadprogress(siapath, hyperspacepath string) error {
+func downloadprogress(hyperspacepath, destination string) error {
 	start := time.Now()
 
 	// helper type used for measurements.
@@ -773,7 +773,7 @@ func downloadprogress(siapath, hyperspacepath string) error {
 		var d api.DownloadInfo
 		found := false
 		for _, d = range queue.Downloads {
-			if d.SiaPath == siapath && d.Destination == hyperspacepath {
+			if d.HyperspacePath == hyperspacepath && d.Destination == hyperspacepath {
 				found = true
 				break
 			}
@@ -827,13 +827,13 @@ func downloadprogress(siapath, hyperspacepath string) error {
 	return errors.New("ERROR: download progress reached code that should not be reachable")
 }
 
-// bySiaPath implements sort.Interface for [] modules.FileInfo based on the
-// SiaPath field.
-type bySiaPath []modules.FileInfo
+// byHyperspacePath implements sort.Interface for [] modules.FileInfo based on the
+// HyperspacePath field.
+type byHyperspacePath []modules.FileInfo
 
-func (s bySiaPath) Len() int           { return len(s) }
-func (s bySiaPath) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s bySiaPath) Less(i, j int) bool { return s[i].SiaPath < s[j].SiaPath }
+func (s byHyperspacePath) Len() int           { return len(s) }
+func (s byHyperspacePath) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s byHyperspacePath) Less(i, j int) bool { return s[i].HyperspacePath < s[j].HyperspacePath }
 
 // renterfileslistcmd is the handler for the command `hsc renter list`.
 // Lists files known to the renter on the network.
@@ -857,7 +857,7 @@ func renterfileslistcmd() {
 	if renterListVerbose {
 		fmt.Fprintln(w, "  File size\tAvailable\tUploaded\tProgress\tRedundancy\tRenewing\tOn Disk\tRecoverable\tSia path")
 	}
-	sort.Sort(bySiaPath(rf.Files))
+	sort.Sort(byHyperspacePath(rf.Files))
 	for _, file := range rf.Files {
 		fmt.Fprintf(w, "  %9s", filesizeUnits(int64(file.Filesize)))
 		if renterListVerbose {
@@ -875,7 +875,7 @@ func renterfileslistcmd() {
 			recoverableStr := yesNo(file.Recoverable)
 			fmt.Fprintf(w, "\t%s\t%9s\t%8s\t%10s\t%s\t%s\t%s", availableStr, filesizeUnits(int64(file.UploadedBytes)), uploadProgressStr, redundancyStr, renewingStr, onDiskStr, recoverableStr)
 		}
-		fmt.Fprintf(w, "\t%s", file.SiaPath)
+		fmt.Fprintf(w, "\t%s", file.HyperspacePath)
 		if !renterListVerbose && !file.Available {
 			fmt.Fprintf(w, " (uploading, %0.2f%%)", file.UploadProgress)
 		}

@@ -90,7 +90,7 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	}
 
 	// build transaction containing fc
-	err = txnBuilder.FundSiacoins(funding)
+	_, err = txnBuilder.FundContract(funding)
 	if err != nil {
 		return modules.RenterContract{}, err
 	}
@@ -166,19 +166,21 @@ func (cs *ContractSet) Renew(oldContract *SafeContract, params ContractParams, t
 	if err = modules.ReadNegotiationAcceptance(conn); err != nil {
 		return modules.RenterContract{}, errors.New("host did not accept our proposed contract: " + err.Error())
 	}
-	// host now sends any new parent transactions and inputs that
+	// host now sends any new outputs and inputs that
 	// were added to the transaction
-	var newParents []types.Transaction
+	var newRefundOutputs []types.SiacoinOutput
 	var newInputs []types.SiacoinInput
-	if err = encoding.ReadObject(conn, &newParents, types.BlockSizeLimit); err != nil {
-		return modules.RenterContract{}, errors.New("couldn't read the host's added parents: " + err.Error())
+	if err = encoding.ReadObject(conn, &newRefundOutputs, types.BlockSizeLimit); err != nil {
+		return modules.RenterContract{}, errors.New("couldn't read the host's added newRefundOutputs: " + err.Error())
 	}
 	if err = encoding.ReadObject(conn, &newInputs, types.BlockSizeLimit); err != nil {
 		return modules.RenterContract{}, errors.New("couldn't read the host's added inputs: " + err.Error())
 	}
 
-	// merge txnAdditions with txnSet
-	txnBuilder.AddParents(newParents)
+	// Merge txnAdditions with txnSet.
+	for _, output := range newRefundOutputs {
+		txnBuilder.AddSiacoinOutput(output)
+	}
 	for _, input := range newInputs {
 		txnBuilder.AddSiacoinInput(input)
 	}

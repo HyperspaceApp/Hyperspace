@@ -103,7 +103,7 @@ func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 	// need to call a public method on the file.
 	files := make([]*siafile.SiaFile, 0, len(renterFiles))
 	for _, file := range renterFiles {
-		if noFilter || filter[0].MatchString(file.SiaPath()) {
+		if noFilter || filter[0].MatchString(file.HyperspacePath()) {
 			files = append(files, file)
 		}
 	}
@@ -153,7 +153,7 @@ func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 			Recoverable:    onDisk || redundancy >= 1,
 			Redundancy:     redundancy,
 			Renewing:       true,
-			SiaPath:        f.SiaPath(),
+			HyperspacePath:        f.HyperspacePath(),
 			UploadedBytes:  f.UploadedBytes(),
 			UploadProgress: f.UploadProgress(),
 		})
@@ -210,7 +210,7 @@ func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
 		Recoverable:    onDisk || redundancy >= 1,
 		Redundancy:     redundancy,
 		Renewing:       renewing,
-		SiaPath:        file.SiaPath(),
+		HyperspacePath:        file.HyperspacePath(),
 		UploadedBytes:  file.UploadedBytes(),
 		UploadProgress: file.UploadProgress(),
 	}

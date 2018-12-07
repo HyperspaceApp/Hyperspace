@@ -46,7 +46,7 @@ func renewContractCollateral(so storageObligation, settings modules.HostExternal
 
 // managedAddRenewCollateral adds the host's collateral to the renewed file
 // contract.
-func (h *Host) managedAddRenewCollateral(so storageObligation, settings modules.HostExternalSettings, txnSet []types.Transaction) (builder modules.TransactionBuilder, newParents []types.Transaction, newInputs []types.SiacoinInput, err error) {
+func (h *Host) managedAddRenewCollateral(so storageObligation, settings modules.HostExternalSettings, txnSet []types.Transaction) (builder modules.TransactionBuilder, refundOutputs []types.SiacoinOutput, newInputs []types.SiacoinInput, err error) {
 	txn := txnSet[len(txnSet)-1]
 	parents := txnSet[:len(txnSet)-1]
 	fc := txn.FileContracts[0]
@@ -55,22 +55,19 @@ func (h *Host) managedAddRenewCollateral(so storageObligation, settings modules.
 	if err != nil {
 		return
 	}
-	err = builder.FundSiacoins(hostPortion)
+	refundOutputs, err = builder.FundContract(hostPortion)
 	if err != nil {
 		builder.Drop()
 		return nil, nil, nil, extendErr("could not add collateral: ", ErrorInternal(err.Error()))
 	}
 
 	// Return which inputs have been added by the collateral call.
-	newParentIndices, newInputIndices, _ := builder.ViewAdded()
-	updatedTxn, updatedParents := builder.View()
-	for _, parentIndex := range newParentIndices {
-		newParents = append(newParents, updatedParents[parentIndex])
-	}
+	_, newInputIndices, _ := builder.ViewAdded()
+	updatedTxn, _ := builder.View()
 	for _, inputIndex := range newInputIndices {
 		newInputs = append(newInputs, updatedTxn.SiacoinInputs[inputIndex])
 	}
-	return builder, newParents, newInputs, nil
+	return builder, refundOutputs, newInputs, nil
 }
 
 // managedRenewContract accepts a request to renew a file contract.
@@ -132,20 +129,20 @@ func (h *Host) managedRPCRenewContract(conn net.Conn) error {
 		modules.WriteNegotiationRejection(conn, err) // Error is ignored to preserve type for extendErr
 		return extendErr("verification of renewal failed: ", err)
 	}
-	txnBuilder, newParents, newInputs, err := h.managedAddRenewCollateral(so, settings, txnSet)
+	txnBuilder, newRefundOutputs, newInputs, err := h.managedAddRenewCollateral(so, settings, txnSet)
 	if err != nil {
 		modules.WriteNegotiationRejection(conn, err) // Error is ignored to preserve type for extendErr
 		return extendErr("failed to add collateral: ", err)
 	}
-	// The host indicates acceptance, then sends the new parents and inputs to
+	// The host indicates acceptance, then sends the new outputs and inputs to
 	// the transaction.
 	err = modules.WriteNegotiationAcceptance(conn)
 	if err != nil {
 		return extendErr("failed to write acceptance: ", ErrorConnection(err.Error()))
 	}
-	err = encoding.WriteObject(conn, newParents)
+	err = encoding.WriteObject(conn, newRefundOutputs)
 	if err != nil {
-		return extendErr("failed to write new parents: ", ErrorConnection(err.Error()))
+		return extendErr("failed to write newRefundOutputs: ", ErrorConnection(err.Error()))
 	}
 	err = encoding.WriteObject(conn, newInputs)
 	if err != nil {

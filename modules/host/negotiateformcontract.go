@@ -135,7 +135,7 @@ func (h *Host) managedRPCFormContract(conn net.Conn) error {
 	}
 	err = encoding.WriteObject(conn, newRefundOutputs)
 	if err != nil {
-		return extendErr("failed to write new parents: ", ErrorConnection(err.Error()))
+		return extendErr("failed to write newRefundOutputs: ", ErrorConnection(err.Error()))
 	}
 	err = encoding.WriteObject(conn, newInputs)
 	if err != nil {

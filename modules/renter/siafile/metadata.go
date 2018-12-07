@@ -16,11 +16,11 @@ import (
 type (
 	// metadata is the metadata of a SiaFile and is JSON encoded.
 	metadata struct {
-		StaticVersion   [16]byte `json:"version"`   // version of the sia file format used
-		StaticFileSize  int64    `json:"filesize"`  // total size of the file
-		StaticPieceSize uint64   `json:"piecesize"` // size of a single piece of the file
-		LocalPath       string   `json:"localpath"` // file to the local copy of the file used for repairing
-		SiaPath         string   `json:"siapath"`   // the path of the file on the Sia network
+		StaticVersion   [16]byte `json:"version"`        // version of the sia file format used
+		StaticFileSize  int64    `json:"filesize"`       // total size of the file
+		StaticPieceSize uint64   `json:"piecesize"`      // size of a single piece of the file
+		LocalPath       string   `json:"localpath"`      // file to the local copy of the file used for repairing
+		HyperspacePath         string   `json:"hyperspacepath"` // the path of the file on the Sia network
 
 		// fields for encryption
 		StaticMasterKey      []byte            `json:"masterkey"` // masterkey used to encrypt pieces
@@ -188,7 +188,7 @@ func (sf *SiaFile) PieceSize() uint64 {
 }
 
 // Rename changes the name of the file to a new one.
-func (sf *SiaFile) Rename(newSiaPath, newSiaFilePath string) error {
+func (sf *SiaFile) Rename(newHyperspacePath, newSiaFilePath string) error {
 	sf.mu.Lock()
 	defer sf.mu.Unlock()
 	// Create path to renamed location.
@@ -203,7 +203,7 @@ func (sf *SiaFile) Rename(newSiaPath, newSiaFilePath string) error {
 	updates := []writeaheadlog.Update{sf.createDeleteUpdate()}
 	// Rename file in memory.
 	sf.siaFilePath = newSiaFilePath
-	sf.staticMetadata.SiaPath = newSiaPath
+	sf.staticMetadata.HyperspacePath = newHyperspacePath
 	// Update the ChangeTime because the metadata changed.
 	sf.staticMetadata.ChangeTime = time.Now()
 	// Write the header to the new location.
@@ -252,11 +252,11 @@ func (sf *SiaFile) SetLocalPath(path string) error {
 	return sf.createAndApplyTransaction(updates...)
 }
 
-// SiaPath returns the file's sia path.
-func (sf *SiaFile) SiaPath() string {
+// HyperspacePath returns the file's sia path.
+func (sf *SiaFile) HyperspacePath() string {
 	sf.mu.RLock()
 	defer sf.mu.RUnlock()
-	return sf.staticMetadata.SiaPath
+	return sf.staticMetadata.HyperspacePath
 }
 
 // Size returns the file's size.

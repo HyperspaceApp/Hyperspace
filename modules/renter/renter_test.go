@@ -269,7 +269,7 @@ func TestRenterPricesVolatility(t *testing.T) {
 	}
 }
 
-// TestRenterSiapathValidate verifies that the validateSiapath function correctly validates SiaPaths.
+// TestRenterSiapathValidate verifies that the validateSiapath function correctly validates HyperspacePaths.
 func TestRenterSiapathValidate(t *testing.T) {
 	var pathtests = []struct {
 		in    string
