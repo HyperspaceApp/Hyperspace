@@ -50,10 +50,10 @@ var heavyBlock = func() BlockV0 {
 						Value: NewCurrency64(3),
 					}},
 				}},
-				FileContractRevisions: []FileContractRevision{{
+				FileContractRevisions: []FileContractRevisionV0{{
 					NewFileSize:       13,
 					NewRevisionNumber: 9,
-					UnlockConditions: UnlockConditions{
+					UnlockConditions: UnlockConditionsV0{
 						PublicKeys: []SiaPublicKey{{
 							Algorithm: SignatureEd25519,
 							Key:       fastrand.Bytes(32),

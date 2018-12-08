@@ -25,7 +25,6 @@ func BenchmarkStandaloneValid(b *testing.B) {
 			PublicKeys: []SiaPublicKey{
 				{Algorithm: SignatureEd25519, Key: pk[i][:]},
 			},
-			SignaturesRequired: 1,
 		}
 		txn.SiacoinInputs = append(txn.SiacoinInputs, SiacoinInput{
 			UnlockConditions: uc,

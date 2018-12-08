@@ -195,10 +195,10 @@ func TestTransactionValidSignatures(t *testing.T) {
 
 	// Create a transaction with each type of unlock condition.
 	txn := TransactionV0{
-		SiacoinInputs: []SiacoinInput{
+		SiacoinInputs: []SiacoinInputV0{
 			{UnlockConditions: uc},
 		},
-		FileContractRevisions: []FileContractRevision{
+		FileContractRevisions: []FileContractRevisionV0{
 			{UnlockConditions: uc},
 		},
 	}
@@ -269,13 +269,13 @@ func TestTransactionValidSignatures(t *testing.T) {
 	txn.TransactionSignatures[0].CoveredFields.SiacoinInputs = nil
 
 	// Double spend a SiacoinInput and FileContractTermination.
-	txn.SiacoinInputs = append(txn.SiacoinInputs, SiacoinInput{UnlockConditions: UnlockConditions{}})
+	txn.SiacoinInputs = append(txn.SiacoinInputs, SiacoinInputV0{UnlockConditions: UnlockConditionsV0{}})
 	err = txn.validSignatures(10)
 	if err == nil {
 		t.Error("failed to double spend a siacoin input")
 	}
 	txn.SiacoinInputs = txn.SiacoinInputs[:len(txn.SiacoinInputs)-1]
-	txn.FileContractRevisions = append(txn.FileContractRevisions, FileContractRevision{UnlockConditions: UnlockConditions{}})
+	txn.FileContractRevisions = append(txn.FileContractRevisions, FileContractRevisionV0{UnlockConditions: UnlockConditionsV0{}})
 	err = txn.validSignatures(10)
 	if err == nil {
 		t.Error("failed to double spend a file contract termination")

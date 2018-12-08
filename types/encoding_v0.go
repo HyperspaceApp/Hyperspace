@@ -11,6 +11,80 @@ import (
 )
 
 // MarshalSia implements the encoding.SiaMarshaler interface.
+func (b BlockV0) MarshalSia(w io.Writer) error {
+	if build.DEBUG {
+		// Sanity check: compare against the old encoding
+		buf := new(bytes.Buffer)
+		encoding.NewEncoder(buf).EncodeAll(
+			b.ParentID,
+			b.Nonce,
+			b.Timestamp,
+			b.MinerPayouts,
+			b.Transactions,
+		)
+		w = sanityCheckWriter{w, buf}
+	}
+
+	e := encoding.NewEncoder(w)
+	e.Write(b.ParentID[:])
+	e.Write(b.Nonce[:])
+	e.WriteUint64(uint64(b.Timestamp))
+	e.WriteInt(len(b.MinerPayouts))
+	for i := range b.MinerPayouts {
+		b.MinerPayouts[i].MarshalSia(e)
+	}
+	e.WriteInt(len(b.Transactions))
+	for i := range b.Transactions {
+		if err := b.Transactions[i].MarshalSia(e); err != nil {
+			return err
+		}
+	}
+	return e.Err()
+}
+
+// UnmarshalSia implements the encoding.SiaUnmarshaler interface.
+func (b *BlockV0) UnmarshalSia(r io.Reader) error {
+	if build.DEBUG {
+		// Sanity check: compare against the old decoding
+		buf := new(bytes.Buffer)
+		r = io.TeeReader(r, buf)
+
+		defer func() {
+			checkB := new(Block)
+			if err := encoding.UnmarshalAll(buf.Bytes(),
+				&checkB.ParentID,
+				&checkB.Nonce,
+				&checkB.Timestamp,
+				&checkB.MinerPayouts,
+				&checkB.Transactions,
+			); err != nil {
+				// don't check invalid blocks
+				return
+			}
+			if crypto.HashObject(b) != crypto.HashObject(checkB) {
+				panic("decoding differs!")
+			}
+		}()
+	}
+
+	d := encoding.NewDecoder(r)
+	d.ReadFull(b.ParentID[:])
+	d.ReadFull(b.Nonce[:])
+	b.Timestamp = Timestamp(d.NextUint64())
+	// MinerPayouts
+	b.MinerPayouts = make([]SiacoinOutput, d.NextPrefix(unsafe.Sizeof(SiacoinOutput{})))
+	for i := range b.MinerPayouts {
+		b.MinerPayouts[i].UnmarshalSia(d)
+	}
+	// Transactions
+	b.Transactions = make([]TransactionV0, d.NextPrefix(unsafe.Sizeof(TransactionV0{})))
+	for i := range b.Transactions {
+		b.Transactions[i].UnmarshalSia(d)
+	}
+	return d.Err()
+}
+
+// MarshalSia implements the encoding.SiaMarshaler interface.
 func (fcr FileContractRevisionV0) MarshalSia(w io.Writer) error {
 	e := encoding.NewEncoder(w)
 	e.Write(fcr.ParentID[:])
