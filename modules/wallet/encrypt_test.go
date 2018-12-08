@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -352,6 +354,10 @@ func TestUnlockConcurrent(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
+	deadlock.Opts.Disable = true
+	defer func() {
+		deadlock.Opts.Disable = false
+	}()
 	// create a wallet with some money
 	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
