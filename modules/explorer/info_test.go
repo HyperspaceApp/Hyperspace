@@ -99,7 +99,7 @@ func TestFileContractPayoutsMissingProof(t *testing.T) {
 	// Create and fund valid file contracts.
 	builder, _ := et.wallet.StartTransaction()
 	payout := types.NewCurrency64(1e9)
-	_, err := builder.FundContract(payout)
+	_, err = builder.FundContract(payout)
 	if err != nil {
 		t.Fatal(err)
 	}
