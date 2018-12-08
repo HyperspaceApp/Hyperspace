@@ -235,11 +235,14 @@ type (
 		// added to the transaction being built along with a miner fee if
 		// one is passed. The transaction will not be signed.
 		FundOutputs(outputs []types.SiacoinOutput, fee types.Currency) error
+		// Same as FundOutputs but without adding a fee
+		FundOutputsNoFee(outputs []types.SiacoinOutput) error
 		// FundOutput is a convenience function that does the same as FundOutputs
 		// but for just one output. Beware, it creates a refund transaction for
 		// each call!
 		FundOutput(output types.SiacoinOutput, fee types.Currency) error
-
+		// Same as FundOutput but without adding a fee
+		FundOutputNoFee(output types.SiacoinOutput) error
 		// AddOutput adds a siacoin output to the transaction, returning
 		// the index of the siacoin output within the transaction.
 		AddOutput(types.SiacoinOutput) uint64
@@ -503,6 +506,10 @@ type (
 		// StartTransaction is a convenience method that calls
 		// RegisterTransaction(types.Transaction{}, nil)
 		StartTransaction() (TransactionBuilder, error)
+
+		// StartTransactionSet is a convenience method that calls
+		// RegisterTransactionSet(types.Transaction{}, nil)
+		StartTransactionSet() (TransactionSetBuilder, error)
 
 		// SendSiacoins is a tool for sending space cash from the wallet to an
 		// address. Sending money usually results in multiple transactions. The

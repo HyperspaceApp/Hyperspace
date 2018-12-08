@@ -364,11 +364,10 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 	}
 	defer wt.closeWt()
 
-	builder, err := wt.wallet.StartTransaction()
+	builder, err := wt.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	payout := types.ZeroCurrency
 
 	// Get the current progress
 	wt.wallet.mu.RLock()
@@ -379,6 +378,7 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 	}
 
 	// choose 10 keys in the lookahead and remember them
+	var outputs []types.SiacoinOutput
 	var receivingAddresses []types.UnlockHash
 	for _, sk := range generateKeys(wt.wallet.primarySeed, internalIndex, 10) {
 		sco := types.SiacoinOutput{
@@ -386,12 +386,11 @@ func TestAdvanceLookaheadNoRescan(t *testing.T) {
 			Value:      types.NewCurrency64(1e3),
 		}
 
-		builder.AddSiacoinOutput(sco)
-		payout = payout.Add(sco.Value)
+		outputs = append(outputs, sco)
 		receivingAddresses = append(receivingAddresses, sk.UnlockConditions.UnlockHash())
 	}
 
-	err = builder.FundSiacoins(payout)
+	err = builder.FundOutputsNoFee(outputs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -463,15 +462,15 @@ func TestFarOutputs(t *testing.T) {
 	farAddr := generateSpendableKey(wt.wallet.primarySeed, highIndex).UnlockConditions.UnlockHash()
 	farPayout := types.SiacoinPrecision.Mul64(8888)
 
-	builder, err := wt.wallet.StartTransaction()
+	builder, err := wt.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	builder.AddSiacoinOutput(types.SiacoinOutput{
+	output := types.SiacoinOutput{
 		UnlockHash: farAddr,
 		Value:      farPayout,
-	})
-	err = builder.FundSiacoins(farPayout)
+	}
+	err = builder.FundOutputNoFee(output)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -494,11 +493,11 @@ func TestFarOutputs(t *testing.T) {
 		t.Fatal("wallet should not recognize coins sent to very high seed index")
 	}
 
-	builder, err = wt.wallet.StartTransaction()
+	builder, err = wt.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	var payout types.Currency
+	var outputs []types.SiacoinOutput
 
 	// choose 10 keys in the lookahead and remember them
 	var receivingAddresses []types.UnlockHash
@@ -508,8 +507,7 @@ func TestFarOutputs(t *testing.T) {
 			UnlockHash: uh,
 			Value:      types.SiacoinPrecision.Mul64(1000),
 		}
-		builder.AddSiacoinOutput(sco)
-		payout = payout.Add(sco.Value)
+		outputs = append(outputs, sco)
 		receivingAddresses = append(receivingAddresses, uh)
 
 		if len(receivingAddresses) >= 10 {
@@ -517,7 +515,7 @@ func TestFarOutputs(t *testing.T) {
 		}
 	}
 
-	err = builder.FundSiacoins(payout)
+	err = builder.FundOutputsNoFee(outputs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -613,17 +611,18 @@ func TestDistantWallets(t *testing.T) {
 
 	// Send coins to an address with a very high seed index, outside the
 	// lookahead range. w2 should not detect it.
-	tbuilder, err := wt.wallet.StartTransaction()
+	tbuilder, err := wt.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
 	farAddr := generateSpendableKey(wt.wallet.primarySeed, wt.wallet.addressGapLimit*10).UnlockConditions.UnlockHash()
 	value := types.SiacoinPrecision.Mul64(1e3)
-	tbuilder.AddSiacoinOutput(types.SiacoinOutput{
+	output := types.SiacoinOutput{
 		UnlockHash: farAddr,
 		Value:      value,
-	})
-	err = tbuilder.FundSiacoins(value)
+	}
+
+	err = tbuilder.FundOutputNoFee(output)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -163,20 +163,18 @@ func TestGetTransaction(t *testing.T) {
 	value := types.NewCurrency64(35e6)
 	fee := types.NewCurrency64(3e2)
 	emptyUH := types.UnlockConditions{}.UnlockHash()
-	txnBuilder, err := tpt.wallet.StartTransaction()
+	txnBuilder, err := tpt.wallet.StartTransactionSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = txnBuilder.FundSiacoins(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	txnBuilder.AddMinerFee(fee)
 	output := types.SiacoinOutput{
 		Value:      value.Sub(fee),
 		UnlockHash: emptyUH,
 	}
-	txnBuilder.AddSiacoinOutput(output)
+	txnBuilder.FundOutput(output, fee)
+	if err != nil {
+		t.Fatal(err)
+	}
 	txnSet, err := txnBuilder.Sign(true)
 	if err != nil {
 		t.Fatal(err)
