@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sasha-s/go-deadlock"
+
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -85,7 +87,7 @@ func postEncryptionTesting(m modules.TestMiner, w *Wallet, masterKey crypto.Ciph
 	}
 	// Verify that the secret keys have been restored by sending coins to the
 	// void. Send more coins than are received by mining a block.
-	_, err = w.SendSiacoins(types.CalculateCoinbase(0), types.UnlockHash{})
+	_, err = w.SendSiacoins(types.CalculateCoinbase(1), types.UnlockHash{})
 	if err != nil {
 		panic(err)
 	}
@@ -352,6 +354,10 @@ func TestUnlockConcurrent(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
+	deadlock.Opts.Disable = true
+	defer func() {
+		deadlock.Opts.Disable = false
+	}()
 	// create a wallet with some money
 	wt, err := createWalletTester(t.Name(), modules.ProdDependencies)
 	if err != nil {
