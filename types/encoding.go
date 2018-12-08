@@ -598,8 +598,8 @@ func (s Specifier) MarshalJSON() ([]byte, error) {
 // String returns the specifier as a string, trimming any trailing zeros.
 func (s Specifier) String() string {
 	// See issue #13
-	if (s == SpecifierSiacoinOutput) {
-		return "siacoin output";
+	if s == SpecifierSiacoinOutput {
+		return "siacoin output"
 	}
 
 	var i int

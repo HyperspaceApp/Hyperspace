@@ -62,7 +62,7 @@ func (w *Wallet) registerTransactionSet(t types.Transaction, parents []types.Tra
 // fee of 0 or greater is also taken into account in the input aggregation and
 // added to the transaction if necessary.
 func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, fee types.Currency) error {
-	return tb.fundOutputs(newOutputs, fee, true);
+	return tb.fundOutputs(newOutputs, fee, true)
 }
 
 // FundOutput is a convenience function that does the same as FundOutputs
@@ -96,7 +96,7 @@ func (tb *transactionSetBuilder) fundOutputs(newOutputs []types.SiacoinOutput, f
 	var finalScoids []types.SiacoinOutputID
 	var refundID types.SiacoinOutputID
 
-	if (!hasFee && fee.Cmp64(0) != 0) {
+	if !hasFee && fee.Cmp64(0) != 0 {
 		panic("called fundOutputs with no fee flag, but a fee was provided")
 	}
 
@@ -113,7 +113,7 @@ func (tb *transactionSetBuilder) fundOutputs(newOutputs []types.SiacoinOutput, f
 		return err
 	}
 
-	if (hasFee) {
+	if hasFee {
 		tb.currentBuilder().AddMinerFee(fee)
 	}
 
@@ -138,7 +138,7 @@ func (tb *transactionSetBuilder) fundOutputs(newOutputs []types.SiacoinOutput, f
 			// Add a new fresh builder for the next outputs
 			newBuilder := tb.wallet.registerTransaction(types.Transaction{}, nil)
 			tb.builders = append(tb.builders, *newBuilder)
-			if (hasFee) {
+			if hasFee {
 				tb.currentBuilder().AddMinerFee(fee)
 			}
 			// Reset stuff

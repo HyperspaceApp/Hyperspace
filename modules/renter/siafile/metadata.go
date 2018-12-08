@@ -20,7 +20,7 @@ type (
 		StaticFileSize  int64    `json:"filesize"`       // total size of the file
 		StaticPieceSize uint64   `json:"piecesize"`      // size of a single piece of the file
 		LocalPath       string   `json:"localpath"`      // file to the local copy of the file used for repairing
-		HyperspacePath         string   `json:"hyperspacepath"` // the path of the file on the Sia network
+		HyperspacePath  string   `json:"hyperspacepath"` // the path of the file on the Sia network
 
 		// fields for encryption
 		StaticMasterKey      []byte            `json:"masterkey"` // masterkey used to encrypt pieces

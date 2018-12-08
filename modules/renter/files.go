@@ -153,7 +153,7 @@ func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 			Recoverable:    onDisk || redundancy >= 1,
 			Redundancy:     redundancy,
 			Renewing:       true,
-			HyperspacePath:        f.HyperspacePath(),
+			HyperspacePath: f.HyperspacePath(),
 			UploadedBytes:  f.UploadedBytes(),
 			UploadProgress: f.UploadProgress(),
 		})
@@ -210,7 +210,7 @@ func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
 		Recoverable:    onDisk || redundancy >= 1,
 		Redundancy:     redundancy,
 		Renewing:       renewing,
-		HyperspacePath:        file.HyperspacePath(),
+		HyperspacePath: file.HyperspacePath(),
 		UploadedBytes:  file.UploadedBytes(),
 		UploadProgress: file.UploadProgress(),
 	}
