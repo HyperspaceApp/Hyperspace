@@ -8,18 +8,11 @@ go:
 
 install:
   - make dependencies
-  - test -z "$(go fmt ./...)"
-  - glyphcheck ./...
   - make dev
 
-script: make test && make test-long && make cover && make bench
+script: make test && make test-long
 
 sudo: false
-
-branches:
-  only:
-    - master
-    - staging
 
 notifications:
   email: false
