@@ -99,7 +99,7 @@ clean:
 	rm -rf cover release
 
 test:
-	go test -short -tags='debug testing netgo' -timeout=6s $(pkgs) -run=$(run)
+	go test -short -tags='debug testing netgo' -timeout=10s $(pkgs) -run=$(run)
 test-v:
 	go test -race -v -short -tags='debug testing netgo' -timeout=15s $(pkgs) -run=$(run)
 test-long: clean fmt vet lint
