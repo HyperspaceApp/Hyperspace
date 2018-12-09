@@ -604,7 +604,7 @@ func TestConnectRejectsVersions(t *testing.T) {
 		{
 			version:         minimumAcceptablePeerVersion,
 			msg:             "Connect should not succeed when peer is connecting to itself",
-			uniqueID:        g.staticId,
+			uniqueID:        g.staticID,
 			genesisID:       types.GenesisID,
 			errWant:         errOurAddress.Error(),
 			localErrWant:    errOurAddress.Error(),
