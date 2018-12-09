@@ -8,9 +8,10 @@ go:
 
 install:
   - make dependencies
+  - glyphcheck ./...
   - make dev
 
-script: make test && make test-long
+script: make test && make test-long && make cover && make bench
 
 sudo: false
 

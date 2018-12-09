@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"regexp"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -155,7 +155,7 @@ type (
 		Filesize        uint64 `json:"filesize"`        // DEPRECATED. Same as 'Length'.
 		Length          uint64 `json:"length"`          // The length requested for the download.
 		Offset          uint64 `json:"offset"`          // The offset within the siafile requested for the download.
-		HyperspacePath         string `json:"hyperspacepath"`  // The hyperspacepath of the file used for the download.
+		HyperspacePath  string `json:"hyperspacepath"`  // The hyperspacepath of the file used for the download.
 
 		Completed            bool      `json:"completed"`            // Whether or not the download has completed.
 		EndTime              time.Time `json:"endtime"`              // The time when the download fully completed.
@@ -506,7 +506,7 @@ func (api *API) renterDownloadsHandler(w http.ResponseWriter, _ *http.Request, _
 			Filesize:        di.Length,
 			Length:          di.Length,
 			Offset:          di.Offset,
-			HyperspacePath:         di.HyperspacePath,
+			HyperspacePath:  di.HyperspacePath,
 
 			Completed:            di.Completed,
 			EndTime:              di.EndTime,
@@ -796,11 +796,11 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 	hyperspacepath := strings.TrimPrefix(ps.ByName("hyperspacepath"), "/") // Sia file name.
 
 	dp := modules.RenterDownloadParameters{
-		Destination: destination,
-		Async:       async,
-		Length:      length,
-		Offset:      offset,
-		HyperspacePath:     hyperspacepath,
+		Destination:    destination,
+		Async:          async,
+		Length:         length,
+		Offset:         offset,
+		HyperspacePath: hyperspacepath,
 	}
 	if httpresp {
 		dp.Httpwriter = w
@@ -926,10 +926,10 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 
 	// Call the renter to upload the file.
 	err = api.renter.Upload(modules.FileUploadParams{
-		Source:      source,
-		HyperspacePath:     strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
-		ErasureCode: ec,
-		Force:       force,
+		Source:         source,
+		HyperspacePath: strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
+		ErasureCode:    ec,
+		Force:          force,
 	})
 	if err != nil {
 		WriteError(w, Error{"upload failed: " + err.Error()}, http.StatusInternalServerError)

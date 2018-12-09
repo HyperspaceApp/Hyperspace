@@ -146,7 +146,7 @@ func New(siaFilePath, siaPath, source string, wal *writeaheadlog.WAL, erasureCod
 			StaticErasureCodeParams: ecParams,
 			StaticPagesPerChunk:     numChunkPagesRequired(erasureCode.NumPieces()),
 			StaticPieceSize:         modules.SectorSize - masterKey.Type().Overhead(),
-			HyperspacePath:                 siaPath,
+			HyperspacePath:          siaPath,
 		},
 		deps:           modules.ProdDependencies,
 		siaFilePath:    siaFilePath,

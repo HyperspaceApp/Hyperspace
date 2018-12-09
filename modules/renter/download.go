@@ -168,7 +168,7 @@ type (
 		staticDestinationType string // "memory buffer", "http stream", "file", etc.
 		staticLength          uint64 // Length to download starting from the offset.
 		staticOffset          uint64 // Offset within the file to start the download.
-		staticHyperspacePath         string // The path of the siafile at the time the download started.
+		staticHyperspacePath  string // The path of the siafile at the time the download started.
 
 		// Retrieval settings for the file.
 		staticLatencyTarget time.Duration // In milliseconds. Lower latency results in lower total system throughput.
@@ -606,7 +606,7 @@ func (r *Renter) DownloadHistory() []modules.DownloadInfo {
 			DestinationType: d.staticDestinationType,
 			Length:          d.staticLength,
 			Offset:          d.staticOffset,
-			HyperspacePath:         d.staticHyperspacePath,
+			HyperspacePath:  d.staticHyperspacePath,
 
 			Completed:            d.staticComplete(),
 			EndTime:              d.endTime,
