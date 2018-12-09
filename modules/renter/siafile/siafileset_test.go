@@ -22,7 +22,7 @@ func newTestSiaFileSetWithFile() (*SiaFileSetEntry, *SiaFileSet, error) {
 	// Create SiaFile
 	up := modules.FileUploadParams{
 		Source:      source,
-		SiaPath:     siaPath,
+		HyperspacePath:     siaPath,
 		ErasureCode: rc,
 	}
 	entry, err := sfs.NewSiaFile(up, sk, fileSize, fileMode)
@@ -40,7 +40,7 @@ func TestSiaFileSetOpenClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sfs.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaFileSetEntry found")
@@ -90,7 +90,7 @@ func TestFilesInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sfs.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaFileSetEntry found")
@@ -163,7 +163,7 @@ func TestRenameFileInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sfs.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaFileSetEntry found")
@@ -227,7 +227,7 @@ func TestDeleteFileInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sfs.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaFileSetEntry found")

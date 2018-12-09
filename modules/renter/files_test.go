@@ -66,7 +66,7 @@ func (r *Renter) newRenterTestFile() (*siafile.SiaFileSetEntry, error) {
 	// Create File
 	up := modules.FileUploadParams{
 		Source:      "",
-		SiaPath:     name,
+		HyperspacePath:     name,
 		ErasureCode: rsc,
 	}
 	entry, err := r.staticFileSet.NewSiaFile(up, crypto.GenerateSiaKey(crypto.RandomCipherType()), 1000, 0777)
@@ -425,7 +425,7 @@ func TestRenterDeleteFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siapath2 := entry2.SiaPath()
+	siapath2 := entry2.HyperspacePath()
 	err = entry2.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -591,12 +591,12 @@ func TestRenterFileListWithFilter(t *testing.T) {
 	defer rt.Close()
 
 	// Put a file in the renter.
-	f1 := newTestingFile()
-	f1.Rename("one", filepath.Join(rt.renter.persistDir, "one"+ShareExtension))
+	f1, _ := rt.renter.newRenterTestFile()
+	f1.Rename("one", filepath.Join(rt.renter.persistDir, "one"+siafile.ShareExtension))
 
 	// Put multiple files in the renter.
-	f2 := newTestingFile()
-	f2.Rename("two", filepath.Join(rt.renter.persistDir, "two"+ShareExtension))
+	f2, _ := rt.renter.newRenterTestFile()
+	f2.Rename("two", filepath.Join(rt.renter.persistDir, "two"+siafile.ShareExtension))
 
 	// Test regex returning all items
 	{
@@ -655,7 +655,7 @@ func TestRenterFileDir(t *testing.T) {
 	}
 	params := modules.FileUploadParams{
 		Source:      source,
-		SiaPath:     fileName,
+		HyperspacePath:     fileName,
 		ErasureCode: ec,
 	}
 	err = rt.renter.Upload(params)
@@ -668,14 +668,15 @@ func TestRenterFileDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if f.SiaPath != fileName {
-		t.Fatalf("siapath not set as expected: got %v expected %v", f.SiaPath, fileName)
+	if f.HyperspacePath != fileName {
+		t.Fatalf("siapath not set as expected: got %v expected %v", f.HyperspacePath, fileName)
 	}
 
 	// Confirm .sia file exists on disk in the SiapathRoot directory
 	renterDir := filepath.Join(rt.dir, modules.RenterDir)
 	siapathRootDir := filepath.Join(renterDir, modules.SiapathRoot)
-	fullPath := filepath.Join(siapathRootDir, f.SiaPath+".sia")
+	fullPath := filepath.Join(siapathRootDir, f.HyperspacePath+".sia")
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		t.Fatal("No .sia file found on disk")
+	}
 }

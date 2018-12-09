@@ -48,7 +48,7 @@ func TestSnapshot(t *testing.T) {
 	if !reflect.DeepEqual(sf.pubKeyTable, snap.staticPubKeyTable) {
 		t.Error("pubkeytables don't match")
 	}
-	if sf.staticMetadata.SiaPath != snap.staticSiaPath {
+	if sf.staticMetadata.HyperspacePath != snap.staticHyperspacePath {
 		t.Error("siapaths don't match")
 	}
 	// Compare the pieces.

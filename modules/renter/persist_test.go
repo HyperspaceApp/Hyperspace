@@ -91,7 +91,7 @@ func TestRenterSaveLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siapath := entry.SiaPath()
+	siapath := entry.HyperspacePath()
 	err = entry.Close()
 	if err != nil {
 		t.Fatal(err)

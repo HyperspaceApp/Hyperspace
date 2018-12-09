@@ -3258,7 +3258,7 @@ func deleteDuringDownloadAndStream(r *siatest.TestNode, rf *siatest.RemoteFile, 
 		defer wgDelete.Done()
 		// Wait to ensure download and stream have started
 		time.Sleep(sleep)
-		err := r.RenterDeletePost(rf.SiaPath())
+		err := r.RenterDeletePost(rf.HyperspacePath())
 		if err != nil {
 			t.Error(err)
 		}

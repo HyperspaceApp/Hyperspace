@@ -12,7 +12,7 @@ import (
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/errors"
 )
 
@@ -520,8 +520,8 @@ func TestSPVRenterHandlerDelete(t *testing.T) {
 
 	// Try deleting a nonexistent file.
 	err = st.stdPostAPI("/renter/delete/dne", url.Values{})
-	if err == nil || err.Error() != renter.ErrUnknownPath.Error() {
-		t.Errorf("expected error to be %v, got %v", renter.ErrUnknownPath, err)
+	if err == nil || err.Error() != siafile.ErrUnknownPath.Error() {
+		t.Errorf("expected error to be %v, got %v", siafile.ErrUnknownPath, err)
 	}
 }
 
