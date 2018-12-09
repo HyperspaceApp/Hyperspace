@@ -125,6 +125,7 @@ package renter
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -132,6 +133,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/Hyperspace/persist"
@@ -152,6 +154,10 @@ type (
 		completeChan    chan struct{} // Closed once the download is complete.
 		err             error         // Only set if there was an error which prevented the download from completing.
 
+		// downloadCompleteFunc is a slice of functions which are called when
+		// completeChan is closed.
+		downloadCompleteFuncs []downloadCompleteFunc
+
 		// Timestamp information.
 		endTime         time.Time // Set immediately before closing 'completeChan'.
 		staticStartTime time.Time // Set immediately when the download object is created.
@@ -166,6 +172,7 @@ type (
 
 		// Retrieval settings for the file.
 		staticLatencyTarget time.Duration // In milliseconds. Lower latency results in lower total system throughput.
+		staticOverdrive     int           // How many extra pieces to download to prevent slow hosts from being a bottleneck.
 		staticPriority      uint64        // Downloads with higher priority will complete first.
 
 		// Utilities.
@@ -179,7 +186,7 @@ type (
 		destination       downloadDestination // The place to write the downloaded data.
 		destinationType   string              // "file", "buffer", "http stream", etc.
 		destinationString string              // The string to report to the user for the destination.
-		file              *siafile.SiaFile    // The file to download.
+		file              *siafile.Snapshot   // The file to download.
 
 		latencyTarget time.Duration // Workers above this latency will be automatically put on standby initially.
 		length        uint64        // Length of download. Cannot be 0.
@@ -188,6 +195,11 @@ type (
 		overdrive     int           // How many extra pieces to download to prevent slow hosts from being a bottleneck.
 		priority      uint64        // Files with a higher priority will be downloaded first.
 	}
+
+	// downloadCompleteFunc is a function called upon completion of the
+	// download. It accepts an error as an argument and returns an error. That
+	// way it's possible to add custom behavior for failing downloads.
+	downloadCompleteFunc func(error) error
 )
 
 // managedFail will mark the download as complete, but with the provided error.
@@ -208,14 +220,50 @@ func (d *download) managedFail(err error) {
 
 	// Mark the download as complete and set the error.
 	d.err = err
-	close(d.completeChan)
-	if d.destination != nil {
-		err = d.destination.Close()
-		d.destination = nil
+	d.markComplete()
+}
+
+// markComplete is a helper method which closes the completeChan and and
+// executes the downloadCompleteFuncs. The completeChan should always be closed
+// using this method.
+func (d *download) markComplete() {
+	// Avoid calling markComplete multiple times. In a production build
+	// build.Critical won't panic which is fine since we set
+	// downloadCompleteFunc to nil after executing them. We still don't want to
+	// close the completeChan again though to avoid a crash.
+	if d.staticComplete() {
+		build.Critical("Can't call markComplete multiple times")
+	} else {
+		defer close(d.completeChan)
 	}
+	// Execute the downloadCompleteFuncs before closing the channel. This gives
+	// the initiator of the download the nice guarantee that waiting for the
+	// completeChan to be closed also means that the downloadCompleteFuncs are
+	// done.
+	var err error
+	for _, f := range d.downloadCompleteFuncs {
+		err = errors.Compose(err, f(d.err))
+	}
+	// Log potential errors.
 	if err != nil {
-		d.log.Println("unable to close download destination:", err)
+		d.log.Println("Failed to execute at least one downloadCompleteFunc", err)
 	}
+	// Set downloadCompleteFuncs to nil to avoid executing them multiple times.
+	d.downloadCompleteFuncs = nil
+}
+
+// onComplete registers a function to be called when the download is completed.
+// This can either mean that the download succeeded or failed. The registered
+// functions are executed in the same order as they are registered and waiting
+// for the download's completeChan to be closed implies that the registered
+// functions were executed.
+func (d *download) onComplete(f downloadCompleteFunc) {
+	select {
+	case <-d.completeChan:
+		build.Critical("Can't call OnComplete after download is completed")
+	default:
+	}
+	d.downloadCompleteFuncs = append(d.downloadCompleteFuncs, f)
 }
 
 // staticComplete is a helper function to indicate whether or not the download
@@ -235,6 +283,17 @@ func (d *download) Err() (err error) {
 	err = d.err
 	d.mu.Unlock()
 	return err
+}
+
+// OnComplete registers a function to be called when the download is completed.
+// This can either mean that the download succeeded or failed. The registered
+// functions are executed in the same order as they are registered and waiting
+// for the download's completeChan to be closed implies that the registered
+// functions were executed.
+func (d *download) OnComplete(f downloadCompleteFunc) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.onComplete(f)
 }
 
 // Download performs a file download using the passed parameters and blocks
@@ -265,11 +324,9 @@ func (r *Renter) DownloadAsync(p modules.RenterDownloadParameters) error {
 // setup was successful.
 func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download, error) {
 	// Lookup the file associated with the nickname.
-	lockID := r.mu.RLock()
-	file, exists := r.files[p.HyperspacePath]
-	r.mu.RUnlock(lockID)
-	if !exists {
-		return nil, fmt.Errorf("no file with that path: %s", p.HyperspacePath)
+	entry, err := r.staticFileSet.Open(p.HyperspacePath)
+	if err != nil {
+		return nil, err
 	}
 
 	// Validate download parameters.
@@ -286,29 +343,29 @@ func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download,
 	if p.Destination != "" && !filepath.IsAbs(p.Destination) {
 		return nil, errors.New("destination must be an absolute path")
 	}
-	if p.Offset == file.Size() && file.Size() != 0 {
+	if p.Offset == entry.Size() && entry.Size() != 0 {
 		return nil, errors.New("offset equals filesize")
 	}
 	// Sentinel: if length == 0, download the entire file.
 	if p.Length == 0 {
-		if p.Offset > file.Size() {
+		if p.Offset > entry.Size() {
 			return nil, errors.New("offset cannot be greater than file size")
 		}
-		p.Length = file.Size() - p.Offset
+		p.Length = entry.Size() - p.Offset
 	}
 	// Check whether offset and length is valid.
-	if p.Offset < 0 || p.Offset+p.Length > file.Size() {
-		return nil, fmt.Errorf("offset and length combination invalid, max byte is at index %d", file.Size()-1)
+	if p.Offset < 0 || p.Offset+p.Length > entry.Size() {
+		return nil, fmt.Errorf("offset and length combination invalid, max byte is at index %d", entry.Size()-1)
 	}
 
 	// Instantiate the correct downloadWriter implementation.
 	var dw downloadDestination
 	var destinationType string
 	if isHTTPResp {
-		dw = newDownloadDestinationWriteCloserFromWriter(p.Httpwriter)
+		dw = newDownloadDestinationWriter(p.Httpwriter)
 		destinationType = "http stream"
 	} else {
-		osFile, err := os.OpenFile(p.Destination, os.O_CREATE|os.O_WRONLY, file.Mode())
+		osFile, err := os.OpenFile(p.Destination, os.O_CREATE|os.O_WRONLY, entry.Mode())
 		if err != nil {
 			return nil, err
 		}
@@ -330,7 +387,7 @@ func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download,
 		destination:       dw,
 		destinationType:   destinationType,
 		destinationString: p.Destination,
-		file:              file,
+		file:              entry.SiaFile.Snapshot(),
 
 		latencyTarget: 25e3 * time.Millisecond, // TODO: high default until full latency support is added.
 		length:        p.Length,
@@ -339,9 +396,25 @@ func (r *Renter) managedDownload(p modules.RenterDownloadParameters) (*download,
 		overdrive:     3, // TODO: moderate default until full overdrive support is added.
 		priority:      5, // TODO: moderate default until full priority support is added.
 	})
-	if err != nil {
+	if closer, ok := dw.(io.Closer); err != nil && ok {
+		// If the destination can be closed we do so.
+		return nil, errors.Compose(err, closer.Close())
+	} else if err != nil {
 		return nil, err
 	}
+
+	// Register some cleanup for when the download is done.
+	d.OnComplete(func(_ error) error {
+		// Update the access time.
+		err := entry.SiaFile.UpdateAccessTime()
+		// Close the fileEntry.
+		err = errors.Compose(err, entry.Close())
+		// close the destination if possible.
+		if closer, ok := dw.(io.Closer); ok {
+			err = errors.Compose(err, closer.Close())
+		}
+		return err
+	})
 
 	// Add the download object to the download queue.
 	r.downloadHistoryMu.Lock()
@@ -381,12 +454,19 @@ func (r *Renter) managedNewDownload(params downloadParams) (*download, error) {
 		staticLatencyTarget:   params.latencyTarget,
 		staticLength:          params.length,
 		staticOffset:          params.offset,
+		staticOverdrive:       params.overdrive,
 		staticHyperspacePath:  params.file.HyperspacePath(),
 		staticPriority:        params.priority,
 
 		log:           r.log,
 		memoryManager: r.memoryManager,
 	}
+
+	// Update the endTime of the download when it's done.
+	d.onComplete(func(_ error) error {
+		d.endTime = time.Now()
+		return nil
+	})
 
 	// Determine which chunks to download.
 	minChunk, minChunkOffset := params.file.ChunkIndexByOffset(params.offset)

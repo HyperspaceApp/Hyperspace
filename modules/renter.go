@@ -99,6 +99,10 @@ const (
 	// renter's persistent data.
 	RenterDir = "renter"
 
+	// SiapathRoot is the name of the directory that is used to store the
+	// renter's siafiles.
+	SiapathRoot = "siafiles"
+
 	// EstimatedFileContractTransactionSetSize is the estimated blockchain size
 	// of a transaction set between a renter and a host that contains a file
 	// contract. This transaction set will contain a setup transaction from each
@@ -523,21 +527,28 @@ type Renter interface {
 	SetFileTrackingPath(siaPath, newPath string) error
 
 	// ShareFiles creates a '.sia' file that can be shared with others.
-	ShareFiles(paths []string, shareDest string) error
+	//ShareFiles(paths []string, shareDest string) error
 
 	// ShareFilesAscii creates an ASCII-encoded '.sia' file.
-	ShareFilesASCII(paths []string) (asciiSia string, err error)
+	//ShareFilesASCII(paths []string) (asciiSia string, err error)
 
 	// Streamer creates a io.ReadSeeker that can be used to stream downloads
 	// from the Sia network and also returns the fileName of the streamed
 	// resource.
-	Streamer(siaPath string) (string, io.ReadSeeker, error)
+	Streamer(siapath string) (string, Streamer, error)
 
 	// Upload uploads a file using the input parameters.
 	Upload(FileUploadParams) error
 
 	// CreateDir creates a directory for the renter
 	CreateDir(siaPath string) error
+}
+
+// Streamer is the interface implemented by the Renter's streamer type which
+// allows for streaming files uploaded to the Sia network.
+type Streamer interface {
+	io.ReadSeeker
+	io.Closer
 }
 
 // RenterDownloadParameters defines the parameters passed to the Renter's

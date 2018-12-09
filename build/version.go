@@ -14,7 +14,7 @@ const (
 	MaxEncodedVersionLength = 100
 
 	// Version is the current version of hsd.
-	Version = "0.2.3"
+	Version = "0.2.4"
 )
 
 // ReleaseTag contains the release tag, such as "rc3". It is supplied at build

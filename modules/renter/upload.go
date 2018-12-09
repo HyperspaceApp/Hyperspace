@@ -66,25 +66,25 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 
 	// Delete existing file if overwrite flag is set. Ignore ErrUnknownPath.
 	if up.Force {
-		if err := r.DeleteFile(up.HyperspacePath); err != nil && err != ErrUnknownPath {
+		if err := r.DeleteFile(up.HyperspacePath); err != nil && err != siafile.ErrUnknownPath {
 			return err
 		}
 	}
 
 	// Check for a nickname conflict.
 	lockID := r.mu.RLock()
-	_, exists := r.files[up.HyperspacePath]
+	exists, _ := r.staticFileSet.Exists(up.HyperspacePath)
 	r.mu.RUnlock(lockID)
 	if exists {
 		// Remove existing file if overwrite is specified
 		if up.Force {
 			err := r.DeleteFile(up.HyperspacePath)
 			// Return of ErrUnknownPath should not prevent upload
-			if err != nil && err != ErrUnknownPath {
+			if err != nil && err != siafile.ErrUnknownPath {
 				return err
 			}
 		} else {
-			return ErrPathOverload
+			return siafile.ErrPathOverload
 		}
 	}
 
@@ -117,25 +117,17 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 		}
 	}
 
-	// Create file object.
-	siaFilePath := filepath.Join(r.persistDir, up.HyperspacePath+ShareExtension)
-	cipherType := crypto.TypeDefaultRenter
-
-	// Create the Siafile.
-	f, err := siafile.New(siaFilePath, up.HyperspacePath, up.Source, r.wal, up.ErasureCode, crypto.GenerateSiaKey(cipherType), uint64(fileInfo.Size()), fileInfo.Mode())
+	// Create the Siafile and add to renter
+	entry, err := r.staticFileSet.NewSiaFile(up, crypto.GenerateSiaKey(crypto.TypeDefaultRenter), uint64(fileInfo.Size()), fileInfo.Mode())
 	if err != nil {
 		return err
 	}
-
-	// Add file to renter.
-	lockID = r.mu.Lock()
-	r.files[up.HyperspacePath] = f
-	r.mu.Unlock(lockID)
+	defer entry.Close()
 
 	// Send the upload to the repair loop.
 	hosts := r.managedRefreshHostsAndWorkers()
 	id := r.mu.Lock()
-	unfinishedChunks := r.buildUnfinishedChunks(f, hosts)
+	unfinishedChunks := r.buildUnfinishedChunks(entry.ChunkEntrys(), hosts)
 	r.mu.Unlock(id)
 	for i := 0; i < len(unfinishedChunks); i++ {
 		r.uploadHeap.managedPush(unfinishedChunks[i])

@@ -1,14 +1,12 @@
 package siafile
 
 import (
-	"math"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/writeaheadlog"
 )
@@ -16,11 +14,12 @@ import (
 type (
 	// metadata is the metadata of a SiaFile and is JSON encoded.
 	metadata struct {
-		StaticVersion   [16]byte `json:"version"`        // version of the sia file format used
-		StaticFileSize  int64    `json:"filesize"`       // total size of the file
-		StaticPieceSize uint64   `json:"piecesize"`      // size of a single piece of the file
-		LocalPath       string   `json:"localpath"`      // file to the local copy of the file used for repairing
-		HyperspacePath  string   `json:"hyperspacepath"` // the path of the file on the Sia network
+		StaticPagesPerChunk uint8    `json:"pagesperchunk"`  // number of pages reserved for storing a chunk.
+		StaticVersion       [16]byte `json:"version"`        // version of the sia file format used
+		StaticFileSize      int64    `json:"filesize"`       // total size of the file
+		StaticPieceSize     uint64   `json:"piecesize"`      // size of a single piece of the file
+		LocalPath           string   `json:"localpath"`      // file to the local copy of the file used for repairing
+		HyperspacePath      string   `json:"hyperspacepath"` // the path of the file on the Hyperspace network
 
 		// fields for encryption
 		StaticMasterKey      []byte            `json:"masterkey"` // masterkey used to encrypt pieces
@@ -35,9 +34,9 @@ type (
 		CreateTime time.Time `json:"createtime"` // time of file creation
 
 		// File ownership/permission fields.
-		Mode os.FileMode `json:"mode"` // unix filemode of the sia file - uint32
-		UID  int         `json:"uid"`  // id of the user who owns the file
-		Gid  int         `json:"gid"`  // id of the group that owns the file
+		Mode    os.FileMode `json:"mode"`    // unix filemode of the sia file - uint32
+		UserID  int         `json:"userid"`  // id of the user who owns the file
+		GroupID int         `json:"groupid"` // id of the group that owns the file
 
 		// staticChunkMetadataSize is the amount of space allocated within the
 		// siafile for the metadata of a single chunk. It allows us to do
@@ -101,54 +100,6 @@ func (sf *SiaFile) ChunkSize() uint64 {
 	return sf.staticChunkSize()
 }
 
-// Delete removes the file from disk and marks it as deleted. Once the file is
-// deleted, certain methods should return an error.
-func (sf *SiaFile) Delete() error {
-	sf.mu.Lock()
-	defer sf.mu.Unlock()
-	update := sf.createDeleteUpdate()
-	err := sf.createAndApplyTransaction(update)
-	sf.deleted = true
-	return err
-}
-
-// Deleted indicates if this file has been deleted by the user.
-func (sf *SiaFile) Deleted() bool {
-	sf.mu.RLock()
-	defer sf.mu.RUnlock()
-	return sf.deleted
-}
-
-// Expiration returns the lowest height at which any of the file's contracts
-// will expire.
-func (sf *SiaFile) Expiration(contracts map[string]modules.RenterContract) types.BlockHeight {
-	sf.mu.RLock()
-	defer sf.mu.RUnlock()
-	if len(sf.pubKeyTable) == 0 {
-		return 0
-	}
-
-	lowest := ^types.BlockHeight(0)
-	for _, pk := range sf.pubKeyTable {
-		contract, exists := contracts[string(pk.Key)]
-		if !exists {
-			continue
-		}
-		if contract.EndHeight < lowest {
-			lowest = contract.EndHeight
-		}
-	}
-	return lowest
-}
-
-// HostPublicKeys returns all the public keys of hosts the file has ever been
-// uploaded to. That means some of those hosts might no longer be in use.
-func (sf *SiaFile) HostPublicKeys() []types.SiaPublicKey {
-	sf.mu.RLock()
-	defer sf.mu.RUnlock()
-	return sf.pubKeyTable
-}
-
 // LocalPath returns the path of the local data of the file.
 func (sf *SiaFile) LocalPath() string {
 	sf.mu.RLock()
@@ -207,17 +158,17 @@ func (sf *SiaFile) Rename(newHyperspacePath, newSiaFilePath string) error {
 	// Update the ChangeTime because the metadata changed.
 	sf.staticMetadata.ChangeTime = time.Now()
 	// Write the header to the new location.
-	headerUpdate, err := sf.saveHeader()
+	headerUpdate, err := sf.saveHeaderUpdates()
 	if err != nil {
 		return err
 	}
 	updates = append(updates, headerUpdate...)
 	// Write the chunks to the new location.
-	chunksUpdate, err := sf.saveChunks()
+	chunksUpdates, err := sf.saveChunksUpdates()
 	if err != nil {
 		return err
 	}
-	updates = append(updates, chunksUpdate)
+	updates = append(updates, chunksUpdates...)
 	// Apply updates.
 	return sf.createAndApplyTransaction(updates...)
 }
@@ -230,7 +181,7 @@ func (sf *SiaFile) SetMode(mode os.FileMode) error {
 	sf.staticMetadata.ChangeTime = time.Now()
 
 	// Save changes to metadata to disk.
-	updates, err := sf.saveHeader()
+	updates, err := sf.saveHeaderUpdates()
 	if err != nil {
 		return err
 	}
@@ -245,7 +196,7 @@ func (sf *SiaFile) SetLocalPath(path string) error {
 	sf.staticMetadata.LocalPath = path
 
 	// Save changes to metadata to disk.
-	updates, err := sf.saveHeader()
+	updates, err := sf.saveHeaderUpdates()
 	if err != nil {
 		return err
 	}
@@ -271,44 +222,14 @@ func (sf *SiaFile) UpdateAccessTime() error {
 	sf.staticMetadata.AccessTime = time.Now()
 
 	// Save changes to metadata to disk.
-	updates, err := sf.saveHeader()
+	updates, err := sf.saveHeaderUpdates()
 	if err != nil {
 		return err
 	}
 	return sf.createAndApplyTransaction(updates...)
 }
 
-// UploadedBytes indicates how many bytes of the file have been uploaded via
-// current file contracts. Note that this includes padding and redundancy, so
-// uploadedBytes can return a value much larger than the file's original filesize.
-func (sf *SiaFile) UploadedBytes() uint64 {
-	sf.mu.RLock()
-	defer sf.mu.RUnlock()
-	var uploaded uint64
-	for _, chunk := range sf.staticChunks {
-		for _, pieceSet := range chunk.Pieces {
-			// Note: we need to multiply by SectorSize here instead of
-			// f.pieceSize because the actual bytes uploaded include overhead
-			// from TwoFish encryption
-			uploaded += uint64(len(pieceSet)) * modules.SectorSize
-		}
-	}
-	return uploaded
-}
-
-// UploadProgress indicates what percentage of the file (plus redundancy) has
-// been uploaded. Note that a file may be Available long before UploadProgress
-// reaches 100%, and UploadProgress may report a value greater than 100%.
-func (sf *SiaFile) UploadProgress() float64 {
-	if sf.Size() == 0 {
-		return 100
-	}
-	uploaded := sf.UploadedBytes()
-	desired := sf.NumChunks() * modules.SectorSize * uint64(sf.ErasureCode().NumPieces())
-	return math.Min(100*(float64(uploaded)/float64(desired)), 100)
-}
-
-// ChunkSize returns the size of a single chunk of the file.
+// staticChunkSize returns the size of a single chunk of the file.
 func (sf *SiaFile) staticChunkSize() uint64 {
 	return sf.staticMetadata.StaticPieceSize * uint64(sf.staticMetadata.staticErasureCode.MinPieces())
 }

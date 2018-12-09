@@ -164,7 +164,7 @@ func (h *Host) Announce() error {
 
 	// Check that we have at least one address to work with.
 	if userSet == "" && autoSet == "" {
-		return build.ExtendErr("cannot announce because address could not be determined", err)
+		return errors.New("cannot announce because address could not be determined")
 	}
 
 	// Prefer using the userSet address, otherwise use the automatic address.
