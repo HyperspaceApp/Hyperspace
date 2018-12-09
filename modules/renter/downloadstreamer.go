@@ -2,22 +2,23 @@ package renter
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"math"
 	"time"
 
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/errors"
 )
 
 type (
-	// streamer is a io.ReadSeeker that can be used to stream downloads from
+	// streamer is a modules.Streamer that can be used to stream downloads from
 	// the sia network.
 	streamer struct {
-		file   *siafile.SiaFile
-		offset int64
-		r      *Renter
+		staticFile      *siafile.Snapshot
+		staticFileEntry *siafile.SiaFileSetEntry
+		offset          int64
+		r               *Renter
 	}
 )
 
@@ -32,22 +33,29 @@ func min(values ...uint64) uint64 {
 	return min
 }
 
-// Streamer creates an io.ReadSeeker that can be used to stream downloads from
+// Streamer creates a modules.Streamer that can be used to stream downloads from
 // the sia network.
-func (r *Renter) Streamer(siaPath string) (string, io.ReadSeeker, error) {
+func (r *Renter) Streamer(siaPath string) (string, modules.Streamer, error) {
 	// Lookup the file associated with the nickname.
-	lockID := r.mu.RLock()
-	file, exists := r.files[siaPath]
-	r.mu.RUnlock(lockID)
-	if !exists || file.Deleted() {
-		return "", nil, fmt.Errorf("no file with that path: %s", siaPath)
+	entry, err := r.staticFileSet.Open(siaPath)
+	if err != nil {
+		return "", nil, err
 	}
 	// Create the streamer
 	s := &streamer{
-		file: file,
-		r:    r,
+		staticFile:      entry.Snapshot(),
+		staticFileEntry: entry,
+		r:               r,
 	}
-	return file.HyperspacePath(), s, nil
+	return entry.HyperspacePath(), s, nil
+}
+
+// Close closes the streamer and let's the fileSet know that the SiaFile is no
+// longer in use.
+func (s *streamer) Close() error {
+	err1 := s.staticFileEntry.SiaFile.UpdateAccessTime()
+	err2 := s.staticFileEntry.Close()
+	return errors.Compose(err1, err2)
 }
 
 // Read implements the standard Read interface. It will download the requested
@@ -56,7 +64,7 @@ func (r *Renter) Streamer(siaPath string) (string, io.ReadSeeker, error) {
 // only request a single chunk at once.
 func (s *streamer) Read(p []byte) (n int, err error) {
 	// Get the file's size
-	fileSize := int64(s.file.Size())
+	fileSize := int64(s.staticFile.Size())
 
 	// Make sure we haven't reached the EOF yet.
 	if s.offset >= fileSize {
@@ -64,22 +72,22 @@ func (s *streamer) Read(p []byte) (n int, err error) {
 	}
 
 	// Calculate how much we can download. We never download more than a single chunk.
-	chunkIndex, chunkOffset := s.file.ChunkIndexByOffset(uint64(s.offset))
-	if chunkIndex == s.file.NumChunks() {
+	chunkIndex, chunkOffset := s.staticFile.ChunkIndexByOffset(uint64(s.offset))
+	if chunkIndex == s.staticFile.NumChunks() {
 		return 0, io.EOF
 	}
 	remainingData := uint64(fileSize - s.offset)
 	requestedData := uint64(len(p))
-	remainingChunk := s.file.ChunkSize() - chunkOffset
+	remainingChunk := s.staticFile.ChunkSize() - chunkOffset
 	length := min(remainingData, requestedData, remainingChunk)
 
 	// Download data
 	buffer := bytes.NewBuffer([]byte{})
 	d, err := s.r.managedNewDownload(downloadParams{
-		destination:       newDownloadDestinationWriteCloserFromWriter(buffer),
+		destination:       newDownloadDestinationWriter(buffer),
 		destinationType:   destinationTypeSeekStream,
 		destinationString: "httpresponse",
-		file:              s.file,
+		file:              s.staticFile,
 
 		latencyTarget: 50 * time.Millisecond, // TODO low default until full latency suport is added.
 		length:        length,
@@ -129,7 +137,7 @@ func (s *streamer) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekCurrent:
 		newOffset = s.offset
 	case io.SeekEnd:
-		newOffset = int64(s.file.Size())
+		newOffset = int64(s.staticFile.Size())
 	}
 	newOffset += offset
 

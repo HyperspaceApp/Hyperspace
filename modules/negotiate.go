@@ -282,6 +282,203 @@ type (
 	}
 )
 
+// New RPC IDs
+var (
+	RPCLoopEnter          = types.Specifier{'L', 'o', 'o', 'p', 'E', 'n', 't', 'e', 'r'}
+	RPCLoopExit           = types.Specifier{'L', 'o', 'o', 'p', 'E', 'x', 'i', 't'}
+	RPCLoopSettings       = types.Specifier{'L', 'o', 'o', 'p', 'S', 'e', 't', 't', 'i', 'n', 'g', 's'}
+	RPCLoopRecentRevision = types.Specifier{'L', 'o', 'o', 'p', 'R', 'e', 'c', 'e', 'n', 't', 'R', 'e', 'v'}
+	RPCLoopDownload       = types.Specifier{'L', 'o', 'o', 'p', 'D', 'o', 'w', 'n', 'l', 'o', 'a', 'd'}
+	RPCLoopFormContract   = types.Specifier{'L', 'o', 'o', 'p', 'F', 'o', 'r', 'm', 'C', 'o', 'n', 't', 'r', 'a', 'c', 't'}
+	RPCLoopRenewContract  = types.Specifier{'L', 'o', 'o', 'p', 'R', 'e', 'n', 'e', 'w'}
+	RPCLoopSectorRoots    = types.Specifier{'L', 'o', 'o', 'p', 'S', 'e', 'c', 't', 'o', 'r', 'R', 'o', 'o', 't', 's'}
+	RPCLoopUpload         = types.Specifier{'L', 'o', 'o', 'p', 'U', 'p', 'l', 'o', 'a', 'd'}
+)
+
+// RPC ciphers
+var (
+	CipherPlaintext = types.Specifier{'p', 'l', 'a', 'i', 'n', 't', 'e', 'x', 't'}
+)
+
+var (
+	// RPCChallengePrefix is the prefix prepended to the challenge data
+	// supplied by the host when proving ownership of a contract's secret key.
+	RPCChallengePrefix = types.Specifier{'c', 'h', 'a', 'l', 'l', 'e', 'n', 'g', 'e'}
+)
+
+// New RPC request and response types
+type (
+	// An RPCError may be sent instead of a Response to any RPC.
+	RPCError struct {
+		Type        types.Specifier
+		Data        []byte // structure depends on Type
+		Description string // human-readable error string
+	}
+
+	// LoopHandshakeRequest contains the information sent by the renter during
+	// the initial RPC handshake.
+	LoopHandshakeRequest struct {
+		// The version of the renter-host protocol that the renter
+		// intends to use.
+		Version byte
+
+		// Ciphers that the renter supports.
+		Ciphers []types.Specifier
+
+		// Entropy used to construct the session key (construction
+		// depends on the cipher selected).
+		KeyData []byte
+
+		// The contract being modified; may be blank if the renter
+		// does not intend to modify a contract (e.g. when forming
+		// a contract).
+		ContractID types.FileContractID
+	}
+
+	// LoopHandshakeResponse contains the information sent by the host in
+	// response to the renter's handshake request.
+	LoopHandshakeResponse struct {
+		// Cipher selected by the host. Must be one of the ciphers offered in
+		// the handshake request.
+		Cipher types.Specifier
+
+		// Entropy signed by the renter to prove that it can sign contract
+		// revisions. The actual data signed should be:
+		//
+		//    blake2b(RPCChallengePrefix | Challenge)
+		Challenge [16]byte
+	}
+
+	// LoopChallengeResponse contains the response to the host's challenge.
+	LoopChallengeResponse struct {
+		Signature []byte
+	}
+
+	// LoopDownloadRequest contains the request parameters for RPCLoopDownload.
+	LoopDownloadRequest struct {
+		MerkleRoot  crypto.Hash
+		Offset      uint32
+		Length      uint32
+		MerkleProof bool
+
+		NewRevisionNumber    uint64
+		NewValidProofValues  []types.Currency
+		NewMissedProofValues []types.Currency
+		Signature            []byte
+	}
+
+	// LoopDownloadResponse contains the response data for RPCLoopDownload.
+	LoopDownloadResponse struct {
+		Signature   []byte
+		Data        []byte
+		MerkleProof []crypto.Hash
+	}
+
+	// LoopSectorRootsRequest contains the request parameters for RPCLoopSectorRoots.
+	LoopSectorRootsRequest struct {
+		RootOffset uint64
+		NumRoots   uint64
+
+		NewRevisionNumber    uint64
+		NewValidProofValues  []types.Currency
+		NewMissedProofValues []types.Currency
+		Signature            []byte
+	}
+
+	// LoopSectorRootsResponse contains the response data for RPCLoopSectorRoots.
+	LoopSectorRootsResponse struct {
+		Signature   []byte
+		SectorRoots []crypto.Hash
+		MerkleProof []crypto.Hash
+	}
+
+	// LoopFormContractRequest contains the request parameters for RPCLoopFormContract.
+	LoopFormContractRequest struct {
+		Transactions []types.Transaction
+		RenterKey    types.SiaPublicKey
+	}
+
+	// LoopContractAdditions contains the parent transaction, inputs, and
+	// outputs added by the host when negotiating a file contract.
+	LoopContractAdditions struct {
+		Parents []types.Transaction
+		Inputs  []types.SiacoinInput
+		Outputs []types.SiacoinOutput
+	}
+
+	// LoopContractSignatures contains the signatures for a contract
+	// transaction and initial revision. These signatures are sent by both the
+	// renter and host during contract formation and renewal.
+	LoopContractSignatures struct {
+		ContractSignatures []types.TransactionSignature
+		RevisionSignature  types.TransactionSignature
+	}
+
+	// LoopRenewContractRequest contains the request parameters for RPCLoopRenewContract.
+	LoopRenewContractRequest struct {
+		Transactions []types.Transaction
+	}
+
+	// LoopRecentRevisionResponse contains the response data for RPCLoopRecentRevisionResponse.
+	LoopRecentRevisionResponse struct {
+		Revision   types.FileContractRevision
+		Signatures []types.TransactionSignature
+	}
+
+	// LoopSettingsResponse contains the response data for RPCLoopSettingsResponse.
+	LoopSettingsResponse struct {
+		Settings  HostExternalSettings
+		Signature []byte
+	}
+
+	// LoopUploadRequest contains the request parameters for RPCLoopUpload.
+	LoopUploadRequest struct {
+		Data []byte
+
+		NewRevisionNumber    uint64
+		NewValidProofValues  []types.Currency
+		NewMissedProofValues []types.Currency
+		Signature            []byte
+	}
+
+	// LoopUploadResponse contains the response data for RPCLoopUploadResponse.
+	LoopUploadResponse struct {
+		Signature []byte
+	}
+)
+
+// Error implements the error interface.
+func (e *RPCError) Error() string {
+	return e.Description
+}
+
+// WriteRPCResponse writes an RPC response or error using the new loop
+// protocol. Either resp or err must be nil. If err is an *RPCError, it is
+// sent directly; otherwise, a generic RPCError is created from err's Error
+// string.
+func WriteRPCResponse(w io.Writer, resp interface{}, err error) error {
+	if err != nil {
+		re, ok := err.(*RPCError)
+		if !ok {
+			re = &RPCError{Description: err.Error()}
+		}
+		return encoding.NewEncoder(w).Encode(re)
+	}
+	return encoding.NewEncoder(w).EncodeAll((*RPCError)(nil), resp)
+}
+
+// ReadRPCResponse reads an RPC response using the new loop protocol.
+func ReadRPCResponse(r io.Reader, resp interface{}) error {
+	dec := encoding.NewDecoder(r)
+	var rpcErr *RPCError
+	if err := dec.Decode(&rpcErr); err != nil {
+		return err
+	} else if rpcErr != nil {
+		return rpcErr
+	}
+	return dec.Decode(resp)
+}
+
 // ReadNegotiationAcceptance reads an accept/reject response from r (usually a
 // net.Conn). If the response is not AcceptResponse, ReadNegotiationAcceptance
 // returns the response as an error. If the response is StopResponse,

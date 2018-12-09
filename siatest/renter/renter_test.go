@@ -1,6 +1,7 @@
 package renter
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -119,6 +120,7 @@ func TestRenterTwo(t *testing.T) {
 		{"TestRemoteRepair", testRemoteRepair},
 		{"TestSingleFileGet", testSingleFileGet},
 		{"TestStreamingCache", testStreamingCache},
+		{"TestSiaFileTimestamps", testSiafileTimestamps},
 		{"TestZeroByteFile", testZeroByteFile},
 		{"TestUploadWithAndWithoutForceParameter", testUploadWithAndWithoutForceParameter},
 		{"TestUploadDownload", testUploadDownload}, // Needs to be last as it impacts hosts
@@ -130,13 +132,131 @@ func TestRenterTwo(t *testing.T) {
 	}
 }
 
+// testSiafileTimestamps tests if timestamps are set correctly when creating,
+// uploading, downloading and modifying a file.
+func testSiafileTimestamps(t *testing.T, tg *siatest.TestGroup) {
+	// Grab the renter.
+	r := tg.Renters()[0]
+
+	// Get the current time.
+	beforeUploadTime := time.Now()
+
+	// Upload a new file.
+	_, rf, err := r.UploadNewFileBlocking(100+siatest.Fuzz(), 1, 1, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get the time again.
+	afterUploadTime := time.Now()
+
+	// Get the timestamps using the API.
+	fi, err := r.File(rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The timestamps should all be between beforeUploadTime and
+	// afterUploadTime.
+	if fi.CreateTime.Before(beforeUploadTime) || fi.CreateTime.After(afterUploadTime) {
+		t.Fatal("CreateTime was not within the correct interval")
+	}
+	if fi.AccessTime.Before(beforeUploadTime) || fi.AccessTime.After(afterUploadTime) {
+		t.Fatal("AccessTime was not within the correct interval")
+	}
+	if fi.ChangeTime.Before(beforeUploadTime) || fi.ChangeTime.After(afterUploadTime) {
+		t.Fatal("ChangeTime was not within the correct interval")
+	}
+	if fi.ModTime.Before(beforeUploadTime) || fi.ModTime.After(afterUploadTime) {
+		t.Fatal("ModTime was not within the correct interval")
+	}
+
+	// After uploading a file the AccessTime, ChangeTime and ModTime should be
+	// the same.
+	if fi.AccessTime != fi.ChangeTime || fi.ChangeTime != fi.ModTime {
+		t.Fatal("AccessTime, ChangeTime and ModTime are not the same")
+	}
+
+	// The CreateTime should precede the other timestamps.
+	if fi.CreateTime.After(fi.AccessTime) {
+		t.Fatal("CreateTime should before other timestamps")
+	}
+
+	// Get the time before starting the download.
+	beforeDownloadTime := time.Now()
+
+	// Download the file.
+	_, err = r.DownloadByStream(rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get the time after the download is done.
+	afterDownloadTime := time.Now()
+
+	// Get the timestamps using the API.
+	fi2, err := r.File(rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only the AccessTime should have changed.
+	if fi2.AccessTime.Before(beforeDownloadTime) || fi2.AccessTime.After(afterDownloadTime) {
+		t.Fatal("AccessTime was not within the correct interval")
+	}
+	if fi.CreateTime != fi2.CreateTime {
+		t.Fatal("CreateTime changed after download")
+	}
+	if fi.ChangeTime != fi2.ChangeTime {
+		t.Fatal("ChangeTime changed after download")
+	}
+	if fi.ModTime != fi2.ModTime {
+		t.Fatal("ModTime changed after download")
+	}
+
+	// TODO Once we can change the localPath using the API, check that it only
+	// changes the ChangeTime to do so.
+
+	// Get the time before renaming.
+	beforeRenameTime := time.Now()
+
+	// Rename the file and check that only the ChangeTime changed.
+	rf, err = r.Rename(rf, "newsiapath")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get the time after renaming.
+	afterRenameTime := time.Now()
+
+	// Get the timestamps using the API.
+	fi3, err := r.File(rf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Only the ChangeTime should have changed.
+	if fi3.ChangeTime.Before(beforeRenameTime) || fi3.ChangeTime.After(afterRenameTime) {
+		t.Fatal("ChangeTime was not within the correct interval")
+	}
+	if fi2.CreateTime != fi3.CreateTime {
+		t.Fatal("CreateTime changed after download")
+	}
+	if fi2.AccessTime != fi3.AccessTime {
+		t.Fatal("AccessTime changed after download")
+	}
+	if fi2.ModTime != fi3.ModTime {
+		t.Fatal("ModTime changed after download")
+	}
+}
+
 // TestRenterThree executes a number of subtests using the same TestGroup to
 // save time on initialization
 func TestRenterThree(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	t.Parallel()
+	// t.Parallel()
 
 	// Create a group for the subtests
 	groupParams := siatest.GroupParams{
@@ -220,12 +340,6 @@ func testReceivedFieldEqualsFileSize(t *testing.T, tg *siatest.TestGroup) {
 
 	// Download fetchLen bytes of the file.
 	_, err = r.DownloadToDiskPartial(rf, lf, false, 0, fetchLen)
-
-	// TODO Once we can change the localPath using the API, check that it only
-	// changes the ChangeTime to do so.
-
-	// Rename the file and check that only the ChangeTime changed.
-	rf, err = r.Rename(rf, "newhyperspacepath")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -417,16 +531,16 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	// for the newly uploaded directory
 	metadata := ".siadir"
 	// Check /renter level
-	assertFileExists(r.RenterDir(), metadata, t)
+	assertFileExists(r.RenterFilesDir(), metadata, t)
 
 	// Check new directory
-	assertFileExists(filepath.Join(r.RenterDir(), rd.HyperspacePath()), metadata, t)
+	assertFileExists(filepath.Join(r.RenterFilesDir(), rd.HyperspacePath()), metadata, t)
 
 	// Check uploading file to new subdirectory
 	// Create local file
 	size := 100 + siatest.Fuzz()
-	ud := r.UploadDir()
-	ld, err := ud.CreateDir("subDir1/subDir2/subDir3")
+	fd := r.FilesDir()
+	ld, err := fd.CreateDir("subDir1/subDir2/subDir3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -445,8 +559,8 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 
 	// Check for metadata files, uploading file into subdirectory should have
 	// created directories and directory metadata files up through renter
-	path := filepath.Join(ud.Path(), "subDir1/subDir2/subDir3")
-	for path != filepath.Dir(r.RenterDir()) {
+	path := filepath.Join(r.RenterFilesDir(), "subDir1/subDir2/subDir3")
+	for path != filepath.Dir(r.RenterFilesDir()) {
 		assertFileExists(path, metadata, t)
 		path = filepath.Dir(path)
 	}
@@ -560,7 +674,7 @@ func testLocalRepair(t *testing.T, tg *siatest.TestGroup) {
 	}
 	// Get the file info of the fully uploaded file. Tha way we can compare the
 	// redundancies later.
-	fi, err := renter.FileInfo(remoteFile)
+	fi, err := renter.File(remoteFile)
 	if err != nil {
 		t.Fatal("failed to get file info", err)
 	}
@@ -614,7 +728,7 @@ func testRemoteRepair(t *testing.T, tg *siatest.TestGroup) {
 	}
 	// Get the file info of the fully uploaded file. Tha way we can compare the
 	// redundancieslater.
-	fi, err := r.FileInfo(remoteFile)
+	fi, err := r.File(remoteFile)
 	if err != nil {
 		t.Fatal("failed to get file info", err)
 	}
@@ -1056,7 +1170,7 @@ func testDownloadInterrupted(t *testing.T, tg *siatest.TestGroup, deps *siatest.
 	ct := crypto.TypeDefaultRenter
 	dataPieces := uint64(len(tg.Hosts())) - 1
 	parityPieces := uint64(1)
-	chunkSize := siatest.ChunkSize(uint64(dataPieces), ct)
+	chunkSize := siatest.ChunkSize(dataPieces, ct)
 	_, remoteFile, err := renter.UploadNewFileBlocking(int(chunkSize), dataPieces, parityPieces, false)
 	if err != nil {
 		t.Fatal(err)
@@ -2036,7 +2150,10 @@ func TestRenterLosingHosts(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	t.Parallel()
+	// t.Parallel()
+	//
+	// too many open files error when running locally.  Tests do not run in
+	// parallel on current GitLab CI so no impact to online run time
 
 	// Create a testgroup without a renter so renter can be added with custom
 	// allowance
@@ -2439,7 +2556,10 @@ func TestRenterPersistData(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	t.Parallel()
+	// t.Parallel()
+	//
+	// too many open files error when running locally.  Tests do not run in
+	// parallel on current GitLab CI so no impact to online run time
 
 	// Get test directory
 	testDir := renterTestDir(t.Name())
@@ -3015,6 +3135,181 @@ func testZeroByteFile(t *testing.T, tg *siatest.TestGroup) {
 	}
 }
 
+// TestRenterFileChangeDuringDownload confirms that a download will continue and
+// succeed if the file is renamed or deleted after the download has started
+func TestRenterFileChangeDuringDownload(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	// t.Parallel()
+	//
+	// too many open files error when running locally.  Tests do not run in
+	// parallel on current GitLab CI so no impact to online run time
+
+	// Create a testgroup,
+	groupParams := siatest.GroupParams{
+		Hosts:   2,
+		Renters: 1,
+		Miners:  1,
+	}
+	testDir := renterTestDir(t.Name())
+	tg, err := siatest.NewGroupFromTemplate(testDir, groupParams)
+	if err != nil {
+		t.Fatal("Failed to create group: ", err)
+	}
+	defer func() {
+		if err := tg.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// Grab Renter and upload file
+	r := tg.Renters()[0]
+	dataPieces := uint64(1)
+	parityPieces := uint64(1)
+	chunkSize := int64(siatest.ChunkSize(dataPieces, crypto.TypeDefaultRenter))
+	fileSize := 3 * int(chunkSize)
+	_, rf1, err := r.UploadNewFileBlocking(fileSize, dataPieces, parityPieces, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rf2, err := r.UploadNewFileBlocking(fileSize, dataPieces, parityPieces, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rf3, err := r.UploadNewFileBlocking(fileSize, dataPieces, parityPieces, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rf4, err := r.UploadNewFileBlocking(fileSize, dataPieces, parityPieces, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, rf5, err := r.UploadNewFileBlocking(fileSize, dataPieces, parityPieces, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Set the bandwidth limit to 1 chunk per second.
+	if err := r.RenterPostRateLimit(chunkSize, chunkSize); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create Wait group
+	wg := new(sync.WaitGroup)
+
+	// Test Renaming while Downloading and Streaming on 5 files.
+	wg.Add(1)
+	go renameDuringDownloadAndStream(r, rf1, t, wg, time.Second)
+	wg.Add(1)
+	go renameDuringDownloadAndStream(r, rf2, t, wg, time.Second)
+	wg.Add(1)
+	go renameDuringDownloadAndStream(r, rf3, t, wg, time.Second)
+	wg.Add(1)
+	go renameDuringDownloadAndStream(r, rf4, t, wg, time.Second)
+	wg.Add(1)
+	go renameDuringDownloadAndStream(r, rf5, t, wg, time.Second)
+	wg.Wait()
+
+	// Test Deleting while Downloading and Streaming
+	//
+	// Download the file
+	wg.Add(1)
+	go deleteDuringDownloadAndStream(r, rf1, t, wg, time.Second)
+	wg.Add(1)
+	go deleteDuringDownloadAndStream(r, rf2, t, wg, time.Second)
+	wg.Add(1)
+	go deleteDuringDownloadAndStream(r, rf3, t, wg, time.Second)
+	wg.Add(1)
+	go deleteDuringDownloadAndStream(r, rf4, t, wg, time.Second)
+	wg.Add(1)
+	go deleteDuringDownloadAndStream(r, rf5, t, wg, time.Second)
+
+	wg.Wait()
+}
+
+// deleteDuringDownloadAndStream will download and stream a file in parallel, it
+// will then sleep to ensure the download and stream have downloaded some data,
+// then it will delete the file
+func deleteDuringDownloadAndStream(r *siatest.TestNode, rf *siatest.RemoteFile, t *testing.T, wg *sync.WaitGroup, sleep time.Duration) {
+	defer wg.Done()
+	wgDelete := new(sync.WaitGroup)
+	// Download the file
+	wgDelete.Add(1)
+	go func() {
+		defer wgDelete.Done()
+		_, err := r.DownloadToDisk(rf, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	// Stream the File
+	wgDelete.Add(1)
+	go func() {
+		defer wgDelete.Done()
+		_, err := r.Stream(rf)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	// Delete the file
+	wgDelete.Add(1)
+	go func() {
+		defer wgDelete.Done()
+		// Wait to ensure download and stream have started
+		time.Sleep(sleep)
+		err := r.RenterDeletePost(rf.SiaPath())
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+
+	// Wait for the method's go routines to finish
+	wgDelete.Wait()
+
+}
+
+// renameDuringDownloadAndStream will download and stream a file in parallel, it
+// will then sleep to ensure the download and stream have downloaded some data,
+// then it will rename the file
+func renameDuringDownloadAndStream(r *siatest.TestNode, rf *siatest.RemoteFile, t *testing.T, wg *sync.WaitGroup, sleep time.Duration) {
+	defer wg.Done()
+	wgRename := new(sync.WaitGroup)
+	// Download the file
+	wgRename.Add(1)
+	go func() {
+		defer wgRename.Done()
+		_, err := r.DownloadToDisk(rf, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	// Stream the File
+	wgRename.Add(1)
+	go func() {
+		defer wgRename.Done()
+		_, err := r.Stream(rf)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+	// Rename the file
+	wgRename.Add(1)
+	go func() {
+		defer wgRename.Done()
+		// Wait to ensure download and stream have started
+		time.Sleep(sleep)
+		var err error
+		rf, err = r.Rename(rf, hex.EncodeToString(fastrand.Bytes(4)))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// Wait for the method's go routines to finish
+	wgRename.Wait()
+}
+
 // The following are helper functions for the renter tests
 
 // assertFileExists is a helper function to confirm that a file exists in a
@@ -3031,7 +3326,7 @@ func assertFileExists(dir, filename string, t *testing.T) {
 		}
 	}
 	if check != 1 {
-		t.Fatalf("Did not find %v file, found %v expected 1", filename, check)
+		t.Fatalf("Did not find %v file in %v directory, found %v expected 1", filename, dir, check)
 	}
 }
 
@@ -3418,7 +3713,7 @@ func testSetFileTrackingPath(t *testing.T, tg *siatest.TestGroup) {
 		t.Fatal("Failed to download file", err)
 	}
 	// Create a new file that is smaller than the first one.
-	smallFile, err := renter.UploadDir().NewFile(fileSize - 1)
+	smallFile, err := renter.FilesDir().NewFile(fileSize - 1)
 	if err != nil {
 		t.Fatal(err)
 	}

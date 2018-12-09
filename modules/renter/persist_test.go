@@ -15,15 +15,20 @@ import (
 )
 
 // newTestingFile initializes a file object with random parameters.
-func newTestingFile() *siafile.SiaFile {
+func newTestingFile() (*siafile.SiaFile, error) {
+	name, rsc := testingFileParams()
+	return newFileTesting(name, newTestingWal(), rsc, 1000, 0777, "")
+}
+
+// testingFileParams generates the ErasureCoder and a random name for a testing
+// file
+func testingFileParams() (string, modules.ErasureCoder) {
 	data := fastrand.Bytes(8)
 	nData := fastrand.Intn(10)
 	nParity := fastrand.Intn(10)
 	rsc, _ := siafile.NewRSCode(nData+1, nParity+1)
-
 	name := "testfile-" + strconv.Itoa(int(data[0]))
-
-	return newFileTesting(name, newTestingWal(), rsc, 1000, 0777, "")
+	return name, rsc
 }
 
 // equalFiles is a helper function that compares two files for equality.
@@ -81,6 +86,27 @@ func TestRenterSaveLoad(t *testing.T) {
 	settings.StreamCacheSize = newCacheSize
 	rt.renter.SetSettings(settings)
 
+	// Add a file to the renter
+	entry, err := rt.renter.newRenterTestFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	siapath := entry.SiaPath()
+	err = entry.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that SiaFileSet knows of the SiaFile
+	entry, err = rt.renter.staticFileSet.Open(siapath)
+	if err != nil {
+		t.Fatal("SiaFile not found in the renter's staticFileSet after creation")
+	}
+	err = entry.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	err = rt.renter.saveSync() // save metadata
 	if err != nil {
 		t.Fatal(err)
@@ -106,6 +132,12 @@ func TestRenterSaveLoad(t *testing.T) {
 	if newSettings.StreamCacheSize != newCacheSize {
 		t.Error("cache settings not being persisted correctly")
 	}
+
+	// Check that SiaFileSet loaded the renter's file
+	_, err = rt.renter.staticFileSet.Open(siapath)
+	if err != nil {
+		t.Fatal("SiaFile not found in the renter's staticFileSet after load")
+	}
 }
 
 // TestRenterDirectories checks that the renter properly created metadata files
@@ -127,16 +159,16 @@ func TestRenterDirectories(t *testing.T) {
 	}
 
 	// Confirm that direcotry metadata files were created in all directories.
-	if _, err = os.Stat(filepath.Join(rt.renter.persistDir, SiaDirMetadata)); err != nil {
+	if _, err = os.Stat(filepath.Join(rt.renter.filesDir, SiaDirMetadata)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.Stat(filepath.Join(rt.renter.persistDir, "foo/"+SiaDirMetadata)); err != nil {
+	if _, err = os.Stat(filepath.Join(rt.renter.filesDir, "foo/"+SiaDirMetadata)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.Stat(filepath.Join(rt.renter.persistDir, "foo/bar/"+SiaDirMetadata)); err != nil {
+	if _, err = os.Stat(filepath.Join(rt.renter.filesDir, "foo/bar/"+SiaDirMetadata)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = os.Stat(filepath.Join(rt.renter.persistDir, "foo/bar/baz/"+SiaDirMetadata)); err != nil {
+	if _, err = os.Stat(filepath.Join(rt.renter.filesDir, "foo/bar/baz/"+SiaDirMetadata)); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -158,12 +190,26 @@ func TestRenterPaths(t *testing.T) {
 	//   foo.sia
 	//   foo/bar.sia
 	//   foo/bar/baz.sia
-	f1 := newTestingFile()
-	f1.Rename("foo", filepath.Join(rt.renter.persistDir, "foo"+ShareExtension))
-	f2 := newTestingFile()
-	f2.Rename("foo/bar", filepath.Join(rt.renter.persistDir, "foo/bar"+ShareExtension))
-	f3 := newTestingFile()
-	f3.Rename("foo/bar/baz", filepath.Join(rt.renter.persistDir, "foo/bar/baz"+ShareExtension))
+
+	siaPath1 := "foo"
+	siaPath2 := "foo/bar"
+	siaPath3 := "foo/bar/baz"
+
+	f1, err := newTestingFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f1.Rename(siaPath1, filepath.Join(rt.renter.filesDir, siaPath1+siafile.ShareExtension))
+	f2, err := newTestingFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f2.Rename(siaPath2, filepath.Join(rt.renter.filesDir, siaPath2+siafile.ShareExtension))
+	f3, err := newTestingFile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	f3.Rename(siaPath3, filepath.Join(rt.renter.filesDir, siaPath3+siafile.ShareExtension))
 
 	// Restart the renter to re-do the init cycle.
 	err = rt.renter.Close()
@@ -176,13 +222,25 @@ func TestRenterPaths(t *testing.T) {
 	}
 
 	// Check that the files were loaded properly.
-	if err := equalFiles(f1, rt.renter.files[f1.HyperspacePath()]); err != nil {
+	entry, err := rt.renter.staticFileSet.Open(siaPath1)
+	if err != nil {
+		t.Fatal("File not found in renter", err)
+	}
+	if err := equalFiles(f1, entry.SiaFile); err != nil {
 		t.Fatal(err)
 	}
-	if err := equalFiles(f2, rt.renter.files[f2.HyperspacePath()]); err != nil {
+	entry, err = rt.renter.staticFileSet.Open(siaPath2)
+	if err != nil {
+		t.Fatal("File not found in renter", err)
+	}
+	if err := equalFiles(f2, entry.SiaFile); err != nil {
 		t.Fatal(err)
 	}
-	if err := equalFiles(f3, rt.renter.files[f3.HyperspacePath()]); err != nil {
+	entry, err = rt.renter.staticFileSet.Open(siaPath3)
+	if err != nil {
+		t.Fatal("File not found in renter", err)
+	}
+	if err := equalFiles(f3, entry.SiaFile); err != nil {
 		t.Fatal(err)
 	}
 
@@ -190,12 +248,12 @@ func TestRenterPaths(t *testing.T) {
 	// folder and emit the name of each .sia file encountered (filepath.Walk
 	// is deterministic; it orders the files lexically).
 	var walkStr string
-	filepath.Walk(rt.renter.persistDir, func(path string, _ os.FileInfo, _ error) error {
+	filepath.Walk(rt.renter.filesDir, func(path string, _ os.FileInfo, _ error) error {
 		// capture only .sia files
 		if filepath.Ext(path) != ".sia" {
 			return nil
 		}
-		rel, _ := filepath.Rel(rt.renter.persistDir, path) // strip testdir prefix
+		rel, _ := filepath.Rel(rt.renter.filesDir, path) // strip testdir prefix
 		walkStr += rel
 		return nil
 	})

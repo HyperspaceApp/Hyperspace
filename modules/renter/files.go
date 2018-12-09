@@ -2,7 +2,6 @@ package renter
 
 import (
 	"os"
-	"path/filepath"
 	"regexp"
 	"sync"
 
@@ -17,10 +16,6 @@ import (
 var (
 	// ErrEmptyFilename is an error when filename is empty
 	ErrEmptyFilename = errors.New("filename must be a nonempty string")
-	// ErrPathOverload is an error when a file already exists at that location
-	ErrPathOverload = errors.New("a file already exists at that location")
-	// ErrUnknownPath is an error when a file cannot be found with the given path
-	ErrUnknownPath = errors.New("no file known with that path")
 )
 
 // A file is a single file that has been uploaded to the network. Files are
@@ -66,53 +61,32 @@ type pieceData struct {
 
 // DeleteFile removes a file entry from the renter and deletes its data from
 // the hosts it is stored on.
-//
-// TODO: The data is not cleared from any contracts where the host is not
-// immediately online.
 func (r *Renter) DeleteFile(nickname string) error {
-	lockID := r.mu.Lock()
-	f, exists := r.files[nickname]
-	if !exists {
-		r.mu.Unlock(lockID)
-		return ErrUnknownPath
-	}
-	delete(r.files, nickname)
-
-	r.saveSync()
-	r.mu.Unlock(lockID)
-
-	// TODO: delete the sectors of the file as well.
-
-	// mark the file as deleted
-	return f.Delete()
+	return r.staticFileSet.Delete(nickname)
 }
 
 // FileList returns all of the files that the renter has or a filtered list
 // if a compiled Regexp is supplied. Filtering is applied to the hyperspace path.
 func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 	noFilter := len(filter) == 0
-	// Get all the files holding the readlock.
-	lockID := r.mu.RLock()
-	renterFiles := make([]*siafile.SiaFile, 0, len(r.files))
-	for _, file := range r.files {
-		renterFiles = append(renterFiles, file)
-	}
-	r.mu.RUnlock(lockID)
 
-	// Filter files by regexp. We can't do that under the same lock since we
-	// need to call a public method on the file.
-	files := make([]*siafile.SiaFile, 0, len(renterFiles))
-	for _, file := range renterFiles {
-		if noFilter || filter[0].MatchString(file.HyperspacePath()) {
-			files = append(files, file)
-		}
+	// Get all the renter files
+	var entrys []*siafile.SiaFileSetEntry
+	var err error
+	if noFilter {
+		entrys, err = r.staticFileSet.All()
+	} else {
+		entrys, err = r.staticFileSet.Filter(filter[0])
+	}
+	if err != nil {
+		return []modules.FileInfo{}
 	}
 
 	// Save host keys in map. We can't do that under the same lock since we
 	// need to call a public method on the file.
 	pks := make(map[string]types.SiaPublicKey)
-	for _, f := range files {
-		for _, pk := range f.HostPublicKeys() {
+	for _, entry := range entrys {
+		for _, pk := range entry.HostPublicKeys() {
 			pks[string(pk.Key)] = pk
 		}
 	}
@@ -134,29 +108,33 @@ func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 
 	// Build the list of FileInfos.
 	fileList := []modules.FileInfo{}
-	for _, f := range files {
-		localPath := f.LocalPath()
+	for _, entry := range entrys {
+		localPath := entry.LocalPath()
 		_, err := os.Stat(localPath)
 		onDisk := !os.IsNotExist(err)
-		redundancy := f.Redundancy(offline, goodForRenew)
+		redundancy := entry.Redundancy(offline, goodForRenew)
 		fileList = append(fileList, modules.FileInfo{
-			AccessTime:     f.AccessTime(),
-			Available:      f.Available(offline),
-			ChangeTime:     f.ChangeTime(),
-			CipherType:     f.MasterKey().Type().String(),
-			CreateTime:     f.CreateTime(),
-			Expiration:     f.Expiration(contracts),
-			Filesize:       f.Size(),
+			AccessTime:     entry.AccessTime(),
+			Available:      entry.Available(offline),
+			ChangeTime:     entry.ChangeTime(),
+			CipherType:     entry.MasterKey().Type().String(),
+			CreateTime:     entry.CreateTime(),
+			Expiration:     entry.Expiration(contracts),
+			Filesize:       entry.Size(),
 			LocalPath:      localPath,
-			ModTime:        f.ModTime(),
+			ModTime:        entry.ModTime(),
 			OnDisk:         onDisk,
 			Recoverable:    onDisk || redundancy >= 1,
 			Redundancy:     redundancy,
 			Renewing:       true,
-			HyperspacePath:        f.HyperspacePath(),
-			UploadedBytes:  f.UploadedBytes(),
-			UploadProgress: f.UploadProgress(),
+			HyperspacePath: entry.HyperspacePath(),
+			UploadedBytes:  entry.UploadedBytes(),
+			UploadProgress: entry.UploadProgress(),
 		})
+		err = entry.Close()
+		if err != nil {
+			r.log.Debugln("WARN: Could not close thread:", err)
+		}
 	}
 	return fileList
 }
@@ -164,16 +142,13 @@ func (r *Renter) FileList(filter ...*regexp.Regexp) []modules.FileInfo {
 // File returns file from siaPath queried by user.
 // Update based on FileList
 func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
-	var fileInfo modules.FileInfo
-
 	// Get the file and its contracts
-	lockID := r.mu.RLock()
-	file, exists := r.files[siaPath]
-	r.mu.RUnlock(lockID)
-	if !exists {
-		return fileInfo, ErrUnknownPath
+	entry, err := r.staticFileSet.Open(siaPath)
+	if err != nil {
+		return modules.FileInfo{}, err
 	}
-	pks := file.HostPublicKeys()
+	defer entry.Close()
+	pks := entry.HostPublicKeys()
 
 	// Build 2 maps that map every contract id to its offline and goodForRenew
 	// status.
@@ -192,27 +167,30 @@ func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
 
 	// Build the FileInfo
 	renewing := true
-	localPath := file.LocalPath()
-	_, err := os.Stat(localPath)
+	localPath := entry.LocalPath()
+	_, err = os.Stat(localPath)
+	if err != nil && !os.IsNotExist(err) {
+		return modules.FileInfo{}, err
+	}
 	onDisk := !os.IsNotExist(err)
-	redundancy := file.Redundancy(offline, goodForRenew)
-	fileInfo = modules.FileInfo{
-		AccessTime:     file.AccessTime(),
-		Available:      file.Available(offline),
-		ChangeTime:     file.ChangeTime(),
-		CipherType:     file.MasterKey().Type().String(),
-		CreateTime:     file.CreateTime(),
-		Expiration:     file.Expiration(contracts),
-		Filesize:       file.Size(),
+	redundancy := entry.Redundancy(offline, goodForRenew)
+	fileInfo := modules.FileInfo{
+		AccessTime:     entry.AccessTime(),
+		Available:      entry.Available(offline),
+		ChangeTime:     entry.ChangeTime(),
+		CipherType:     entry.MasterKey().Type().String(),
+		CreateTime:     entry.CreateTime(),
+		Expiration:     entry.Expiration(contracts),
+		Filesize:       entry.Size(),
 		LocalPath:      localPath,
-		ModTime:        file.ModTime(),
+		ModTime:        entry.ModTime(),
 		OnDisk:         onDisk,
 		Recoverable:    onDisk || redundancy >= 1,
 		Redundancy:     redundancy,
 		Renewing:       renewing,
-		HyperspacePath:        file.HyperspacePath(),
-		UploadedBytes:  file.UploadedBytes(),
-		UploadProgress: file.UploadProgress(),
+		HyperspacePath: entry.HyperspacePath(),
+		UploadedBytes:  entry.UploadedBytes(),
+		UploadProgress: entry.UploadProgress(),
 	}
 
 	return fileInfo, nil
@@ -222,40 +200,16 @@ func (r *Renter) File(siaPath string) (modules.FileInfo, error) {
 // file must exist, and there must not be any file that already has the
 // replacement nickname.
 func (r *Renter) RenameFile(currentName, newName string) error {
-	lockID := r.mu.Lock()
-	defer r.mu.Unlock(lockID)
-
 	err := validateSiapath(newName)
 	if err != nil {
 		return err
 	}
-
-	// Check that currentName exists and newName doesn't.
-	file, exists := r.files[currentName]
-	if !exists {
-		return ErrUnknownPath
-	}
-	_, exists = r.files[newName]
-	if exists {
-		return ErrPathOverload
-	}
-
-	// Modify the file and save it to disk.
-	err = file.Rename(newName, filepath.Join(r.persistDir, newName+ShareExtension)) // TODO: violation of locking convention
-	if err != nil {
-		return err
-	}
-
-	// Update the entries in the renter.
-	delete(r.files, currentName)
-	r.files[newName] = file
-
-	return nil
+	return r.staticFileSet.Rename(currentName, newName)
 }
 
 // fileToSiaFile converts a legacy file to a SiaFile. Fields that can't be
 // populated using the legacy file remain blank.
-func (r *Renter) fileToSiaFile(f *file, repairPath string) (*siafile.SiaFile, error) {
+func (r *Renter) fileToSiaFile(f *file, repairPath string) (*siafile.SiaFileSetEntry, error) {
 	fileData := siafile.FileData{
 		Name:        f.name,
 		FileSize:    f.size,
@@ -281,7 +235,7 @@ func (r *Renter) fileToSiaFile(f *file, repairPath string) (*siafile.SiaFile, er
 		}
 	}
 	fileData.Chunks = chunks
-	return siafile.NewFromFileData(fileData)
+	return r.staticFileSet.NewFromFileData(fileData)
 }
 
 // numChunks returns the number of chunks that f was split into.

@@ -270,6 +270,10 @@ func (h *Host) threadedHandleConn(conn net.Conn) {
 	}
 
 	switch id {
+	// new RPCs: enter an infinite request/response loop
+	case modules.RPCLoopEnter:
+		err = extendErr("incoming RPCLoopEnter failed: ", h.managedRPCLoop(conn))
+	// old RPCs: handle a single request/response
 	case modules.RPCDownload:
 		atomic.AddUint64(&h.atomicDownloadCalls, 1)
 		err = extendErr("incoming RPCDownload failed: ", h.managedRPCDownload(conn))
@@ -298,7 +302,7 @@ func (h *Host) threadedHandleConn(conn net.Conn) {
 	}
 }
 
-// listen listens for incoming RPCs and spawns an appropriate handler for each.
+// threadedListen listens for incoming RPCs and spawns an appropriate handler for each.
 func (h *Host) threadedListen(closeChan chan struct{}) {
 	defer close(closeChan)
 

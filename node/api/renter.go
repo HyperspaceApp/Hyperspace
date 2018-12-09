@@ -809,6 +809,7 @@ func parseDownloadParameters(w http.ResponseWriter, req *http.Request, ps httpro
 	return dp, nil
 }
 
+/*
 // renterShareHandler handles the API call to create a '.sia' file that
 // shares a set of file.
 func (api *API) renterShareHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
@@ -844,6 +845,7 @@ func (api *API) renterShareASCIIHandler(w http.ResponseWriter, req *http.Request
 		ASCIIsia: ascii,
 	})
 }
+*/
 
 // renterStreamHandler handles downloads from the /renter/stream endpoint
 func (api *API) renterStreamHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
@@ -854,6 +856,7 @@ func (api *API) renterStreamHandler(w http.ResponseWriter, req *http.Request, ps
 			http.StatusInternalServerError)
 		return
 	}
+	defer streamer.Close()
 	http.ServeContent(w, req, fileName, time.Time{}, streamer)
 }
 

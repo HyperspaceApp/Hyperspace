@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/node"
 	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/node/api/server"
@@ -23,7 +24,7 @@ type TestNode struct {
 	primarySeed string
 
 	downloadDir *LocalDir
-	uploadDir   *LocalDir
+	filesDir    *LocalDir
 }
 
 // PrintDebugInfo prints out helpful debug information when debug tests and ndfs, the
@@ -208,10 +209,10 @@ func (tn *TestNode) initRootDirs() error {
 	if err := os.MkdirAll(tn.downloadDir.path, 0777); err != nil {
 		return err
 	}
-	tn.uploadDir = &LocalDir{
-		path: filepath.Join(tn.RenterDir(), "uploads"),
+	tn.filesDir = &LocalDir{
+		path: filepath.Join(tn.RenterDir(), modules.SiapathRoot),
 	}
-	if err := os.MkdirAll(tn.uploadDir.path, 0777); err != nil {
+	if err := os.MkdirAll(tn.filesDir.path, 0777); err != nil {
 		return err
 	}
 	return nil
@@ -220,5 +221,5 @@ func (tn *TestNode) initRootDirs() error {
 // HyperspacePath returns the hyperspacepath of a local file or directory to be used for
 // uploading
 func (tn *TestNode) HyperspacePath(path string) string {
-	return strings.TrimPrefix(path, tn.RenterDir()+"/")
+	return strings.TrimPrefix(path, tn.filesDir.path+"/")
 }
