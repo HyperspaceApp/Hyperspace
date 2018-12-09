@@ -3,8 +3,8 @@ package gateway
 import (
 	"testing"
 
-	"gitlab.com/NebulousLabs/Sia/node"
-	"gitlab.com/NebulousLabs/Sia/siatest"
+	"github.com/HyperspaceApp/Hyperspace/node"
+	"github.com/HyperspaceApp/Hyperspace/siatest"
 )
 
 // TestGatewayRatelimit makes sure that we can set the gateway's ratelimits
