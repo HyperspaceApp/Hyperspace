@@ -1,6 +1,15 @@
 Version History
 ---------------
 
+Dec 11, 2018:
+
+v0.2.3
+
+- Added support for SPV renters
+- Stopped generating extra transactions when building contracts
+- Eliminated wallet automatic defrag code, wallet now defrags only when necessary
+- Fixed an address gap limit bug when forming new contracts
+
 Oct 28, 2018:
 
 v0.2.2
