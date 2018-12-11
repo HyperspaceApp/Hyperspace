@@ -18,7 +18,12 @@ var errInvalidDownloader = errors.New("downloader has been invalidated because i
 // proportional to the data retrieved.
 type Downloader interface {
 	// Download requests the specified sector data.
-	Download(root crypto.Hash, offset, length uint32) ([]byte, error)
+	// Download(root crypto.Hash, offset, length uint32) ([]byte, error)
+
+	// Sector retrieves the sector with the specified Merkle root, and revises
+	// the underlying contract to pay the host proportionally to the data
+	// retrieve.
+	Sector(root crypto.Hash) ([]byte, error)
 
 	// Close terminates the connection to the host.
 	Close() error
@@ -78,6 +83,24 @@ func (hd *hostDownloader) HostSettings() modules.HostExternalSettings {
 	hd.mu.Lock()
 	defer hd.mu.Unlock()
 	return hd.hostSettings
+}
+
+// Sector retrieves the sector with the specified Merkle root, and revises
+// the underlying contract to pay the host proportionally to the data
+// retrieve.
+func (hd *hostDownloader) Sector(root crypto.Hash) ([]byte, error) {
+	hd.mu.Lock()
+	defer hd.mu.Unlock()
+	if hd.invalid {
+		return nil, errInvalidDownloader
+	}
+
+	// Download the sector.
+	_, sector, err := hd.downloader.Sector(root)
+	if err != nil {
+		return nil, err
+	}
+	return sector, nil
 }
 
 // Download retrieves the requested sector data and revises the underlying

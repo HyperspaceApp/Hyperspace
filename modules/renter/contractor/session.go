@@ -26,6 +26,8 @@ type Session interface {
 	// ContractID returns the FileContractID of the contract.
 	ContractID() types.FileContractID
 
+	Sector(root crypto.Hash) ([]byte, error)
+
 	// Download requests the specified sector data.
 	Download(root crypto.Hash, offset, length uint32) ([]byte, error)
 
@@ -92,6 +94,21 @@ func (hs *hostSession) Close() error {
 
 // ContractID returns the ID of the contract being revised.
 func (hs *hostSession) ContractID() types.FileContractID { return hs.id }
+
+func (hs *hostSession) Sector(root crypto.Hash) ([]byte, error) {
+	hs.mu.Lock()
+	defer hs.mu.Unlock()
+	if hs.invalid {
+		return nil, errInvalidSession
+	}
+
+	// Download the data.
+	_, data, err := hs.session.Sector(root)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
 
 // Download retrieves the sector with the specified Merkle root, and revises
 // the underlying contract to pay the host proportionally to the data
