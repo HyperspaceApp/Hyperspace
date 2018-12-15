@@ -535,7 +535,7 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 		t.Fatal("Expected 1 DirectoryInfo to be returned but got:", len(rgd.Directories))
 	}
 	if rgd.Directories[0].HyperspacePath != rd.HyperspacePath() {
-		t.Fatalf("SiaPaths do not match %v and %v", rgd.Directories[0].SiaPath, rd.HyprespacePath())
+		t.Fatalf("SiaPaths do not match %v and %v", rgd.Directories[0].HyperspacePath, rd.HyperspacePath())
 	}
 	if len(rgd.Files) != 0 {
 		t.Fatal("Expected no files in directory but found:", len(rgd.Files))
@@ -563,7 +563,7 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	}
 
 	// Check directory that file was uploaded to
-	siaPath := filepath.Dir(rf.SiaPath())
+	siaPath := filepath.Dir(rf.HyperspacePath())
 	rgd, err = r.RenterGetDir(siaPath)
 	if err != nil {
 		t.Fatal(err)
@@ -591,12 +591,12 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	}
 
 	// Test deleting directory
-	if err = r.RenterDirDeletePost(rd.SiaPath()); err != nil {
+	if err = r.RenterDirDeletePost(rd.HyperspacePath()); err != nil {
 		t.Fatal(err)
 	}
 
 	// Check that siadir was deleted from disk
-	_, err = os.Stat(filepath.Join(r.RenterFilesDir(), rd.SiaPath()))
+	_, err = os.Stat(filepath.Join(r.RenterFilesDir(), rd.HyperspacePath()))
 	if !os.IsNotExist(err) {
 		t.Fatal("Expected IsNotExist err, but got err:", err)
 	}
