@@ -1,11 +1,6 @@
 Consensus API
 =============
 
-This document contains detailed descriptions of the consensus's API routes. For
-an overview of the consensus' API routes, see
-[API.md#consensus](/doc/API.md#consensus).  For an overview of all API routes,
-see [API.md](/doc/API.md)
-
 There may be functional API calls which are not documented. These are not
 guaranteed to be supported beyond the current release, and should not be used
 in production.

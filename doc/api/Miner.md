@@ -1,10 +1,6 @@
 Miner API
 =========
 
-This document contains detailed descriptions of the miner's API routes. For an
-overview of the miner's API routes, see [API.md#miner](/doc/API.md#miner).  For
-an overview of all API routes, see [API.md](/doc/API.md)
-
 There may be functional API calls which are not documented. These are not
 guaranteed to be supported beyond the current release, and should not be used
 in production.

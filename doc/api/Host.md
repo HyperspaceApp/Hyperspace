@@ -660,4 +660,3 @@ mindownloadbandwidthprice // Optional, hastings / byte
 minstorageprice           // Optional, hastings / byte / block
 minuploadbandwidthprice   // Optional, hastings / byte
 ```
-
