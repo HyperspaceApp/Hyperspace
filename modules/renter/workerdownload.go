@@ -66,9 +66,11 @@ func (w *worker) managedDownload(udc *unfinishedDownloadChunk) {
 		return
 	}
 	defer d.Close()
-	fetchOffset, fetchLength := sectorOffsetAndLength(udc.staticFetchOffset, udc.staticFetchLength, udc.erasureCode)
+	//fetchOffset, fetchLength := sectorOffsetAndLength(udc.staticFetchOffset, udc.staticFetchLength, udc.erasureCode)
+	fetchOffset, _ := sectorOffsetAndLength(udc.staticFetchOffset, udc.staticFetchLength, udc.erasureCode)
 	root := udc.staticChunkMap[string(w.contract.HostPublicKey.Key)].root
-	pieceData, err := d.Download(root, uint32(fetchOffset), uint32(fetchLength))
+	//pieceData, err := d.Download(root, uint32(fetchOffset), uint32(fetchLength))
+	pieceData, err := d.Sector(root)
 	if err != nil {
 		w.renter.log.Debugln("worker failed to download sector:", err)
 		udc.managedUnregisterWorker(w)

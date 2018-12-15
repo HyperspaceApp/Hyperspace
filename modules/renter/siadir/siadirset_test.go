@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // newTestSiaDirSetWithDir creates a new SiaDirSet and SiaDir and makes sure

@@ -1,11 +1,11 @@
 package proto
 
 import (
-	"gitlab.com/NebulousLabs/Sia/build"
-	"gitlab.com/NebulousLabs/Sia/crypto"
-	"gitlab.com/NebulousLabs/Sia/modules"
-	"gitlab.com/NebulousLabs/Sia/types"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // Declaration of individual seed types for additional type safety.

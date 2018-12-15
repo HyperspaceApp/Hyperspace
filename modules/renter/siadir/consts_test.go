@@ -3,7 +3,7 @@ package siadir
 import (
 	"testing"
 
-	"gitlab.com/NebulousLabs/writeaheadlog"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 // TestIsSiaDirUpdate tests the IsSiaDirUpdate method.

@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/fastrand"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/curve25519"
 )

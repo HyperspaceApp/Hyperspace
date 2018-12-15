@@ -1,7 +1,7 @@
 package siadir
 
 import (
-	"gitlab.com/NebulousLabs/writeaheadlog"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 const (

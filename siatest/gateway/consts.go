@@ -3,7 +3,7 @@ package gateway
 import (
 	"os"
 
-	"gitlab.com/NebulousLabs/Sia/siatest"
+	"github.com/HyperspaceApp/Hyperspace/siatest"
 )
 
 // gatewayTestDir creates a temporary testing directory for a gateway. This

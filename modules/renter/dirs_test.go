@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"gitlab.com/NebulousLabs/Sia/modules"
-	"gitlab.com/NebulousLabs/Sia/modules/renter/siadir"
-	"gitlab.com/NebulousLabs/errors"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siadir"
+	"github.com/HyperspaceApp/errors"
 )
 
 // TestRenterCreateDirectories checks that the renter properly created metadata files

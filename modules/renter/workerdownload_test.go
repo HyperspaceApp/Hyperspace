@@ -3,10 +3,10 @@ package renter
 import (
 	"testing"
 
-	"gitlab.com/NebulousLabs/Sia/crypto"
-	"gitlab.com/NebulousLabs/Sia/modules"
-	"gitlab.com/NebulousLabs/Sia/modules/renter/siafile"
-	"gitlab.com/NebulousLabs/fastrand"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 // TestSegmentsForRecovery tests the segmentsForRecovery helper function.

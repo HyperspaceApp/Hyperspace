@@ -112,7 +112,7 @@ func (r *Renter) Upload(up modules.FileUploadParams) error {
 	dir, _ := filepath.Split(up.HyperspacePath)
 	dirSiaPath := strings.TrimSuffix(dir, "/")
 	// Check if directory exists already
-	exists, err := r.staticDirSet.Exists(dirSiaPath)
+	exists, err = r.staticDirSet.Exists(dirSiaPath)
 	if !os.IsNotExist(err) && err != nil {
 		return err
 	}

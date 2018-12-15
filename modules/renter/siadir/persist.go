@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"gitlab.com/NebulousLabs/Sia/build"
-	"gitlab.com/NebulousLabs/errors"
-	"gitlab.com/NebulousLabs/writeaheadlog"
+	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 // ApplyUpdates  applies a number of writeaheadlog updates to the corresponding

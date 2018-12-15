@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/NebulousLabs/fastrand"
-	"gitlab.com/NebulousLabs/writeaheadlog"
+	"github.com/HyperspaceApp/fastrand"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 type (

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/NebulousLabs/Sia/persist"
-	"gitlab.com/NebulousLabs/errors"
-	"gitlab.com/NebulousLabs/writeaheadlog"
+	"github.com/HyperspaceApp/Hyperspace/persist"
+	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/writeaheadlog"
 )
 
 const (

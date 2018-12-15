@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitlab.com/NebulousLabs/Sia/modules/renter/siafile"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 
-	"gitlab.com/NebulousLabs/Sia/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules"
 )
 
 // CreateDir creates a directory for the renter
