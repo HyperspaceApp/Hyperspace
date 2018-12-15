@@ -19,6 +19,7 @@ dependencies:
 	go get -u github.com/HyperspaceApp/merkletree
 	go get -u github.com/HyperspaceApp/Hyperspace/sync
 	go get -u golang.org/x/crypto/blake2b
+	go get -u golang.org/x/crypto/curve25519
 	# Module + Daemon Dependencies
 	go get -u github.com/HyperspaceApp/entropy-mnemonics
 	go get -u github.com/HyperspaceApp/errors
@@ -53,8 +54,8 @@ dependencies:
 run = .
 pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./gcs ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
-       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/renter/siafile \
-       ./modules/miner ./modules/miningpool ./modules/wallet ./modules/transactionpool ./modules/stratumminer \
+       ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/renter/siadir \
+       ./modules/renter/siafile  ./modules/miner ./modules/miningpool ./modules/wallet ./modules/transactionpool ./modules/stratumminer \
        ./node ./node/api ./node/api/server ./persist ./siatest ./siatest/consensus ./siatest/gateway \
        ./siatest/renter ./siatest/wallet ./sync ./types
 

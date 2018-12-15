@@ -392,3 +392,10 @@ func (c *Client) RenterDirRenamePost(siaPath, newHyperspacePath string) (err err
 	err = c.post(fmt.Sprintf("/renter/dir/%s?newhyperspacepath=%s", siaPath, newHyperspacePath), "action=rename", nil)
 	return
 }
+
+// RenterGetDir uses the /renter/dir/ endpoint to query a directory
+func (c *Client) RenterGetDir(siaPath string) (rd api.RenterDirectory, err error) {
+	siaPath = strings.TrimPrefix(siaPath, "/")
+	err = c.get(fmt.Sprintf("/renter/dir/%s", siaPath), &rd)
+	return
+}

@@ -1,11 +1,11 @@
 package renter
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/big"
 	"os"
@@ -21,6 +21,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
 	"github.com/HyperspaceApp/Hyperspace/node"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
 	"github.com/HyperspaceApp/Hyperspace/node/api/client"
@@ -514,10 +515,6 @@ func testClearDownloadHistory(t *testing.T, tg *siatest.TestGroup) {
 
 // testDirectories checks the functionality of directories in the Renter
 func testDirectories(t *testing.T, tg *siatest.TestGroup) {
-	// TODO - update code once GET directory endpoint is available, directory
-	// should be created with POST directory API endpoint then the contents
-	// should be verified with the GET directory endpoint
-
 	// Grab Renter
 	r := tg.Renters()[0]
 
@@ -527,15 +524,22 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 		t.Fatal(err)
 	}
 
-	// Check for metadata files, Directory should have been uploaded in the top
-	// level of the renter so there should be a metadata file for /renter and
-	// for the newly uploaded directory
-	metadata := ".siadir"
-	// Check /renter level
-	assertFileExists(r.RenterFilesDir(), metadata, t)
-
-	// Check new directory
-	assertFileExists(filepath.Join(r.RenterFilesDir(), rd.HyperspacePath()), metadata, t)
+	// Check directory
+	rgd, err := r.RenterGetDir(rd.HyperspacePath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Directory should return 0 FileInfos and 1 DirectoryInfo with would belong
+	// to the directory itself
+	if len(rgd.Directories) != 1 {
+		t.Fatal("Expected 1 DirectoryInfo to be returned but got:", len(rgd.Directories))
+	}
+	if rgd.Directories[0].HyperspacePath != rd.HyperspacePath() {
+		t.Fatalf("SiaPaths do not match %v and %v", rgd.Directories[0].SiaPath, rd.HyprespacePath())
+	}
+	if len(rgd.Files) != 0 {
+		t.Fatal("Expected no files in directory but found:", len(rgd.Files))
+	}
 
 	// Check uploading file to new subdirectory
 	// Create local file
@@ -553,17 +557,48 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 	// Upload file
 	dataPieces := uint64(1)
 	parityPieces := uint64(1)
-	_, err = r.Upload(lf, dataPieces, parityPieces, false)
+	rf, err := r.Upload(lf, dataPieces, parityPieces, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Check for metadata files, uploading file into subdirectory should have
-	// created directories and directory metadata files up through renter
-	path := filepath.Join(r.RenterFilesDir(), "subDir1/subDir2/subDir3")
-	for path != filepath.Dir(r.RenterFilesDir()) {
-		assertFileExists(path, metadata, t)
-		path = filepath.Dir(path)
+	// Check directory that file was uploaded to
+	siaPath := filepath.Dir(rf.SiaPath())
+	rgd, err = r.RenterGetDir(siaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Directory should have 1 file and 0 sub directories
+	if len(rgd.Directories) != 1 {
+		t.Fatal("Expected 1 DirectoryInfo to be returned but got:", len(rgd.Directories))
+	}
+	if len(rgd.Files) != 1 {
+		t.Fatal("Expected 1 file in directory but found:", len(rgd.Files))
+	}
+
+	// Check parent directory
+	siaPath = filepath.Dir(siaPath)
+	rgd, err = r.RenterGetDir(siaPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Directory should have 0 files and 1 sub directory
+	if len(rgd.Directories) != 2 {
+		t.Fatal("Expected 2 DirectoryInfos to be returned but got:", len(rgd.Directories))
+	}
+	if len(rgd.Files) != 0 {
+		t.Fatal("Expected 0 files in directory but found:", len(rgd.Files))
+	}
+
+	// Test deleting directory
+	if err = r.RenterDirDeletePost(rd.SiaPath()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that siadir was deleted from disk
+	_, err = os.Stat(filepath.Join(r.RenterFilesDir(), rd.SiaPath()))
+	if !os.IsNotExist(err) {
+		t.Fatal("Expected IsNotExist err, but got err:", err)
 	}
 }
 
@@ -832,6 +867,7 @@ func testSingleFileGet(t *testing.T, tg *siatest.TestGroup) {
 
 // testStreamingCache checks if the chunk cache works correctly.
 func testStreamingCache(t *testing.T, tg *siatest.TestGroup) {
+	t.Skip("Caching is broken due to partial downloads")
 	// Grab the first of the group's renters
 	r := tg.Renters()[0]
 
@@ -1003,7 +1039,8 @@ func testStreamLargeFile(t *testing.T, tg *siatest.TestGroup) {
 	// Upload file, creating a piece for each host in the group
 	dataPieces := uint64(1)
 	parityPieces := uint64(len(tg.Hosts())) - dataPieces
-	fileSize := int(10 * siatest.ChunkSize(dataPieces))
+	ct := crypto.TypeDefaultRenter
+	fileSize := int(10 * siatest.ChunkSize(dataPieces, ct))
 	localFile, remoteFile, err := renter.UploadNewFileBlocking(fileSize, dataPieces, parityPieces, false)
 	if err != nil {
 		t.Fatal("Failed to upload a file for testing: ", err)
@@ -3337,24 +3374,6 @@ func renameDuringDownloadAndStream(r *siatest.TestNode, rf *siatest.RemoteFile, 
 
 // The following are helper functions for the renter tests
 
-// assertFileExists is a helper function to confirm that a file exists in a
-// directory
-func assertFileExists(dir, filename string, t *testing.T) {
-	check := 0
-	fileInfos, err := ioutil.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range fileInfos {
-		if !f.IsDir() && f.Name() == filename {
-			check++
-		}
-	}
-	if check != 1 {
-		t.Fatalf("Did not find %v file in %v directory, found %v expected 1", filename, dir, check)
-	}
-}
-
 // checkBalanceVsSpending checks the renters confirmed siacoin balance in their
 // wallet against their reported spending
 func checkBalanceVsSpending(r *siatest.TestNode, initialBalance types.Currency) error {
@@ -3753,5 +3772,155 @@ func testSetFileTrackingPath(t *testing.T, tg *siatest.TestGroup) {
 	}
 	if err := renter.SetFileRepairPath(remoteFile, smallFile); err == nil {
 		t.Fatal("Changing repair path to a nonexistent file shouldn't work")
+	}
+}
+
+// TestRenterFileContractIdentifier checks that the file contract's identifier
+// is set correctly when forming a contract and after renewing it.
+func TestRenterFileContractIdentifier(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+
+	// Create a testgroup, creating without renter so the renter's
+	// contract transactions can easily be obtained.
+	groupParams := siatest.GroupParams{
+		Hosts:  2,
+		Miners: 1,
+	}
+	testDir := renterTestDir(t.Name())
+	tg, err := siatest.NewGroupFromTemplate(testDir, groupParams)
+	if err != nil {
+		t.Fatal("Failed to create group: ", err)
+	}
+	defer func() {
+		if err := tg.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// Add a Renter node
+	renterParams := node.Renter(filepath.Join(testDir, "renter"))
+	nodes, err := tg.AddNodes(renterParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := nodes[0]
+
+	rcg, err := r.RenterContractsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Get the endheight of the contracts.
+	eh := rcg.ActiveContracts[0].EndHeight
+
+	// Get the blockheight.
+	cg, err := tg.Hosts()[0].ConsensusGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	bh := cg.Height
+
+	// Mine blocks until we reach the endheight
+	m := tg.Miners()[0]
+	for i := 0; i < int(eh-bh); i++ {
+		if err := m.MineBlock(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Confirm that the contracts got renewed.
+	err = build.Retry(100, 100*time.Millisecond, func() error {
+		// Mine a block.
+		if err := m.MineBlock(); err != nil {
+			t.Fatal(err)
+		}
+		// Get the contracts from the renter.
+		rcg, err := r.RenterExpiredContractsGet()
+		if err != nil {
+			t.Fatal(err)
+		}
+		// We should have one contract for each host.
+		if len(rcg.ActiveContracts) != len(tg.Hosts()) {
+			return fmt.Errorf("expected %v active contracts but got %v",
+				len(tg.Hosts()), rcg.ActiveContracts)
+		}
+		// We should have one expired contract for each host.
+		if len(rcg.ExpiredContracts) != len(tg.Hosts()) {
+			return fmt.Errorf("expected %v expired contracts but got %v",
+				len(tg.Hosts()), len(rcg.ExpiredContracts))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Get the transaction which are related to the renter since we started the
+	// renter.
+	txns, err := r.WalletTransactionsGet(0, ^types.BlockHeight(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Filter out transactions without file contracts.
+	var fcTxns []modules.ProcessedTransaction
+	for _, txn := range txns.ConfirmedTransactions {
+		if len(txn.Transaction.FileContracts) > 0 {
+			fcTxns = append(fcTxns, txn)
+		}
+	}
+	// There should be twice as many transactions with contracts as there are hosts.
+	if len(fcTxns) != 2*len(tg.Hosts()) {
+		t.Fatalf("Expected %v txns but got %v", 2*len(tg.Hosts()), len(fcTxns))
+	}
+
+	// Get the wallet seed of the renter.
+	wsg, err := r.WalletSeedsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed, err := modules.StringToSeed(wsg.PrimarySeed, "english")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Map contract IDs to startHeights.
+	// Check the arbitrary data of the active contracts again to confirm that
+	// the renewal code also sets it correctly.
+	rcg, err = r.RenterExpiredContractsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	startHeightMap := make(map[types.FileContractID]types.BlockHeight)
+	for _, c := range rcg.ActiveContracts {
+		startHeightMap[c.ID] = c.StartHeight
+	}
+	for _, c := range rcg.ExpiredContracts {
+		startHeightMap[c.ID] = c.StartHeight
+	}
+
+	// Check the arbitrary data of each transaction and contract.
+	for _, fcTxn := range fcTxns {
+		txn := fcTxn.Transaction
+		for i := range txn.FileContracts {
+			fcid := txn.FileContractID(uint64(i))
+			startHeight, exists := startHeightMap[fcid]
+			if !exists {
+				t.Fatal("startHeight doesn't exist for fcid", fcid.String())
+			}
+			// Calculate the renter seed given the startheight of the contract.
+			rs := proto.EphemeralRenterSeed(seed, startHeight)
+			// Calculate the prefixed and signed identifier we expect in that
+			// contract.
+			psi, err := proto.PrefixedSignedIdentifier(rs, txn)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Compare it to the arbitrary data.
+			if !bytes.Equal(psi[:], txn.ArbitraryData[0]) {
+				t.Fatal("Arbitrary data of transaction doesn't match expected value")
+			}
+		}
 	}
 }

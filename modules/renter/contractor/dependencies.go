@@ -24,11 +24,13 @@ type (
 	walletShim interface {
 		NextAddress() (types.UnlockConditions, error)
 		GetAddress() (types.UnlockConditions, error)
+		PrimarySeed() (modules.Seed, uint64, error)
 		StartTransaction() (modules.TransactionBuilder, error)
 	}
 	wallet interface {
 		NextAddress() (types.UnlockConditions, error)
 		GetAddress() (types.UnlockConditions, error)
+		PrimarySeed() (modules.Seed, uint64, error)
 		StartTransaction() (transactionBuilder, error)
 	}
 	transactionBuilder interface {
@@ -84,6 +86,9 @@ func (ws *WalletBridge) NextAddress() (types.UnlockConditions, error) { return w
 
 // GetAddress get a address from wallet
 func (ws *WalletBridge) GetAddress() (types.UnlockConditions, error) { return ws.W.GetAddress() }
+
+// PrimarySeed returns the primary wallet seed.
+func (ws *WalletBridge) PrimarySeed() (modules.Seed, uint64, error) { return ws.W.PrimarySeed() }
 
 // StartTransaction creates a new transactionBuilder that can be used to create
 // and sign a transaction.

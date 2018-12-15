@@ -145,6 +145,11 @@ type (
 		// pieces may have been padded with zeros during encoding.
 		Recover(pieces [][]byte, n uint64, w io.Writer) error
 
+		// SupportsPartialEncoding returns true if the ErasureCoder can be used
+		// to encode/decode any crypto.SegmentSize bytes of an encoded piece or
+		// false otherwise.
+		SupportsPartialEncoding() bool
+
 		// Type returns the type identifier of the ErasureCoder.
 		Type() ErasureCoderType
 	}
@@ -179,6 +184,13 @@ type ContractUtility struct {
 	GoodForUpload bool
 	GoodForRenew  bool
 	Locked        bool // Locked utilities can only be set to false.
+}
+
+// DirectoryInfo provides information about a siadir
+type DirectoryInfo struct {
+	Health              float64   `json:"health"`
+	LastHealthCheckTime time.Time `json:"lasthealthchecktime"`
+	SiaPath             string    `json:"siapath"`
 }
 
 // DownloadInfo provides information about a file that has been requested for
@@ -551,6 +563,12 @@ type Renter interface {
 
 	// CreateDir creates a directory for the renter
 	CreateDir(siaPath string) error
+
+	// DeleteDir deletes a directory from the renter
+	DeleteDir(siaPath string) error
+
+	// DirList lists the directories and the files stored in a siadir
+	DirList(siaPath string) ([]DirectoryInfo, []FileInfo, error)
 }
 
 // Streamer is the interface implemented by the Renter's streamer type which

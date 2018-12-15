@@ -8,11 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/siadir"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -23,7 +23,8 @@ import (
 
 const (
 	logFile = modules.RenterDir + ".log"
-	// PersistFilename is the filename to be used when persisting renter information to a JSON file
+	// PersistFilename is the filename to be used when persisting renter
+	// information to a JSON file
 	PersistFilename = "renter.json"
 	// SiaDirMetadata is the name of the metadata file for the sia directory
 	SiaDirMetadata = ".siadir"
@@ -34,11 +35,13 @@ const (
 var (
 	//ErrBadFile is an error when a file does not qualify as .sia file
 	ErrBadFile = errors.New("not a .sia file")
-	// ErrIncompatible is an error when file is not compatible with current version
+	// ErrIncompatible is an error when file is not compatible with current
+	// version
 	ErrIncompatible = errors.New("file is not compatible with current version")
 	// ErrNoNicknames is an error when no nickname is given
 	ErrNoNicknames = errors.New("at least one nickname must be supplied")
-	// ErrNonShareSuffix is an error when the suffix of a file does not match the defined share extension
+	// ErrNonShareSuffix is an error when the suffix of a file does not match
+	// the defined share extension
 	ErrNonShareSuffix = errors.New("suffix of file must be " + siafile.ShareExtension)
 
 	settingsMetadata = persist.Metadata{
@@ -115,7 +118,7 @@ func (f *file) MarshalSia(w io.Writer) error {
 	return nil
 }
 
-// UnmarshalSia implements the encoding.SiaUnmarshaller interface,
+// UnmarshalSia implements the encoding.SiaUnmarshaler interface,
 // reconstructing a file from the encoded bytes read from r.
 func (f *file) UnmarshalSia(r io.Reader) error {
 	dec := encoding.NewDecoder(r)
@@ -448,6 +451,7 @@ func (r *Renter) initPersist() error {
 	}
 	r.wal = wal
 	r.staticFileSet = siafile.NewSiaFileSet(r.filesDir, wal)
+	r.staticDirSet = siadir.NewSiaDirSet(r.filesDir, wal)
 
 	// Apply unapplied wal txns.
 	for _, txn := range txns {
@@ -456,6 +460,10 @@ func (r *Renter) initPersist() error {
 			if siafile.IsSiaFileUpdate(update) {
 				if err := siafile.ApplyUpdates(update); err != nil {
 					return errors.AddContext(err, "failed to apply SiaFile update")
+				}
+			} else if siadir.IsSiaDirUpdate(update) {
+				if err := siadir.ApplyUpdates(update); err != nil {
+					return errors.AddContext(err, "failed to apply SiaDir update")
 				}
 			} else {
 				applyTxn = false

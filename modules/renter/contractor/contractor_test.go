@@ -30,6 +30,7 @@ func (newStub) SpvMode() bool                              { return false }
 // wallet stubs
 func (newStub) NextAddress() (uc types.UnlockConditions, err error)          { return }
 func (newStub) GetAddress() (uc types.UnlockConditions, err error)           { return }
+func (newStub) PrimarySeed() (modules.Seed, uint64, error)                   { return modules.Seed{}, 0, nil }
 func (newStub) StartTransaction() (tb modules.TransactionBuilder, err error) { return }
 
 // transaction pool stubs
@@ -692,9 +693,15 @@ func (ws *testWalletShim) NextAddress() (types.UnlockConditions, error) {
 	ws.nextAddressCalled = true
 	return types.UnlockConditions{}, nil
 }
+
 func (ws *testWalletShim) GetAddress() (types.UnlockConditions, error) {
 	return types.UnlockConditions{}, nil
 }
+
+func (ws *testWalletShim) PrimarySeed() (modules.Seed, uint64, error) {
+	return modules.Seed{}, 0, nil
+}
+
 func (ws *testWalletShim) StartTransaction() (modules.TransactionBuilder, error) {
 	ws.startTxnCalled = true
 	return nil, nil

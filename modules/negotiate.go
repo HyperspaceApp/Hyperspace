@@ -151,6 +151,11 @@ var (
 	// announcement will follow this prefix.
 	PrefixHostAnnouncement = types.Specifier{'H', 'o', 's', 't', 'A', 'n', 'n', 'o', 'u', 'n', 'c', 'e', 'm', 'e', 'n', 't'}
 
+	// PrefixFileContractIdentifier is used to indicate that a transaction's
+	// Arbitrary Data field contains a file contract identifier. The identifier
+	// and its signature will follow this prefix.
+	PrefixFileContractIdentifier = types.Specifier{'F', 'C', 'I', 'd', 'e', 'n', 't', 'i', 'f', 'i', 'e', 'r'}
+
 	// RPCDownload is the specifier for downloading a file from a host.
 	RPCDownload = types.Specifier{'D', 'o', 'w', 'n', 'l', 'o', 'a', 'd', 2}
 
@@ -325,9 +330,8 @@ type (
 		// Ciphers that the renter supports.
 		Ciphers []types.Specifier
 
-		// Entropy used to construct the session key (construction
-		// depends on the cipher selected).
-		KeyData []byte
+		// The renter's ephemeral X25519 public key.
+		PublicKey crypto.X25519PublicKey
 
 		// The contract being modified; may be blank if the renter
 		// does not intend to modify a contract (e.g. when forming
@@ -341,6 +345,13 @@ type (
 		// Cipher selected by the host. Must be one of the ciphers offered in
 		// the handshake request.
 		Cipher types.Specifier
+
+		// The host's ephemeral X25519 public key.
+		PublicKey crypto.X25519PublicKey
+
+		// A signature of the renter and host's public keys, using the same
+		// signature algorithm previously announced by the host.
+		Signature []byte
 
 		// Entropy signed by the renter to prove that it can sign contract
 		// revisions. The actual data signed should be:

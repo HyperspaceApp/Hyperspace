@@ -137,6 +137,7 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 
 		// Directory endpoints
 		router.POST("/renter/dir/*hyperspacepath", RequirePassword(api.renterDirHandlerPOST, requiredPassword))
+		router.GET("/renter/dir/*hyperspacepath", api.renterDirHandlerGET)
 
 		// HostDB endpoints.
 		router.GET("/hostdb", api.hostdbHandler)
