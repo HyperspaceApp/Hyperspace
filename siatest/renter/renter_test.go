@@ -1,7 +1,6 @@
 package renter
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -32,15 +31,6 @@ import (
 	"github.com/HyperspaceApp/fastrand"
 )
 
-// Test Limitations
-//
-// Timeouts - when possible test should be run in parallel to improve runtime
-//
-// panic: too many open files - There is a limit to how many tests can be run in
-// parallel (~10).  When too many test groups are trying to be created at the
-// same time the test package panics because to many files have been created and
-// it can't support any more tests
-
 // test is a helper struct for running subtests when tests can use the same test
 // group
 type test struct {
@@ -51,7 +41,7 @@ type test struct {
 // runRenterTests is a helper function to run the subtests when tests can use
 // the same test group
 func runRenterTests(t *testing.T, gp siatest.GroupParams, tests []test) error {
-	tg, err := siatest.NewGroupFromTemplate(siatest.TestDir(t.Name()), gp)
+	tg, err := siatest.NewGroupFromTemplate(renterTestDir(t.Name()), gp)
 	if err != nil {
 		return errors.AddContext(err, "failed to create group")
 	}
@@ -257,7 +247,7 @@ func TestRenterThree(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	// t.Parallel()
+	t.Parallel()
 
 	// Create a group for the subtests
 	groupParams := siatest.GroupParams{
@@ -1455,7 +1445,7 @@ func testRedundancyReporting(t *testing.T, tg *siatest.TestGroup) {
 func testRenewFailing(t *testing.T, tg *siatest.TestGroup) {
 	// Add a renter with a custom allowance to give it plenty of time to renew
 	// the contract later.
-	renterParams := node.Renter(filepath.Join(siatest.TestDir(t.Name()), "renter"))
+	renterParams := node.Renter(filepath.Join(renterTestDir(t.Name()), "renter"))
 	renterParams.Allowance = siatest.DefaultAllowance
 	renterParams.Allowance.Hosts = uint64(len(tg.Hosts()) - 1)
 	renterParams.Allowance.Period = 100
@@ -1593,7 +1583,7 @@ func testRenewFailing(t *testing.T, tg *siatest.TestGroup) {
 // allowance after the allowance was cancelled will trigger the correct contract
 // formation.
 func testRenterCancelAllowance(t *testing.T, tg *siatest.TestGroup) {
-	renterParams := node.Renter(filepath.Join(siatest.TestDir(t.Name()), "renter"))
+	renterParams := node.Renter(filepath.Join(renterTestDir(t.Name()), "renter"))
 	nodes, err := tg.AddNodes(renterParams)
 	if err != nil {
 		t.Fatal(err)
@@ -1817,7 +1807,7 @@ func TestRenterContracts(t *testing.T) {
 		Renters: 1,
 		Miners:  1,
 	}
-	testDir := siatest.TestDir(t.Name())
+	testDir := renterTestDir(t.Name())
 	tg, err := siatest.NewGroupFromTemplate(testDir, groupParams)
 	if err != nil {
 		t.Fatal("Failed to create group:", err)
@@ -2212,10 +2202,7 @@ func TestRenterLosingHosts(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	// t.Parallel()
-	//
-	// too many open files error when running locally.  Tests do not run in
-	// parallel on current GitLab CI so no impact to online run time
+	t.Parallel()
 
 	// Create a testgroup without a renter so renter can be added with custom
 	// allowance
@@ -2328,6 +2315,9 @@ func TestRenterLosingHosts(t *testing.T) {
 		files, err := r.RenterFilesGet()
 		if err != nil {
 			return err
+		}
+		if len(files.Files) == 0 {
+			return errors.New("renter has no files")
 		}
 		if files.Files[0].Redundancy != 1.5 {
 			return fmt.Errorf("Expected redundancy to be 1.5 but was %v", files.Files[0].Redundancy)
@@ -2618,10 +2608,7 @@ func TestRenterPersistData(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	// t.Parallel()
-	//
-	// too many open files error when running locally.  Tests do not run in
-	// parallel on current GitLab CI so no impact to online run time
+	t.Parallel()
 
 	// Get test directory
 	testDir := renterTestDir(t.Name())
@@ -3203,10 +3190,7 @@ func TestRenterFileChangeDuringDownload(t *testing.T) {
 	if testing.Short() {
 		t.SkipNow()
 	}
-	// t.Parallel()
-	//
-	// too many open files error when running locally.  Tests do not run in
-	// parallel on current GitLab CI so no impact to online run time
+	t.Parallel()
 
 	// Create a testgroup,
 	groupParams := siatest.GroupParams{
@@ -3885,42 +3869,150 @@ func TestRenterFileContractIdentifier(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Map contract IDs to startHeights.
-	// Check the arbitrary data of the active contracts again to confirm that
-	// the renewal code also sets it correctly.
-	rcg, err = r.RenterExpiredContractsGet()
-	if err != nil {
-		t.Fatal(err)
-	}
-	startHeightMap := make(map[types.FileContractID]types.BlockHeight)
-	for _, c := range rcg.ActiveContracts {
-		startHeightMap[c.ID] = c.StartHeight
-	}
-	for _, c := range rcg.ExpiredContracts {
-		startHeightMap[c.ID] = c.StartHeight
-	}
-
 	// Check the arbitrary data of each transaction and contract.
 	for _, fcTxn := range fcTxns {
 		txn := fcTxn.Transaction
-		for i := range txn.FileContracts {
-			fcid := txn.FileContractID(uint64(i))
-			startHeight, exists := startHeightMap[fcid]
-			if !exists {
-				t.Fatal("startHeight doesn't exist for fcid", fcid.String())
+		for _, fc := range txn.FileContracts {
+			// Check that the arbitrary data has correct length.
+			if len(txn.ArbitraryData) != 1 {
+				t.Fatal("arbitrary data has wrong length")
 			}
-			// Calculate the renter seed given the startheight of the contract.
-			rs := proto.EphemeralRenterSeed(seed, startHeight)
-			// Calculate the prefixed and signed identifier we expect in that
-			// contract.
-			psi, err := proto.PrefixedSignedIdentifier(rs, txn)
+			csi := proto.ContractSignedIdentifier{}
+			n := copy(csi[:], txn.ArbitraryData[0])
+			encryptedHostKey := txn.ArbitraryData[0][n:]
+			// Calculate the renter seed given the WindowStart of the contract.
+			rs := proto.EphemeralRenterSeed(seed, fc.WindowStart)
+			// Check if the identifier is valid.
+			spk, valid := csi.IsValid(rs, txn, encryptedHostKey)
+			if !valid {
+				t.Fatal("identifier is invalid")
+			}
+			// Check that the host's key is a valid key from the hostb.
+			_, err := r.HostDbHostsGet(spk)
 			if err != nil {
-				t.Fatal(err)
-			}
-			// Compare it to the arbitrary data.
-			if !bytes.Equal(psi[:], txn.ArbitraryData[0]) {
-				t.Fatal("Arbitrary data of transaction doesn't match expected value")
+				t.Fatal("hostKey is invalid", err)
 			}
 		}
 	}
+}
+
+// TestRenterContractRecovery tests that recovering a node from a seed that has
+// contracts associated with it will recover those contracts.
+func TestRenterContractRecovery(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
+	t.Parallel()
+
+	// Create a testgroup, creating without renter so the renter's
+	// contract transactions can easily be obtained.
+	groupParams := siatest.GroupParams{
+		Hosts:   2,
+		Miners:  1,
+		Renters: 1,
+	}
+	testDir := renterTestDir(t.Name())
+	tg, err := siatest.NewGroupFromTemplate(testDir, groupParams)
+	if err != nil {
+		t.Fatal("Failed to create group: ", err)
+	}
+	defer func() {
+		if err := tg.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	// Get the renter node and its seed.
+	r := tg.Renters()[0]
+	wsg, err := r.WalletSeedsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed := wsg.PrimarySeed
+
+	// Remember the contracts the renter formed with the hosts.
+	oldContracts := make(map[types.FileContractID]api.RenterContract)
+	rc, err := r.RenterContractsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range rc.ActiveContracts {
+		oldContracts[c.ID] = c
+	}
+
+	// Stop the renter.
+	if err := tg.RemoveNode(r); err != nil {
+		t.Fatal(err)
+	}
+
+	// Start a new renter with the same seed.
+	renterParams := node.Renter(filepath.Join(testDir, "renter"))
+	renterParams.PrimarySeed = seed
+	nodes, err := tg.AddNodes(renterParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newRenter := nodes[0]
+
+	// Make sure that the new renter actually uses the same primary seed.
+	wsg, err = newRenter.WalletSeedsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	newRenterSeed := wsg.PrimarySeed
+	if seed != newRenterSeed {
+		t.Log("old seed", seed)
+		t.Log("new seed", newRenterSeed)
+		t.Fatal("Seeds of new and old renters don't match")
+	}
+
+	// The new renter should know about the contracts being recoverable. TODO
+	// once we have recovery this might not work. We probably need a dependency
+	// then to prevent recovery.
+	rc, err = newRenter.RenterRecoverableContractsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rc.RecoverableContracts) != len(oldContracts) {
+		t.Fatalf("Wrong number of recoverable contracts, expected %v but was %v",
+			len(oldContracts), len(rc.RecoverableContracts))
+	}
+	for _, c := range rc.RecoverableContracts {
+		_, exists := oldContracts[c.ID]
+		if !exists {
+			t.Fatal("Unknown recoverable contract", c.ID)
+		}
+	}
+
+	// Restart node to see if the contracts are persisted correctly.
+	if err := tg.RestartNode(newRenter); err != nil {
+		t.Fatal(err)
+	}
+	rc2, err := newRenter.RenterRecoverableContractsGet()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(rc.RecoverableContracts, rc2.RecoverableContracts) {
+		t.Fatal("contracts after restart are not the same as before")
+	}
+
+	// TODO the following code won't work before recovery is fully implemented.
+	// The new renter should have the same active contracts as the old one.
+	//rc, err = newRenter.RenterContractsGet()
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+	//if len(rc.ActiveContracts) != len(oldContracts) {
+	//	t.Fatalf("Didn't recover the right number of contracts, expected %v but was %v",
+	//		len(oldContracts), len(rc.ActiveContracts))
+	//}
+	//for _, c := range rc.ActiveContracts {
+	//	contract, exists := oldContracts[c.ID]
+	//	if !exists {
+	//		t.Fatal("Recovered unknown contract", c.ID)
+	//	}
+	//	if !reflect.DeepEqual(c, contract) {
+	//		t.Fatal("Recovered contract doesn't match expected contract")
+	//	}
+	//}
 }

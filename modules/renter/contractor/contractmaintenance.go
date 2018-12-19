@@ -347,7 +347,7 @@ func (c *Contractor) managedNewContract(host modules.HostDBEntry, contractFundin
 		StartHeight:   c.blockHeight,
 		EndHeight:     endHeight,
 		RefundAddress: uc.UnlockHash(),
-		RenterSeed:    proto.EphemeralRenterSeed(seed, c.blockHeight),
+		RenterSeed:    proto.EphemeralRenterSeed(seed, endHeight),
 	}
 	c.mu.RUnlock()
 
@@ -496,7 +496,7 @@ func (c *Contractor) managedRenew(sc *proto.SafeContract, contractFunding types.
 		StartHeight:   c.blockHeight,
 		EndHeight:     newEndHeight,
 		RefundAddress: uc.UnlockHash(),
-		RenterSeed:    proto.EphemeralRenterSeed(seed, c.blockHeight),
+		RenterSeed:    proto.EphemeralRenterSeed(seed, newEndHeight),
 	}
 	c.mu.RUnlock()
 

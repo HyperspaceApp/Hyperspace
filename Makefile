@@ -38,6 +38,8 @@ dependencies:
 	go get -u github.com/gorilla/websocket
 	go get -u github.com/dchest/siphash
 	go get -u github.com/dchest/threefish
+	go get -u golang.org/x/crypto/curve25519
+	go get -u golang.org/x/crypto/chacha20poly1305
 	# Frontend Dependencies
 	go get -u golang.org/x/crypto/ssh/terminal
 	go get -u github.com/spf13/cobra/...
