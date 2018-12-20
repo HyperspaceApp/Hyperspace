@@ -18,7 +18,7 @@ var errInvalidDownloader = errors.New("downloader has been invalidated because i
 // proportional to the data retrieved.
 type Downloader interface {
 	// Download requests the specified sector data.
-	// Download(root crypto.Hash, offset, length uint32) ([]byte, error)
+	Download(root crypto.Hash, offset, length uint32) ([]byte, error)
 
 	// Sector retrieves the sector with the specified Merkle root, and revises
 	// the underlying contract to pay the host proportionally to the data

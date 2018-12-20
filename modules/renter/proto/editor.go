@@ -204,6 +204,7 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 	return &Editor{
 		host:        host,
 		hdb:         hdb,
+		height:      currentHeight,
 		contractID:  id,
 		contractSet: cs,
 		conn:        conn,
