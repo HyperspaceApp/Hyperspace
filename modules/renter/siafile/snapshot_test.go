@@ -49,7 +49,7 @@ func TestSnapshot(t *testing.T) {
 		t.Error("pubkeytables don't match")
 	}
 	if sf.staticMetadata.HyperspacePath != snap.staticHyperspacePath {
-		t.Error("siapaths don't match")
+		t.Error("hyperspacepaths don't match")
 	}
 	// Compare the pieces.
 	for i := range sf.staticChunks {

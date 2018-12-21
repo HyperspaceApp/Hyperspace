@@ -69,9 +69,9 @@ func (rt *renterTester) checkDirInitialized(siaPath string) error {
 	if stuckHealth != siadir.DefaultDirHealth {
 		return fmt.Errorf("Expected Stuck Health to be %v, but instead was %v", siadir.DefaultDirHealth, stuckHealth)
 	}
-	// Check that the SiaPath was initialized properly
-	if siaDir.SiaPath() != siaPath {
-		return fmt.Errorf("Expected siapath to be %v, got %v", siaPath, siaDir.SiaPath())
+	// Check that the HyperspacePath was initialized properly
+	if siaDir.HyperspacePath() != siaPath {
+		return fmt.Errorf("Expected hyperspacepath to be %v, got %v", siaPath, siaDir.HyperspacePath())
 	}
 	return nil
 }
@@ -177,11 +177,11 @@ func TestRenterListDirectory(t *testing.T) {
 // a DirectoryInfo struct and a SiaDirSetEntry struct
 func compareDirectoryInfoAndMetadata(di modules.DirectoryInfo, siaDir *siadir.SiaDirSetEntry) error {
 	_, stuckHealth, lastHealthCheckTime := siaDir.Health()
-	if di.SiaPath != siaDir.SiaPath() {
-		return fmt.Errorf("SiaPaths not equal %v and %v", di.SiaPath, siaDir.SiaPath())
+	if di.HyperspacePath != siaDir.HyperspacePath() {
+		return fmt.Errorf("HyperspacePaths not equal %v and %v", di.HyperspacePath, siaDir.HyperspacePath())
 	}
 	if di.Health != stuckHealth {
-		return fmt.Errorf("Healths not equal %v and %v", di.SiaPath, stuckHealth)
+		return fmt.Errorf("Healths not equal %v and %v", di.HyperspacePath, stuckHealth)
 	}
 	if di.LastHealthCheckTime != lastHealthCheckTime {
 		return fmt.Errorf("LastHealthCheckTimes not equal %v and %v", di.LastHealthCheckTime, lastHealthCheckTime)

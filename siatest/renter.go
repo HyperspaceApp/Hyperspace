@@ -228,8 +228,8 @@ func (tn *TestNode) FileInfo(rf *RemoteFile) (modules.FileInfo, error) {
 // Upload uses the node to upload the file with the option to overwrite if exists.
 func (tn *TestNode) Upload(lf *LocalFile, dataPieces, parityPieces uint64, force bool) (*RemoteFile, error) {
 	// Upload file
-	siapath := tn.HyperspacePath(lf.path)
-	err := tn.RenterUploadForcePost(lf.path, siapath, dataPieces, parityPieces, force)
+	hyperspacepath := tn.HyperspacePath(lf.path)
+	err := tn.RenterUploadForcePost(lf.path, hyperspacepath, dataPieces, parityPieces, force)
 	if err != nil {
 		return nil, err
 	}

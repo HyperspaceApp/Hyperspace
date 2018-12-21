@@ -65,9 +65,9 @@ func (r *Renter) newRenterTestFile() (*siafile.SiaFileSetEntry, error) {
 	}
 	// Create File
 	up := modules.FileUploadParams{
-		Source:      "",
-		HyperspacePath:     name,
-		ErasureCode: rsc,
+		Source:         "",
+		HyperspacePath: name,
+		ErasureCode:    rsc,
 	}
 	entry, err := r.staticFileSet.NewSiaFile(up, crypto.GenerateSiaKey(crypto.RandomCipherType()), 1000, 0777)
 	if err != nil {
@@ -392,7 +392,7 @@ func TestRenterDeleteFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siapath := entry.HyperspacePath()
+	hyperspacepath := entry.HyperspacePath()
 	err = entry.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -403,7 +403,7 @@ func TestRenterDeleteFile(t *testing.T) {
 		t.Errorf("Expected '%v' got '%v'", siafile.ErrUnknownPath, err)
 	}
 	// Delete the file.
-	err = rt.renter.DeleteFile(siapath)
+	err = rt.renter.DeleteFile(hyperspacepath)
 	if err != nil {
 		t.Error(err)
 	}
@@ -411,7 +411,7 @@ func TestRenterDeleteFile(t *testing.T) {
 		t.Error("file was deleted, but is still reported in FileList")
 	}
 	// Confirm that file was removed from SiaFileSet
-	_, err = rt.renter.staticFileSet.Open(siapath)
+	_, err = rt.renter.staticFileSet.Open(hyperspacepath)
 	if err == nil {
 		t.Fatal("Deleted file still found in staticFileSet")
 	}
@@ -425,12 +425,12 @@ func TestRenterDeleteFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siapath2 := entry2.HyperspacePath()
+	hyperspacepath2 := entry2.HyperspacePath()
 	err = entry2.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = rt.renter.RenameFile(siapath2, "one")
+	err = rt.renter.RenameFile(hyperspacepath2, "one")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -654,28 +654,28 @@ func TestRenterFileDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	params := modules.FileUploadParams{
-		Source:      source,
-		HyperspacePath:     fileName,
-		ErasureCode: ec,
+		Source:         source,
+		HyperspacePath: fileName,
+		ErasureCode:    ec,
 	}
 	err = rt.renter.Upload(params)
 	if err != nil {
 		t.Fatal("failed to upload file:", err)
 	}
 
-	// Get file and check siapath
+	// Get file and check hyperspacepath
 	f, err := rt.renter.File(fileName)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if f.HyperspacePath != fileName {
-		t.Fatalf("siapath not set as expected: got %v expected %v", f.HyperspacePath, fileName)
+		t.Fatalf("hyperspacepath not set as expected: got %v expected %v", f.HyperspacePath, fileName)
 	}
 
 	// Confirm .sia file exists on disk in the SiapathRoot directory
 	renterDir := filepath.Join(rt.dir, modules.RenterDir)
-	siapathRootDir := filepath.Join(renterDir, modules.SiapathRoot)
-	fullPath := filepath.Join(siapathRootDir, f.HyperspacePath+".sia")
+	hyperspacepathRootDir := filepath.Join(renterDir, modules.SiapathRoot)
+	fullPath := filepath.Join(hyperspacepathRootDir, f.HyperspacePath+".sia")
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
 		t.Fatal("No .sia file found on disk")
 	}

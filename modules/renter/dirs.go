@@ -44,7 +44,7 @@ func (r *Renter) DirInfo(siaPath string) (modules.DirectoryInfo, error) {
 	return modules.DirectoryInfo{
 		Health:              stuckHealth,
 		LastHealthCheckTime: lastHealthCheckTime,
-		SiaPath:             siaPath,
+		HyperspacePath:      siaPath,
 	}, nil
 }
 

@@ -190,7 +190,7 @@ type ContractUtility struct {
 type DirectoryInfo struct {
 	Health              float64   `json:"health"`
 	LastHealthCheckTime time.Time `json:"lasthealthchecktime"`
-	SiaPath             string    `json:"siapath"`
+	HyperspacePath      string    `json:"hyperspacepath"`
 }
 
 // DownloadInfo provides information about a file that has been requested for
@@ -577,7 +577,7 @@ type Renter interface {
 	// Streamer creates a io.ReadSeeker that can be used to stream downloads
 	// from the Sia network and also returns the fileName of the streamed
 	// resource.
-	Streamer(siapath string) (string, Streamer, error)
+	Streamer(hyperspacepath string) (string, Streamer, error)
 
 	// Upload uploads a file using the input parameters.
 	Upload(FileUploadParams) error

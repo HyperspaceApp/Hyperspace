@@ -212,7 +212,7 @@ func testSiafileTimestamps(t *testing.T, tg *siatest.TestGroup) {
 	beforeRenameTime := time.Now()
 
 	// Rename the file and check that only the ChangeTime changed.
-	rf, err = r.Rename(rf, "newsiapath")
+	rf, err = r.Rename(rf, "newhyperspacepath")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +525,7 @@ func testDirectories(t *testing.T, tg *siatest.TestGroup) {
 		t.Fatal("Expected 1 DirectoryInfo to be returned but got:", len(rgd.Directories))
 	}
 	if rgd.Directories[0].HyperspacePath != rd.HyperspacePath() {
-		t.Fatalf("SiaPaths do not match %v and %v", rgd.Directories[0].HyperspacePath, rd.HyperspacePath())
+		t.Fatalf("HyperspacePaths do not match %v and %v", rgd.Directories[0].HyperspacePath, rd.HyperspacePath())
 	}
 	if len(rgd.Files) != 0 {
 		t.Fatal("Expected no files in directory but found:", len(rgd.Files))

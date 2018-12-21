@@ -87,7 +87,7 @@ func (entry *SiaDirSetEntry) close() error {
 	}
 	delete(entry.threadMap, entry.threadUID)
 	if len(entry.threadMap) == 0 {
-		delete(entry.siaDirSet.siaDirMap, entry.SiaPath())
+		delete(entry.siaDirSet.siaDirMap, entry.HyperspacePath())
 	}
 	return nil
 }

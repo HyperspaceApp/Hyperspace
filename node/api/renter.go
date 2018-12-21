@@ -967,7 +967,7 @@ func (api *API) renterUploadHandler(w http.ResponseWriter, req *http.Request, ps
 
 // renterDirHandlerGET handles the API call to create a directory
 func (api *API) renterDirHandlerGET(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-	directories, files, err := api.renter.DirList(strings.TrimPrefix(ps.ByName("siapath"), "/"))
+	directories, files, err := api.renter.DirList(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
 	if err != nil {
 		WriteError(w, Error{"failed to get directory contents:" + err.Error()}, http.StatusInternalServerError)
 		return
@@ -998,7 +998,7 @@ func (api *API) renterDirHandlerPOST(w http.ResponseWriter, req *http.Request, p
 		return
 	}
 	if action == "delete" {
-		err := api.renter.DeleteDir(strings.TrimPrefix(ps.ByName("siapath"), "/"))
+		err := api.renter.DeleteDir(strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"))
 		if err != nil {
 			WriteError(w, Error{"failed to create directory: " + err.Error()}, http.StatusInternalServerError)
 			return

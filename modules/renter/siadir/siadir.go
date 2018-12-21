@@ -67,8 +67,8 @@ type (
 		// RootDir is the path to the root directory on disk
 		RootDir string `json:"rootdir"`
 
-		// SiaPath is the path to the siadir on the sia network
-		SiaPath string `json:"siapath"`
+		// HyperspacePath is the path to the siadir on the sia network
+		HyperspacePath string `json:"hyperspacepath"`
 	}
 )
 
@@ -115,7 +115,7 @@ func createDirMetadata(siaPath, rootDir string) (siaDirMetadata, writeaheadlog.U
 		StuckHealth:         DefaultDirHealth,
 		LastHealthCheckTime: time.Now(),
 		RootDir:             rootDir,
-		SiaPath:             siaPath,
+		HyperspacePath:      siaPath,
 	}
 	update, err := createMetadataUpdate(md)
 	return md, update, err
@@ -134,7 +134,7 @@ func LoadSiaDir(rootDir, siaPath string, wal *writeaheadlog.WAL) (*SiaDir, error
 
 // save saves the directory metadata to disk
 func (md siaDirMetadata) save() error {
-	path := filepath.Join(md.RootDir, md.SiaPath, SiaDirExtension)
+	path := filepath.Join(md.RootDir, md.HyperspacePath, SiaDirExtension)
 	return persist.SaveJSON(siaDirMetadataHeader, md, path)
 }
 
@@ -163,11 +163,11 @@ func (sd *SiaDir) Health() (float64, float64, time.Time) {
 	return sd.staticMetadata.Health, sd.staticMetadata.StuckHealth, sd.staticMetadata.LastHealthCheckTime
 }
 
-// SiaPath returns the SiaPath of the SiaDir
-func (sd *SiaDir) SiaPath() string {
+// HyperspacePath returns the HyperspacePath of the SiaDir
+func (sd *SiaDir) HyperspacePath() string {
 	sd.mu.Lock()
 	defer sd.mu.Unlock()
-	return sd.staticMetadata.SiaPath
+	return sd.staticMetadata.HyperspacePath
 }
 
 // UpdateHealth updates the SiaDir metadata on disk with the new Health value

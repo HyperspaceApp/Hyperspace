@@ -91,14 +91,14 @@ func TestRenterSaveLoad(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siapath := entry.HyperspacePath()
+	hyperspacepath := entry.HyperspacePath()
 	err = entry.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Check that SiaFileSet knows of the SiaFile
-	entry, err = rt.renter.staticFileSet.Open(siapath)
+	entry, err = rt.renter.staticFileSet.Open(hyperspacepath)
 	if err != nil {
 		t.Fatal("SiaFile not found in the renter's staticFileSet after creation")
 	}
@@ -134,7 +134,7 @@ func TestRenterSaveLoad(t *testing.T) {
 	}
 
 	// Check that SiaFileSet loaded the renter's file
-	_, err = rt.renter.staticFileSet.Open(siapath)
+	_, err = rt.renter.staticFileSet.Open(hyperspacepath)
 	if err != nil {
 		t.Fatal("SiaFile not found in the renter's staticFileSet after load")
 	}

@@ -21,9 +21,9 @@ func equalMetadatas(md, md2 siaDirMetadata) error {
 	if md.StuckHealth != md2.StuckHealth {
 		return fmt.Errorf("stuck healths not equal, %v and %v", md.StuckHealth, md2.StuckHealth)
 	}
-	// Check SiaPath
-	if md.SiaPath != md2.SiaPath {
-		return fmt.Errorf("siapaths not equal, %v and %v", md.SiaPath, md2.SiaPath)
+	// Check HyperspacePath
+	if md.HyperspacePath != md2.HyperspacePath {
+		return fmt.Errorf("hyperspacepaths not equal, %v and %v", md.HyperspacePath, md2.HyperspacePath)
 	}
 	// Check RootDir
 	if md.RootDir != md2.RootDir {
@@ -107,7 +107,7 @@ func TestCreateReadDeleteUpdate(t *testing.T) {
 	// Read update
 	path := readDeleteUpdate(update)
 	// Compare values
-	siaDirPath := filepath.Join(sd.staticMetadata.RootDir, sd.staticMetadata.SiaPath)
+	siaDirPath := filepath.Join(sd.staticMetadata.RootDir, sd.staticMetadata.HyperspacePath)
 	if path != siaDirPath {
 		t.Error("paths don't match")
 	}
@@ -152,7 +152,7 @@ func testApply(t *testing.T, siadir *SiaDir, apply func(...writeaheadlog.Update)
 		t.Fatal("Failed to apply update", err)
 	}
 	// Open file.
-	sd, err := LoadSiaDir(metadata.RootDir, metadata.SiaPath, siadir.wal)
+	sd, err := LoadSiaDir(metadata.RootDir, metadata.HyperspacePath, siadir.wal)
 	if err != nil {
 		t.Fatal("Failed to load siadir", err)
 	}

@@ -153,7 +153,7 @@ func (sd *SiaDir) createAndApplyTransaction(updates ...writeaheadlog.Update) err
 func (sd *SiaDir) createDeleteUpdate() writeaheadlog.Update {
 	return writeaheadlog.Update{
 		Name:         updateDeleteName,
-		Instructions: []byte(filepath.Join(sd.staticMetadata.RootDir, sd.staticMetadata.SiaPath)),
+		Instructions: []byte(filepath.Join(sd.staticMetadata.RootDir, sd.staticMetadata.HyperspacePath)),
 	}
 }
 

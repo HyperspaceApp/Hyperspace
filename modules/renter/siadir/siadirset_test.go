@@ -34,7 +34,7 @@ func TestSiaDirSetOpenClose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sds.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaDirSetEntry found")
@@ -84,7 +84,7 @@ func TestDirsInMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sds.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaDirSetEntry found")
@@ -156,7 +156,7 @@ func TestUpdateSiaDirSetHealth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	siaPath := entry.SiaPath()
+	siaPath := entry.HyperspacePath()
 	exists, err := sds.Exists(siaPath)
 	if !exists {
 		t.Fatal("No SiaDirSetEntry found")

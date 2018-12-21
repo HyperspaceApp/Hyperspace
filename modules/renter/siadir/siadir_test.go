@@ -48,9 +48,9 @@ func TestNewSiaDir(t *testing.T) {
 	if stuckHealth != DefaultDirHealth {
 		t.Fatalf("SiaDir stuck health not set properly: got %v expected %v", stuckHealth, DefaultDirHealth)
 	}
-	// Check that the SiaPath was initialized properly
-	if siaDir.SiaPath() != siaPath {
-		t.Fatalf("SiaDir SiaPath not set properly: got %v expected %v", siaDir.SiaPath(), siaPath)
+	// Check that the HyperspacePath was initialized properly
+	if siaDir.HyperspacePath() != siaPath {
+		t.Fatalf("SiaDir HyperspacePath not set properly: got %v expected %v", siaDir.HyperspacePath(), siaPath)
 	}
 	// Check that the directory and .siadir file were created on disk
 	_, err = os.Stat(filepath.Join(rootDir, siaPath))
@@ -87,9 +87,9 @@ func TestNewSiaDir(t *testing.T) {
 	if stuckHealth != DefaultDirHealth {
 		t.Fatalf("SiaDir stuck health not set properly: got %v expected %v", stuckHealth, DefaultDirHealth)
 	}
-	// Check that the SiaPath was initialized properly
-	if subDir.SiaPath() != siaPathDir {
-		t.Fatalf("SiaDir SiaPath not set properly: got %v expected %v", subDir.SiaPath(), siaPathDir)
+	// Check that the HyperspacePath was initialized properly
+	if subDir.HyperspacePath() != siaPathDir {
+		t.Fatalf("SiaDir HyperspacePath not set properly: got %v expected %v", subDir.HyperspacePath(), siaPathDir)
 	}
 
 	// Check Root Directory
@@ -108,9 +108,9 @@ func TestNewSiaDir(t *testing.T) {
 	if stuckHealth != DefaultDirHealth {
 		t.Fatalf("SiaDir stuck health not set properly: got %v expected %v", stuckHealth, DefaultDirHealth)
 	}
-	// Check that the SiaPath was initialized properly
-	if rootSiaDir.SiaPath() != "" {
-		t.Fatalf("SiaDir SiaPath not set properly: got %v expected %v", rootSiaDir.SiaPath(), "")
+	// Check that the HyperspacePath was initialized properly
+	if rootSiaDir.HyperspacePath() != "" {
+		t.Fatalf("SiaDir HyperspacePath not set properly: got %v expected %v", rootSiaDir.HyperspacePath(), "")
 	}
 	// Check that the directory and .siadir file were created on disk
 	_, err = os.Stat(rootDir)
@@ -218,7 +218,7 @@ func TestDelete(t *testing.T) {
 	if !entry.Deleted() {
 		t.Fatal("Deleted flag was not set correctly")
 	}
-	siaDirPath := filepath.Join(entry.staticMetadata.RootDir, entry.staticMetadata.SiaPath)
+	siaDirPath := filepath.Join(entry.staticMetadata.RootDir, entry.staticMetadata.HyperspacePath)
 	if _, err := os.Open(siaDirPath); !os.IsNotExist(err) {
 		t.Fatal("Expected a siadir doesn't exist error but got", err)
 	}

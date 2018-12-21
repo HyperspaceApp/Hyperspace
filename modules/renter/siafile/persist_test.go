@@ -358,12 +358,12 @@ func TestRename(t *testing.T) {
 	entry, _, _ := newTestSiaFileSetWithFile()
 
 	// Create new paths for the file.
-	newSiaPath := entry.staticMetadata.HyperspacePath + "1"
+	newHyperspacePath := entry.staticMetadata.HyperspacePath + "1"
 	newHyperspaceFilePath := entry.siaFilePath + "1"
 	oldHyperspaceFilePath := entry.siaFilePath
 
 	// Rename file
-	if err := entry.Rename(newSiaPath, newHyperspaceFilePath); err != nil {
+	if err := entry.Rename(newHyperspacePath, newHyperspaceFilePath); err != nil {
 		t.Fatal("Failed to rename file", err)
 	}
 

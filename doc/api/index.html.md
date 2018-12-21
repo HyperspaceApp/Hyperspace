@@ -14,7 +14,7 @@ search: true
 # Introduction
 
 ## Welcome to the Sia Storage Platform API!
-> Example GET curl call 
+> Example GET curl call
 
 ```go
 curl -A "Sia-Agent" "localhost:9980/wallet/transactions?startheight=1&endheight=250"
@@ -118,19 +118,19 @@ Returns information about the consensus set, such as the current block height.
 }
 ```
 **synced** | boolean
-True if the consensus set is synced with the network, e.g. it has downloaded the entire blockchain.  
+True if the consensus set is synced with the network, e.g. it has downloaded the entire blockchain.
 
 **height** | blockheight
-Number of blocks preceding the current block.  
+Number of blocks preceding the current block.
 
 **currentblock** | hash
-Hash of the current block.  
+Hash of the current block.
 
 **target** | hash
-An immediate child block of this block must have a hash less than this target for it to be valid.  
+An immediate child block of this block must have a hash less than this target for it to be valid.
 
 **difficulty** | arbitrary-precision integer
-The difficulty of the current block target.  
+The difficulty of the current block target.
 
 ## /consensus/blocks [GET]
 
@@ -141,18 +141,18 @@ Returns the block for a given id or height.
 One of the following parameters must be specified.
 
 **id** | blockID
-BlockID of the requested block.  
+BlockID of the requested block.
 
 **height** | blockheight
-BlockHeight of the requested block.  
+BlockHeight of the requested block.
 
 ### JSON Response
 > JSON Response Example
 
 ```go
 {
-    "height": 20032, 
-    "id": "00000000000033b9eb57fa63a51adeea857e70f6415ebbfe5df2a01f0d0477f4", 
+    "height": 20032,
+    "id": "00000000000033b9eb57fa63a51adeea857e70f6415ebbfe5df2a01f0d0477f4",
     "minerpayouts": [
         {
             "unlockhash": "c199cd180e19ef7597bcf4beecdd4f211e121d085e24432959c42bdf9030e32b9583e1c2727c",
@@ -250,7 +250,7 @@ Returns the set of constants in use.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "blockfrequency":         600,        // seconds per block
@@ -277,55 +277,55 @@ Returns the set of constants in use.
 }
 ```
 **blockfrequency** | blocks / second
-Target for how frequently new blocks should be mined.  
+Target for how frequently new blocks should be mined.
 
 **blocksizelimit** | bytes
-Maximum size, in bytes, of a block. Blocks larger than this will be rejected by peers.  
+Maximum size, in bytes, of a block. Blocks larger than this will be rejected by peers.
 
 **extremefuturethreshold** | seconds
-Farthest a block's timestamp can be in the future before the block is rejected outright.  
+Farthest a block's timestamp can be in the future before the block is rejected outright.
 
 **futurethreshold** | seconds
-How far in the future a block can be without being rejected. A block further into the future will not be accepted immediately, but the daemon will attempt to accept the block as soon as it is valid.  
+How far in the future a block can be without being rejected. A block further into the future will not be accepted immediately, but the daemon will attempt to accept the block as soon as it is valid.
 
 **genesistimestamp** | unix timestamp
-Timestamp of the genesis block.  
+Timestamp of the genesis block.
 
 **maturitydelay** | number of blocks
-Number of children a block must have before it is considered "mature."  
+Number of children a block must have before it is considered "mature."
 
 **mediantimestampwindow** | number of blocks
-Duration of the window used to adjust the difficulty.  
+Duration of the window used to adjust the difficulty.
 
 **siafundcount** | siafunds
-Total number of siafunds.  
+Total number of siafunds.
 
 **siafundportion** | fraction
-Fraction of each file contract payout given to siafund holders.  
+Fraction of each file contract payout given to siafund holders.
 
 **targetwindow** | number of blocks
-Height of the window used to adjust the difficulty.  
+Height of the window used to adjust the difficulty.
 
 **initialcoinbase** | siacoin
-Number of coins given to the miner of the first block. Note that elsewhere in the API currency is typically returned in hastings and as a bignum. This is not the case here.  
+Number of coins given to the miner of the first block. Note that elsewhere in the API currency is typically returned in hastings and as a bignum. This is not the case here.
 
 **minimumcoinbase** | siacoin
-Minimum number of coins paid out to the miner of a block (the coinbase decreases with each block). Note that elsewhere in the API currency is typically returned in hastings and as a bignum. This is not the case here.  
+Minimum number of coins paid out to the miner of a block (the coinbase decreases with each block). Note that elsewhere in the API currency is typically returned in hastings and as a bignum. This is not the case here.
 
 **roottarget** | hash
-Initial target.  
+Initial target.
 
 **rootdepth** | hash
-Initial depth.  
+Initial depth.
 
 **maxtargetadjustmentup** | fraction
-Largest allowed ratio between the old difficulty and the new difficulty.  
+Largest allowed ratio between the old difficulty and the new difficulty.
 
 **maxtargetadjustmentdown** | fraction
-Smallest allowed ratio between the old difficulty and the new difficulty.  
+Smallest allowed ratio between the old difficulty and the new difficulty.
 
 **siacoinprecision** | hastings per siacoin
-Number of Hastings in one Siacoin.  
+Number of Hastings in one Siacoin.
 
 ## /daemon/stop [GET]
 
@@ -336,11 +336,11 @@ standard success or error response. See [standard responses](#standard-responses
 
 ## /daemon/version [GET]
 
-Returns the version of the Sia daemon currently running. 
+Returns the version of the Sia daemon currently running.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
 "version": "1.3.7" // string
@@ -359,7 +359,7 @@ returns information about the gateway, including the list of connected peers.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
     "netaddress":"333.333.333.333:9981",  // string
@@ -376,22 +376,22 @@ returns information about the gateway, including the list of connected peers.
 }
 ```
 **netaddress** | string
-netaddress is the network address of the gateway as seen by the rest of the network. The address consists of the external IP address and the port Sia is listening on. It represents a `modules.NetAddress`.  
+netaddress is the network address of the gateway as seen by the rest of the network. The address consists of the external IP address and the port Sia is listening on. It represents a `modules.NetAddress`.
 
 **peers** | array
-peers is an array of peers the gateway is connected to. It represents an array of `modules.Peer`s.  
-        
+peers is an array of peers the gateway is connected to. It represents an array of `modules.Peer`s.
+
 **inbound** | boolean
-inbound is true when the peer initiated the connection. This field is exposed as outbound peers are generally trusted more than inbound peers, as inbound peers are easily manipulated by an adversary.  
+inbound is true when the peer initiated the connection. This field is exposed as outbound peers are generally trusted more than inbound peers, as inbound peers are easily manipulated by an adversary.
 
 **local** | boolean
-local is true if the peer's IP address belongs to a local address range such as 192.168.x.x or 127.x.x.x  
+local is true if the peer's IP address belongs to a local address range such as 192.168.x.x or 127.x.x.x
 
 **netaddress** | string
-netaddress is the address of the peer. It represents a `modules.NetAddress`.  
-        
+netaddress is the address of the peer. It represents a `modules.NetAddress`.
+
 **version** | string
-version is the version number of the peer.  
+version is the version number of the peer.
 
 **maxdownloadspeed** | bytes per second
 Max download speed permitted in bytes per second
@@ -406,10 +406,10 @@ Modify settings that control the gateway's behavior.
 ### Query String Parameters
 #### OPTIONAL
 **maxdownloadspeed** | bytes per second
-Max download speed permitted, speed provide in bytes per second.  
+Max download speed permitted, speed provide in bytes per second.
 
 **maxuploadspeed** | bytes per second
-Max upload speed permitted, speed provide in bytes per second.  
+Max upload speed permitted, speed provide in bytes per second.
 
 ### Response
 
@@ -417,15 +417,15 @@ standard success or error response. See [standard responses](#standard-responses
 
 ## /gateway/connect/:*netaddress* [POST]
 
-connects the gateway to a peer. The peer is added to the node list if it is not already present. The node list is the list of all nodes the gateway knows about, but is not necessarily connected to.  
+connects the gateway to a peer. The peer is added to the node list if it is not already present. The node list is the list of all nodes the gateway knows about, but is not necessarily connected to.
 
 ### Path Parameters
 #### REQUIRED
-netaddress is the address of the peer to connect to. It should be a reachable ip address and port number, of the form `IP:port`. IPV6 addresses must be enclosed in square brackets.  
+netaddress is the address of the peer to connect to. It should be a reachable ip address and port number, of the form `IP:port`. IPV6 addresses must be enclosed in square brackets.
 
 **netaddress** | string
-Example IPV4 address: 123.456.789.0:123  
-Example IPV6 address: [123::456]:789  
+Example IPV4 address: 123.456.789.0:123
+Example IPV6 address: [123::456]:789
 
 ### Response
 standard success or error response. See [standard responses](#Standard-Responses).
@@ -436,11 +436,11 @@ disconnects the gateway from a peer. The peer remains in the node list. Disconne
 
 ### Path Parameters
 #### REQUIRED
-netaddress is the address of the peer to connect to. It should be a reachable ip address and port number, of the form `IP:port`. IPV6 addresses must be enclosed in square brackets.  
+netaddress is the address of the peer to connect to. It should be a reachable ip address and port number, of the form `IP:port`. IPV6 addresses must be enclosed in square brackets.
 
 **netaddress** | string
-Example IPV4 address: 123.456.789.0:123  
-Example IPV6 address: [123::456]:789  
+Example IPV4 address: 123.456.789.0:123
+Example IPV6 address: [123::456]:789
 
 ### Response
 standard success or error response. See [standard responses](#standard-responses).
@@ -455,7 +455,7 @@ fetches status information about the host.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "externalsettings": {
@@ -533,180 +533,180 @@ fetches status information about the host.
   "workingstatus":        "checking"  // string
 }
 ```
-#### externalsettings  
-The settings that get displayed to untrusted nodes querying the host's status.  
-  
-**acceptingcontracts** | boolean  
-Whether or not the host is accepting new contracts.  
+#### externalsettings
+The settings that get displayed to untrusted nodes querying the host's status.
 
-**maxdownloadbatchsize** | bytes  
-The maximum size of a single download request from a renter. Each download request has multiple round trips of communication that exchange money. Larger batch sizes mean fewer round trips, but more financial risk for the host - the renter can get a free batch when downloading by refusing to provide a signature.  
+**acceptingcontracts** | boolean
+Whether or not the host is accepting new contracts.
 
-**maxduration** | blocks  
-The maximum duration that a host will allow for a file contract. The host commits to keeping files for the full duration under the threat of facing a large penalty for losing or dropping data before the duration is complete. The storage proof window of an incoming file contract must end before the current height + maxduration.  
+**maxdownloadbatchsize** | bytes
+The maximum size of a single download request from a renter. Each download request has multiple round trips of communication that exchange money. Larger batch sizes mean fewer round trips, but more financial risk for the host - the renter can get a free batch when downloading by refusing to provide a signature.
 
-**maxrevisebatchsize** | bytes  
-The maximum size of a single batch of file contract revisions. The renter can perform DoS attacks on the host by uploading a batch of data then refusing to provide a signature to pay for the data. The host can reduce this exposure by limiting the batch size. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.  
+**maxduration** | blocks
+The maximum duration that a host will allow for a file contract. The host commits to keeping files for the full duration under the threat of facing a large penalty for losing or dropping data before the duration is complete. The storage proof window of an incoming file contract must end before the current height + maxduration.
+
+**maxrevisebatchsize** | bytes
+The maximum size of a single batch of file contract revisions. The renter can perform DoS attacks on the host by uploading a batch of data then refusing to provide a signature to pay for the data. The host can reduce this exposure by limiting the batch size. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.
 
 **netaddress** | string
-The IP address or hostname (including port) that the host should be contacted at.  
+The IP address or hostname (including port) that the host should be contacted at.
 
-**remainingstorage** | bytes  
-The amount of unused storage capacity on the host in bytes. It should be noted that the host can lie.  
+**remainingstorage** | bytes
+The amount of unused storage capacity on the host in bytes. It should be noted that the host can lie.
 
-**sectorsize** | bytes  
-The smallest amount of data in bytes that can be uploaded or downloaded when performing calls to the host.  
+**sectorsize** | bytes
+The smallest amount of data in bytes that can be uploaded or downloaded when performing calls to the host.
 
-**totalstorage** | bytes  
-The total amount of storage capacity on the host. It should be noted that the host can lie.  
+**totalstorage** | bytes
+The total amount of storage capacity on the host. It should be noted that the host can lie.
 
 **unlockhash** | hash
-The unlock hash is the address at which the host can be paid when forming file contracts.  
+The unlock hash is the address at which the host can be paid when forming file contracts.
 
-**windowsize** | blocks  
-The storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.  
+**windowsize** | blocks
+The storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.
 
-**collateral** | hastings / byte / block  
-The maximum amount of money that the host will put up as collateral for storage that is contracted by the renter.  
+**collateral** | hastings / byte / block
+The maximum amount of money that the host will put up as collateral for storage that is contracted by the renter.
 
-**maxcollateral** | hastings  
-The maximum amount of collateral that the host will put into a single file contract.  
+**maxcollateral** | hastings
+The maximum amount of collateral that the host will put into a single file contract.
 
-**contractprice** | hastings  
-The price that a renter has to pay to create a contract with the host. The payment is intended to cover transaction fees for the file contract revision and the storage proof that the host will be submitting to the blockchain.  
+**contractprice** | hastings
+The price that a renter has to pay to create a contract with the host. The payment is intended to cover transaction fees for the file contract revision and the storage proof that the host will be submitting to the blockchain.
 
-**downloadbandwidthprice** | hastings / byte  
-The price that a renter has to pay when downloading data from the host.  
+**downloadbandwidthprice** | hastings / byte
+The price that a renter has to pay when downloading data from the host.
 
-**storageprice** | hastings / byte / block  
-The price that a renter has to pay to store files with the host.  
+**storageprice** | hastings / byte / block
+The price that a renter has to pay to store files with the host.
 
-**uploadbandwidthprice** | hastings / byte  
-The price that a renter has to pay when uploading data to the host.  
+**uploadbandwidthprice** | hastings / byte
+The price that a renter has to pay when uploading data to the host.
 
-**revisionnumber** | int 
-The revision number indicates to the renter what iteration of settings the host is currently at. Settings are generally signed. If the renter has multiple conflicting copies of settings from the host, the renter can expect the one with the higher revision number to be more recent.  
+**revisionnumber** | int
+The revision number indicates to the renter what iteration of settings the host is currently at. Settings are generally signed. If the renter has multiple conflicting copies of settings from the host, the renter can expect the one with the higher revision number to be more recent.
 
 **version** | string
-The version of external settings being used. This field helps coordinate updates while preserving compatibility with older nodes.  
+The version of external settings being used. This field helps coordinate updates while preserving compatibility with older nodes.
 
-#### financialmetrics  
-The financial status of the host.  
-  
+#### financialmetrics
+The financial status of the host.
+
 **contractcount** | int
-Number of open file contracts.  
+Number of open file contracts.
 
-**contractcompensation** | hastings  
-The amount of money that renters have given to the host to pay for file contracts. The host is required to submit a file contract revision and a storage proof for every file contract that gets created, and the renter pays for the miner fees on  these objects.  
+**contractcompensation** | hastings
+The amount of money that renters have given to the host to pay for file contracts. The host is required to submit a file contract revision and a storage proof for every file contract that gets created, and the renter pays for the miner fees on  these objects.
 
-**potentialcontractcompensation** | hastings  
-The amount of money that renters have given to the host to pay for file contracts which have not been confirmed yet. The potential compensation becomes compensation after the storage proof is submitted.  
+**potentialcontractcompensation** | hastings
+The amount of money that renters have given to the host to pay for file contracts which have not been confirmed yet. The potential compensation becomes compensation after the storage proof is submitted.
 
-**lockedstoragecollateral** | hastings  
-The amount of storage collateral which the host has tied up in file contracts. The host has to commit collateral to a file contract even if there is no storage, but the locked collateral will be returned even if the host does not submit a storage proof - the collateral is not at risk, it is merely set aside so that it can be put at risk later.  
+**lockedstoragecollateral** | hastings
+The amount of storage collateral which the host has tied up in file contracts. The host has to commit collateral to a file contract even if there is no storage, but the locked collateral will be returned even if the host does not submit a storage proof - the collateral is not at risk, it is merely set aside so that it can be put at risk later.
 
-**lostrevenue** | hastings  
-The amount of revenue, including storage revenue and bandwidth revenue, that has been lost due to failed file contracts and failed storage proofs.  
+**lostrevenue** | hastings
+The amount of revenue, including storage revenue and bandwidth revenue, that has been lost due to failed file contracts and failed storage proofs.
 
-**loststoragecollateral** | hastings  
-The amount of collateral that was put up to protect data which has been lost due to failed file contracts and missed storage proofs.  
+**loststoragecollateral** | hastings
+The amount of collateral that was put up to protect data which has been lost due to failed file contracts and missed storage proofs.
 
-**potentialstoragerevenue** | hastings  
-The amount of revenue that the host stands to earn if all storage proofs are submitted corectly and in time.  
+**potentialstoragerevenue** | hastings
+The amount of revenue that the host stands to earn if all storage proofs are submitted corectly and in time.
 
-**riskedstoragecollateral** | hastings  
-The amount of money that the host has risked on file contracts. If the host starts missing storage proofs, the host can forfeit up to this many coins. In the event of a missed storage proof, locked storage collateral gets returned, but risked storage collateral does not get returned.  
+**riskedstoragecollateral** | hastings
+The amount of money that the host has risked on file contracts. If the host starts missing storage proofs, the host can forfeit up to this many coins. In the event of a missed storage proof, locked storage collateral gets returned, but risked storage collateral does not get returned.
 
-**storagerevenue** | hastings  
-The amount of money that the host has earned from storing data. This money has been locked down by successful storage proofs.  
+**storagerevenue** | hastings
+The amount of money that the host has earned from storing data. This money has been locked down by successful storage proofs.
 
-**transactionfeeexpenses** | hastings  
-The amount of money that the host has spent on transaction fees when submitting host announcements, file contract revisions, and storage proofs.  
+**transactionfeeexpenses** | hastings
+The amount of money that the host has spent on transaction fees when submitting host announcements, file contract revisions, and storage proofs.
 
-**downloadbandwidthrevenue** | hastings  
-The amount of money that the host has made from renters downloading their files. This money has been locked in by successsful storage proofs.  
+**downloadbandwidthrevenue** | hastings
+The amount of money that the host has made from renters downloading their files. This money has been locked in by successsful storage proofs.
 
-**potentialdownloadbandwidthrevenue** | hastings  
-The amount of money that the host stands to make from renters that downloaded their files. The host will only realize this revenue if the host successfully submits storage proofs for the related file contracts.  
+**potentialdownloadbandwidthrevenue** | hastings
+The amount of money that the host stands to make from renters that downloaded their files. The host will only realize this revenue if the host successfully submits storage proofs for the related file contracts.
 
-**potentialuploadbandwidthrevenue** | hastings  
-The amount of money that the host stands to make from renters that uploaded files. The host will only realize this revenue if the host successfully submits storage proofs for the related file contracts.  
+**potentialuploadbandwidthrevenue** | hastings
+The amount of money that the host stands to make from renters that uploaded files. The host will only realize this revenue if the host successfully submits storage proofs for the related file contracts.
 
-**uploadbandwidthrevenue** | hastings  
-The amount of money that the host has made from renters uploading their files. This money has been locked in by successful storage proofs.  
+**uploadbandwidthrevenue** | hastings
+The amount of money that the host has made from renters uploading their files. This money has been locked in by successful storage proofs.
 
-#### internalsettings  
-The settings of the host. Most interactions between the user and the host occur by changing the internal settings.  
+#### internalsettings
+The settings of the host. Most interactions between the user and the host occur by changing the internal settings.
 
-**acceptingcontracts** | boolean  
-When set to true, the host will accept new file contracts if the terms are reasonable. When set to false, the host will not accept new file contracts at all.  
+**acceptingcontracts** | boolean
+When set to true, the host will accept new file contracts if the terms are reasonable. When set to false, the host will not accept new file contracts at all.
 
-**maxdownloadbatchsize** | bytes  
-The maximum size of a single download request from a renter. Each download request has multiple round trips of communication that exchange money. Larger batch sizes mean fewer round trips, but more financial risk for the host - the renter can get a free batch when downloading by refusing to provide a signature.  
+**maxdownloadbatchsize** | bytes
+The maximum size of a single download request from a renter. Each download request has multiple round trips of communication that exchange money. Larger batch sizes mean fewer round trips, but more financial risk for the host - the renter can get a free batch when downloading by refusing to provide a signature.
 
-**maxduration** | blocks  
-The maximum duration of a file contract that the host will accept. The storage proof window must end before the current height + maxduration.  
+**maxduration** | blocks
+The maximum duration of a file contract that the host will accept. The storage proof window must end before the current height + maxduration.
 
-**maxrevisebatchsize** | bytes  
-The maximum size of a single batch of file contract revisions. The renter can perform DoS attacks on the host by uploading a batch of data then refusing to provide a signature to pay for the data. The host can reduce this exposure by limiting the batch size. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.  
+**maxrevisebatchsize** | bytes
+The maximum size of a single batch of file contract revisions. The renter can perform DoS attacks on the host by uploading a batch of data then refusing to provide a signature to pay for the data. The host can reduce this exposure by limiting the batch size. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.
 
 **netaddress** | string
-The IP address or hostname (including port) that the host should be contacted at. If left blank, the host will automatically figure out its ip address and use that. If given, the host will use the address given.  
+The IP address or hostname (including port) that the host should be contacted at. If left blank, the host will automatically figure out its ip address and use that. If given, the host will use the address given.
 
-**windowsize** | blocks  
-The storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.  
+**windowsize** | blocks
+The storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.
 
-**collateral** | hastings / byte / block  
-The maximum amount of money that the host will put up as collateral per byte per block of storage that is contracted by the renter.  
+**collateral** | hastings / byte / block
+The maximum amount of money that the host will put up as collateral per byte per block of storage that is contracted by the renter.
 
-**collateralbudget** | hastings  
-The total amount of money that the host will allocate to collateral across all file contracts.  
+**collateralbudget** | hastings
+The total amount of money that the host will allocate to collateral across all file contracts.
 
-**maxcollateral** | hastings  
+**maxcollateral** | hastings
 The maximum amount of collateral that the host will put into a
-single file contract.  
+single file contract.
 
-**mincontractprice** | hastings  
-The minimum price that the host will demand from a renter when forming a contract. Typically this price is to cover transaction fees on the file contract revision and storage proof, but can also be used if the host has a low amount of collateral. The price is a minimum because the host may automatically adjust the price upwards in times of high demand.  
+**mincontractprice** | hastings
+The minimum price that the host will demand from a renter when forming a contract. Typically this price is to cover transaction fees on the file contract revision and storage proof, but can also be used if the host has a low amount of collateral. The price is a minimum because the host may automatically adjust the price upwards in times of high demand.
 
-**mindownloadbandwidthprice** | hastings / byte  
-The minimum price that the host will demand from a renter when the renter is downloading data. If the host is saturated, the host may increase the price from the minimum.  
+**mindownloadbandwidthprice** | hastings / byte
+The minimum price that the host will demand from a renter when the renter is downloading data. If the host is saturated, the host may increase the price from the minimum.
 
-**minstorageprice** | hastings / byte / block  
-The minimum price that the host will demand when storing data for extended periods of time. If the host is low on space, the price of storage may be set higher than the minimum.  
+**minstorageprice** | hastings / byte / block
+The minimum price that the host will demand when storing data for extended periods of time. If the host is low on space, the price of storage may be set higher than the minimum.
 
-**minuploadbandwidthprice** | hastings / byte  
-The minimum price that the host will demand from a renter when the renter is uploading data. If the host is saturated, the host may increase the price from the minimum.  
+**minuploadbandwidthprice** | hastings / byte
+The minimum price that the host will demand from a renter when the renter is uploading data. If the host is saturated, the host may increase the price from the minimum.
 
-#### networkmetrics  
-Information about the network, specifically various ways in which renters have contacted the host.  
+#### networkmetrics
+Information about the network, specifically various ways in which renters have contacted the host.
 
-**downloadcalls** | int 
-The number of times that a renter has attempted to download something from the host.  
+**downloadcalls** | int
+The number of times that a renter has attempted to download something from the host.
 
 **errorcalls** | int
-The number of calls that have resulted in errors. A small number of errors are expected, but a large number of errors indicate either buggy software or malicious network activity. Usually buggy software.  
+The number of calls that have resulted in errors. A small number of errors are expected, but a large number of errors indicate either buggy software or malicious network activity. Usually buggy software.
 
-**formcontractcalls** | int  
-The number of times that a renter has tried to form a contract with the host.  
+**formcontractcalls** | int
+The number of times that a renter has tried to form a contract with the host.
 
 **renewcalls** | int
-The number of times that a renter has tried to renew a contract with the host.  
+The number of times that a renter has tried to renew a contract with the host.
 
 **revisecalls** | int
-The number of times that the renter has tried to revise a contract with the host.  
+The number of times that the renter has tried to revise a contract with the host.
 
 **settingscalls** | int
-The number of times that a renter has queried the host for the host's settings. The settings include the price of bandwidth, which is a price that can adjust every few minutes. This value is usually very high compared to the others.  
+The number of times that a renter has queried the host for the host's settings. The settings include the price of bandwidth, which is a price that can adjust every few minutes. This value is usually very high compared to the others.
 
 **unrecognizedcalls** | int
-The number of times that a renter has attempted to use an unrecognized call. Larger numbers typically indicate buggy software.  
+The number of times that a renter has attempted to use an unrecognized call. Larger numbers typically indicate buggy software.
 
 **connectabilitystatus** | string
-connectabilitystatus is one of "checking", "connectable", or "not connectable", and indicates if the host can connect to itself on its configured NetAddress.  
+connectabilitystatus is one of "checking", "connectable", or "not connectable", and indicates if the host can connect to itself on its configured NetAddress.
 
 **workingstatus** | string
-workingstatus is one of "checking", "working", or "not working" and indicates if the host is being actively used by renters.  
+workingstatus is one of "checking", "working", or "not working" and indicates if the host is being actively used by renters.
 
 ## /host [POST]
 
@@ -715,43 +715,43 @@ Configures hosting parameters. All parameters are optional; unspecified paramete
 ### Query String Parameters
 #### OPTIONAL
 **acceptingcontracts** | boolean
-When set to true, the host will accept new file contracts if the terms are reasonable. When set to false, the host will not accept new file contracts at all.  
+When set to true, the host will accept new file contracts if the terms are reasonable. When set to false, the host will not accept new file contracts at all.
 
 **maxdownloadbatchsize** | bytes
-The maximum size of a single download request from a renter. Each download request has multiple round trips of communication that exchange money. Larger batch sizes mean fewer round trips, but more financial risk for the host - the renter can get a free batch when downloading by refusing to provide a signature.  
+The maximum size of a single download request from a renter. Each download request has multiple round trips of communication that exchange money. Larger batch sizes mean fewer round trips, but more financial risk for the host - the renter can get a free batch when downloading by refusing to provide a signature.
 
 **maxduration** | blocks
-The maximum duration of a file contract that the host will accept. The storage proof window must end before the current height + maxduration.  
+The maximum duration of a file contract that the host will accept. The storage proof window must end before the current height + maxduration.
 
 **maxrevisebatchsize** | bytes
-The maximum size of a single batch of file contract revisions. The renter can perform DoS attacks on the host by uploading a batch of data then refusing to provide a signature to pay for the data. The host can reduce this exposure by limiting the batch size. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.  
+The maximum size of a single batch of file contract revisions. The renter can perform DoS attacks on the host by uploading a batch of data then refusing to provide a signature to pay for the data. The host can reduce this exposure by limiting the batch size. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.
 
-**netaddress** | string  
-The IP address or hostname (including port) that the host should be contacted at. If left blank, the host will automatically figure out its ip address and use that. If given, the host will use the address given.  
+**netaddress** | string
+The IP address or hostname (including port) that the host should be contacted at. If left blank, the host will automatically figure out its ip address and use that. If given, the host will use the address given.
 
 **windowsize** | blocks
 // The storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.
 
 **collateral** | hastings / byte / block
-The maximum amount of money that the host will put up as collateral per byte per block of storage that is contracted by the renter.  
+The maximum amount of money that the host will put up as collateral per byte per block of storage that is contracted by the renter.
 
 **collateralbudget** | hastings
-The total amount of money that the host will allocate to collateral across all file contracts.  
+The total amount of money that the host will allocate to collateral across all file contracts.
 
 **maxcollateral** | hastings
-The maximum amount of collateral that the host will put into a single file contract.  
+The maximum amount of collateral that the host will put into a single file contract.
 
 **mincontractprice** | hastings
-The minimum price that the host will demand from a renter when forming a contract. Typically this price is to cover transaction fees on the file contract revision and storage proof, but can also be used if the host has a low amount of collateral. The price is a minimum because the host may automatically adjust the price upwards in times of high demand.  
+The minimum price that the host will demand from a renter when forming a contract. Typically this price is to cover transaction fees on the file contract revision and storage proof, but can also be used if the host has a low amount of collateral. The price is a minimum because the host may automatically adjust the price upwards in times of high demand.
 
 **mindownloadbandwidthprice** | hastings / byte
-The minimum price that the host will demand from a renter when the renter is downloading data. If the host is saturated, the host may increase the price from the minimum.  
+The minimum price that the host will demand from a renter when the renter is downloading data. If the host is saturated, the host may increase the price from the minimum.
 
 **minstorageprice** | hastings / byte / block
-The minimum price that the host will demand when storing data for extended periods of time. If the host is low on space, the price of storage may be set higher than the minimum.  
+The minimum price that the host will demand when storing data for extended periods of time. If the host is low on space, the price of storage may be set higher than the minimum.
 
 **minuploadbandwidthprice** | hastings / byte
-The minimum price that the host will demand from a renter when the renter is uploading data. If the host is saturated, the host may increase the price from the minimum.  
+The minimum price that the host will demand from a renter when the renter is uploading data. If the host is saturated, the host may increase the price from the minimum.
 
 ### Response
 
@@ -765,8 +765,8 @@ Note that even after the host has been announced, it will not accept new contrac
 
 ### Query String Parameters
 #### OPTIONAL
-**netaddress string** | string  
-The address to be announced. If no address is provided, the automatically discovered address will be used instead.  
+**netaddress string** | string
+The address to be announced. If no address is provided, the automatically discovered address will be used instead.
 
 ### Response
 
@@ -778,7 +778,7 @@ Get contract information from the host database. This call will return all stora
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "contracts": [
@@ -873,7 +873,7 @@ Gets a list of folders tracked by the host's storage manager.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "folders": [
@@ -891,19 +891,19 @@ Gets a list of folders tracked by the host's storage manager.
 }
 ```
 **path** | string
-Absolute path to the storage folder on the local filesystem.  
+Absolute path to the storage folder on the local filesystem.
 
 **capacity** | bytes
-Maximum capacity of the storage folder in bytes. The host will not store more than this many bytes in the folder. This capacity is not checked against the drive's remaining capacity. Therefore, you must manually ensure the disk has sufficient capacity for the folder at all times. Otherwise you risk losing renter's data and failing storage proofs.  
+Maximum capacity of the storage folder in bytes. The host will not store more than this many bytes in the folder. This capacity is not checked against the drive's remaining capacity. Therefore, you must manually ensure the disk has sufficient capacity for the folder at all times. Otherwise you risk losing renter's data and failing storage proofs.
 
-**capacityremaining** | bytes   
-Unused capacity of the storage folder in bytes.  
+**capacityremaining** | bytes
+Unused capacity of the storage folder in bytes.
 
-**failedreads, failedwrites** | int  
-Number of failed disk read & write operations. A large number of failed reads or writes indicates a problem with the filesystem or drive's hardware.  
+**failedreads, failedwrites** | int
+Number of failed disk read & write operations. A large number of failed reads or writes indicates a problem with the filesystem or drive's hardware.
 
-**successfulreads, successfulwrites** | int  
-Number of successful read & write operations.  
+**successfulreads, successfulwrites** | int
+Number of successful read & write operations.
 
 ## /host/storage/folders/add [POST]
 
@@ -911,11 +911,11 @@ adds a storage folder to the manager. The manager may not check that there is en
 
 ### Query String Parameters
 #### REQUIRED
-**path** | string  
-Local path on disk to the storage folder to add.  
+**path** | string
+Local path on disk to the storage folder to add.
 
-**size** | bytes  
-Initial capacity of the storage folder. This value isn't validated so it is possible to set the capacity of the storage folder greater than the capacity of the disk. Do not do this.  
+**size** | bytes
+Initial capacity of the storage folder. This value isn't validated so it is possible to set the capacity of the storage folder greater than the capacity of the disk. Do not do this.
 
 ### Response
 
@@ -927,12 +927,12 @@ Remove a storage folder from the manager. All sotrage on the folder will be move
 
 ### Query String Parameters
 #### REQUIRED
-**path** | string  
-Local path on disk to the storage folder to removed.  
+**path** | string
+Local path on disk to the storage folder to removed.
 
 #### OPTIONAL
-**force** | boolean  
-If `force` is true, the storage folder will be removed even if the data in the storage folder cannot be moved to other storage folders, typically because they don't have sufficient capacity. If `force` is true and the data cannot be moved, data will be lost.  
+**force** | boolean
+If `force` is true, the storage folder will be removed even if the data in the storage folder cannot be moved to other storage folders, typically because they don't have sufficient capacity. If `force` is true and the data cannot be moved, data will be lost.
 
 ### Response
 
@@ -944,11 +944,11 @@ Grows or shrinks a storage file in the manager. The manager may not check that t
 
 ### Query String Parameters
 #### REQUIRED
-**path** | string  
-Local path on disk to the storage folder to resize.  
+**path** | string
+Local path on disk to the storage folder to resize.
 
-**newsize** | bytes  
-Desired new size of the storage folder. This will be the new capacity of the storage folder.  
+**newsize** | bytes
+Desired new size of the storage folder. This will be the new capacity of the storage folder.
 
 ### Response
 
@@ -961,7 +961,7 @@ Deletes a sector, meaning that the manager will be unable to upload that sector 
 ### Path Parameters
 #### REQUIRED
 **merkleroot** | merkleroot
-Merkleroot of the sector to delete.  
+Merkleroot of the sector to delete.
 
 ### Response
 
@@ -974,23 +974,23 @@ Returns the estimated HostDB score of the host using its current settings, combi
 ### Query String Parameters
 #### OPTIONAL
 See [host internal settings](#internalsettings)
- - acceptingcontracts   
- - maxdownloadbatchsize 
- - maxduration          
- - maxrevisebatchsize   
- - netaddress           
- - windowsize           
- - collateral        
- - collateralbudget 
- - maxcollateral    
- - mincontractprice          
- - mindownloadbandwidthprice  
- - minstorageprice            
- - minuploadbandwidthprice    
+ - acceptingcontracts
+ - maxdownloadbatchsize
+ - maxduration
+ - maxrevisebatchsize
+ - netaddress
+ - windowsize
+ - collateral
+ - collateralbudget
+ - maxcollateral
+ - mincontractprice
+ - mindownloadbandwidthprice
+ - minstorageprice
+ - minuploadbandwidthprice
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
 	"estimatedscore": "123456786786786786786786786742133",  // big int
@@ -998,10 +998,10 @@ See [host internal settings](#internalsettings)
 }
 ```
 **estimatedscore** | big int
-estimatedscore is the estimated HostDB score of the host given the settings passed to estimatescore.  
-  
+estimatedscore is the estimated HostDB score of the host given the settings passed to estimatescore.
+
 **conversionrate** | float64
-conversionrate is the likelihood given the settings passed to estimatescore that the host will be selected by renters forming contracts.  
+conversionrate is the likelihood given the settings passed to estimatescore that the host will be selected by renters forming contracts.
 
 # Host DB
 
@@ -1013,7 +1013,7 @@ Shows some general information about the state of the hostdb.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
     "initialscancomplete": false  // boolean
@@ -1028,12 +1028,12 @@ lists all of the active hosts known to the renter, sorted by preference.
 
 ### Query String Parameters
 #### OPTIONAL
-**numhosts** | int  
-Number of hosts to return. The actual number of hosts returned may be less if there are insufficient active hosts. Optional, the default is all active hosts.  
+**numhosts** | int
+Number of hosts to return. The actual number of hosts returned may be less if there are insufficient active hosts. Optional, the default is all active hosts.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "hosts": [
@@ -1042,7 +1042,7 @@ Number of hosts to return. The actual number of hosts returned may be less if th
       "maxdownloadbatchsize":   17825792,             // bytes
       "maxduration":            25920,                // blocks
       "maxrevisebatchsize":     17825792,             // bytes
-      "netaddress":             "123.456.789.0:9982"  // string 
+      "netaddress":             "123.456.789.0:9982"  // string
       "remainingstorage":       35000000000,          // bytes
       "sectorsize":             4194304,              // bytes
       "totalstorage":           35000000000,          // bytes
@@ -1095,106 +1095,106 @@ Number of hosts to return. The actual number of hosts returned may be less if th
 ```
 
 #### hosts
-**acceptingcontracts** | boolean  
-true if the host is accepting new contracts.  
+**acceptingcontracts** | boolean
+true if the host is accepting new contracts.
 
-**maxdownloadbatchsize** | bytes  
-Maximum number of bytes that the host will allow to be requested by a single download request.  
+**maxdownloadbatchsize** | bytes
+Maximum number of bytes that the host will allow to be requested by a single download request.
 
-**maxduration** | blocks  
-Maximum duration in blocks that a host will allow for a file contract. The host commits to keeping files for the full duration under the threat of facing a large penalty for losing or dropping data before the duration is complete. The storage proof window of an incoming file contract must end before the current height + maxduration.  
+**maxduration** | blocks
+Maximum duration in blocks that a host will allow for a file contract. The host commits to keeping files for the full duration under the threat of facing a large penalty for losing or dropping data before the duration is complete. The storage proof window of an incoming file contract must end before the current height + maxduration.
 
-There is a block approximately every 10 minutes. e.g. 1 day = 144 blocks  
+There is a block approximately every 10 minutes. e.g. 1 day = 144 blocks
 
-**maxrevisebatchsize** | bytes  
-Maximum size in bytes of a single batch of file contract revisions. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.  
+**maxrevisebatchsize** | bytes
+Maximum size in bytes of a single batch of file contract revisions. Larger batch sizes allow for higher throughput as there is significant communication overhead associated with performing a batch upload.
 
 **netaddress** | sting
-Remote address of the host. It can be an IPv4, IPv6, or hostname, along with the port. IPv6 addresses are enclosed in square brackets.  
+Remote address of the host. It can be an IPv4, IPv6, or hostname, along with the port. IPv6 addresses are enclosed in square brackets.
 
-**remainingstorage** | bytes  
-Unused storage capacity the host claims it has.  
+**remainingstorage** | bytes
+Unused storage capacity the host claims it has.
 
-**sectorsize** | bytes  
-Smallest amount of data in bytes that can be uploaded or downloaded to or from the host.  
+**sectorsize** | bytes
+Smallest amount of data in bytes that can be uploaded or downloaded to or from the host.
 
-**totalstorage** | bytes  
-Total amount of storage capacity the host claims it has.  
+**totalstorage** | bytes
+Total amount of storage capacity the host claims it has.
 
 **unlockhash** | hash
-Address at which the host can be paid when forming file contracts.  
+Address at which the host can be paid when forming file contracts.
 
-**windowsize** | blocks  
-A storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.  
+**windowsize** | blocks
+A storage proof window is the number of blocks that the host has to get a storage proof onto the blockchain. The window size is the minimum size of window that the host will accept in a file contract.
 
-**collateral** | hastings / byte / block  
-The maximum amount of money that the host will put up as collateral for storage that is contracted by the renter.  
+**collateral** | hastings / byte / block
+The maximum amount of money that the host will put up as collateral for storage that is contracted by the renter.
 
-**maxcollateral** | hastings  
-The maximum amount of collateral that the host will put into a single file contract.  
+**maxcollateral** | hastings
+The maximum amount of collateral that the host will put into a single file contract.
 
-**contractprice** | hastings  
-The price that a renter has to pay to create a contract with the host. The payment is intended to cover transaction fees for the file contract revision and the storage proof that the host will be submitting to the blockchain.  
+**contractprice** | hastings
+The price that a renter has to pay to create a contract with the host. The payment is intended to cover transaction fees for the file contract revision and the storage proof that the host will be submitting to the blockchain.
 
-**downloadbandwidthprice** | hastings / byte  
-The price that a renter has to pay when downloading data from the host.  
+**downloadbandwidthprice** | hastings / byte
+The price that a renter has to pay when downloading data from the host.
 
-**storageprice** | hastings / byte / block  
-The price that a renter has to pay to store files with the host.  
+**storageprice** | hastings / byte / block
+The price that a renter has to pay to store files with the host.
 
-**uploadbandwidthprice** | hastings / byte  
-The price that a renter has to pay when uploading data to the host.  
+**uploadbandwidthprice** | hastings / byte
+The price that a renter has to pay when uploading data to the host.
 
 **revisionnumber** | int
-The revision number indicates to the renter what iteration of settings the host is currently at. Settings are generally signed. If the renter has multiple conflicting copies of settings from the host, the renter can expect the one with the higher revision number to be more recent.  
+The revision number indicates to the renter what iteration of settings the host is currently at. Settings are generally signed. If the renter has multiple conflicting copies of settings from the host, the renter can expect the one with the higher revision number to be more recent.
 
 **version** | string
-The version of the host.  
+The version of the host.
 
-**firstseen** | blocks  
-Firstseen is the last block height at which this host was announced.  
+**firstseen** | blocks
+Firstseen is the last block height at which this host was announced.
 
 **historicdowntime** | nanoseconds
-Total amount of time the host has been offline.  
+Total amount of time the host has been offline.
 
-**historicuptime** | nanoseconds  
-Total amount of time the host has been online.  
+**historicuptime** | nanoseconds
+Total amount of time the host has been online.
 
-**scanhistory** 
-Measurements that have been taken on the host. The most recent measurements are kept in full detail.  
+**scanhistory**
+Measurements that have been taken on the host. The most recent measurements are kept in full detail.
 
 **historicfailedinteractions** | int
-Number of historic failed interactions with the host.  
+Number of historic failed interactions with the host.
 
-**historicsuccessfulinteractions** | int 
-Number of historic successful interactions with the host.  
+**historicsuccessfulinteractions** | int
+Number of historic successful interactions with the host.
 
-**recentfailedinteractions** | int  
-Number of recent failed interactions with the host.  
+**recentfailedinteractions** | int
+Number of recent failed interactions with the host.
 
 **recentsuccessfulinteractions** | int
-Number of recent successful interactions with the host.  
+Number of recent successful interactions with the host.
 
-**lasthistoricupdate** | blocks  
-The last time that the interactions within scanhistory have been compressed into the historic ones.  
+**lasthistoricupdate** | blocks
+The last time that the interactions within scanhistory have been compressed into the historic ones.
 
-**ipnets**  
-List of IP subnet masks used by the host. For IPv4 the /24 and for IPv6 the /54 subnet mask is used. A host can have either one IPv4 or one IPv6 subnet or one of each. E.g. these lists are valid: [ "IPv4" ], [ "IPv6" ] or [ "IPv4", "IPv6" ]. The following lists are invalid: [ "IPv4", "IPv4" ], [ "IPv4", "IPv6", "IPv6" ]. Hosts with an invalid list are ignored.  
+**ipnets**
+List of IP subnet masks used by the host. For IPv4 the /24 and for IPv6 the /54 subnet mask is used. A host can have either one IPv4 or one IPv6 subnet or one of each. E.g. these lists are valid: [ "IPv4" ], [ "IPv6" ] or [ "IPv4", "IPv6" ]. The following lists are invalid: [ "IPv4", "IPv4" ], [ "IPv4", "IPv6", "IPv6" ]. Hosts with an invalid list are ignored.
 
-**lastipnetchange** | date  
-The last time the list of IP subnet masks was updated. When equal subnet masks are found for different hosts, the host that occupies the subnet mask for a longer time is preferred.  
+**lastipnetchange** | date
+The last time the list of IP subnet masks was updated. When equal subnet masks are found for different hosts, the host that occupies the subnet mask for a longer time is preferred.
 
-**publickey** 
-Public key used to identify and verify hosts.  
-        
+**publickey**
+Public key used to identify and verify hosts.
+
 **algorithm** | string
-Algorithm used for signing and verification. Typically "ed25519".  
+Algorithm used for signing and verification. Typically "ed25519".
 
 **key** | hash
-Key used to verify signed host messages.  
+Key used to verify signed host messages.
 
-**publickeystring** | string 
-The string representation of the full public key, used when calling /hostdb/hosts.  
+**publickeystring** | string
+The string representation of the full public key, used when calling /hostdb/hosts.
 
 **filtered** | boolean
 Indicates if the host is currently being filtered from the HostDB
@@ -1203,7 +1203,7 @@ Indicates if the host is currently being filtered from the HostDB
 
 Lists all of the hosts known to the renter. Hosts are not guaranteed to be in any particular order, and the order may change in subsequent calls.
 
-### JSON Response 
+### JSON Response
 Repsonse is the same as [`/hostdb/active`](#hosts)
 
 ## /hostdb/hosts/:*pubkey* [GET]
@@ -1212,14 +1212,14 @@ fetches detailed information about a particular host, including metrics regardin
 
 ### Path Parameters
 #### REQUIRED
-**pubkey**  
-The public key of the host. Each public key identifies a single host.  
+**pubkey**
+The public key of the host. Each public key identifies a single host.
 
-Example Pubkey: ed25519:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef  
+Example Pubkey: ed25519:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 
-### JSON Response 
+### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "entry": {
@@ -1241,52 +1241,52 @@ Example Pubkey: ed25519:1234567890abcdef1234567890abcdef1234567890abcdef12345678
 ```
 Response is the same as [`/hostdb/active`](#hosts) with the additional of the **scorebreakdown**
 
-**scorebreakdown**  
-A set of scores as determined by the renter. Generally, the host's final score is all of the values multiplied together. Modified renters may have additional criteria that they use to judge a host, or may ignore certin criteia. In general, these fields should only be used as a loose guide for the score of a host, as every renter sees the world differently and uses different metrics to evaluate hosts.  
+**scorebreakdown**
+A set of scores as determined by the renter. Generally, the host's final score is all of the values multiplied together. Modified renters may have additional criteria that they use to judge a host, or may ignore certin criteia. In general, these fields should only be used as a loose guide for the score of a host, as every renter sees the world differently and uses different metrics to evaluate hosts.
 
 **score** | big int
-The overall score for the host. Scores are entriely relative, and are consistent only within the current hostdb. Between different machines, different configurations, and different versions the absolute scores for a given host can be off by many orders of magnitude. When displaying to a human, some form of normalization with respect to the other hosts (for example, divide all scores by the median score of the hosts) is recommended.  
+The overall score for the host. Scores are entriely relative, and are consistent only within the current hostdb. Between different machines, different configurations, and different versions the absolute scores for a given host can be off by many orders of magnitude. When displaying to a human, some form of normalization with respect to the other hosts (for example, divide all scores by the median score of the hosts) is recommended.
 
-**conversionrate** | float64 
-conversionrate is the likelihood that the host will be selected by renters forming contracts.  
+**conversionrate** | float64
+conversionrate is the likelihood that the host will be selected by renters forming contracts.
 
-**ageadjustment** | float64 
-The multiplier that gets applied to the host based on how long it has been a host. Older hosts typically have a lower penalty.  
+**ageadjustment** | float64
+The multiplier that gets applied to the host based on how long it has been a host. Older hosts typically have a lower penalty.
 
-**burnadjustment** | float64 
-The multiplier that gets applied to the host based on how much proof-of-burn the host has performed. More burn causes a linear increase in score.  
+**burnadjustment** | float64
+The multiplier that gets applied to the host based on how much proof-of-burn the host has performed. More burn causes a linear increase in score.
 
-**collateraladjustment** | float64 
-The multiplier that gets applied to a host based on how much collateral the host is offering. More collateral is typically better, though above a point it can be detrimental.  
+**collateraladjustment** | float64
+The multiplier that gets applied to a host based on how much collateral the host is offering. More collateral is typically better, though above a point it can be detrimental.
 
-**interactionadjustment** | float64 
-The multipler that gets applied to a host based on previous interactions with the host. A high ratio of successful interactions will improve this hosts score, and a high ratio of failed interactions will hurt this hosts score. This adjustment helps account for hosts that are on unstable connections, don't keep their wallets unlocked, ran out of funds, etc.  
+**interactionadjustment** | float64
+The multipler that gets applied to a host based on previous interactions with the host. A high ratio of successful interactions will improve this hosts score, and a high ratio of failed interactions will hurt this hosts score. This adjustment helps account for hosts that are on unstable connections, don't keep their wallets unlocked, ran out of funds, etc.
 
-**pricesmultiplier** | float64 
-The multiplier that gets applied to a host based on the host's price. Lower prices are almost always better. Below a certain, very low price, there is no advantage.  
+**pricesmultiplier** | float64
+The multiplier that gets applied to a host based on the host's price. Lower prices are almost always better. Below a certain, very low price, there is no advantage.
 
-**storageremainingadjustment** | float64 
-The multiplier that gets applied to a host based on how much storage is remaining for the host. More storage remaining is better, to a point.  
+**storageremainingadjustment** | float64
+The multiplier that gets applied to a host based on how much storage is remaining for the host. More storage remaining is better, to a point.
 
-**uptimeadjustment** | float64 
-The multiplier that gets applied to a host based on the uptime percentage of the host. The penalty increases extremely quickly as uptime drops below 90%.  
+**uptimeadjustment** | float64
+The multiplier that gets applied to a host based on the uptime percentage of the host. The penalty increases extremely quickly as uptime drops below 90%.
 
-**versionadjustment** | float64 
-The multiplier that gets applied to a host based on the version of Sia that they are running. Versions get penalties if there are known bugs, scaling limitations, performance limitations, etc. Generally, the most recent version is always the one with the highest score.  
+**versionadjustment** | float64
+The multiplier that gets applied to a host based on the version of Sia that they are running. Versions get penalties if there are known bugs, scaling limitations, performance limitations, etc. Generally, the most recent version is always the one with the highest score.
 
 ## /hostdb/filtermode [POST]
 
-Lets you enable and disable a filter mode for the hostdb. Currenlty the two modes supported are `blacklist` mode and `whitelist` mode. In `blacklist` mode, any hosts you identify as being on the `blacklist` will not be used to form contracts. In `whitelist` mode, only the hosts identified as being on the `whitelist` will be used to form contracts. In both modes, hosts that you are blacklisted will be filtered from your hostdb. To enable either mode, set `filtermode` to the desired mode and submit a list of host pubkeys as the corresponding `blacklist` or `whitelist`. To disable either list, the `host` field can be left blank (e.g. empty slice) and the `filtermode` should be set to `disable`.  
+Lets you enable and disable a filter mode for the hostdb. Currenlty the two modes supported are `blacklist` mode and `whitelist` mode. In `blacklist` mode, any hosts you identify as being on the `blacklist` will not be used to form contracts. In `whitelist` mode, only the hosts identified as being on the `whitelist` will be used to form contracts. In both modes, hosts that you are blacklisted will be filtered from your hostdb. To enable either mode, set `filtermode` to the desired mode and submit a list of host pubkeys as the corresponding `blacklist` or `whitelist`. To disable either list, the `host` field can be left blank (e.g. empty slice) and the `filtermode` should be set to `disable`.
 
-**NOTE:** Enabling and disabling a filter mode can result in changes with your current contracts with can result in an increase in contract fee spending. For example, if `blacklist` mode is enabled, any hosts that you currently have contracts with that are also on the provide list of `hosts` will have their contracts replaced with non-blacklisted hosts. When `whitelist` mode is enabled, contracts will be replaced until there are only contracts with whitelisted hosts. Even disabling a filter mode can result in a change in contracts if there are better scoring hosts in your hostdb that were previously being filtered out.  
+**NOTE:** Enabling and disabling a filter mode can result in changes with your current contracts with can result in an increase in contract fee spending. For example, if `blacklist` mode is enabled, any hosts that you currently have contracts with that are also on the provide list of `hosts` will have their contracts replaced with non-blacklisted hosts. When `whitelist` mode is enabled, contracts will be replaced until there are only contracts with whitelisted hosts. Even disabling a filter mode can result in a change in contracts if there are better scoring hosts in your hostdb that were previously being filtered out.
 
 ### Query String Parameters
 #### REQUIRED
-**filtermode** | string  
-Can be either whitelist, blacklist, or disable.  
+**filtermode** | string
+Can be either whitelist, blacklist, or disable.
 
 **hosts** | array of string
-Comma separated pubkeys.  
+Comma separated pubkeys.
 
 ### Response
 
@@ -1300,9 +1300,9 @@ The miner provides endpoints for getting headers for work and submitting solved 
 
 returns the status of the miner.
 
-### JSON Response 
+### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "blocksmined":      9001,   // int
@@ -1312,16 +1312,16 @@ returns the status of the miner.
 }
 ```
 **blocksmined** | int
-Number of mined blocks. This value is remembered after restarting.  
+Number of mined blocks. This value is remembered after restarting.
 
 **cpuhashrate** | hashes / second
-How fast the cpu is hashing, in hashes per second.  
+How fast the cpu is hashing, in hashes per second.
 
 **cpumining** | boolean
-true if the cpu miner is active.  
+true if the cpu miner is active.
 
-**staleblocksmined** | int  
-Number of mined blocks that are stale, indicating that they are not included in the current longest chain, likely because some other block at the same height had its chain extended first.  
+**staleblocksmined** | int
+Number of mined blocks that are stale, indicating that they are not included in the current longest chain, likely because some other block at the same height had its chain extended first.
 
 
 ## /miner/start [GET]
@@ -1347,7 +1347,7 @@ provides a block header that is ready to be grinded on for work.
 ### Byte Response
 For efficiency the header for work is returned as a raw byte encoding of the header, rather than encoded to JSON.
 
-Blocks are mined by repeatedly changing the nonce of the header, hashing the header's bytes, and comparing the resulting hash to the target. The block with that nonce is valid if the hash is less than the target. If none of the 2^64 possible nonces result in a header with a hash less than the target, call /miner/header [GET] again to get a new block header with a different merkle root. The above process can then be repeated for the new block header.  
+Blocks are mined by repeatedly changing the nonce of the header, hashing the header's bytes, and comparing the resulting hash to the target. The block with that nonce is valid if the hash is less than the target. If none of the 2^64 possible nonces result in a header with a hash less than the target, call /miner/header [GET] again to get a new block header with a different merkle root. The above process can then be repeated for the new block header.
 
 The other fields can generally be ignored. The parent block ID field is the hash of the parent block's header. Modifying this field will result in an orphan block. The timestamp is the time at which the block was mined and is set by the Sia Daemon. Modifying this field can result in invalid block. The merkle root is the merkle root of a merkle tree consisting of the timestamp, the miner outputs (one leaf per payout), and the transactions (one leaf per transaction). Modifying this field will result in an invalid block.
 
@@ -1367,7 +1367,7 @@ submits a header that has passed the POW.
 ### Byte Response
 For efficiency headers are submitted as raw byte encodings of the header in the body of the request, rather than as a query string parameter or path parameter. The request body should contain only the 80 bytes of the encoded header. The encoding is the same encoding used in `/miner/header [GET]` endpoint.
 
-Blocks are mined by repeatedly changing the nonce of the header, hashing the header's bytes, and comparing the resulting hash to the target. The block with that nonce is valid if the hash is less than the target. If none of the 2^64 possible nonces result in a header with a hash less than the target, call /miner/header [GET] again to get a new block header with a different merkle root. The above process can then be repeated for the new block header.  
+Blocks are mined by repeatedly changing the nonce of the header, hashing the header's bytes, and comparing the resulting hash to the target. The block with that nonce is valid if the hash is less than the target. If none of the 2^64 possible nonces result in a header with a hash less than the target, call /miner/header [GET] again to get a new block header with a different merkle root. The above process can then be repeated for the new block header.
 
 The other fields can generally be ignored. The parent block ID field is the hash of the parent block's header. Modifying this field will result in an orphan block. The timestamp is the time at which the block was mined and is set by the Sia Daemon. Modifying this field can result in invalid block. The merkle root is the merkle root of a merkle tree consisting of the timestamp, the miner outputs (one leaf per payout), and the transactions (one leaf per transaction). Modifying this field will result in an invalid block.
 
@@ -1390,7 +1390,7 @@ Returns the current settings along with metrics on the renter's spending.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "settings": {
@@ -1416,59 +1416,59 @@ Returns the current settings along with metrics on the renter's spending.
   "currentperiod": 200  // blockheight
 }
 ```
-#### settings  
-Settings that control the behavior of the renter.  
+#### settings
+Settings that control the behavior of the renter.
 
-#### allowance 
-Allowance dictates how much the renter is allowed to spend in a given period. Note that funds are spent on both storage and bandwidth.  
+#### allowance
+Allowance dictates how much the renter is allowed to spend in a given period. Note that funds are spent on both storage and bandwidth.
 
-**funds** | hastings  
-Amount of money allocated for contracts. Funds are spent on both storage and bandwidth.  
+**funds** | hastings
+Amount of money allocated for contracts. Funds are spent on both storage and bandwidth.
 
 **hosts** | int
-Number of hosts that contracts will be formed with.  
+Number of hosts that contracts will be formed with.
 
-**period** | blocks  
-Duration of contracts formed, in number of blocks.  
+**period** | blocks
+Duration of contracts formed, in number of blocks.
 
-**renewwindow** | blocks  
-If the current blockheight + the renew window >= the height the contract is scheduled to end, the contract is renewed automatically. Is always nonzero.  
+**renewwindow** | blocks
+If the current blockheight + the renew window >= the height the contract is scheduled to end, the contract is renewed automatically. Is always nonzero.
 
-**maxuploadspeed** | bytes per second  
-MaxUploadSpeed by default is unlimited but can be set by the user to manage bandwidth.  
+**maxuploadspeed** | bytes per second
+MaxUploadSpeed by default is unlimited but can be set by the user to manage bandwidth.
 
-**maxdownloadspeed** | bytes per second  
-MaxDownloadSpeed by default is unlimited but can be set by the user to manage bandwidth.  
+**maxdownloadspeed** | bytes per second
+MaxDownloadSpeed by default is unlimited but can be set by the user to manage bandwidth.
 
 **streamcachesize** | int
-The StreamCacheSize is the number of data chunks that will be cached during streaming.  
+The StreamCacheSize is the number of data chunks that will be cached during streaming.
 
-#### financialmetrics  
-Metrics about how much the Renter has spent on storage, uploads, and downloads.  
+#### financialmetrics
+Metrics about how much the Renter has spent on storage, uploads, and downloads.
 
-**contractfees** | hastings  
-Amount of money spent on contract fees, transaction fees and siafund fees.  
+**contractfees** | hastings
+Amount of money spent on contract fees, transaction fees and siafund fees.
 
-**contractspending** | hastings, (deprecated, now totalallocated)  
-How much money, in hastings, the Renter has spent on file contracts, including fees.  
+**contractspending** | hastings, (deprecated, now totalallocated)
+How much money, in hastings, the Renter has spent on file contracts, including fees.
 
-**downloadspending** | hastings  
-Amount of money spent on downloads.  
+**downloadspending** | hastings
+Amount of money spent on downloads.
 
-**storagespending** | hastings  
-Amount of money spend on storage.  
+**storagespending** | hastings
+Amount of money spend on storage.
 
-**totalallocated** | hastings  
-Total amount of money that the renter has put into contracts. Includes spent money and also money that will be returned to the renter.  
+**totalallocated** | hastings
+Total amount of money that the renter has put into contracts. Includes spent money and also money that will be returned to the renter.
 
-**uploadspending** | hastings  
-Amount of money spent on uploads.  
+**uploadspending** | hastings
+Amount of money spent on uploads.
 
-**unspent** | hastings  
-Amount of money in the allowance that has not been spent.  
+**unspent** | hastings
+Amount of money in the allowance that has not been spent.
 
 **currentperiod** | blockheight
-Height at which the current allowance period began.  
+Height at which the current allowance period began.
 
 ## /renter [POST]
 
@@ -1478,8 +1478,8 @@ Modify settings that control the renter's behavior.
 #### OPTIONAL
 Any of the renter settings can be set, see fields [here](#settings)
 
-**checkforipviolation** | boolean  
-Enables or disables the check for hosts using the same ip subnets within the hostdb. It's turned on by default and causes Sia to not form contracts with hosts from the same subnet and if such contracts already exist, it will deactivate the contract which has occupied that subnet for the shorter time.  
+**checkforipviolation** | boolean
+Enables or disables the check for hosts using the same ip subnets within the hostdb. It's turned on by default and causes Sia to not form contracts with hosts from the same subnet and if such contracts already exist, it will deactivate the contract which has occupied that subnet for the shorter time.
 
 ### Response
 
@@ -1500,7 +1500,7 @@ standard success or error response. See [standard responses](#standard-responses
 
 ## /renter/contracts [GET]
 
-Returns the renter's contracts.  Active contracts are contracts that the Renter is currently using to store, upload, and download data, and are returned by default. Inactive contracts are contracts that are in the current period but are marked as not good for renew, these contracts have the potential to become active again but currently are not storing data.  Expired contracts are contracts not in the current period, where not more data is being stored and excess funds have been released to the renter. Recoverable contracts are contracts which the contractor is currently trying to recover and which haven't expired yet. 
+Returns the renter's contracts.  Active contracts are contracts that the Renter is currently using to store, upload, and download data, and are returned by default. Inactive contracts are contracts that are in the current period but are marked as not good for renew, these contracts have the potential to become active again but currently are not storing data.  Expired contracts are contracts not in the current period, where not more data is being stored and excess funds have been released to the renter. Recoverable contracts are contracts which the contractor is currently trying to recover and which haven't expired yet.
 
 ### Query String Parameters
 #### OPTIONAL
@@ -1515,7 +1515,7 @@ flag indicating if recoverable contracts should be returned.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "activecontracts": [
@@ -1546,68 +1546,68 @@ flag indicating if recoverable contracts should be returned.
   "recoverablecontracts": [],
 }
 ```
-**downloadspending** | hastings  
-Amount of contract funds that have been spent on downloads.  
+**downloadspending** | hastings
+Amount of contract funds that have been spent on downloads.
 
-**endheight** | block height  
-Block height that the file contract ends on.  
+**endheight** | block height
+Block height that the file contract ends on.
 
-**fees** | hastings  
-Fees paid in order to form the file contract.  
+**fees** | hastings
+Fees paid in order to form the file contract.
 
-**hostpublickey** 
-Public key of the host that the file contract is formed with.  
-        
+**hostpublickey**
+Public key of the host that the file contract is formed with.
+
 **algorithm** | string
-Algorithm used for signing and verification. Typically "ed25519".  
+Algorithm used for signing and verification. Typically "ed25519".
 
 **key** | hash
-Key used to verify signed host messages.  
+Key used to verify signed host messages.
 
 **id** | hash
-ID of the file contract.  
+ID of the file contract.
 
-**lasttransaction** | transaction 
-A signed transaction containing the most recent contract revision.  
+**lasttransaction** | transaction
+A signed transaction containing the most recent contract revision.
 
 **netaddress** | string
-Address of the host the file contract was formed with.  
+Address of the host the file contract was formed with.
 
-**renterfunds** | hastings  
-Remaining funds left for the renter to spend on uploads & downloads.  
+**renterfunds** | hastings
+Remaining funds left for the renter to spend on uploads & downloads.
 
-**size** | bytes  
+**size** | bytes
 Size of the file contract, which is typically equal to the number of bytes that have been uploaded to the host.
 
-**startheight** | block height  
-Block height that the file contract began on.  
+**startheight** | block height
+Block height that the file contract began on.
 
 **StorageSpending** | hastings
-DEPRECATED: This is the exact same value as StorageSpending, but it has incorrect capitalization. This was fixed in 1.3.2, but this field is kept to preserve backwards compatibility on clients who depend on the incorrect capitalization. This field will be removed in the future, so clients should switch to the StorageSpending field (above) with the correct lowercase name.  
+DEPRECATED: This is the exact same value as StorageSpending, but it has incorrect capitalization. This was fixed in 1.3.2, but this field is kept to preserve backwards compatibility on clients who depend on the incorrect capitalization. This field will be removed in the future, so clients should switch to the StorageSpending field (above) with the correct lowercase name.
 
-**storagespending** | hastings  
-Amount of contract funds that have been spent on storage.  
+**storagespending** | hastings
+Amount of contract funds that have been spent on storage.
 
-**totalcost** | hastings  
-Total cost to the wallet of forming the file contract. This includes both the fees and the funds allocated in the contract.  
+**totalcost** | hastings
+Total cost to the wallet of forming the file contract. This includes both the fees and the funds allocated in the contract.
 
-**uploadspending** | hastings  
-Amount of contract funds that have been spent on uploads.  
+**uploadspending** | hastings
+Amount of contract funds that have been spent on uploads.
 
-**goodforupload** | boolean  
-Signals if contract is good for uploading data.  
+**goodforupload** | boolean
+Signals if contract is good for uploading data.
 
-**goodforrenew** | boolean  
-Signals if contract is good for a renewal.  
+**goodforrenew** | boolean
+Signals if contract is good for a renewal.
 
-## /renter/dir/*siapath [GET]
+## /renter/dir/*hyperspacepath [GET]
 
 retrieves the contents of a directory on the sia network
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
-Path to the directory on the sia netork  
+**hyperspacepath** | string
+Path to the directory on the sia netork
 
 ### JSON Response
 > JSON Response Example
@@ -1618,7 +1618,7 @@ Path to the directory on the sia netork
     {
       "heatlh":             1.0,                                    // float64
       "lasthealtchecktime": "2018-09-23T08:00:00.000000000+04:00"   // unix timestamp
-      "siapath":            "foo/bar"                               // string
+      "hyperspacepath":            "foo/bar"                               // string
     }
   ],
   "files": []
@@ -1636,20 +1636,20 @@ This is the worst health of any of the files or subdirectories. Health is the pe
 **lasthealthchecktime** | unix timestampe
 The oldest time that the health of the directory or any of its files or sub directories' health was checked.
 
-**siapath** | string
+**hyperspacepath** | string
 The path to the directory on the sia network
 
 **files**
 Same response as [files](#files)
 
-## /renter/dir/*siapath [POST]
+## /renter/dir/*hyperspacepath [POST]
 
 performs various functions on the renter's directories
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
-Location where the directory will reside in the renter on the network. The path must be non-empty, may not include any path traversal strings ("./", "../"), and may not begin with a forward-slash character.  
+**hyperspacepath** | string
+Location where the directory will reside in the renter on the network. The path must be non-empty, may not include any path traversal strings ("./", "../"), and may not begin with a forward-slash character.
 
 ### Query String Parameters
 #### REQUIRED
@@ -1668,7 +1668,7 @@ Lists all files in the download queue.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "downloads": [
@@ -1677,7 +1677,7 @@ Lists all files in the download queue.
       "destinationtype": "file",                      // string
       "length":          8192,                        // bytes
       "offset":          2000,                        // bytes
-      "siapath":         "foo/bar.txt",               // string
+      "hyperspacepath":         "foo/bar.txt",               // string
 
       "completed":           true,                    // boolean
       "endtime":             "2009-11-10T23:10:00Z",  // RFC 3339 time
@@ -1690,37 +1690,37 @@ Lists all files in the download queue.
 }
 ```
 **destination** | string
-Local path that the file will be downloaded to.  
+Local path that the file will be downloaded to.
 
 **destinationtype** | string
-What type of destination was used. Can be "file", indicating a download to disk, can be "buffer", indicating a download to memory, and can be "http stream", indicating that the download was streamed through the http API.  
+What type of destination was used. Can be "file", indicating a download to disk, can be "buffer", indicating a download to memory, and can be "http stream", indicating that the download was streamed through the http API.
 
-**length** | bytes  
-Length of the download. If the download was a partial download, this will indicate the length of the partial download, and not the length of the full file.  
+**length** | bytes
+Length of the download. If the download was a partial download, this will indicate the length of the partial download, and not the length of the full file.
 
 **offset** | bytes
-Offset within the file of the download. For full file downloads, the offset will be '0'. For partial downloads, the offset may be anywhere within the file. offset+length will never exceed the full file size.  
+Offset within the file of the download. For full file downloads, the offset will be '0'. For partial downloads, the offset may be anywhere within the file. offset+length will never exceed the full file size.
 
-**siapath** | string
-Siapath given to the file when it was uploaded.  
+**hyperspacepath** | string
+Siapath given to the file when it was uploaded.
 
-**completed** | oolean  
-Whether or not the download has completed. Will be false initially, and set to true immediately as the download has been fully written out to the file, to the http stream, or to the in-memory buffer. Completed will also be set to true if there is an error that causes the download to fail.  
+**completed** | oolean
+Whether or not the download has completed. Will be false initially, and set to true immediately as the download has been fully written out to the file, to the http stream, or to the in-memory buffer. Completed will also be set to true if there is an error that causes the download to fail.
 
-**endtime** | date, RFC 3339 time  
-Time at which the download completed. Will be zero if the download has not yet completed.  
+**endtime** | date, RFC 3339 time
+Time at which the download completed. Will be zero if the download has not yet completed.
 
 **error** | string
-Error encountered while downloading. If there was no error (yet), it will be the empty string.  
+Error encountered while downloading. If there was no error (yet), it will be the empty string.
 
-**received** | bytes  
-Number of bytes downloaded thus far. Will only be updated as segments of the file complete fully. This typically has a resolution of tens of megabytes.  
+**received** | bytes
+Number of bytes downloaded thus far. Will only be updated as segments of the file complete fully. This typically has a resolution of tens of megabytes.
 
-**starttime** | date, RFC 3339 time  
+**starttime** | date, RFC 3339 time
 Time at which the download was initiated.
 
 **totaldatatransfered** | bytes
-The total amount of data transfered when downloading the file. This will eventually include data transferred during contract + payment negotiation, as well as data from failed piece downloads.  
+The total amount of data transfered when downloading the file. This will eventually include data transferred during contract + payment negotiation, as well as data from failed piece downloads.
 
 ## /renter/downloads/clear [POST]
 
@@ -1728,10 +1728,10 @@ Clears the download history of the renter for a range of unix time stamps.  Both
 
 ### Query String Parameters
 #### OPTIONAL
-**before** | unix timestamp  
+**before** | unix timestamp
 unix timestamp found in the download history
 
-**after** | unix timestamp   
+**after** | unix timestamp
 unix timestamp found in the download history
 
 ### Response
@@ -1748,7 +1748,7 @@ Allowance settings, see the fields [here](#allowance)
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "downloadterabyte":      "1234",  // hastings
@@ -1761,17 +1761,17 @@ Allowance settings, see the fields [here](#allowance)
   "renewwindow":             3024   // blocks
 }
 ```
-**downloadterabyte** | hastings  
-The estimated cost of downloading one terabyte of data from the network.  
+**downloadterabyte** | hastings
+The estimated cost of downloading one terabyte of data from the network.
 
-**formcontracts** | hastings  
-The estimated cost of forming a set of contracts on the network. This cost also applies to the estimated cost of renewing the renter's set of contracts.  
+**formcontracts** | hastings
+The estimated cost of forming a set of contracts on the network. This cost also applies to the estimated cost of renewing the renter's set of contracts.
 
-**storageterabytemonth** | hastings  
-The estimated cost of storing one terabyte of data on the network for a month, including accounting for redundancy.  
+**storageterabytemonth** | hastings
+The estimated cost of storing one terabyte of data on the network for a month, including accounting for redundancy.
 
-**uploadterabyte** | hastings  
-The estimated cost of uploading one terabyte of data to the network, including accounting for redundancy.  
+**uploadterabyte** | hastings
+The estimated cost of uploading one terabyte of data to the network, including accounting for redundancy.
 
 The allowance settings used for the estimation are also returned, see the fields [here](#allowance)
 
@@ -1781,12 +1781,12 @@ lists the status of all files.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "files": [
     {
-      "siapath":        "foo/bar.txt",        // string
+      "hyperspacepath":        "foo/bar.txt",        // string
       "localpath":      "/home/foo/bar.txt",  // string
       "filesize":       8192,                 // bytes
       "available":      true,                 // boolean
@@ -1802,32 +1802,32 @@ lists the status of all files.
 }
 ```
 #### files
-**siapath** | string
-Path to the file in the renter on the network.  
+**hyperspacepath** | string
+Path to the file in the renter on the network.
 
 **localpath** | string
-Path to the local file on disk.  
+Path to the local file on disk.
 
-**filesize** | bytes  
-Size of the file in bytes.  
+**filesize** | bytes
+Size of the file in bytes.
 
-**available** | boolean  
-true if the file is available for download. Files may be available before they are completely uploaded.  
+**available** | boolean
+true if the file is available for download. Files may be available before they are completely uploaded.
 
-**renewing** | boolean  
-true if the file's contracts will be automatically renewed by the renter.  
+**renewing** | boolean
+true if the file's contracts will be automatically renewed by the renter.
 
 **redundancy** | float64
-Average redundancy of the file on the network. Redundancy is calculated by dividing the amount of data uploaded in the file's open contracts by the size of the file. Redundancy does not necessarily correspond to availability. Specifically, a redundancy >= 1 does not indicate the file is available as there could be a chunk of the file with 0 redundancy.  
+Average redundancy of the file on the network. Redundancy is calculated by dividing the amount of data uploaded in the file's open contracts by the size of the file. Redundancy does not necessarily correspond to availability. Specifically, a redundancy >= 1 does not indicate the file is available as there could be a chunk of the file with 0 redundancy.
 
-**uploadedbytes** | bytes  
-Total number of bytes successfully uploaded via current file contracts. This number includes padding and rendundancy, so a file with a size of 8192 bytes might be padded to 40 MiB and, with a redundancy of 5, encoded to 200 MiB for upload.  
+**uploadedbytes** | bytes
+Total number of bytes successfully uploaded via current file contracts. This number includes padding and rendundancy, so a file with a size of 8192 bytes might be padded to 40 MiB and, with a redundancy of 5, encoded to 200 MiB for upload.
 
-**uploadprogress** | percent  
-Percentage of the file uploaded, including redundancy. Uploading has completed when uploadprogress is 100. Files may be available for download before upload progress is 100.  
+**uploadprogress** | percent
+Percentage of the file uploaded, including redundancy. Uploading has completed when uploadprogress is 100. Files may be available for download before upload progress is 100.
 
 **expiration** | block height
-Block height at which the file ceases availability.  
+Block height at which the file ceases availability.
 
 **ondisk** | boolean
 indicates if the source file is found on disk
@@ -1835,26 +1835,26 @@ indicates if the source file is found on disk
 **recoverable** | boolean
 indicates if the siafile is recoverable
 
-## /renter/file/*siapath* [GET]
+## /renter/file/*hyperspacepath* [GET]
 
 Lists the status of specified file.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
+**hyperspacepath** | string
 Path to the file in the renter on the network.
 
 ### JSON Response
 Same response as [files](#files)
 
-## /renter/file/*siapath* [POST]
+## /renter/file/*hyperspacepath* [POST]
 
 endpoint for changing file metadata.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
-SiaPath of the file on the network. The path must be non-empty, may not include any path traversal strings ("./", "../"), and may not begin with a forward-slash character.
+**hyperspacepath** | string
+HyperspacePath of the file on the network. The path must be non-empty, may not include any path traversal strings ("./", "../"), and may not begin with a forward-slash character.
 
 ### Query String Parameters
 #### OPTIONAL
@@ -1865,117 +1865,117 @@ If provided, this parameter changes the tracking path of a file to the  specifie
 
 standard success or error response. See [standard responses](#standard-responses).
 
-## /renter/delete/*siapath* [POST]
+## /renter/delete/*hyperspacepath* [POST]
 
 deletes a renter file entry. Does not delete any downloads or original files, only the entry in the renter.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
+**hyperspacepath** | string
 Path to the file in the renter on the network.
 
 ### Response
 
 standard success or error response. See [standard responses](#standard-responses).
 
-## /renter/download/*siapath* [GET]
+## /renter/download/*hyperspacepath* [GET]
 
 downloads a file to the local filesystem. The call will block until the file has been downloaded.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
+**hyperspacepath** | string
 Path to the file in the renter on the network.
 
 ### Query String Parameters
 #### REQUIRED
 **destination** | string
-Location on disk that the file will be downloaded to.  
+Location on disk that the file will be downloaded to.
 
 #### OPTIONAL
 **async** | boolean
-If async is true, the http request will be non blocking. Can't be used with:  
+If async is true, the http request will be non blocking. Can't be used with:
 
 **httpresp** | boolean
-If httresp is true, the data will be written to the http response.  
+If httresp is true, the data will be written to the http response.
 
 **length** | bytes
-Length of the requested data. Has to be <= filesize-offset.  
+Length of the requested data. Has to be <= filesize-offset.
 
 **offset** | bytes
-Offset relative to the file start from where the download starts.  
+Offset relative to the file start from where the download starts.
 
 ### Response
 
 standard success or error response. See [standard responses](#standard-responses).
 
-## /renter/downloadsync/*siapath* [GET]
+## /renter/downloadsync/*hyperspacepath* [GET]
 
 downloads a file to the local filesystem. The call will return immediately.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
+**hyperspacepath** | string
 Path to the file in the renter on the network.
 
 ### Query String Parameters
 #### REQUIRED
 **destination** | string
-Location on disk that the file will be downloaded to.  
+Location on disk that the file will be downloaded to.
 
 ### Response
 
 standard success or error response. See [standard responses](#standard-responses).
 
-## /renter/rename/*siapath* [POST]
+## /renter/rename/*hyperspacepath* [POST]
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
+**hyperspacepath** | string
 Path to the file in the renter on the network.
 
 ### Query String Parameters
 #### REQUIRED
-**newsiapath** | string 
-New location of the file in the renter on the network.  
+**newhyperspacepath** | string
+New location of the file in the renter on the network.
 
 ### Response
 
 standard success or error response. See [standard responses](#standard-responses).
 
-## /renter/stream/*siapath* [GET]
+## /renter/stream/*hyperspacepath* [GET]
 
 downloads a file using http streaming. This call blocks until the data is received. The streaming endpoint also uses caching internally to prevent siad from re-downloading the same chunk multiple times when only parts of a file are requested at once. This might lead to a substantial increase in ram usage and therefore it is not recommended to stream multiple files in parallel at the moment. This restriction will be removed together with the caching once partial downloads are supported in the future. If you want to stream multiple files you should increase the size of the Renter's `streamcachesize` to at least 2x the number of files you are steaming.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
+**hyperspacepath** | string
 Path to the file in the renter on the network.
 
 ### Response
 
 standard success or error response. See [standard responses](#standard-responses).
 
-## /renter/upload/*siapath* [POST]
+## /renter/upload/*hyperspacepath* [POST]
 
 uploads a file to the network from the local filesystem.
 
 ### Path Parameters
 #### REQUIRED
-**siapath** | string
-Location where the file will reside in the renter on the network. The path must be non-empty, may not include any path traversal strings ("./", "../"), and may not begin with a forward-slash character.  
+**hyperspacepath** | string
+Location where the file will reside in the renter on the network. The path must be non-empty, may not include any path traversal strings ("./", "../"), and may not begin with a forward-slash character.
 
 ### Query String Parameters
 #### REQUIRED
 **source** | string
-Location on disk of the file being uploaded.  
+Location on disk of the file being uploaded.
 
 #### OPTIONAL
-**datapieces** | int  
-The number of data pieces to use when erasure coding the file.  
+**datapieces** | int
+The number of data pieces to use when erasure coding the file.
 
-**paritypieces** | int  
-The number of parity pieces to use when erasure coding the file. Total redundancy of the file is (datapieces+paritypieces)/datapieces.  
+**paritypieces** | int
+The number of parity pieces to use when erasure coding the file. Total redundancy of the file is (datapieces+paritypieces)/datapieces.
 
 ### Response
 
@@ -1994,7 +1994,7 @@ id of the transaction being queried
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "confirmed": true // boolean
@@ -2009,7 +2009,7 @@ returns the minimum and maximum estimated fees expected by the transaction pool.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "minimum": "1234", // hastings / byte
@@ -2028,12 +2028,12 @@ returns the ID for the requested transaction and its raw encoded parents and tra
 
 ### Path Parameters
 #### REQUIRED
-**id** | hash 
+**id** | hash
 id of the transaction being queried
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
 	// id of the transaction
@@ -2044,19 +2044,19 @@ id of the transaction being queried
 	"parents": "AQAAAAAAAAABAAAAAAAAAJYYmFUdXXfLQ2p6EpF+tcqM9M4Pw5SLSFHdYwjMDFCjAAAAAAAAAAABAAAAAAAAAGVkMjU1MTkAAAAAAAAAAAAgAAAAAAAAAAHONvdzzjHfHBx6psAN8Z1rEVgqKPZ+K6Bsqp3FbrfjAQAAAAAAAAACAAAAAAAAAAwAAAAAAAAAAzvNDjSrme8gwAAA4w8ODnW8DxbOV/JribivvTtjJ4iHVOug0SXJc31BdSINAAAAAAAAAAPGHY4699vggx5AAAC2qBhm5vwPaBsmwAVPho/1Pd8ecce/+BGv4UimnEPzPQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAAAAAAAACWGJhVHV13y0NqehKRfrXKjPTOD8OUi0hR3WMIzAxQowAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAABnt64wN1qxym/CfiMgOx5fg/imVIEhY+4IiiM7gwvSx8qtqKniOx50ekrGv8B+gTKDXpmm2iJibWTI9QLZHWAY=",
 }
 ```
-**id** | string  
-id of the transaction.  
+**id** | string
+id of the transaction.
 
-**transaction** | string  
-raw, base64 encoded transaction data  
+**transaction** | string
+raw, base64 encoded transaction data
 
 ## /tpool/raw [POST]
 
-submits a raw transaction to the transaction pool, broadcasting it to the transaction pool's peers.  
+submits a raw transaction to the transaction pool, broadcasting it to the transaction pool's peers.
 
 ### Query String Parameters
 #### REQUIRED
-**parents** | string 
+**parents** | string
 JSON- or base64-encoded transaction parents
 
 **transaction** | string
@@ -2091,32 +2091,32 @@ Returns basic information about the wallet, such as whether the wallet is locked
   "dustthreshold": "1234", // hastings / byte, big int
 }
 ```
-**encrypted** | boolean  
-Indicates whether the wallet has been encrypted or not. If the wallet has not been encrypted, then no data has been generated at all, and the first time the wallet is unlocked, the password given will be used as the password for encrypting all of the data. 'encrypted' will only be set to false if the wallet has never been unlocked before (the unlocked wallet is still encryped - but the encryption key is in memory).  
+**encrypted** | boolean
+Indicates whether the wallet has been encrypted or not. If the wallet has not been encrypted, then no data has been generated at all, and the first time the wallet is unlocked, the password given will be used as the password for encrypting all of the data. 'encrypted' will only be set to false if the wallet has never been unlocked before (the unlocked wallet is still encryped - but the encryption key is in memory).
 
-**unlocked** | boolean  
-Indicates whether the wallet is currently locked or unlocked. Some calls become unavailable when the wallet is locked.  
+**unlocked** | boolean
+Indicates whether the wallet is currently locked or unlocked. Some calls become unavailable when the wallet is locked.
 
-**rescanning** | boolean  
-Indicates whether the wallet is currently rescanning the blockchain. This will be true for the duration of calls to /unlock, /seeds, /init/seed, and /sweep/seed.  
+**rescanning** | boolean
+Indicates whether the wallet is currently rescanning the blockchain. This will be true for the duration of calls to /unlock, /seeds, /init/seed, and /sweep/seed.
 
-**confirmedsiacoinbalance** | hastings, big int  
-Number of siacoins, in hastings, available to the wallet as of the most recent block in the blockchain.  
+**confirmedsiacoinbalance** | hastings, big int
+Number of siacoins, in hastings, available to the wallet as of the most recent block in the blockchain.
 
-**unconfirmedoutgoingsiacoins** | hastings, big int  
-Number of siacoins, in hastings, that are leaving the wallet according to the set of unconfirmed transactions. Often this number appears inflated, because outputs are frequently larger than the number of coins being sent, and there is a refund. These coins are counted as outgoing, and the refund is counted as incoming. The difference in balance can be calculated using 'unconfirmedincomingsiacoins' - 'unconfirmedoutgoingsiacoins'  
+**unconfirmedoutgoingsiacoins** | hastings, big int
+Number of siacoins, in hastings, that are leaving the wallet according to the set of unconfirmed transactions. Often this number appears inflated, because outputs are frequently larger than the number of coins being sent, and there is a refund. These coins are counted as outgoing, and the refund is counted as incoming. The difference in balance can be calculated using 'unconfirmedincomingsiacoins' - 'unconfirmedoutgoingsiacoins'
 
-**unconfirmedincomingsiacoins** | hastings, big int  
-Number of siacoins, in hastings, are entering the wallet according to the set of unconfirmed transactions. This number is often inflated by outgoing siacoins, because outputs are frequently larger than the amount being sent. The refund will be included in the unconfirmed incoming siacoins balance.  
+**unconfirmedincomingsiacoins** | hastings, big int
+Number of siacoins, in hastings, are entering the wallet according to the set of unconfirmed transactions. This number is often inflated by outgoing siacoins, because outputs are frequently larger than the amount being sent. The refund will be included in the unconfirmed incoming siacoins balance.
 
-**siafundbalance** | big int  
-Number of siafunds available to the wallet as of the most recent block in the blockchain.  
+**siafundbalance** | big int
+Number of siafunds available to the wallet as of the most recent block in the blockchain.
 
-**siacoinclaimbalance** | hastings, big int  
-Number of siacoins, in hastings, that can be claimed from the siafunds as of the most recent block. Because the claim balance increases every time a file contract is created, it is possible that the balance will increase before any claim transaction is confirmed.  
+**siacoinclaimbalance** | hastings, big int
+Number of siacoins, in hastings, that can be claimed from the siafunds as of the most recent block. Because the claim balance increases every time a file contract is created, it is possible that the balance will increase before any claim transaction is confirmed.
 
-**dustthreshold** | hastings / byte, big int  
-Number of siacoins, in hastings per byte, below which a transaction output cannot be used because the wallet considers it a dust output.  
+**dustthreshold** | hastings / byte, big int
+Number of siacoins, in hastings per byte, below which a transaction output cannot be used because the wallet considers it a dust output.
 
 ## /wallet/033x [POST]
 
@@ -2124,11 +2124,11 @@ Loads a v0.3.3.x wallet into the current wallet, harvesting all of the secret ke
 
 ### Query String Parameters
 #### REQUIRED
-**source**  
-Path on disk to the v0.3.3.x wallet to be loaded.  
+**source**
+Path on disk to the v0.3.3.x wallet to be loaded.
 
-**encryptionpassword**  
-Encryption key of the wallet.  
+**encryptionpassword**
+Encryption key of the wallet.
 
 ### Response
 
@@ -2140,14 +2140,14 @@ Gets a new address from the wallet generated by the primary seed. An error will 
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "address": "1234567890abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789ab"
 }
 ```
 **address** | hash
-Wallet address that can receive siacoins or siafunds. Addresses are 76 character long hex strings.  
+Wallet address that can receive siacoins or siafunds. Addresses are 76 character long hex strings.
 
 ## /wallet/addresses [GET]
 
@@ -2155,7 +2155,7 @@ Fetches the list of addresses from the wallet. If the wallet has not been create
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "addresses": [
@@ -2165,8 +2165,8 @@ Fetches the list of addresses from the wallet. If the wallet has not been create
   ]
 }
 ```
-**addresses**  
-Array of wallet addresses owned by the wallet.  
+**addresses**
+Array of wallet addresses owned by the wallet.
 
 ## /wallet/backup [GET]
 
@@ -2174,8 +2174,8 @@ Creates a backup of the wallet settings file. Though this can easily be done man
 
 ### Query String Parameters
 #### REQUIRED
-**destination**  
-Path to the location on disk where the backup file will be saved.  
+**destination**
+Path to the location on disk where the backup file will be saved.
 
 ### Response
 
@@ -2183,15 +2183,15 @@ standard success or error response. See [standard responses](#standard-responses
 
 ## /wallet/changepassword [POST]
 
-Changes the wallet's encryption key.  
+Changes the wallet's encryption key.
 
 ### Query String Parameters
 #### REQUIRED
 **encryptionpassword** | string
-encryptionpassword is the wallet's current encryption password.  
+encryptionpassword is the wallet's current encryption password.
 
 **newpassword** | string
-newpassword is the new password for the wallet.  
+newpassword is the new password for the wallet.
 
 ### Response
 
@@ -2204,24 +2204,24 @@ Initializes the wallet. After the wallet has been initialized once, it does not 
 ### Query String Parameters
 #### OPTIONAL WALLET PARAMETERS
 **encryptionpassword** | string
-Password that will be used to encrypt the wallet. All subsequent calls should use this password. If left blank, the seed that gets returned will also be the encryption password.  
+Password that will be used to encrypt the wallet. All subsequent calls should use this password. If left blank, the seed that gets returned will also be the encryption password.
 
-**dictionary** | string  
-Name of the dictionary that should be used when encoding the seed. 'english' is the most common choice when picking a dictionary.  
+**dictionary** | string
+Name of the dictionary that should be used when encoding the seed. 'english' is the most common choice when picking a dictionary.
 
-**force** | boolean  
+**force** | boolean
 When set to true /wallet/init will Reset the wallet if one exists instead of returning an error. This allows API callers to reinitialize a new wallet.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "primaryseed": "hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello world hello"
 }
 ```
-**primaryseed**  
-Wallet seed used to generate addresses that the wallet is able to spend.  
+**primaryseed**
+Wallet seed used to generate addresses that the wallet is able to spend.
 
 ## /wallet/init/seed [POST]
 
@@ -2230,7 +2230,7 @@ Initializes the wallet using a preexisting seed. After the wallet has been initi
 ### Query String Parameters
 #### REQUIRED WALLET PARAMETERS
 **seed** | string
-Dictionary-encoded phrase that corresponds to the seed being used to initialize the wallet.  
+Dictionary-encoded phrase that corresponds to the seed being used to initialize the wallet.
 
 #### OPTIONAL
 [Optional Wallet Parameters](#optional-wallet-parameters)
@@ -2260,8 +2260,8 @@ Returns the list of seeds in use by the wallet. The primary seed is the only see
 
 ### Query String Parameters
 #### REQUIRED
-**dictionary** | string 
-Name of the dictionary that should be used when encoding the seed. 'english' is the most common choice when picking a dictionary.  
+**dictionary** | string
+Name of the dictionary that should be used when encoding the seed. 'english' is the most common choice when picking a dictionary.
 
 ### JSON Response
 > JSON Response Example
@@ -2276,35 +2276,35 @@ Name of the dictionary that should be used when encoding the seed. 'english' is 
   ]
 }
 ```
-**primaryseed**  
-Seed that is actively being used to generate new addresses for the wallet.  
+**primaryseed**
+Seed that is actively being used to generate new addresses for the wallet.
 
-**addressesremaining**  
-Number of addresses that remain in the primary seed until exhaustion has been reached. Once exhaustion has been reached, new addresses will continue to be generated but they will be more difficult to recover in the event of a lost wallet file or encryption password.  
+**addressesremaining**
+Number of addresses that remain in the primary seed until exhaustion has been reached. Once exhaustion has been reached, new addresses will continue to be generated but they will be more difficult to recover in the event of a lost wallet file or encryption password.
 
-**allseeds**  
-Array of all seeds that the wallet references when scanning the blockchain for outputs. The wallet is able to spend any output generated by any of the seeds, however only the primary seed is being used to generate new addresses.  
+**allseeds**
+Array of all seeds that the wallet references when scanning the blockchain for outputs. The wallet is able to spend any output generated by any of the seeds, however only the primary seed is being used to generate new addresses.
 
 ## /wallet/siacoins [POST]
 
 
 
-Sends siacoins to an address or set of addresses. The outputs are arbitrarily selected from addresses in the wallet. If 'outputs' is supplied, 'amount' and 'destination' must be empty.  
+Sends siacoins to an address or set of addresses. The outputs are arbitrarily selected from addresses in the wallet. If 'outputs' is supplied, 'amount' and 'destination' must be empty.
 
 ### Query String Parameters
 #### REQUIRED
 Amount and Destination or Outputs are required
 
-**amount** | hastings  
+**amount** | hastings
 Number of hastings being sent. A hasting is the smallest unit in Sia. There are 10^24 hastings in a siacoin.
 
-**destination** | address  
-Address that is receiving the coins.  
+**destination** | address
+Address that is receiving the coins.
 
 **OR**
 
-**outputs**  
-JSON array of outputs. The structure of each output is: {"unlockhash": "<destination>", "value": "<amount>"}  
+**outputs**
+JSON array of outputs. The structure of each output is: {"unlockhash": "<destination>", "value": "<amount>"}
 
 ### JSON Response
 > JSON Response Example
@@ -2318,8 +2318,8 @@ JSON array of outputs. The structure of each output is: {"unlockhash": "<destina
   ]
 }
 ```
-**transactionids**  
-Array of IDs of the transactions that were created when sending the coins. The last transaction contains the output headed to the 'destination'. Transaction IDs are 64 character long hex strings.  
+**transactionids**
+Array of IDs of the transactions that were created when sending the coins. The last transaction contains the output headed to the 'destination'. Transaction IDs are 64 character long hex strings.
 
 ## /wallet/siafunds [POST]
 
@@ -2327,15 +2327,15 @@ Sends siafunds to an address. The outputs are arbitrarily selected from addresse
 
 ### Query String Parameters
 #### REQUIRED
-**amount** | siafunds  
-Number of siafunds being sent.  
+**amount** | siafunds
+Number of siafunds being sent.
 
-**destination** | address  
-Address that is receiving the funds.  
+**destination** | address
+Address that is receiving the funds.
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   "transactionids": [
@@ -2345,8 +2345,8 @@ Address that is receiving the funds.
   ]
 }
 ```
-**transactionids**  
-Array of IDs of the transactions that were created when sending the coins. The last transaction contains the output headed to the 'destination'. Transaction IDs are 64 character long hex strings.  
+**transactionids**
+Array of IDs of the transactions that were created when sending the coins. The last transaction contains the output headed to the 'destination'. Transaction IDs are 64 character long hex strings.
 
 ## /wallet/siagkey [POST]
 
@@ -2354,11 +2354,11 @@ Loads a key into the wallet that was generated by siag. Most siafunds are curren
 
 ### Query String Parameters
 #### REQUIRED
-**encryptionpassword**  
-Key that is used to encrypt the siag key when it is imported to the wallet.  
+**encryptionpassword**
+Key that is used to encrypt the siag key when it is imported to the wallet.
 
-**keyfiles**  
-List of filepaths that point to the keyfiles that make up the siag key. There should be at least one keyfile per required signature. The filenames need to be commna separated (no spaces), which means filepaths that contain a comma are not allowed.  
+**keyfiles**
+List of filepaths that point to the keyfiles that make up the siag key. There should be at least one keyfile per required signature. The filenames need to be commna separated (no spaces), which means filepaths that contain a comma are not allowed.
 
 ### Response
 
@@ -2414,7 +2414,7 @@ Signs a transaction. The wallet will attempt to sign each input specified. The t
 
 ### JSON Response
 > JSON Response Example
- 
+
 ```go
 {
   // signed transaction
@@ -2459,11 +2459,11 @@ Scans the blockchain for outputs belonging to a seed and send them to an address
 ### Query String Parameters
 #### REQUIRED
 **seed** | string
-Dictionary-encoded phrase that corresponds to the seed being added to the wallet.  
+Dictionary-encoded phrase that corresponds to the seed being added to the wallet.
 
 #### OPTIONAL
-**dictionary** | string  
-Name of the dictionary that should be used when decoding the seed. 'english' is the most common choice when picking a dictionary.  
+**dictionary** | string
+Name of the dictionary that should be used when decoding the seed. 'english' is the most common choice when picking a dictionary.
 
 ### JSON Response
  > JSON  Response Example
@@ -2473,11 +2473,11 @@ Name of the dictionary that should be used when decoding the seed. 'english' is 
   "funds": "1",      // siafunds, big int
 }
 ```
-**coins** | hastings, big int  
-Number of siacoins, in hastings, transferred to the wallet as a result of the sweep.  
+**coins** | hastings, big int
+Number of siacoins, in hastings, transferred to the wallet as a result of the sweep.
 
-**funds** | siafunds, big int  
-Number of siafunds transferred to the wallet as a result of the sweep.  
+**funds** | siafunds, big int
+Number of siafunds transferred to the wallet as a result of the sweep.
 
 ## /wallet/lock [POST]
 
@@ -2495,7 +2495,7 @@ Gets the transaction associated with a specific transaction id.
 ### Path Parameters
 #### REQUIRED
 **id** | hash
-ID of the transaction being requested.  
+ID of the transaction being requested.
 
 ### JSON Response
 > JSON Response Example
@@ -2531,62 +2531,62 @@ ID of the transaction being requested.
   }
 }
 ```
-**transaction**  
-Raw transaction. The rest of the fields in the resposne are determined from this raw transaction. It is left undocumented here as the processed transaction (the rest of the fields in this object) are usually what is desired.  
+**transaction**
+Raw transaction. The rest of the fields in the resposne are determined from this raw transaction. It is left undocumented here as the processed transaction (the rest of the fields in this object) are usually what is desired.
 
-See types.Transaction in https://gitlab.com/NebulousLabs/Sia/blob/master/types/transactions.go  
+See types.Transaction in https://gitlab.com/NebulousLabs/Sia/blob/master/types/transactions.go
 
-**transactionid**  
-ID of the transaction from which the wallet transaction was derived.  
+**transactionid**
+ID of the transaction from which the wallet transaction was derived.
 
-**confirmationheight**  
-Block height at which the transaction was confirmed. If the transaction is unconfirmed the height will be the max value of an unsigned 64-bit integer.  
+**confirmationheight**
+Block height at which the transaction was confirmed. If the transaction is unconfirmed the height will be the max value of an unsigned 64-bit integer.
 
-**confirmationtimestamp**  
-Time, in unix time, at which a transaction was confirmed. If the transaction is unconfirmed the timestamp will be the max value of an unsigned 64-bit integer.  
+**confirmationtimestamp**
+Time, in unix time, at which a transaction was confirmed. If the transaction is unconfirmed the timestamp will be the max value of an unsigned 64-bit integer.
 
-**inputs**  
-Array of processed inputs detailing the inputs to the transaction.  
+**inputs**
+Array of processed inputs detailing the inputs to the transaction.
 
-**parentid**  
-The id of the output being spent.  
+**parentid**
+The id of the output being spent.
 
-**fundtype**  
-Type of fund represented by the input. Possible values are 'siacoin input' and 'siafund input'.  
+**fundtype**
+Type of fund represented by the input. Possible values are 'siacoin input' and 'siafund input'.
 
-**walletaddress** | Boolean  
-true if the address is owned by the wallet.  
+**walletaddress** | Boolean
+true if the address is owned by the wallet.
 
-**relatedaddress**  
-Address that is affected. For inputs (outgoing money), the related address is usually not important because the wallet arbitrarily selects which addresses will fund a transaction.  
+**relatedaddress**
+Address that is affected. For inputs (outgoing money), the related address is usually not important because the wallet arbitrarily selects which addresses will fund a transaction.
 
-**value** | hastings or siafunds, depending on fundtype, big int  
-Amount of funds that have been moved in the input.  
+**value** | hastings or siafunds, depending on fundtype, big int
+Amount of funds that have been moved in the input.
 
-**outputs**  
-Array of processed outputs detailing the outputs of the transaction. Outputs related to file contracts are excluded.  
+**outputs**
+Array of processed outputs detailing the outputs of the transaction. Outputs related to file contracts are excluded.
 
-**id**  
-The id of the output that was created.  
+**id**
+The id of the output that was created.
 
-**fundtype**  
-Type of fund is represented by the output. Possible values are 'siacoin output', 'siafund output', 'claim output', and 'miner payout'. Siacoin outputs and claim outputs both relate to siacoins.  
+**fundtype**
+Type of fund is represented by the output. Possible values are 'siacoin output', 'siafund output', 'claim output', and 'miner payout'. Siacoin outputs and claim outputs both relate to siacoins.
 
-Siafund outputs relate to siafunds.  
+Siafund outputs relate to siafunds.
 
-Miner payouts point to siacoins that have been spent on a miner payout. Because the destination of the miner payout is determined by the block and not the transaction, the data 'maturityheight', 'walletaddress', and 'relatedaddress' areleft blank.  
+Miner payouts point to siacoins that have been spent on a miner payout. Because the destination of the miner payout is determined by the block and not the transaction, the data 'maturityheight', 'walletaddress', and 'relatedaddress' areleft blank.
 
-**maturityheight**  
-Block height the output becomes available to be spent. Siacoin outputs and siafund outputs mature immediately - their maturity height will always be the confirmation height of the transaction. Claim outputs cannot be spent until they have had 144 confirmations, thus the maturity height of a claim output will always be 144 larger than the confirmation height of the transaction.  
+**maturityheight**
+Block height the output becomes available to be spent. Siacoin outputs and siafund outputs mature immediately - their maturity height will always be the confirmation height of the transaction. Claim outputs cannot be spent until they have had 144 confirmations, thus the maturity height of a claim output will always be 144 larger than the confirmation height of the transaction.
 
-**walletaddress** | boolean  
-true if the address is owned by the wallet.  
+**walletaddress** | boolean
+true if the address is owned by the wallet.
 
-**relatedaddress**  
-Address that is affected. For outputs (incoming money), the related address field can be used to determine who has sent money to the wallet.  
+**relatedaddress**
+Address that is affected. For outputs (incoming money), the related address field can be used to determine who has sent money to the wallet.
 
-**value** | hastings or siafunds, depending on fundtype, big int  
-Amount of funds that have been moved in the output.  
+**value** | hastings or siafunds, depending on fundtype, big int
+Amount of funds that have been moved in the output.
 
 ## /wallet/transactions [GET]
 
@@ -2594,10 +2594,10 @@ Returns a list of transactions related to the wallet in chronological order.
 
 ### Query String Parameters
 #### REQUIRED
-**startheight** | block height  
+**startheight** | block height
 // Height of the block where transaction history should begin.
 
-**endheight** | block height  
+**endheight** | block height
 Height of of the block where the transaction history should end. If 'endheight' is greater than the current height, or if it is '-1', all transactions up to and including the most recent block will be provided.
 
 ### JSON Response
@@ -2617,15 +2617,15 @@ Height of of the block where the transaction history should end. If 'endheight' 
   ]
 }
 ```
-**confirmedtransactions**  
-All of the confirmed transactions appearing between height 'startheight' and height 'endheight' (inclusive).  
+**confirmedtransactions**
+All of the confirmed transactions appearing between height 'startheight' and height 'endheight' (inclusive).
 
-See the documentation for '/wallet/transaction/:id' for more information.  
+See the documentation for '/wallet/transaction/:id' for more information.
 
-**unconfirmedtransactions**  
-All of the unconfirmed transactions.  
+**unconfirmedtransactions**
+All of the unconfirmed transactions.
 
-See the documentation for '/wallet/transaction/:id' for more information.  
+See the documentation for '/wallet/transaction/:id' for more information.
 
 ## /wallet/transactions/:addr [GET]
 
@@ -2634,7 +2634,7 @@ Returns all of the transactions related to a specific address.
 ### Path Parameters
 #### REQUIRED
 **addr** | hash
-Unlock hash (i.e. wallet address) whose transactions are being requested.  
+Unlock hash (i.e. wallet address) whose transactions are being requested.
 
 ### JSON Response
 > JSON Response Example
@@ -2648,10 +2648,10 @@ Unlock hash (i.e. wallet address) whose transactions are being requested.
   ]
 }
 ```
-**transactions**  
-Array of processed transactions that relate to the supplied address.  
+**transactions**
+Array of processed transactions that relate to the supplied address.
 
-See the documentation for '/wallet/transaction/:id' for more information.  
+See the documentation for '/wallet/transaction/:id' for more information.
 
 ## /wallet/unlock [POST]
 
@@ -2659,8 +2659,8 @@ Unlocks the wallet. The wallet is capable of knowing whether the correct passwor
 
 ### Query String Parameters
 #### REQUIRED
-**encryptionpassword** | string  
-Password that gets used to decrypt the file. Most frequently, the encryption password is the same as the primary wallet seed.  
+**encryptionpassword** | string
+Password that gets used to decrypt the file. Most frequently, the encryption password is the same as the primary wallet seed.
 
 ### Response
 
@@ -2673,7 +2673,7 @@ Returns the unlock conditions of :addr, if they are known to the wallet.
 ### Path Parameters
 #### REQUIRED
 **addr** | hash
-Unlock hash (i.e. wallet address) whose transactions are being requested.  
+Unlock hash (i.e. wallet address) whose transactions are being requested.
 
 ### JSON Response
 > JSON Response Example
@@ -2690,14 +2690,14 @@ Unlock hash (i.e. wallet address) whose transactions are being requested.
   }
 }
 ```
-**timelock**  
-The minimum blockheight required.  
+**timelock**
+The minimum blockheight required.
 
-**signaturesrequired**  
-The number of signatures required.  
+**signaturesrequired**
+The number of signatures required.
 
-**publickeys**  
-The set of keys whose signatures count towards signaturesrequired.  
+**publickeys**
+The set of keys whose signatures count towards signaturesrequired.
 
 ## /wallet/unspent [GET]
 
@@ -2720,26 +2720,26 @@ Returns a list of outputs that the wallet can spend.
   ]
 }
 ```
-**outputs**  
-Array of outputs that the wallet can spend.  
+**outputs**
+Array of outputs that the wallet can spend.
 
-**id**  
-The id of the output.  
+**id**
+The id of the output.
 
-**fundtype**  
-Type of output, either 'siacoin output' or 'siafund output'.  
+**fundtype**
+Type of output, either 'siacoin output' or 'siafund output'.
 
-**confirmationheight**  
-Height of block in which the output appeared. To calculate the number of confirmations, subtract this number from the current block height.  
+**confirmationheight**
+Height of block in which the output appeared. To calculate the number of confirmations, subtract this number from the current block height.
 
-**unlockhash**  
-Hash of the output's unlock conditions, commonly known as the "address".  
+**unlockhash**
+Hash of the output's unlock conditions, commonly known as the "address".
 
-**value** | big int  
-Amount of funds in the output; hastings for siacoin outputs, and siafunds for siafund outputs.  
+**value** | big int
+Amount of funds in the output; hastings for siacoin outputs, and siafunds for siafund outputs.
 
-**iswatchonly** | Boolean  
-Whether the output comes from a watched address or from the wallet's seed.  
+**iswatchonly** | Boolean
+Whether the output comes from a watched address or from the wallet's seed.
 
 ## /wallet/verify/address/:addr [GET]
 
@@ -2748,7 +2748,7 @@ Takes the address specified by :addr and returns a JSON response indicating if t
 ### Path Parameters
 #### REQUIRED
 **addr** | hash
-Unlock hash (i.e. wallet address) whose transactions are being requested.  
+Unlock hash (i.e. wallet address) whose transactions are being requested.
 
 ### JSON Response
 > JSON Response Example
@@ -2758,8 +2758,8 @@ Unlock hash (i.e. wallet address) whose transactions are being requested.
 	"valid": true
 }
 ```
-**valid**  
-valid indicates if the address supplied to :addr is a valid UnlockHash.  
+**valid**
+valid indicates if the address supplied to :addr is a valid UnlockHash.
 
 ## /wallet/watch [GET]
 
@@ -2776,8 +2776,8 @@ Returns the set of addresses that the wallet is watching. This set only includes
   ]
 }
 ```
-**addresses**  
-The addresses currently watched by the wallet.  
+**addresses**
+The addresses currently watched by the wallet.
 
 ## /wallet/watch [POST]
 
