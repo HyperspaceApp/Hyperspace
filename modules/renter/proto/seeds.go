@@ -3,13 +3,13 @@ package proto
 import (
 	"bytes"
 
-	"github.com/dchest/threefish"
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/fastrand"
+	"github.com/dchest/threefish"
 )
 
 const (

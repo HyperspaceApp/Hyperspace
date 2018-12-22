@@ -12,14 +12,14 @@ type (
 	// can be accessed without locking at the cost of being a frozen readonly
 	// representation of a siafile which only exists in memory.
 	Snapshot struct {
-		staticChunks      []Chunk
-		staticFileSize    int64
-		staticPieceSize   uint64
-		staticErasureCode modules.ErasureCoder
-		staticMasterKey   crypto.CipherKey
-		staticMode        os.FileMode
-		staticPubKeyTable []HostPublicKey
-		staticHyperspacePath     string
+		staticChunks         []Chunk
+		staticFileSize       int64
+		staticPieceSize      uint64
+		staticErasureCode    modules.ErasureCoder
+		staticMasterKey      crypto.CipherKey
+		staticMode           os.FileMode
+		staticPubKeyTable    []HostPublicKey
+		staticHyperspacePath string
 	}
 )
 
@@ -111,13 +111,13 @@ func (sf *SiaFile) Snapshot() *Snapshot {
 	}
 
 	return &Snapshot{
-		staticChunks:      chunks,
-		staticFileSize:    sf.staticMetadata.StaticFileSize,
-		staticPieceSize:   sf.staticMetadata.StaticPieceSize,
-		staticErasureCode: sf.staticMetadata.staticErasureCode,
-		staticMasterKey:   mk,
-		staticMode:        sf.staticMetadata.Mode,
-		staticPubKeyTable: pkt,
-		staticHyperspacePath:     sf.staticMetadata.HyperspacePath,
+		staticChunks:         chunks,
+		staticFileSize:       sf.staticMetadata.StaticFileSize,
+		staticPieceSize:      sf.staticMetadata.StaticPieceSize,
+		staticErasureCode:    sf.staticMetadata.staticErasureCode,
+		staticMasterKey:      mk,
+		staticMode:           sf.staticMetadata.Mode,
+		staticPubKeyTable:    pkt,
+		staticHyperspacePath: sf.staticMetadata.HyperspacePath,
 	}
 }

@@ -3,10 +3,10 @@ package host
 import (
 	"errors"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
+	"github.com/coreos/bbolt"
 )
 
 // managedRPCLoopSettings writes an RPC response containing the host's

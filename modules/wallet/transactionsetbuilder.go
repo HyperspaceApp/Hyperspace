@@ -17,7 +17,7 @@ func (tb *transactionSetBuilder) currentBuilder() *transactionBuilder {
 	return &tb.builders[len(tb.builders)-1]
 }
 
-// StartTransaction is a convenience function that calls
+// StartTransactionSet is a convenience function that calls
 // RegisterTransactionSet(types.Transaction{}, nil).
 func (w *Wallet) StartTransactionSet() (modules.TransactionSetBuilder, error) {
 	if err := w.tg.Add(); err != nil {
@@ -307,7 +307,7 @@ func (tb *transactionSetBuilder) Size() (size int) {
 	return ret
 }
 
-// NewTransaction build a new transaction set and return it
+// NewTransactionSet build a new transaction set and return it
 func (w *Wallet) NewTransactionSet(outputs []types.SiacoinOutput, fee types.Currency) ([]types.Transaction, error) {
 	tb, err := w.StartTransactionSet()
 	if err != nil {
@@ -329,7 +329,7 @@ func (w *Wallet) NewTransactionSet(outputs []types.SiacoinOutput, fee types.Curr
 	return txnSet, nil
 }
 
-// NewTransactionForAddress build a new transaction with specified unlockhash and return it
+// NewTransactionSetForAddress build a new transaction with specified unlockhash and return it
 func (w *Wallet) NewTransactionSetForAddress(dest types.UnlockHash, amount, fee types.Currency) ([]types.Transaction, error) {
 	output := types.SiacoinOutput{
 		Value:      amount,

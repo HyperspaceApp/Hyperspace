@@ -39,6 +39,8 @@ var (
 	// database.
 	ErrBlockKnown = errors.New("block already present in database")
 
+	// ErrHeaderKnown is an error indicating that a header is already in the
+	// database.
 	ErrHeaderKnown = errors.New("header already present in database")
 
 	// ErrBlockUnsolved indicates that a block did not meet the required POW
@@ -334,6 +336,7 @@ func (cc ConsensusChange) Append(cc2 ConsensusChange) ConsensusChange {
 }
 
 // TODO move this back into the consensus package
+
 // SurpassThreshold is a percentage that dictates how much heavier a competing
 // chain has to be before the node will switch to mining on that chain. This is
 // not a consensus rule. This percentage is only applied to the most recent

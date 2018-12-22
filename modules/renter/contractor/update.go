@@ -118,7 +118,7 @@ func (c *Contractor) ProcessConsensusChange(cc modules.ConsensusChange) {
 	}
 }
 
-// HeaderProcessConsensusChange will be called by the consensus set every time there
+// ProcessHeaderConsensusChange will be called by the consensus set every time there
 // is a change in the blockchain. Updates will always be called in order.
 func (c *Contractor) ProcessHeaderConsensusChange(hcc modules.HeaderConsensusChange) {
 	c.mu.Lock()

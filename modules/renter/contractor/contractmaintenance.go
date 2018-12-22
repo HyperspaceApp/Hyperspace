@@ -14,8 +14,8 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
-	"github.com/HyperspaceApp/fastrand"
 	"github.com/HyperspaceApp/errors"
+	"github.com/HyperspaceApp/fastrand"
 )
 
 var (

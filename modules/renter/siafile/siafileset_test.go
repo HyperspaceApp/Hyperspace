@@ -21,9 +21,9 @@ func newTestSiaFileSetWithFile() (*SiaFileSetEntry, *SiaFileSet, error) {
 	sfs := NewSiaFileSet(dir, wal)
 	// Create SiaFile
 	up := modules.FileUploadParams{
-		Source:      source,
-		HyperspacePath:     siaPath,
-		ErasureCode: rc,
+		Source:         source,
+		HyperspacePath: siaPath,
+		ErasureCode:    rc,
 	}
 	entry, err := sfs.NewSiaFile(up, sk, fileSize, fileMode)
 	if err != nil {

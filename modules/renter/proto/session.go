@@ -225,11 +225,11 @@ func (s *Session) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 	return sc.Metadata(), sectorRoot, nil
 }
 
-// TODO migrate Download() to this fn
+// Sector download whole sector
+// TODO : migrate Download() to this fn
 func (s *Session) Sector(root crypto.Hash) (_ modules.RenterContract, _ []byte, err error) {
 	return modules.RenterContract{}, nil, nil
 }
-
 
 // Download calls the download RPC and returns the requested data. A Merkle
 // proof is always requested.

@@ -292,7 +292,7 @@ func (w *Wallet) Transactions(startHeight, endHeight types.BlockHeight) (pts []m
 	return
 }
 
-// UnconfirmedTransactions returns the set of unconfirmed transactions that are
+// FilteredUnconfirmedTransactions returns the filtered set of unconfirmed transactions that are
 // relevant to the wallet.
 func (w *Wallet) FilteredUnconfirmedTransactions(watchOnly bool, category string) ([]modules.ProcessedTransaction, error) {
 	if err := w.tg.Add(); err != nil {
@@ -336,7 +336,7 @@ txloop:
 	return pts, nil
 }
 
-// FilteredUnconfirmedTransactions returns the set of unconfirmed transactions that are
+// UnconfirmedTransactions returns the set of unconfirmed transactions that are
 // relevant to the wallet and pass a certain set of criteria.
 func (w *Wallet) UnconfirmedTransactions() ([]modules.ProcessedTransaction, error) {
 	if err := w.tg.Add(); err != nil {

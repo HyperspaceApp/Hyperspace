@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -374,7 +376,8 @@ func TestSPVRenterDownloadAsyncNonexistentFile(t *testing.T) {
 
 	downpath := filepath.Join(st.dir, "testfile")
 	err = st.getAPI(fmt.Sprintf("/renter/downloadasync/doesntexist?destination=%v", downpath), nil)
-	if err == nil || err.Error() != fmt.Sprintf("download failed: no file with that path: doesntexist") {
+	log.Println(err.Error())
+	if err == nil || !strings.HasSuffix(err.Error(), "no such file or directory") {
 		t.Fatal("downloadasync did not return error on nonexistent file")
 	}
 }

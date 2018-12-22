@@ -90,8 +90,8 @@ var (
 		"1foo.com:1",
 		"tld.foo.com:1",
 		"hn.com:8811",
-		strings.Repeat("foo.", 63) + "f:123",                     // 253 chars long
-		strings.Repeat("foo.", 63) + "f.:123",                    // 254 chars long, 253 chars long without trailing dot
+		strings.Repeat("foo.", 63) + "f:123",  // 253 chars long
+		strings.Repeat("foo.", 63) + "f.:123", // 254 chars long, 253 chars long without trailing dot
 		strings.Repeat(strings.Repeat("a", 63)+".", 3) + "a:123", // 3x63 char length labels + 1x1 char length label without trailing dot
 		strings.Repeat(strings.Repeat("a", 63)+".", 3) + ":123",  // 3x63 char length labels with trailing dot
 		"[::2]:65535",

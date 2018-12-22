@@ -3,8 +3,8 @@ package siafile
 import (
 	"math"
 	"os"
-	"regexp"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -189,6 +189,7 @@ func (sfs *SiaFileSet) open(siaPath string) (*SiaFileSetEntry, error) {
 	}, nil
 }
 
+// Filter filter files by regexp
 func (sfs *SiaFileSet) Filter(filter *regexp.Regexp) ([]*SiaFileSetEntry, error) {
 	var entrys []*SiaFileSetEntry
 	sfs.mu.Lock()
@@ -326,7 +327,7 @@ func (sfs *SiaFileSet) NewFromFileData(fd FileData) (*SiaFileSetEntry, error) {
 			StaticErasureCodeParams: ecParams,
 			StaticPagesPerChunk:     numChunkPagesRequired(fd.ErasureCode.NumPieces()),
 			StaticPieceSize:         fd.PieceSize,
-			HyperspacePath:                 fd.Name,
+			HyperspacePath:          fd.Name,
 		},
 		deleted:        fd.Deleted,
 		deps:           modules.ProdDependencies,

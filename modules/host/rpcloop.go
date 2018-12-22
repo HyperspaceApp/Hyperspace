@@ -6,13 +6,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/coreos/bbolt"
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/fastrand"
+	"github.com/coreos/bbolt"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 

@@ -28,7 +28,6 @@ const (
 
 	// DefaultAddressGapLimit is the default address gap limit as specified in
 	// BIP 44.
-
 	// Bitcoin defaults to 20, but we can create a lot of addresses quickly
 	// when we form contracts, so we set to 50.
 	DefaultAddressGapLimit = 50
@@ -228,6 +227,7 @@ type (
 		Drop()
 	}
 
+	// TransactionSetBuilder is used to construct custom transactions.
 	TransactionSetBuilder interface {
 		// FundOutputs will aggregate enough inputs to cover the
 		// total value of the outputs and the miner fee if any. A refund
