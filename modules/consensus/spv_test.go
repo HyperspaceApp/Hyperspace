@@ -140,15 +140,7 @@ func TestSPVConsensusSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// blockchains should now match
-	for i := 0; i < 50; i++ {
-		if cst1.cs.dbCurrentBlockID() != cst2.cs.dbCurrentBlockID() {
-			time.Sleep(250 * time.Millisecond)
-		}
-	}
-	if cst1.cs.dbCurrentBlockID() != cst2.cs.dbCurrentBlockID() {
-		t.Fatal("Synchronize failed")
-	}
+	waitTillSync(cst1, cst2, t)
 
 	// Mine on cst2 until it is more than 'MaxCatchUpBlocks' ahead of cst1.
 	// NOTE: we have to disconnect prior to this, otherwise cst2 will relay
@@ -167,15 +159,7 @@ func TestSPVConsensusSync(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// block heights should now match
-	for i := 0; i < 50; i++ {
-		if cst1.cs.dbBlockHeight() != cst2.cs.dbBlockHeight() {
-			time.Sleep(250 * time.Millisecond)
-		}
-	}
-	if cst1.cs.dbBlockHeight() != cst2.cs.dbBlockHeight() {
-		t.Fatal("synchronize failed")
-	}
+	waitTillSync(cst1, cst2, t)
 
 	// extend cst2 with a "bad" (old) block, and synchronize. cst1 should
 	// reject the bad block.

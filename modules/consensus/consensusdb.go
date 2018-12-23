@@ -522,6 +522,7 @@ func removeDSCO(tx *bolt.Tx, bh types.BlockHeight, id types.SiacoinOutputID) {
 // createDSCOBucket creates a bucket for the delayed siacoin outputs at the
 // input height.
 func createDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
+	// log.Printf("createDSCOBucket %d", bh)
 	bucketID := append(prefixDSCO, encoding.Marshal(bh)...)
 	_, err := tx.CreateBucket(bucketID)
 	if build.DEBUG && err != nil {
@@ -532,6 +533,7 @@ func createDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
 // deleteDSCOBucket deletes the bucket that held a set of delayed siacoin
 // outputs.
 func deleteDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
+	// log.Printf("deleteDSCOBucket %d", bh)
 	// Delete the bucket.
 	bucketID := append(prefixDSCO, encoding.Marshal(bh)...)
 	bucket := tx.Bucket(bucketID)
@@ -549,6 +551,7 @@ func deleteDSCOBucket(tx *bolt.Tx, bh types.BlockHeight) {
 }
 
 func createDSCOBucketIfNotExist(tx *bolt.Tx, bh types.BlockHeight) {
+	// log.Printf("createDSCOBucketIfNotExist %d", bh)
 	bucketID := append(prefixDSCO, encoding.Marshal(bh)...)
 	bucket := tx.Bucket(bucketID)
 	if bucket == nil {

@@ -37,7 +37,7 @@ func commitHeaderDiffSetSanity(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, d
 func commitSingleNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
 		for _, scod := range pb.SiacoinOutputDiffs {
-			// log.Printf("scod: %s %v %s", scod.SiacoinOutput.UnlockHash, scod.Direction, scod.SiacoinOutput.Value.HumanString())
+			// log.Printf("single apply scod: %s %v %s", scod.SiacoinOutput.UnlockHash, scod.Direction, scod.SiacoinOutput.Value.HumanString())
 			commitSiacoinOutputDiff(tx, scod, dir)
 		}
 		for _, fcd := range pb.FileContractDiffs {
@@ -45,7 +45,7 @@ func commitSingleNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDire
 		}
 	} else {
 		for i := len(pb.SiacoinOutputDiffs) - 1; i >= 0; i-- {
-			// log.Printf("scod: %s %v %s", pb.SiacoinOutputDiffs[i].SiacoinOutput.UnlockHash, !pb.SiacoinOutputDiffs[i].Direction, pb.SiacoinOutputDiffs[i].SiacoinOutput.Value.HumanString())
+			// log.Printf("single revert scod: %s %v %s", pb.SiacoinOutputDiffs[i].ID, !pb.SiacoinOutputDiffs[i].Direction, pb.SiacoinOutputDiffs[i].SiacoinOutput.Value.HumanString())
 			commitSiacoinOutputDiff(tx, pb.SiacoinOutputDiffs[i], dir)
 		}
 		for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
@@ -68,6 +68,7 @@ func commitSingleBlockDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffD
 func commitHeaderDiffs(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
 		for _, scod := range pbh.SiacoinOutputDiffs {
+			// log.Printf("commitHeaderDiffs: %d, %s, %v", i, scod.ID, dir)
 			commitSiacoinOutputDiff(tx, scod, dir)
 		}
 		for _, dscod := range pbh.DelayedSiacoinOutputDiffs {
@@ -75,6 +76,7 @@ func commitHeaderDiffs(tx *bolt.Tx, pbh *modules.ProcessedBlockHeader, dir modul
 		}
 	} else {
 		for i := len(pbh.SiacoinOutputDiffs) - 1; i >= 0; i-- {
+			// log.Printf("commitHeaderDiffs: %d, %s, %v", i, pbh.SiacoinOutputDiffs[i].ID, dir)
 			commitSiacoinOutputDiff(tx, pbh.SiacoinOutputDiffs[i], dir)
 		}
 		for i := len(pbh.DelayedSiacoinOutputDiffs) - 1; i >= 0; i-- {

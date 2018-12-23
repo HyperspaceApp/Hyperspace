@@ -43,6 +43,7 @@ func applyMaturedSiacoinOutputs(tx *bolt.Tx, pb *processedBlock, pbh *modules.Pr
 	if pb.Height < types.MaturityDelay {
 		return
 	}
+	// log.Printf("applyMaturedSiacoinOutputs dsco for %d", pb.Height)
 
 	// Iterate through the list of delayed siacoin outputs. Sometimes boltdb
 	// has trouble if you delete elements in a bucket while iterating through
@@ -120,11 +121,11 @@ func applyMaturedSiacoinOutputsForHeader(tx *bolt.Tx, pbh *modules.ProcessedBloc
 	// elements are collected into an array and then deleted after the bucket
 	// scan is complete.
 	bucketID := append(prefixDSCO, encoding.Marshal(pbh.Height)...)
-	// log.Printf("applyMaturedSiacoinOutputsForHeader dsco for %d", pbh.Height)
 	bucket := tx.Bucket(bucketID)
 	if bucket == nil {
 		return
 	}
+	// log.Printf("applyMaturedSiacoinOutputsForHeader dsco for %d", pbh.Height)
 	var scods []modules.SiacoinOutputDiff
 	var dscods []modules.DelayedSiacoinOutputDiff
 	dbErr := bucket.ForEach(func(idBytes, scoBytes []byte) error {

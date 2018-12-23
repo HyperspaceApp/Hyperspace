@@ -56,6 +56,7 @@ func (cs *ConsensusSet) revertToBlock(tx *bolt.Tx, pb *processedBlock) (reverted
 			build.Critical(errExternalRevert)
 		}
 	}
+	// log.Printf("reverting: %d %d", blockHeight(tx), pb.Height)
 
 	// Rewind blocks until 'pb' is the current block.
 	for currentBlockID(tx) != pb.Block.ID() {

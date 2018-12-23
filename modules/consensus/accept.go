@@ -317,6 +317,7 @@ func (cs *ConsensusSet) managedAcceptBlocks(blocks []types.Block) (blockchainExt
 			if err != nil {
 				return err
 			}
+			// log.Printf("\n\nmanagedAcceptBlocks: %d %s", parent.Height+1, blocks[i].ID())
 
 			// Try adding the block to consensus.
 			changeEntry, err := cs.addBlockToTree(tx, blocks[i], parent)

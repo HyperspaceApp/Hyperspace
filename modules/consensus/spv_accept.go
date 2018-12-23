@@ -175,6 +175,7 @@ func (cs *ConsensusSet) managedAcceptHeaders(headers []modules.TransmittedBlockH
 				return err
 			}
 			// Try adding the header to consensus.
+			// log.Printf("\n\nmanagedAcceptHeaders: %d %s", parentHeader.Height+1, headers[i].BlockHeader.ID())
 			changeEntry, err := cs.addHeaderToTree(tx, parentHeader, headers[i])
 			if err == nil {
 				chainExtended = true

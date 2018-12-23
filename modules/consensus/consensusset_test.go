@@ -43,6 +43,7 @@ func (cst *consensusSetTester) mineSiacoins() {
 	time.Sleep(20 * time.Millisecond) // wait for tpool sync
 	for i := types.BlockHeight(0); i <= types.MaturityDelay; i++ {
 		b, err := cst.miner.FindBlock()
+		// log.Printf("block: %d %s", i+1, b.ID())
 		if err != nil {
 			panic(err)
 		}

@@ -215,7 +215,7 @@ type (
 		Depth                     types.Target
 		ChildTarget               types.Target
 		GCSFilter                 types.GCSFilter
-		SiacoinOutputDiffs        []SiacoinOutputDiff
+		SiacoinOutputDiffs        []SiacoinOutputDiff // to store matured siacoin outputs
 		DelayedSiacoinOutputDiffs []DelayedSiacoinOutputDiff
 		Announcements             []HostAnnouncement
 	}

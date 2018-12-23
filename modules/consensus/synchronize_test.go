@@ -1163,7 +1163,8 @@ func TestIntegrationBroadcastRelayHeader(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cst1.cs.gateway.Broadcast("RelayHeader", validBlock.Header(), cst1.cs.gateway.Peers())
+	ph, _ := cst1.cs.processedBlockHeaders[validBlock.ID()]
+	cst1.cs.gateway.Broadcast("RelayHeader", *ph.ForSend(), cst1.cs.gateway.Peers())
 	select {
 	case <-mg.broadcastCalled:
 	case <-time.After(1500 * time.Millisecond):

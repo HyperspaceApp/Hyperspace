@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"log"
 	"testing"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -134,6 +135,7 @@ func TestRevertToNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	log.Printf("--------------------------------start dbRevertToNode----------------------------------------------------------------")
 	revertedNodes := cst.cs.dbRevertToNode(grandParent)
 	if len(revertedNodes) != 2 {
 		t.Error("wrong number of nodes reverted")
@@ -161,11 +163,26 @@ func TestRevertToHeaderNode(t *testing.T) {
 		t.SkipNow()
 	}
 	t.Parallel()
-	cst, err := createConsensusSetTester(t.Name())
+	cst1, err := createSPVConsensusSetTester(t.Name() + "1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cst.Close()
+	defer cst1.CloseSPV()
+	cst2, err := createConsensusSetTester(t.Name() + "2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cst2.Close()
+	// log.Printf("--------------------------------before connect----------------------------------------------------------------")
+
+	// connect gateways, triggering a Synchronize
+	err = cst1.gateway.Connect(cst2.gateway.Address())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	waitTillSync(cst1, cst2, t)
+	cst := cst1
 	pbh := cst.cs.dbCurrentProcessedHeader()
 
 	// Revert to a grandparent and verify the returned array is correct.
@@ -177,6 +194,7 @@ func TestRevertToHeaderNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// log.Printf("--------------------------------start dbRevertToHeaderNode----------------------------------------------------------------")
 	revertedHeaderNodes := cst.cs.dbRevertToHeaderNode(grandParent)
 	if len(revertedHeaderNodes) != 2 {
 		t.Error("wrong number of nodes reverted")

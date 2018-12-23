@@ -253,6 +253,7 @@ func (cs *ConsensusSet) checkRevertApply(tx *bolt.Tx) {
 	if current.Height != parent.Height+1 {
 		manageErr(tx, errors.New("parent structure of a block is incorrect"))
 	}
+	// log.Printf("checkRevertApply: parent: %d", parent.Height)
 	_, _, err = cs.forkBlockchain(tx, parent, nil)
 	if err != nil {
 		manageErr(tx, err)
@@ -260,6 +261,7 @@ func (cs *ConsensusSet) checkRevertApply(tx *bolt.Tx) {
 	if consensusChecksum(tx) != parent.ConsensusChecksum {
 		manageErr(tx, errors.New("consensus checksum mismatch after reverting"))
 	}
+	// log.Printf("checkRevertApply: current: %d", current.Height)
 	_, _, err = cs.forkBlockchain(tx, current, nil)
 	if err != nil {
 		manageErr(tx, err)
@@ -283,6 +285,7 @@ func (cs *ConsensusSet) checkHeaderRevertApply(tx *bolt.Tx) {
 	if current.Height != parent.Height+1 {
 		manageErr(tx, errors.New("parent structure of a block is incorrect"))
 	}
+	// log.Printf("checkHeaderRevertApply: parent: %d", parent.Height)
 	_, _, err = cs.forkHeadersBlockchain(tx, parent)
 	if err != nil {
 		manageErr(tx, err)
@@ -290,6 +293,7 @@ func (cs *ConsensusSet) checkHeaderRevertApply(tx *bolt.Tx) {
 	// if consensusChecksum(tx) != parent.ConsensusChecksum {
 	// 	manageErr(tx, errors.New("consensus checksum mismatch after reverting"))
 	// }
+	// log.Printf("checkHeaderRevertApply: current: %d", current.Height)
 	_, _, err = cs.forkHeadersBlockchain(tx, current)
 	if err != nil {
 		manageErr(tx, err)

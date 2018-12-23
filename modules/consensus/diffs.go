@@ -54,6 +54,8 @@ func commitSiacoinOutputDiff(tx *bolt.Tx, scod modules.SiacoinOutputDiff, dir mo
 	if scod.Direction == dir {
 		addSiacoinOutput(tx, scod.ID, scod.SiacoinOutput)
 	} else {
+		// log.Printf("commitSiacoinOutputDiff: %s %v", scod.ID, dir)
+		// debug.PrintStack()
 		removeSiacoinOutput(tx, scod.ID)
 	}
 }
@@ -76,21 +78,11 @@ func commitDelayedSiacoinOutputDiff(tx *bolt.Tx, dscod modules.DelayedSiacoinOut
 	}
 }
 
-// createUpcomingDelayeOutputdMaps creates the delayed siacoin output maps that
-// will be used when applying delayed siacoin outputs in the diff set.
-func createUpcomingDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
-	if dir == modules.DiffApply {
-		// log.Printf("create dsco for %d", height+types.MaturityDelay)
-		createDSCOBucket(tx, height+types.MaturityDelay)
-	} else if height >= types.MaturityDelay {
-		createDSCOBucket(tx, height)
-	}
-}
-
 // commitNodeDiffs commits all of the diffs in a block node.
 func commitNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 	if dir == modules.DiffApply {
 		for _, scod := range pb.SiacoinOutputDiffs {
+			// log.Printf("scod: %s %v %s", scod.ID, scod.Direction, scod.SiacoinOutput.Value.HumanString())
 			commitSiacoinOutputDiff(tx, scod, dir)
 		}
 		for _, fcd := range pb.FileContractDiffs {
@@ -101,6 +93,8 @@ func commitNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection)
 		}
 	} else {
 		for i := len(pb.SiacoinOutputDiffs) - 1; i >= 0; i-- {
+			// log.Printf("scod: %s %v %s", pb.SiacoinOutputDiffs[i].ID, !pb.SiacoinOutputDiffs[i].Direction, pb.SiacoinOutputDiffs[i].SiacoinOutput.Value.HumanString())
+			// debug.PrintStack()
 			commitSiacoinOutputDiff(tx, pb.SiacoinOutputDiffs[i], dir)
 		}
 		for i := len(pb.FileContractDiffs) - 1; i >= 0; i-- {
@@ -112,14 +106,30 @@ func commitNodeDiffs(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection)
 	}
 }
 
+// createUpcomingDelayeOutputdMaps creates the delayed siacoin output maps that
+// will be used when applying delayed siacoin outputs in the diff set.
+func createUpcomingDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
+	// log.Printf("createUpcomingDelayedOutputMaps for %d %v", height, dir)
+	if dir == modules.DiffApply {
+		// log.Printf("creating for %d in %d", height, height+types.MaturityDelay)
+		createDSCOBucket(tx, height+types.MaturityDelay)
+	} else if height >= types.MaturityDelay {
+		// log.Printf("creating for %d in %d", height, height)
+		createDSCOBucket(tx, height)
+	}
+}
+
 // deleteObsoleteDelayedOutputMaps deletes the delayed siacoin output maps that
 // are no longer in use.
 func deleteObsoleteDelayedOutputMaps(tx *bolt.Tx, height types.BlockHeight, dir modules.DiffDirection) {
 	// There are no outputs that mature in the first MaturityDelay blocks.
+	// log.Printf("delete dsco for %d %v", height, dir)
 	if dir == modules.DiffApply && height >= types.MaturityDelay {
-		// log.Printf("delete dsco for %d", height)
+		// log.Printf("deleteing for %d in %d", height, height)
+		// debug.PrintStack()
 		deleteDSCOBucket(tx, height)
 	} else if dir == modules.DiffRevert {
+		// log.Printf("deleteing for %d in %d", height, height+types.MaturityDelay)
 		deleteDSCOBucket(tx, height+types.MaturityDelay)
 	}
 }

@@ -49,6 +49,7 @@ func (cs *ConsensusSet) revertToHeader(tx *bolt.Tx, ph *modules.ProcessedBlockHe
 	if build.DEBUG && (err != nil || currentPathID != ph.BlockHeader.ID()) {
 		panic(errExternalRevert)
 	}
+	// log.Printf("reverting header: %d %d %s %s", blockHeight(tx), ph.Height, currentBlockID(tx), ph.BlockHeader.ID())
 
 	for currentBlockID(tx) != ph.BlockHeader.ID() {
 		header := currentProcessedHeader(tx)
@@ -123,11 +124,18 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 	// log.Printf("applyUntilHeader height:%d, %s", ph.Height, ph.BlockHeader.ID())
 	newPath := backtrackHeadersToCurrentPath(tx, ph)
 	for _, header := range newPath[1:] {
-		applyMaturedSiacoinOutputsForHeader(tx, header) // deal delay stuff in header accpetance
-		createDSCOBucket(tx, ph.Height+types.MaturityDelay)
-
-		headerMap := tx.Bucket(BlockHeaderMap)
 		id := header.BlockHeader.ID()
+		// log.Printf("createDSCOBucket&applyMaturedSiacoinOutputsForHeader %d", len(header.SiacoinOutputDiffs))
+		if len(header.SiacoinOutputDiffs) == 0 {
+			createDSCOBucket(tx, header.Height+types.MaturityDelay)
+			applyMaturedSiacoinOutputsForHeader(tx, header)
+			updateCurrentPath(tx, id, modules.DiffApply)
+			headerMap := tx.Bucket(BlockHeaderMap)
+			headerMap.Put(id[:], encoding.Marshal(*header))
+			// log.Printf("after createDSCOBucket&applyMaturedSiacoinOutputsForHeader %d", len(header.SiacoinOutputDiffs))
+		} else {
+			commitHeaderDiffSet(tx, header, modules.DiffApply)
+		}
 
 		block, err := getBlockMap(tx, id)
 		if err == nil {
@@ -137,9 +145,6 @@ func (cs *ConsensusSet) applyUntilHeader(tx *bolt.Tx, ph *modules.ProcessedBlock
 				panic(err)
 			}
 		}
-		updateCurrentPath(tx, id, modules.DiffApply)
-
-		headerMap.Put(id[:], encoding.Marshal(*header))
 		headers = append(headers, header)
 
 		// Sanity check - after applying a block, check that the consensus set
