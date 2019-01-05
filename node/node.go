@@ -117,6 +117,7 @@ type Node struct {
 	Renter          modules.Renter
 	TransactionPool modules.TransactionPool
 	Wallet          modules.Wallet
+	ThirdParty      modules.Thirdparty
 
 	// The high level directory where all the persistence gets stored for the
 	// modules.

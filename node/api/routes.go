@@ -193,6 +193,15 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/wallet/watch", RequirePassword(api.walletWatchHandlerGET, requiredPassword))
 		router.POST("/wallet/watch", RequirePassword(api.walletWatchHandlerPOST, requiredPassword))
 	}
+	// Renter API Calls
+	if api.thirdparty != nil {
+		// router.POST("/thirdparty/contract/cancel", RequirePassword(api.renterContractCancelHandler, requiredPassword))
+		router.GET("/thirdparty/contracts", api.renterContractsHandler)
+		// router.GET("/hostdb", api.hostdbHandler)
+		// router.GET("/hostdb/active", api.hostdbActiveHandler)
+		// router.GET("/hostdb/all", api.hostdbAllHandler)
+		// router.GET("/hostdb/hosts/:pubkey", api.hostdbHostsHandler)
+	}
 
 	// Apply UserAgent middleware and return the Router
 	api.router = cleanCloseHandler(RequireUserAgent(router, requiredUserAgent))

@@ -32,6 +32,7 @@ import (
 	pool "github.com/HyperspaceApp/Hyperspace/modules/miningpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter"
 	"github.com/HyperspaceApp/Hyperspace/modules/stratumminer"
+	"github.com/HyperspaceApp/Hyperspace/modules/thirdparty"
 	"github.com/HyperspaceApp/Hyperspace/modules/transactionpool"
 	"github.com/HyperspaceApp/Hyperspace/modules/wallet"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
@@ -617,6 +618,17 @@ func (srv *Server) loadModules() error {
 		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "idx", Closer: idx})
 	}
 
+	var t modules.Thirdparty
+	if strings.Contains(srv.config.Siad.Modules, "d") {
+		i++
+		fmt.Printf("(%d/%d) Loading thirdparty...\n", i, len(srv.config.Siad.Modules))
+		t, err = thirdparty.New(g, cs, w, tpool, filepath.Join(srv.config.Siad.SiaDir, modules.ThirdpartyDir))
+		if err != nil {
+			return err
+		}
+		srv.moduleClosers = append(srv.moduleClosers, moduleCloser{name: "thirdparty", Closer: t})
+	}
+
 	// Create the Sia API
 	a, err := api.New(
 		srv.config.Siad.RequiredUserAgent,
@@ -632,6 +644,7 @@ func (srv *Server) loadModules() error {
 		p,
 		sm,
 		idx,
+		t,
 	)
 
 	if err != nil {

@@ -19,7 +19,7 @@ var (
 	// DefaultAllowance is the set of default allowance settings that will be
 	// used when allowances are not set or not fully set
 	DefaultAllowance = Allowance{
-		Funds:       types.SiacoinPrecision.Mul64(500),
+		Funds:       types.SiacoinPrecision.Mul64(10000),
 		Hosts:       uint64(PriceEstimationScope),
 		Period:      types.BlockHeight(3 * types.BlocksPerMonth),
 		RenewWindow: types.BlockHeight(types.BlocksPerMonth),

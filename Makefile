@@ -57,7 +57,7 @@ run = .
 pkgs = ./build ./cmd/hsc ./cmd/hsd ./compatibility ./crypto ./encoding ./gcs ./modules ./modules/consensus ./modules/explorer \
        ./modules/gateway ./modules/host ./modules/host/contractmanager ./modules/renter ./modules/renter/contractor       \
        ./modules/renter/hostdb ./modules/renter/hostdb/hosttree ./modules/renter/proto ./modules/renter/siadir \
-       ./modules/renter/siafile  ./modules/miner ./modules/miningpool ./modules/wallet ./modules/transactionpool ./modules/stratumminer \
+       ./modules/renter/siafile  ./modules/miner ./modules/miningpool ./modules/wallet ./modules/transactionpool ./modules/stratumminer ./modules/thirdparty \
        ./node ./node/api ./node/api/server ./persist ./siatest ./siatest/consensus ./siatest/gateway \
        ./siatest/renter ./siatest/wallet ./sync ./types
 
