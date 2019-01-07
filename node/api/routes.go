@@ -193,7 +193,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/wallet/watch", RequirePassword(api.walletWatchHandlerGET, requiredPassword))
 		router.POST("/wallet/watch", RequirePassword(api.walletWatchHandlerPOST, requiredPassword))
 	}
-	// Renter API Calls
+
+	// Thirdparty API Calls
 	if api.thirdparty != nil {
 		// router.POST("/thirdparty/contract/cancel", RequirePassword(api.renterContractCancelHandler, requiredPassword))
 		router.GET("/thirdparty/contracts", api.renterContractsHandler)

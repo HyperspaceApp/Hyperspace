@@ -2,6 +2,7 @@ package thirdparty
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -242,22 +243,22 @@ func NewCustomThirdparty(g modules.Gateway, cs modules.ConsensusSet, tpool modul
 
 	// if cs.SpvMode() {
 	// 	// Subscribe to the consensus set.
-	// 	err = cs.HeaderConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+	// 	err = cs.HeaderConsensusSetSubscribe(r, modules.ConsensusChangeRecent, t.tg.StopChan())
 	// 	if err != nil {
 	// 		return nil, err
 	// 	}
 	// } else {
 	// 	// Subscribe to the consensus set.
-	// 	err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, r.tg.StopChan())
+	// 	err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, t.tg.StopChan())
 	// 	if err != nil {
 	// 		return nil, err
 	// 	}
 	// }
 
 	// Spin up the workers for the work pool.
-	// r.managedUpdateWorkerPool()
-	// go r.threadedDownloadLoop()
-	// go r.threadedUploadLoop()
+	// t.managedUpdateWorkerPool()
+	// go t.threadedDownloadLoop()
+	// go t.threadedUploadLoop()
 
 	// Kill workers on shutdown.
 	t.tg.OnStop(func() error {
@@ -287,11 +288,6 @@ func New(g modules.Gateway, cs modules.ConsensusSet, wallet modules.Wallet, tpoo
 
 // Contracts returns an array of host contractor's staticContracts
 func (t *Thirdparty) Contracts() []modules.RenterContract { return t.hostContractor.Contracts() }
-
-// Host returns the host associated with the given public key
-func (t *Thirdparty) Host(spk types.SiaPublicKey) (modules.HostDBEntry, bool) {
-	return t.hostDB.Host(spk)
-}
 
 // SetSettings will update the settings for the renter.
 //
@@ -368,3 +364,52 @@ func (t *Thirdparty) ActiveHosts() []modules.HostDBEntry { return t.hostDB.Activ
 
 // AllHosts returns an array of all hosts
 func (t *Thirdparty) AllHosts() []modules.HostDBEntry { return t.hostDB.AllHosts() }
+
+// SetFilterMode sets the renter's hostdb filter mode
+func (t *Thirdparty) SetFilterMode(lm modules.FilterMode, hosts []types.SiaPublicKey) error {
+	// Check to see how many hosts are needed for the allowance
+	minHosts := t.Settings().Allowance.Hosts
+	if len(hosts) < int(minHosts) && lm == modules.HostDBActiveWhitelist {
+		t.log.Printf("WARN: There are fewer whitelisted hosts than the allowance requires.  Have %v whitelisted hosts, need %v to support allowance\n", len(hosts), minHosts)
+	}
+
+	// Set list mode filter for the hostdb
+	if err := t.hostDB.SetFilterMode(lm, hosts); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Host returns the host associated with the given public key
+func (t *Thirdparty) Host(spk types.SiaPublicKey) (modules.HostDBEntry, bool) {
+	return t.hostDB.Host(spk)
+}
+
+// InitialScanComplete returns a boolean indicating if the initial scan of the
+// hostdb is completed.
+func (t *Thirdparty) InitialScanComplete() (bool, error) { return t.hostDB.InitialScanComplete() }
+
+// ScoreBreakdown returns the score breakdown
+func (t *Thirdparty) ScoreBreakdown(e modules.HostDBEntry) modules.HostScoreBreakdown {
+	return t.hostDB.ScoreBreakdown(e)
+}
+
+// EstimateHostScore returns the estimated host score
+func (t *Thirdparty) EstimateHostScore(e modules.HostDBEntry, a modules.Allowance) modules.HostScoreBreakdown {
+	// if reflect.DeepEqual(a, modules.Allowance{}) {
+	// 	a = t.Settings().Allowance
+	// }
+	if reflect.DeepEqual(a, modules.Allowance{}) {
+		a = modules.DefaultAllowance
+	}
+	return t.hostDB.EstimateHostScore(e, a)
+}
+
+// Settings returns the renter's allowance
+func (t *Thirdparty) Settings() modules.RenterSettings {
+	return modules.RenterSettings{
+		Allowance:         t.hostContractor.Allowance(),
+		IPViolationsCheck: t.hostDB.IPViolationsCheck(),
+	}
+}
