@@ -29,6 +29,15 @@ type Thirdparty interface {
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []RenterContract
 
+	// OldContracts returns an array of host contractor's oldContracts
+	OldContracts() []RenterContract
+
+	// RecoverableContracts returns the contracts that the contractor deems
+	// recoverable. That means they are not expired yet and also not part of the
+	// active contracts. Usually this should return an empty slice unless the host
+	// isn't available for recovery or something went wrong.
+	RecoverableContracts() []RecoverableContract
+
 	// hostdb
 	Settings() RenterSettings
 

@@ -163,6 +163,14 @@ func main() {
 	renterSetAllowanceCmd.Flags().StringVar(&allowanceExpectedDownload, "expected-download", "", "expected download in period in bytes (B), kilobytes (KB), megabytes (MB) etc. up to yottabytes (YB)")
 	renterSetAllowanceCmd.Flags().StringVar(&allowanceExpectedRedundancy, "expected-redundancy", "", "expected redundancy of most uploaded files")
 
+	root.AddCommand(thirdpartyCmd)
+	thirdpartyCmd.AddCommand(thirdpartyContractsCmd, thirdpartyHostdbCmd)
+	thirdpartyContractsCmd.AddCommand(thirdpartyContractsViewCmd)
+	thirdpartyHostdbCmd.AddCommand(thirdpartyHostdbViewCmd)
+	thirdpartyHostdbCmd.Flags().IntVarP(&hostdbNumHosts, "numhosts", "n", 0, "Number of hosts to display from the hostdb")
+	thirdpartyHostdbCmd.Flags().BoolVarP(&hostdbVerbose, "verbose", "v", false, "Display full hostdb information")
+	thirdpartyContractsCmd.Flags().BoolVarP(&renterAllContracts, "all", "A", false, "Show all expired contracts in addition to active contracts")
+
 	root.AddCommand(gatewayCmd)
 	gatewayCmd.AddCommand(gatewayConnectCmd, gatewayDisconnectCmd, gatewayAddressCmd, gatewayListCmd)
 

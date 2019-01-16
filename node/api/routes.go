@@ -197,11 +197,11 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 	// Thirdparty API Calls
 	if api.thirdparty != nil {
 		// router.POST("/thirdparty/contract/cancel", RequirePassword(api.renterContractCancelHandler, requiredPassword))
-		router.GET("/thirdparty/contracts", api.renterContractsHandler)
-		// router.GET("/hostdb", api.hostdbHandler)
-		// router.GET("/hostdb/active", api.hostdbActiveHandler)
-		// router.GET("/hostdb/all", api.hostdbAllHandler)
-		// router.GET("/hostdb/hosts/:pubkey", api.hostdbHostsHandler)
+		router.GET("/thirdparty/contracts", api.thirdpartyContractsHandler)
+		router.GET("/thirdparty/hostdb", api.thirdpartyHostdbHandler)
+		router.GET("/thirdparty/hostdb/active", api.thirdpartyHostdbActiveHandler)
+		router.GET("/thirdparty/hostdb/all", api.thirdpartyHostdbAllHandler)
+		router.GET("/thirdparty/hostdb/hosts/:pubkey", api.thirdpartyHostdbHostsHandler)
 	}
 
 	// Apply UserAgent middleware and return the Router

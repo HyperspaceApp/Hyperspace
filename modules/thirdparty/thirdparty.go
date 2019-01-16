@@ -413,3 +413,18 @@ func (t *Thirdparty) Settings() modules.RenterSettings {
 		IPViolationsCheck: t.hostDB.IPViolationsCheck(),
 	}
 }
+
+// OldContracts returns an array of host contractor's oldContracts
+func (t *Thirdparty) OldContracts() []modules.RenterContract {
+	return t.hostContractor.OldContracts()
+}
+
+// PeriodSpending returns the host contractor's period spending
+func (t *Thirdparty) PeriodSpending() modules.ContractorSpending {
+	return t.hostContractor.PeriodSpending()
+}
+
+// RecoverableContracts returns the host contractor's recoverable contracts.
+func (t *Thirdparty) RecoverableContracts() []modules.RecoverableContract {
+	return t.hostContractor.RecoverableContracts()
+}

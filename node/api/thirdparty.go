@@ -87,7 +87,7 @@ func (api *API) thirdpartyContractsHandler(w http.ResponseWriter, req *http.Requ
 
 	// Get expired contracts
 	if expired || inactive {
-		for _, c := range api.renter.OldContracts() {
+		for _, c := range api.thirdparty.OldContracts() {
 			var size uint64
 			if len(c.Transaction.FileContractRevisions) != 0 {
 				size = c.Transaction.FileContractRevisions[0].NewFileSize
@@ -95,7 +95,7 @@ func (api *API) thirdpartyContractsHandler(w http.ResponseWriter, req *http.Requ
 
 			// Fetch host address
 			var netAddress modules.NetAddress
-			hdbe, exists := api.renter.Host(c.HostPublicKey)
+			hdbe, exists := api.thirdparty.Host(c.HostPublicKey)
 			if exists {
 				netAddress = hdbe.NetAddress
 			}
@@ -128,7 +128,7 @@ func (api *API) thirdpartyContractsHandler(w http.ResponseWriter, req *http.Requ
 
 	var recoverableContracts []modules.RecoverableContract
 	if recoverable {
-		recoverableContracts = api.renter.RecoverableContracts()
+		recoverableContracts = api.thirdparty.RecoverableContracts()
 	}
 
 	WriteJSON(w, RenterContracts{
@@ -182,7 +182,7 @@ func (api *API) thirdpartyHostdbActiveHandler(w http.ResponseWriter, req *http.R
 		extendedHosts = append(extendedHosts, ExtendedHostDBEntry{
 			HostDBEntry:     host,
 			PublicKeyString: host.PublicKey.String(),
-			ScoreBreakdown:  api.renter.ScoreBreakdown(host),
+			ScoreBreakdown:  api.thirdparty.ScoreBreakdown(host),
 		})
 	}
 
@@ -191,7 +191,7 @@ func (api *API) thirdpartyHostdbActiveHandler(w http.ResponseWriter, req *http.R
 	})
 }
 
-// hostdbAllHandler handles the API call asking for the list of all hosts.
+// thirdpartyHostdbAllHandler handles the API call asking for the list of all hosts.
 func (api *API) thirdpartyHostdbAllHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	// Get the set of all hosts and convert them into extended hosts.
 	hosts := api.thirdparty.AllHosts()
@@ -200,7 +200,7 @@ func (api *API) thirdpartyHostdbAllHandler(w http.ResponseWriter, req *http.Requ
 		extendedHosts = append(extendedHosts, ExtendedHostDBEntry{
 			HostDBEntry:     host,
 			PublicKeyString: host.PublicKey.String(),
-			ScoreBreakdown:  api.renter.ScoreBreakdown(host),
+			ScoreBreakdown:  api.thirdparty.ScoreBreakdown(host),
 		})
 	}
 
@@ -209,7 +209,7 @@ func (api *API) thirdpartyHostdbAllHandler(w http.ResponseWriter, req *http.Requ
 	})
 }
 
-// hostdbHostsHandler handles the API call asking for a specific host,
+// thirdpartyHostdbHostsHandler handles the API call asking for a specific host,
 // returning detailed information about that host.
 func (api *API) thirdpartyHostdbHostsHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
 	var pk types.SiaPublicKey
