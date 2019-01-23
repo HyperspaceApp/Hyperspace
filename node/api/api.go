@@ -103,22 +103,23 @@ func HttpPOSTAuthenticated(url string, data string, password string) (resp *http
 // API encapsulates a collection of modules and implements a http.Handler
 // to access their methods.
 type API struct {
-	cs              modules.ConsensusSet
-	explorer        modules.Explorer
-	gateway         modules.Gateway
-	host            modules.Host
-	miner           modules.Miner
-	renter          modules.Renter
-	tpool           modules.TransactionPool
-	wallet          modules.Wallet
-	pool            modules.Pool
-	stratumminer    modules.StratumMiner
-	index           modules.Index
-	thirdparty      modules.Thirdparty
-	unconfirmedSets map[modules.TransactionSetID][]types.TransactionID
-	mu              sync.RWMutex
-	hub             *WebsocketHub
-	router          http.Handler
+	cs               modules.ConsensusSet
+	explorer         modules.Explorer
+	gateway          modules.Gateway
+	host             modules.Host
+	miner            modules.Miner
+	renter           modules.Renter
+	tpool            modules.TransactionPool
+	wallet           modules.Wallet
+	pool             modules.Pool
+	stratumminer     modules.StratumMiner
+	index            modules.Index
+	thirdparty       modules.Thirdparty
+	thirdpartyrenter modules.ThirdpartyRenter
+	unconfirmedSets  map[modules.TransactionSetID][]types.TransactionID
+	mu               sync.RWMutex
+	hub              *WebsocketHub
+	router           http.Handler
 }
 
 // api.ServeHTTP implements the http.Handler interface.
@@ -130,20 +131,22 @@ func (api *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // authentication using HTTP basic auth for certain endpoints of the supplied
 // password is not the empty string.  Usernames are ignored for authentication.
 func New(requiredUserAgent string, requiredPassword string, cs modules.ConsensusSet, e modules.Explorer, g modules.Gateway, h modules.Host,
-	m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool, sm modules.StratumMiner, index modules.Index, t modules.Thirdparty) (*API, error) {
+	m modules.Miner, r modules.Renter, tp modules.TransactionPool, w modules.Wallet, p modules.Pool, sm modules.StratumMiner,
+	index modules.Index, t modules.Thirdparty, tr modules.ThirdpartyRenter) (*API, error) {
 	api := &API{
-		cs:           cs,
-		explorer:     e,
-		gateway:      g,
-		host:         h,
-		miner:        m,
-		renter:       r,
-		tpool:        tp,
-		wallet:       w,
-		pool:         p,
-		stratumminer: sm,
-		index:        index,
-		thirdparty:   t,
+		cs:               cs,
+		explorer:         e,
+		gateway:          g,
+		host:             h,
+		miner:            m,
+		renter:           r,
+		tpool:            tp,
+		wallet:           w,
+		pool:             p,
+		stratumminer:     sm,
+		index:            index,
+		thirdparty:       t,
+		thirdpartyrenter: tr,
 	}
 
 	// Register API handlers

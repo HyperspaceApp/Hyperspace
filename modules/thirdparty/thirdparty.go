@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -241,19 +242,20 @@ func NewCustomThirdparty(g modules.Gateway, cs modules.ConsensusSet, tpool modul
 	// Initialize the streaming cache.
 	// t.staticStreamCache = newStreamCache(r.persist.StreamCacheSize)
 
-	// if cs.SpvMode() {
-	// 	// Subscribe to the consensus set.
-	// 	err = cs.HeaderConsensusSetSubscribe(r, modules.ConsensusChangeRecent, t.tg.StopChan())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// } else {
-	// 	// Subscribe to the consensus set.
-	// 	err = cs.ConsensusSetSubscribe(r, modules.ConsensusChangeRecent, t.tg.StopChan())
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+	if cs.SpvMode() {
+		// Subscribe to the consensus set.
+		// err = cs.HeaderConsensusSetSubscribe(r, modules.ConsensusChangeRecent, t.tg.StopChan())
+		// if err != nil {
+		// 	return nil, err
+		// }
+		panic("need full node to run third party contract mangement system")
+	} else {
+		// Subscribe to the consensus set.
+		err := cs.ConsensusSetSubscribe(t, modules.ConsensusChangeRecent, t.tg.StopChan())
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// Spin up the workers for the work pool.
 	// t.managedUpdateWorkerPool()
@@ -269,6 +271,19 @@ func NewCustomThirdparty(g modules.Gateway, cs modules.ConsensusSet, tpool modul
 		t.mu.RUnlock(id)
 		return nil
 	})
+
+	go func() {
+		for {
+			if t.cs.Synced() {
+				err := t.hostContractor.SetAllowance(modules.DefaultAllowance)
+				if err != nil {
+					panic(err)
+				}
+				break
+			}
+			time.Sleep(time.Second)
+		}
+	}()
 
 	return t, nil
 }
@@ -427,4 +442,9 @@ func (t *Thirdparty) PeriodSpending() modules.ContractorSpending {
 // RecoverableContracts returns the host contractor's recoverable contracts.
 func (t *Thirdparty) RecoverableContracts() []modules.RecoverableContract {
 	return t.hostContractor.RecoverableContracts()
+}
+
+// ProcessConsensusChange returns the process consensus change
+func (t *Thirdparty) ProcessConsensusChange(cc modules.ConsensusChange) {
+
 }

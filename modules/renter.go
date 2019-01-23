@@ -37,7 +37,7 @@ var (
 	// variable, there should be congruence with the number of contracts being
 	// used in the renter allowance.
 	PriceEstimationScope = build.Select(build.Var{
-		Standard: int(50),
+		Standard: int(20),
 		Dev:      int(12),
 		Testing:  int(4),
 	}).(int)
