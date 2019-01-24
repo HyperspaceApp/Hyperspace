@@ -204,6 +204,15 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		router.GET("/thirdparty/hostdb/hosts/:pubkey", api.thirdpartyHostdbHostsHandler)
 	}
 
+	if api.thirdpartyrenter != nil {
+		router.POST("/thirdpartyrenter/upload/*hyperspacepath", RequirePassword(api.thirdpartyRenterUploadHandler, requiredPassword))
+		// router.POST("/renter/file/*hyperspacepath", RequirePassword(api.renterFileHandlerPOST, requiredPassword))
+
+		// Directory endpoints
+		router.POST("/thirdpartyrenter/dir/*hyperspacepath", RequirePassword(api.thirdpartyRenterDirHandlerPOST, requiredPassword))
+		router.GET("/thirdpartyrenter/dir/*hyperspacepath", api.renterDirHandlerGET)
+	}
+
 	// Apply UserAgent middleware and return the Router
 	api.router = cleanCloseHandler(RequireUserAgent(router, requiredUserAgent))
 	return nil
