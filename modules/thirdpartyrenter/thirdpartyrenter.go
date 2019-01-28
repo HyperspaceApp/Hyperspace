@@ -8,9 +8,9 @@ import (
 	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
-	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siadir"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
+	"github.com/HyperspaceApp/Hyperspace/modules/thirdpartyrenter/contractor"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -31,20 +31,9 @@ var (
 // A hostContractor negotiates, revises, renews, and provides access to file
 // contracts.
 type hostContractor interface {
-	// SetAllowance sets the amount of money the contractor is allowed to
-	// spend on contracts over a given time period, divided among the number
-	// of hosts specified. Note that contractor can start forming contracts as
-	// soon as SetAllowance is called; that is, it may block.
-	SetAllowance(modules.Allowance) error
-
-	// Allowance returns the current allowance
-	Allowance() modules.Allowance
 
 	// Close closes the hostContractor.
 	Close() error
-
-	// CancelContract cancels the Renter's contract
-	CancelContract(id types.FileContractID) error
 
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []modules.RenterContract
@@ -55,17 +44,6 @@ type hostContractor interface {
 	// ContractUtility returns the utility field for a given contract, along
 	// with a bool indicating if it exists.
 	ContractUtility(types.SiaPublicKey) (modules.ContractUtility, bool)
-
-	// CurrentPeriod returns the height at which the current allowance period
-	// began.
-	CurrentPeriod() types.BlockHeight
-
-	// PeriodSpending returns the amount spent on contracts during the current
-	// billing period.
-	PeriodSpending() modules.ContractorSpending
-
-	// OldContracts returns the oldContracts of the renter's hostContractor.
-	OldContracts() []modules.RenterContract
 
 	// Editor creates an Editor from the specified contract ID, allowing the
 	// insertion, deletion, and modification of sectors.
@@ -78,22 +56,8 @@ type hostContractor interface {
 	// allowing the retrieval of sectors.
 	Downloader(types.SiaPublicKey, <-chan struct{}) (contractor.Downloader, error)
 
-	// RecoverableContracts returns the contracts that the contractor deems
-	// recoverable. That means they are not expired yet and also not part of the
-	// active contracts. Usually this should return an empty slice unless the host
-	// isn't available for recovery or something went wrong.
-	RecoverableContracts() []modules.RecoverableContract
-
 	// ResolveIDToPubKey returns the public key of a host given a contract id.
 	ResolveIDToPubKey(types.FileContractID) types.SiaPublicKey
-
-	// RateLimits Gets the bandwidth limits for connections created by the
-	// contractor and its submodules.
-	RateLimits() (readBPS int64, writeBPS int64, packetSize uint64)
-
-	// SetRateLimits sets the bandwidth limits for connections created by the
-	// contractor and its submodules.
-	SetRateLimits(int64, int64, uint64)
 }
 
 // ThirdpartyRenter is the renter for third party contract manegement system
@@ -148,7 +112,7 @@ type ThirdpartyRenter struct {
 var _ modules.ThirdpartyRenter = (*ThirdpartyRenter)(nil)
 
 // NewCustomThirdpartyRenter initializes a renter and returns it.
-func NewCustomThirdpartyRenter(persistDir string, deps modules.Dependencies) (*ThirdpartyRenter, error) {
+func NewCustomThirdpartyRenter(hc hostContractor, persistDir string, deps modules.Dependencies) (*ThirdpartyRenter, error) {
 
 	r := &ThirdpartyRenter{
 		// Making newDownloads a buffered channel means that most of the time, a
@@ -166,10 +130,11 @@ func NewCustomThirdpartyRenter(persistDir string, deps modules.Dependencies) (*T
 
 		workerPool: make(map[types.FileContractID]*worker),
 
-		deps:       deps,
-		persistDir: persistDir,
-		filesDir:   filepath.Join(persistDir, modules.SiapathRoot),
-		mu:         siasync.New(modules.SafeMutexDelay, 1),
+		deps:           deps,
+		persistDir:     persistDir,
+		filesDir:       filepath.Join(persistDir, modules.SiapathRoot),
+		mu:             siasync.New(modules.SafeMutexDelay, 1),
+		hostContractor: hc,
 	}
 	r.memoryManager = newMemoryManager(defaultMemory, r.tg.StopChan())
 
@@ -211,7 +176,12 @@ func NewCustomThirdpartyRenter(persistDir string, deps modules.Dependencies) (*T
 
 // New returns an initialized renter.
 func New(persistDir string) (*ThirdpartyRenter, error) {
-	return NewCustomThirdpartyRenter(persistDir, modules.ProdDependencies)
+	hc, err := contractor.New(persistDir)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewCustomThirdpartyRenter(hc, persistDir, modules.ProdDependencies)
 }
 
 // Close closes the Renter and its dependencies
