@@ -1,9 +1,15 @@
 package thirdparty
 
 import (
+	"fmt"
+	"net"
+	"net/http"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -12,6 +18,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siadir"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/siafile"
+	api "github.com/HyperspaceApp/Hyperspace/modules/thirdparty/thirdpartyapi"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -19,6 +26,7 @@ import (
 	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/threadgroup"
 	"github.com/HyperspaceApp/writeaheadlog"
+	"github.com/julienschmidt/httprouter"
 )
 
 var (
@@ -28,6 +36,21 @@ var (
 	errNilHdb        = errors.New("cannot create renter with nil hostdb")
 	errNilTpool      = errors.New("cannot create renter with nil transaction pool")
 )
+
+// ThirdpartyServer is the holder of server info
+type ThirdpartyServer struct {
+	httpServer *http.Server
+	listener   net.Listener
+	api        http.Handler
+	mu         sync.Mutex
+}
+
+// DaemonVersion holds the version information for hsd
+type DaemonVersion struct {
+	Version     string `json:"version"`
+	GitRevision string `json:"gitrevision"`
+	BuildTime   string `json:"buildtime"`
+}
 
 // A hostDB is a database of hosts that the renter can use for figuring out who
 // to upload to, and download from.
@@ -189,6 +212,8 @@ type Thirdparty struct {
 	tg             threadgroup.ThreadGroup
 	tpool          modules.TransactionPool
 	wal            *writeaheadlog.WAL
+
+	server *ThirdpartyServer
 }
 
 // Close closes the Renter and its dependencies
@@ -221,7 +246,6 @@ func NewCustomThirdparty(g modules.Gateway, cs modules.ConsensusSet, tpool modul
 	}
 
 	t := &Thirdparty{
-
 		cs:             cs,
 		deps:           deps,
 		g:              g,
@@ -232,6 +256,24 @@ func NewCustomThirdparty(g modules.Gateway, cs modules.ConsensusSet, tpool modul
 		mu:             siasync.New(modules.SafeMutexDelay, 1),
 		tpool:          tpool,
 	}
+
+	server, err := newThirdpartyServer()
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		server.Serve()
+	}()
+
+	t.server = server
+	a, err := api.New(t)
+	if err != nil {
+		return nil, err
+	}
+	server.mu.Lock()
+	server.api = a
+	server.mu.Unlock()
+
 	// t.memoryManager = newMemoryManager(defaultMemory, t.tg.StopChan())
 
 	// Load all saved data.
@@ -447,4 +489,100 @@ func (t *Thirdparty) RecoverableContracts() []modules.RecoverableContract {
 // ProcessConsensusChange returns the process consensus change
 func (t *Thirdparty) ProcessConsensusChange(cc modules.ConsensusChange) {
 
+}
+
+// isAddrInUseErr checks if the error corresponds to syscall.EADDRINUSE
+func isAddrInUseErr(err error) bool {
+	if opErr, ok := err.(*net.OpError); ok {
+		if syscallErr, ok := opErr.Err.(*os.SyscallError); ok {
+			return syscallErr.Err == syscall.EADDRINUSE
+		}
+	}
+	return false
+}
+
+// newThirdpartyServer create a new http server
+func newThirdpartyServer() (*ThirdpartyServer, error) {
+	l, err := net.Listen("tcp", ":5585")
+	if err != nil {
+		if isAddrInUseErr(err) {
+			return nil, fmt.Errorf("%v; are you running another instance of hsd?", err.Error())
+		}
+
+		return nil, err
+	}
+
+	// Create the Server
+	mux := http.NewServeMux()
+	srv := &ThirdpartyServer{
+		listener: l,
+		httpServer: &http.Server{
+			Handler: mux,
+
+			// ReadTimeout defines the maximum amount of time allowed to fully read
+			// the request body. This timeout is applied to every handler in the
+			// server.
+			ReadTimeout: time.Minute * 5,
+
+			// ReadHeaderTimeout defines the amount of time allowed to fully read the
+			// request headers.
+			ReadHeaderTimeout: time.Minute * 2,
+
+			// IdleTimeout defines the maximum duration a HTTP Keep-Alive connection
+			// the API is kept open with no activity before closing.
+			IdleTimeout: time.Minute * 5,
+		},
+	}
+
+	mux.Handle("/daemon/", api.RequireUserAgent(srv.daemonHandler(), api.RequiredUserAgent))
+	mux.HandleFunc("/", srv.apiHandler)
+
+	return srv, nil
+}
+
+// Serve starts the HTTP server
+func (srv *ThirdpartyServer) Serve() error {
+	// The server will run until an error is encountered or the listener is
+	// closed, via either the Close method or the signal handling above.
+	// Closing the listener will result in the benign error handled below.
+	err := srv.httpServer.Serve(srv.listener)
+	if err != nil && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+		return err
+	}
+	return nil
+}
+
+func (srv *ThirdpartyServer) daemonHandler() http.Handler {
+	router := httprouter.New()
+
+	router.GET("/daemon/version", srv.daemonVersionHandler)
+
+	return router
+}
+
+// daemonVersionHandler handles the API call that requests the daemon's version.
+func (srv *ThirdpartyServer) daemonVersionHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	version := build.Version
+	if build.ReleaseTag != "" {
+		version += "-" + build.ReleaseTag
+	}
+	api.WriteJSON(w, DaemonVersion{Version: version, GitRevision: build.GitRevision, BuildTime: build.BuildTime})
+}
+
+// apiHandler handles all calls to the API. If the ready flag is not set, this
+// will return an error. Otherwise it will serve the api.
+func (srv *ThirdpartyServer) apiHandler(w http.ResponseWriter, r *http.Request) {
+	srv.mu.Lock()
+	isReady := srv.api != nil
+	srv.mu.Unlock()
+	if !isReady {
+		api.WriteError(w, api.Error{Message: "hsd is not ready. please wait for hsd to finish loading."}, http.StatusServiceUnavailable)
+		return
+	}
+	srv.api.ServeHTTP(w, r)
+}
+
+// Close closes the Server's listener, causing the HTTP server to shut down.
+func (srv *ThirdpartyServer) Close() error {
+	return srv.listener.Close()
 }
