@@ -44,9 +44,10 @@ type (
 		SecretKey crypto.SecretKey `json:"secretkey"`
 	}
 
-	// ThirdpartyRenterContracts
+	// ThirdpartyRenterContracts is a holder of contracts info
 	ThirdpartyRenterContracts struct {
 		Contracts []ThirdpartyRenterContract `json:"contracts"`
+		Height    types.BlockHeight          `json:"height"`
 	}
 )
 

@@ -88,6 +88,7 @@ func RequireUserAgent(h http.Handler, ua string) http.Handler {
 func (api *ThirdpartyAPI) renterContractsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	WriteJSON(w, modules.ThirdpartyRenterContracts{
 		Contracts: api.thirdparty.ThirdpartyContracts(),
+		Height:    api.cs.Height(),
 	})
 }
 

@@ -104,9 +104,10 @@ func HttpPOSTAuthenticated(url string, data string, password string) (resp *http
 	return http.DefaultClient.Do(req)
 }
 
-// API encapsulates a collection of modules and implements a http.Handler
+// ThirdpartyAPI encapsulates a collection of modules and implements a http.Handler
 // to access their methods.
 type ThirdpartyAPI struct {
+	cs         modules.ConsensusSet
 	thirdparty modules.Thirdparty
 	mu         sync.RWMutex
 	router     http.Handler
@@ -120,8 +121,9 @@ func (api *ThirdpartyAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // New creates a new Sia API from the provided modules.  The API will require
 // authentication using HTTP basic auth for certain endpoints of the supplied
 // password is not the empty string.  Usernames are ignored for authentication.
-func New(t modules.Thirdparty) (*ThirdpartyAPI, error) {
+func New(cs modules.ConsensusSet, t modules.Thirdparty) (*ThirdpartyAPI, error) {
 	api := &ThirdpartyAPI{
+		cs:         cs,
 		thirdparty: t,
 	}
 

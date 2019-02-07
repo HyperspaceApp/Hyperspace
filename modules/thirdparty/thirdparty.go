@@ -269,7 +269,7 @@ func NewCustomThirdparty(g modules.Gateway, cs modules.ConsensusSet, tpool modul
 	}()
 
 	t.server = server
-	a, err := api.New(t)
+	a, err := api.New(t.cs, t)
 	if err != nil {
 		return nil, err
 	}

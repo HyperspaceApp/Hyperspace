@@ -191,9 +191,9 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 			hdb.IncrementSuccessfulInteractions(contract.HostPublicKey())
 		}
 		if err != nil {
-			log.Printf("NewEditor %s err: %s", id, err)
+			log.Printf("NewEditor %s(%s) err: %s", id, host.NetAddress, err)
 		} else {
-			log.Printf("NewEditor %s success", id)
+			log.Printf("NewEditor %s(%s) success", id, host.NetAddress)
 		}
 	}()
 

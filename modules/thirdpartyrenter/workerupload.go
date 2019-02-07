@@ -114,7 +114,7 @@ func (w *worker) managedUpload(uc *unfinishedUploadChunk, pieceIndex uint64) {
 	// the upload attempt.
 	root, err := e.Upload(uc.physicalChunkData[pieceIndex])
 	if err != nil {
-		w.renter.log.Println("Worker failed to upload via the editor:", err)
+		w.renter.log.Printf("Worker failed to upload via the editor(%s): \n%s", w.contract.ID, err)
 		w.managedUploadFailed(uc, pieceIndex)
 		return
 	}

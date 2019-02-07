@@ -159,6 +159,7 @@ func (c *Contractor) Contracts() []modules.RenterContract {
 		log.Println("Could not get contracts:", err)
 		return nil
 	}
+	c.blockHeight = trc.Height
 	// var contracts []modules.RenterContract
 	for _, remoteContract := range trc.Contracts {
 		// contracts = append(contracts, modules.RenterContract{
