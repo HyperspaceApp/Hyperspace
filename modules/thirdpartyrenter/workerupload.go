@@ -1,6 +1,7 @@
 package thirdpartyrenter
 
 import (
+	"log"
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
@@ -74,9 +75,11 @@ func (w *worker) managedNextUploadChunk() (nextChunk *unfinishedUploadChunk, pie
 // managedQueueUploadChunk will take a chunk and add it to the worker's repair
 // stack.
 func (w *worker) managedQueueUploadChunk(uc *unfinishedUploadChunk) {
+	log.Printf("managedQueueUploadChunk: %s", w.contract.ID)
 	// Check that the worker is allowed to be uploading before grabbing the
 	// worker lock.
 	utility, exists := w.renter.hostContractor.ContractUtility(w.contract.HostPublicKey)
+	log.Printf("managedQueueUploadChunk: %v %v", utility, exists)
 	goodForUpload := exists && utility.GoodForUpload
 	w.mu.Lock()
 	if !goodForUpload || w.uploadTerminated || w.onUploadCooldown() {
@@ -97,10 +100,11 @@ func (w *worker) managedQueueUploadChunk(uc *unfinishedUploadChunk) {
 
 // managedUpload will perform some upload work.
 func (w *worker) managedUpload(uc *unfinishedUploadChunk, pieceIndex uint64) {
+	log.Printf("managedUpload %s %s %d", w.contract.ID, uc.id, pieceIndex)
 	// Open an editing connection to the host.
 	e, err := w.renter.hostContractor.Editor(w.contract.HostPublicKey, w.renter.tg.StopChan())
 	if err != nil {
-		w.renter.log.Debugln("Worker failed to acquire an editor:", err)
+		w.renter.log.Println("Worker failed to acquire an editor:", err)
 		w.managedUploadFailed(uc, pieceIndex)
 		return
 	}
@@ -110,7 +114,7 @@ func (w *worker) managedUpload(uc *unfinishedUploadChunk, pieceIndex uint64) {
 	// the upload attempt.
 	root, err := e.Upload(uc.physicalChunkData[pieceIndex])
 	if err != nil {
-		w.renter.log.Debugln("Worker failed to upload via the editor:", err)
+		w.renter.log.Println("Worker failed to upload via the editor:", err)
 		w.managedUploadFailed(uc, pieceIndex)
 		return
 	}
@@ -121,7 +125,7 @@ func (w *worker) managedUpload(uc *unfinishedUploadChunk, pieceIndex uint64) {
 	// Add piece to renterFile
 	err = uc.fileEntry.AddPiece(w.contract.HostPublicKey, uc.index, pieceIndex, root)
 	if err != nil {
-		w.renter.log.Debugln("Worker failed to add new piece to SiaFile:", err)
+		w.renter.log.Println("Worker failed to add new piece to SiaFile:", err)
 		w.managedUploadFailed(uc, pieceIndex)
 		return
 	}

@@ -18,6 +18,7 @@ package thirdpartyrenter
 
 import (
 	"container/heap"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -367,6 +368,7 @@ func (r *ThirdpartyRenter) threadedUploadLoop() {
 			id := r.mu.RLock()
 			availableWorkers := len(r.workerPool)
 			r.mu.RUnlock(id)
+			log.Printf("availableWorkers %d nextChunk.minimumPieces %d", availableWorkers, nextChunk.minimumPieces)
 			if availableWorkers < nextChunk.minimumPieces {
 				continue
 			}

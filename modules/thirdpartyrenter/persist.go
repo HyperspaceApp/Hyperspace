@@ -23,14 +23,14 @@ import (
 )
 
 const (
-	logFile = modules.RenterDir + ".log"
+	logFile = modules.ThirdpartyRenterDir + ".log"
 	// PersistFilename is the filename to be used when persisting renter
 	// information to a JSON file
-	PersistFilename = "renter.json"
+	PersistFilename = "thirdpartyrenter.json"
 	// SiaDirMetadata is the name of the metadata file for the sia directory
 	SiaDirMetadata = ".siadir"
 	// walFile is the filename of the renter's writeaheadlog's file.
-	walFile = modules.RenterDir + ".wal"
+	walFile = modules.ThirdpartyRenterDir + ".wal"
 )
 
 var (

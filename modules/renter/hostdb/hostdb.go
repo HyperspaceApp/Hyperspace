@@ -85,6 +85,20 @@ type HostDB struct {
 	lastChange  modules.ConsensusChangeID
 }
 
+// ThirdpartyInsert insert hostdb for thirdparty
+func (hdb *HostDB) ThirdpartyInsert(host modules.HostDBEntry) error {
+	err := hdb.hostTree.Insert(host)
+	_, ok := hdb.filteredHosts[string(host.PublicKey.Key)]
+	isWhitelist := hdb.filterMode == modules.HostDBActiveWhitelist
+	if isWhitelist == ok {
+		errF := hdb.filteredTree.Insert(host)
+		if errF != nil && errF != hosttree.ErrHostExists {
+			err = errors.Compose(err, errF)
+		}
+	}
+	return err
+}
+
 // insert inserts the HostDBEntry into both hosttrees
 func (hdb *HostDB) insert(host modules.HostDBEntry) error {
 	err := hdb.hostTree.Insert(host)
@@ -156,6 +170,21 @@ func New(g modules.Gateway, cs modules.ConsensusSet, tpool modules.TransactionPo
 	}
 	// Create HostDB using production dependencies.
 	return NewCustomHostDB(g, cs, tpool, persistDir, modules.ProdDependencies)
+}
+
+// NewEmptyHostDB init a new empty hostdb for thirdparty
+func NewEmptyHostDB() (*HostDB, error) {
+	hdb := &HostDB{
+		scanMap:       make(map[string]struct{}),
+		filteredHosts: make(map[string]types.SiaPublicKey),
+	}
+
+	// The host tree is used to manage hosts and query them at random. The
+	// filteredTree is used when whitelist or blacklist is enabled
+	hdb.hostTree = hosttree.New(hdb.weightFunc, modules.ProdDependencies.Resolver())
+	hdb.filteredTree = hdb.hostTree
+
+	return hdb, nil
 }
 
 // NewCustomHostDB creates a HostDB using the provided dependencies. It loads the old

@@ -2,11 +2,16 @@ package contractor
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb/hosttree"
+	"github.com/HyperspaceApp/Hyperspace/modules/renter/proto"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/persist"
 	siasync "github.com/HyperspaceApp/Hyperspace/sync"
 	"github.com/HyperspaceApp/Hyperspace/types"
@@ -14,7 +19,8 @@ import (
 
 // Contractor is the contractor module for third party renter
 type Contractor struct {
-	// 	// dependencies
+	// dependencies
+	hdb        hostDB
 	log        *persist.Logger
 	mu         sync.RWMutex
 	persist    persister
@@ -23,15 +29,18 @@ type Contractor struct {
 
 	downloaders map[types.FileContractID]*hostDownloader
 	editors     map[types.FileContractID]*hostEditor
-	// 	sessions            map[types.FileContractID]*hostSession
+	httpClient  *client.Client
+	sessions    map[types.FileContractID]*hostSession
 	// 	numFailedRenews     map[types.FileContractID]types.BlockHeight
-	// 	pubKeysToContractID map[string]types.FileContractID
-	// 	contractIDToPubKey  map[types.FileContractID]types.SiaPublicKey
+	pubKeysToContractID map[string]types.FileContractID
+	contractIDToPubKey  map[types.FileContractID]types.SiaPublicKey
 	// 	renewing            map[types.FileContractID]bool // prevent revising during renewal
+
+	blockHeight types.BlockHeight
 
 	// 	// renewedFrom links the new contract's ID to the old contract's ID
 	// 	// renewedTo links the old contract's ID to the new contract's ID
-	// 	staticContracts      *proto.ContractSet
+	staticContracts *proto.ContractSet
 	// 	oldContracts         map[types.FileContractID]modules.RenterContract
 	// 	recoverableContracts []modules.RecoverableContract
 	// 	renewedFrom          map[types.FileContractID]types.FileContractID
@@ -45,10 +54,10 @@ func New(persistDir string) (*Contractor, error) {
 		return nil, err
 	}
 	// Create the contract set.
-	// contractSet, err := proto.NewContractSet(filepath.Join(persistDir, "contracts"), modules.ProdDependencies)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	contractSet, err := proto.NewContractSet(filepath.Join(persistDir, "contracts"), modules.ProdDependencies)
+	if err != nil {
+		return nil, err
+	}
 	// Create the logger.
 	logger, err := persist.NewFileLogger(filepath.Join(persistDir, "contractor.log"))
 	if err != nil {
@@ -56,24 +65,27 @@ func New(persistDir string) (*Contractor, error) {
 	}
 
 	// Create Contractor using production dependencies.
-	return NewCustomContractor(NewPersist(persistDir), logger, modules.ProdDependencies)
+	return NewCustomContractor(contractSet, NewPersist(persistDir), logger, modules.ProdDependencies)
 }
 
 // NewCustomContractor creates a Contractor using the provided dependencies.
-func NewCustomContractor(p persister, l *persist.Logger, deps modules.Dependencies) (*Contractor, error) {
+func NewCustomContractor(contractSet *proto.ContractSet, p persister, l *persist.Logger, deps modules.Dependencies) (*Contractor, error) {
+	hdb, _ := hostdb.NewEmptyHostDB()
 	// Create the Contractor object.
 	c := &Contractor{
 		staticDeps: deps,
+		hdb:        hdb,
 		log:        l,
 		persist:    p,
+		httpClient: client.New("localhost:5585"),
 
-		// staticContracts:     contractSet,
-		// downloaders:         make(map[types.FileContractID]*hostDownloader),
-		// editors:             make(map[types.FileContractID]*hostEditor),
-		// sessions:            make(map[types.FileContractID]*hostSession),
+		staticContracts: contractSet,
+		downloaders:     make(map[types.FileContractID]*hostDownloader),
+		editors:         make(map[types.FileContractID]*hostEditor),
+		sessions:        make(map[types.FileContractID]*hostSession),
 		// oldContracts:        make(map[types.FileContractID]modules.RenterContract),
-		// contractIDToPubKey:  make(map[types.FileContractID]types.SiaPublicKey),
-		// pubKeysToContractID: make(map[string]types.FileContractID),
+		contractIDToPubKey:  make(map[types.FileContractID]types.SiaPublicKey),
+		pubKeysToContractID: make(map[string]types.FileContractID),
 	}
 
 	// Close the contract set and logger upon shutdown.
@@ -131,17 +143,61 @@ func (c *Contractor) ContractByPublicKey(pk types.SiaPublicKey) (modules.RenterC
 
 // ContractUtility this is a mock
 func (c *Contractor) ContractUtility(types.SiaPublicKey) (modules.ContractUtility, bool) {
-	return modules.ContractUtility{}, false
+	return modules.ContractUtility{
+		true,
+		true,
+		false,
+	}, true
 }
 
-// Contracts mock
+// Contracts fetch contracts from remote
 func (c *Contractor) Contracts() []modules.RenterContract {
-	return nil
+	// fetch our contracts from remote server
+	// TODO: add auth and our id
+	trc, err := c.httpClient.ThirdpartyServerContractsGet()
+	if err != nil {
+		log.Println("Could not get contracts:", err)
+		return nil
+	}
+	// var contracts []modules.RenterContract
+	for _, remoteContract := range trc.Contracts {
+		// contracts = append(contracts, modules.RenterContract{
+		// 	ID:               remoteContract.ID,
+		// 	HostPublicKey:    remoteContract.HostPublicKey,
+		// 	Transaction:      remoteContract.Transaction,
+		// 	StartHeight:      remoteContract.StartHeight,
+		// 	EndHeight:        remoteContract.EndHeight,
+		// 	RenterFunds:      remoteContract.RenterFunds,
+		// 	DownloadSpending: remoteContract.DownloadSpending,
+		// 	StorageSpending:  remoteContract.StorageSpending,
+		// 	UploadSpending:   remoteContract.UploadSpending,
+		// 	TotalCost:        remoteContract.TotalCost,
+		// })
+		// TODO: add hash if has one
+		c.staticContracts.ThirdpartyInsertContract(remoteContract, nil)
+
+		c.contractIDToPubKey[remoteContract.ID] = remoteContract.HostPublicKey
+		c.pubKeysToContractID[string(remoteContract.HostPublicKey.Key)] = remoteContract.ID
+	}
+
+	// sync hostdb after sync contracts
+	hdag, err := c.httpClient.ThirdpartyServerHostDbAllGet()
+	if err != nil {
+		log.Println("Could not get hosts:", err)
+	}
+	for _, extendedHost := range hdag.Hosts {
+		err := c.hdb.ThirdpartyInsert(extendedHost.HostDBEntry)
+		if err != nil && err != hosttree.ErrHostExists {
+			c.log.Println("Could not insert host:", err)
+		}
+	}
+
+	return c.staticContracts.ViewAll()
 }
 
 // IsOffline reports whether the specified host is considered offline.
 func (c *Contractor) IsOffline(types.SiaPublicKey) bool {
-	return true
+	return false
 }
 
 // ResolveIDToPubKey returns the ID of the most recent renewal of id.
@@ -152,5 +208,11 @@ func (c *Contractor) ResolveIDToPubKey(id types.FileContractID) types.SiaPublicK
 	// if !exists {
 	// 	panic("renewed should never miss an id")
 	// }
+	contracts := c.Contracts()
+	for _, c := range contracts {
+		if c.ID == id {
+			return c.HostPublicKey
+		}
+	}
 	return types.SiaPublicKey{}
 }

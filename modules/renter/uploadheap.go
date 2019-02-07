@@ -108,7 +108,7 @@ func (r *Renter) buildUnfinishedChunks(entrys []*siafile.SiaFileSetEntry, hosts 
 	entry := entrys[0]
 	// If we don't have enough workers for the file, don't repair it right now.
 	minWorkers := 0
-	for i := uint64(0); i < entry.NumChunks(); i++ {
+	for i := uint64(0); i < entry.NumChunks(); i++ { // TODO: what is looping?
 		minPieces := entry.ErasureCode().MinPieces()
 		if minPieces > minWorkers {
 			minWorkers = minPieces

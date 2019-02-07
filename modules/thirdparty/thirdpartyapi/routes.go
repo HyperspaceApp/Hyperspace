@@ -6,15 +6,37 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/modules"
+	nodeapi "github.com/HyperspaceApp/Hyperspace/node/api"
 
 	"github.com/julienschmidt/httprouter"
 )
+
+// ExtendedHostDBEntry is an extension to modules.HostDBEntry that includes
+// the string representation of the public key, otherwise presented as two
+// fields, a string and a base64 encoded byte slice.
+// type ExtendedHostDBEntry struct {
+// 	modules.HostDBEntry
+// 	PublicKeyString string                     `json:"publickeystring"`
+// 	ScoreBreakdown  modules.HostScoreBreakdown `json:"scorebreakdown"`
+// }
 
 // buildHttpRoutes sets up and returns an * httprouter.Router.
 // it connected the Router to the given api using the required
 // parameters: requiredUserAgent and requiredPassword
 func (api *ThirdpartyAPI) buildHTTPRoutes() error {
 	router := httprouter.New()
+
+	router.NotFound = http.HandlerFunc(UnrecognizedCallHandler)
+	router.RedirectTrailingSlash = false
+
+	// sign
+	// fetch contracts
+	router.GET("/contracts", api.renterContractsHandler)
+	router.GET("/hostdb/all", api.hostdbAllHandler)
+
+	// update contract info
+	// upload/download meta data of fies
 
 	api.router = cleanCloseHandler(router)
 	return nil
@@ -60,5 +82,29 @@ func RequireUserAgent(h http.Handler, ua string) http.Handler {
 			return
 		}
 		h.ServeHTTP(w, req)
+	})
+}
+
+func (api *ThirdpartyAPI) renterContractsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	WriteJSON(w, modules.ThirdpartyRenterContracts{
+		Contracts: api.thirdparty.ThirdpartyContracts(),
+	})
+}
+
+// hostdbAllHandler handles the API call asking for the list of all hosts.
+func (api *ThirdpartyAPI) hostdbAllHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	// Get the set of all hosts and convert them into extended hosts.
+	hosts := api.thirdparty.AllHosts()
+	var extendedHosts []nodeapi.ExtendedHostDBEntry
+	for _, host := range hosts {
+		extendedHosts = append(extendedHosts, nodeapi.ExtendedHostDBEntry{
+			HostDBEntry:     host,
+			PublicKeyString: host.PublicKey.String(),
+			ScoreBreakdown:  api.thirdparty.ScoreBreakdown(host),
+		})
+	}
+
+	WriteJSON(w, nodeapi.HostdbAllGET{
+		Hosts: extendedHosts,
 	})
 }

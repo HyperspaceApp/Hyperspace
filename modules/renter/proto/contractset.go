@@ -145,6 +145,33 @@ func (cs *ContractSet) ViewAll() []modules.RenterContract {
 	return contracts
 }
 
+// ThirdpartyViewAll will return info for thirdparty client
+func (cs *ContractSet) ThirdpartyViewAll() []modules.ThirdpartyRenterContract {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	thirdpartyContracts := make([]modules.ThirdpartyRenterContract, 0, len(cs.contracts))
+	for _, safeContract := range cs.contracts {
+		c := safeContract.Metadata()
+		thirdpartyContract := modules.ThirdpartyRenterContract{
+			ID:               c.ID,
+			HostPublicKey:    c.HostPublicKey,
+			Transaction:      c.Transaction,
+			StartHeight:      c.StartHeight,
+			EndHeight:        c.EndHeight,
+			RenterFunds:      c.RenterFunds,
+			DownloadSpending: c.DownloadSpending,
+			StorageSpending:  c.StorageSpending,
+			UploadSpending:   c.UploadSpending,
+			TotalCost:        c.TotalCost,
+			TxnFee:           c.TxnFee,
+			ContractFee:      c.ContractFee,
+			SecretKey:        safeContract.header.SecretKey,
+		}
+		thirdpartyContracts = append(thirdpartyContracts, thirdpartyContract)
+	}
+	return thirdpartyContracts
+}
+
 // Close closes all contracts in a contract set, this means rendering it unusable for I/O
 func (cs *ContractSet) Close() error {
 	for _, c := range cs.contracts {

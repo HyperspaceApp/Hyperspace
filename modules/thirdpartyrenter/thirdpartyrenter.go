@@ -157,9 +157,9 @@ func NewCustomThirdpartyRenter(hc hostContractor, persistDir string, deps module
 	r.staticStreamCache = newStreamCache(r.persist.StreamCacheSize)
 
 	// Spin up the workers for the work pool.
-	// r.managedUpdateWorkerPool()
+	r.managedUpdateWorkerPool()
 	// go r.threadedDownloadLoop()
-	// go r.threadedUploadLoop()
+	go r.threadedUploadLoop()
 
 	// Kill workers on shutdown.
 	r.tg.OnStop(func() error {

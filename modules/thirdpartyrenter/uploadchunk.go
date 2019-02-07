@@ -2,6 +2,7 @@ package thirdpartyrenter
 
 import (
 	"io"
+	"log"
 	"os"
 	"sync"
 
@@ -103,6 +104,7 @@ func (uc *unfinishedUploadChunk) managedNotifyStandbyWorkers() {
 // managedDistributeChunkToWorkers will take a chunk with fully prepared
 // physical data and distribute it to the worker pool.
 func (r *ThirdpartyRenter) managedDistributeChunkToWorkers(uc *unfinishedUploadChunk) {
+	log.Printf("managedDistributeChunkToWorkers")
 	// Give the chunk to each worker, marking the number of workers that have
 	// received the chunk. The workers cannot be interacted with while the
 	// renter is holding a lock, so we need to build a list of workers while
@@ -181,6 +183,7 @@ func (r *ThirdpartyRenter) managedDownloadLogicalChunkData(chunk *unfinishedUplo
 // managedFetchAndRepairChunk will fetch the logical data for a chunk, create
 // the physical pieces for the chunk, and then distribute them.
 func (r *ThirdpartyRenter) managedFetchAndRepairChunk(chunk *unfinishedUploadChunk) {
+	log.Printf("managedFetchAndRepairChunk")
 	// Calculate the amount of memory needed for erasure coding. This will need
 	// to be released if there's an error before erasure coding is complete.
 	erasureCodingMemory := chunk.fileEntry.PieceSize() * uint64(chunk.fileEntry.ErasureCode().MinPieces())

@@ -114,76 +114,77 @@ func (he *hostEditor) Upload(data []byte) (_ crypto.Hash, err error) {
 // Editor returns a Editor object that can be used to upload, modify, and
 // delete sectors on a host.
 func (c *Contractor) Editor(pk types.SiaPublicKey, cancel <-chan struct{}) (_ Editor, err error) {
-	// c.mu.RLock()
-	// id, gotID := c.pubKeysToContractID[string(pk.Key)]
-	// cachedEditor, haveEditor := c.editors[id]
-	// cachedSession, haveSession := c.sessions[id]
-	// height := c.blockHeight
+	c.mu.RLock()
+	id, gotID := c.pubKeysToContractID[string(pk.Key)]
+	cachedEditor, haveEditor := c.editors[id]
+	cachedSession, haveSession := c.sessions[id]
+	height := c.blockHeight
 	// renewing := c.renewing[id]
-	// c.mu.RUnlock()
-	// if !gotID {
-	// 	return nil, errors.New("failed to get filecontract id from key")
-	// }
+	c.mu.RUnlock()
+	if !gotID {
+		return nil, errors.New("failed to get filecontract id from key")
+	}
 	// if renewing {
 	// 	// Cannot use the editor if the contract is being renewed.
 	// 	return nil, errors.New("currently renewing that contract")
-	// } else if haveEditor {
-	// 	// This editor already exists. Mark that there are now two routines
-	// 	// using the editor, and then return the editor that already exists.
-	// 	cachedEditor.mu.Lock()
-	// 	cachedEditor.clients++
-	// 	cachedEditor.mu.Unlock()
-	// 	return cachedEditor, nil
-	// } else if haveSession {
-	// 	// This session already exists.
-	// 	cachedSession.mu.Lock()
-	// 	cachedSession.clients++
-	// 	cachedSession.mu.Unlock()
-	// 	return cachedSession, nil
-	// }
+	// } else
+	if haveEditor {
+		// This editor already exists. Mark that there are now two routines
+		// using the editor, and then return the editor that already exists.
+		cachedEditor.mu.Lock()
+		cachedEditor.clients++
+		cachedEditor.mu.Unlock()
+		return cachedEditor, nil
+	} else if haveSession {
+		// This session already exists.
+		cachedSession.mu.Lock()
+		cachedSession.clients++
+		cachedSession.mu.Unlock()
+		return cachedSession, nil
+	}
 
-	// // Check that the contract and host are both available, and run some brief
-	// // sanity checks to see that the host is not swindling us.
-	// contract, haveContract := c.staticContracts.View(id)
-	// if !haveContract {
-	// 	return nil, errors.New("no record of that contract")
-	// }
-	// host, haveHost := c.hdb.Host(contract.HostPublicKey)
-	// if height > contract.EndHeight {
-	// 	return nil, errors.New("contract has already ended")
-	// } else if !haveHost {
-	// 	return nil, errors.New("no record of that host")
-	// } else if host.Filtered {
-	// 	return nil, errors.New("host is blacklisted")
-	// } else if host.StoragePrice.Cmp(maxStoragePrice) > 0 {
-	// 	return nil, errTooExpensive
-	// } else if host.UploadBandwidthPrice.Cmp(maxUploadPrice) > 0 {
-	// 	return nil, errTooExpensive
-	// }
+	// Check that the contract and host are both available, and run some brief
+	// sanity checks to see that the host is not swindling us.
+	contract, haveContract := c.staticContracts.View(id)
+	if !haveContract {
+		return nil, errors.New("no record of that contract")
+	}
+	host, haveHost := c.hdb.Host(contract.HostPublicKey)
+	if height > contract.EndHeight {
+		return nil, errors.New("contract has already ended")
+	} else if !haveHost {
+		return nil, errors.New("no record of that host")
+	} else if host.Filtered {
+		return nil, errors.New("host is blacklisted")
+	} else if host.StoragePrice.Cmp(maxStoragePrice) > 0 {
+		return nil, errTooExpensive
+	} else if host.UploadBandwidthPrice.Cmp(maxUploadPrice) > 0 {
+		return nil, errTooExpensive
+	}
 
 	// // If host is >= 1.4.0, use the new renter-host protocol.
 	// if build.VersionCmp(host.Version, "1.4.0") >= 0 {
 	// 	return c.Session(pk, cancel)
 	// }
 
-	// // Create the editor.
-	// e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, cancel)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	// Create the editor.
+	e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, cancel)
+	if err != nil {
+		return nil, err
+	}
 
 	// cache editor
 	he := &hostEditor{
 		clients:    1,
 		contractor: c,
-		// editor:     e,
-		// endHeight:  contract.EndHeight,
-		// id:         id,
-		// netAddress: host.NetAddress,
+		editor:     e,
+		endHeight:  contract.EndHeight,
+		id:         id,
+		netAddress: host.NetAddress,
 	}
-	// c.mu.Lock()
-	// c.editors[contract.ID] = he
-	// c.mu.Unlock()
+	c.mu.Lock()
+	c.editors[contract.ID] = he
+	c.mu.Unlock()
 
 	return he, nil
 }

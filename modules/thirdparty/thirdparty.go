@@ -127,6 +127,9 @@ type hostContractor interface {
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []modules.RenterContract
 
+	// ThirdpartyContracts returns the staticContracts of the renter's hostContractor.
+	ThirdpartyContracts() []modules.ThirdpartyRenterContract
+
 	// ContractByPublicKey returns the contract associated with the host key.
 	ContractByPublicKey(types.SiaPublicKey) (modules.RenterContract, bool)
 
@@ -344,7 +347,14 @@ func New(g modules.Gateway, cs modules.ConsensusSet, wallet modules.Wallet, tpoo
 }
 
 // Contracts returns an array of host contractor's staticContracts
-func (t *Thirdparty) Contracts() []modules.RenterContract { return t.hostContractor.Contracts() }
+func (t *Thirdparty) Contracts() []modules.RenterContract {
+	return t.hostContractor.Contracts()
+}
+
+// ThirdpartyContracts returns an array of host contractor's staticContracts
+func (t *Thirdparty) ThirdpartyContracts() []modules.ThirdpartyRenterContract {
+	return t.hostContractor.ThirdpartyContracts()
+}
 
 // SetSettings will update the settings for the renter.
 //
@@ -503,12 +513,11 @@ func isAddrInUseErr(err error) bool {
 
 // newThirdpartyServer create a new http server
 func newThirdpartyServer() (*ThirdpartyServer, error) {
-	l, err := net.Listen("tcp", ":5585")
+	l, err := net.Listen("tcp", "0.0.0.0:5585")
 	if err != nil {
 		if isAddrInUseErr(err) {
 			return nil, fmt.Errorf("%v; are you running another instance of hsd?", err.Error())
 		}
-
 		return nil, err
 	}
 

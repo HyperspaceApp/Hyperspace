@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -79,7 +80,7 @@ func (api *API) thirdpartyRenterUploadHandler(w http.ResponseWriter, req *http.R
 	}
 
 	// Call the thirdpartyRenter to upload the file.
-	err = api.renter.Upload(modules.FileUploadParams{
+	err = api.thirdpartyrenter.Upload(modules.FileUploadParams{
 		Source:         source,
 		HyperspacePath: strings.TrimPrefix(ps.ByName("hyperspacepath"), "/"),
 		ErasureCode:    ec,
@@ -144,4 +145,23 @@ func (api *API) thirdpartyRenterDirHandlerPOST(w http.ResponseWriter, req *http.
 	// Report that no calls were made
 	WriteError(w, Error{"no calls were made, please check your submission and try again"}, http.StatusInternalServerError)
 	return
+}
+
+// thirdpartyRenterFilesHandler handles the API call to list all of the files.
+func (api *API) thirdpartyRenterFilesHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	filter := req.FormValue("filter")
+	if len(filter) > 0 {
+		r, err := regexp.Compile(filter)
+		if err != nil {
+			WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+			return
+		}
+		WriteJSON(w, RenterFiles{
+			Files: api.thirdpartyrenter.FileList(r),
+		})
+	} else {
+		WriteJSON(w, RenterFiles{
+			Files: api.thirdpartyrenter.FileList(),
+		})
+	}
 }

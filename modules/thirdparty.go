@@ -1,7 +1,53 @@
 package modules
 
 import (
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/types"
+)
+
+type (
+	// ThirdpartyRenterContract represents a contract formed by the renter.
+	ThirdpartyRenterContract struct {
+		ID            types.FileContractID `json:"id"`
+		HostPublicKey types.SiaPublicKey   `json:"hostpublickey"`
+		Transaction   types.Transaction    `json:"transaction"`
+
+		StartHeight types.BlockHeight `json:"startheight"`
+		EndHeight   types.BlockHeight `json:"endheight"`
+
+		// RenterFunds is the amount remaining in the contract that the renter can
+		// spend.
+		RenterFunds types.Currency `json:"reterfunds"`
+
+		// The FileContract does not indicate what funds were spent on, so we have
+		// to track the various costs manually.
+		DownloadSpending types.Currency `json:"downloadspending"`
+		StorageSpending  types.Currency `json:"storagespending"`
+		UploadSpending   types.Currency `json:"uploadspending"`
+
+		// TotalCost indicates the amount of money that the renter spent and/or
+		// locked up while forming a contract. This includes fees, and includes
+		// funds which were allocated (but not necessarily committed) to spend on
+		// uploads/downloads/storage.
+		TotalCost types.Currency `json:"totalcost"`
+
+		// ContractFee is the amount of money paid to the host to cover potential
+		// future transaction fees that the host may incur, and to cover any other
+		// overheads the host may have.
+		//
+		// TxnFee is the amount of money spent on the transaction fee when putting
+		// the renter contract on the blockchain.
+		ContractFee types.Currency `json:"contractfee"`
+
+		TxnFee types.Currency `json:"txnfee"`
+
+		SecretKey crypto.SecretKey `json:"secretkey"`
+	}
+
+	// ThirdpartyRenterContracts
+	ThirdpartyRenterContracts struct {
+		Contracts []ThirdpartyRenterContract `json:"contracts"`
+	}
 )
 
 const (
@@ -28,6 +74,9 @@ type Thirdparty interface {
 
 	// Contracts returns the staticContracts of the renter's hostContractor.
 	Contracts() []RenterContract
+
+	// ThirdpartyContracts returns the staticContracts of the renter's hostContractor.
+	ThirdpartyContracts() []ThirdpartyRenterContract
 
 	// OldContracts returns an array of host contractor's oldContracts
 	OldContracts() []RenterContract

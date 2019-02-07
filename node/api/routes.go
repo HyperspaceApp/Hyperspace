@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -205,12 +206,16 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 	}
 
 	if api.thirdpartyrenter != nil {
+		log.Printf("thirdpartyrenter exists")
 		router.POST("/thirdpartyrenter/upload/*hyperspacepath", RequirePassword(api.thirdpartyRenterUploadHandler, requiredPassword))
 		// router.POST("/renter/file/*hyperspacepath", RequirePassword(api.renterFileHandlerPOST, requiredPassword))
+		router.GET("/thirdpartyrenter/files", api.thirdpartyRenterFilesHandler)
 
 		// Directory endpoints
 		router.POST("/thirdpartyrenter/dir/*hyperspacepath", RequirePassword(api.thirdpartyRenterDirHandlerPOST, requiredPassword))
 		router.GET("/thirdpartyrenter/dir/*hyperspacepath", api.renterDirHandlerGET)
+	} else {
+		log.Printf("thirdpartyrenter not exists")
 	}
 
 	// Apply UserAgent middleware and return the Router

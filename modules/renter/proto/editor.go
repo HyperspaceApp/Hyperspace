@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -59,6 +60,7 @@ func (he *Editor) Close() error {
 
 // Upload negotiates a revision that adds a sector to a file contract.
 func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, err error) {
+	log.Printf("Editor Upload: %s", he.contractID)
 	// Acquire the contract.
 	sc, haveContract := he.contractSet.Acquire(he.contractID)
 	if !haveContract {
@@ -187,6 +189,11 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 			err = errors.Extend(err, modules.ErrHostFault)
 		} else if err == nil {
 			hdb.IncrementSuccessfulInteractions(contract.HostPublicKey())
+		}
+		if err != nil {
+			log.Printf("NewEditor %s err: %s", id, err)
+		} else {
+			log.Printf("NewEditor %s success", id)
 		}
 	}()
 

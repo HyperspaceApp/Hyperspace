@@ -171,6 +171,9 @@ func main() {
 	thirdpartyHostdbCmd.Flags().BoolVarP(&hostdbVerbose, "verbose", "v", false, "Display full hostdb information")
 	thirdpartyContractsCmd.Flags().BoolVarP(&renterAllContracts, "all", "A", false, "Show all expired contracts in addition to active contracts")
 
+	root.AddCommand(thirdpartyRenterCmd)
+	thirdpartyRenterCmd.AddCommand(thirdpartyRenterFilesUploadCmd, thirdpartyRenterFilesListCmd)
+
 	root.AddCommand(gatewayCmd)
 	gatewayCmd.AddCommand(gatewayConnectCmd, gatewayDisconnectCmd, gatewayAddressCmd, gatewayListCmd)
 

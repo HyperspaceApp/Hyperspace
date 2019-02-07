@@ -77,3 +77,9 @@ func (c *Client) ThirdpartyRenterGetDir(siaPath string) (rd api.RenterDirectory,
 	err = c.get(fmt.Sprintf("/thirdpartyrenter/dir/%s", siaPath), &rd)
 	return
 }
+
+// ThirdpartyRenterFilesGet requests the /renter/files resource.
+func (c *Client) ThirdpartyRenterFilesGet() (rf api.RenterFiles, err error) {
+	err = c.get("/thirdpartyrenter/files", &rf)
+	return
+}

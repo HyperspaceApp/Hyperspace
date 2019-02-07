@@ -388,6 +388,25 @@ func (c *SafeContract) unappliedHeader() (h contractHeader) {
 	return
 }
 
+// ThirdpartyInsertContract will help sync right info into static contract set
+func (cs *ContractSet) ThirdpartyInsertContract(remoteContract modules.ThirdpartyRenterContract, roots []crypto.Hash) (modules.RenterContract, error) {
+	header := contractHeader{
+		Transaction:     remoteContract.Transaction,
+		SecretKey:       remoteContract.SecretKey,
+		StartHeight:     remoteContract.StartHeight,
+		TotalCost:       remoteContract.TotalCost,
+		ContractFee:     remoteContract.ContractFee,
+		TxnFee:          remoteContract.TxnFee,
+		StorageSpending: remoteContract.StorageSpending,
+		Utility: modules.ContractUtility{
+			GoodForUpload: true,
+			GoodForRenew:  true,
+		},
+	}
+
+	return cs.managedInsertContract(header, roots)
+}
+
 func (cs *ContractSet) managedInsertContract(h contractHeader, roots []crypto.Hash) (modules.RenterContract, error) {
 	if err := h.validate(); err != nil {
 		return modules.RenterContract{}, err
