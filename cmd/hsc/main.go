@@ -126,7 +126,7 @@ func main() {
 
 	root.AddCommand(walletCmd)
 	walletCmd.AddCommand(walletAddressesCmd, walletChangepasswordCmd, walletGetAddressCmd, walletInitCmd, walletInitSeedCmd,
-		walletLoadCmd, walletLockCmd, walletNewAddressCmd, walletSeedsCmd, walletSendCmd, walletSweepCmd, walletSignCmd,
+		walletLoadCmd, walletLockCmd, walletNewAddressCmd, walletSeedsCmd, walletSendCmd, walletSendWithFeeCmd, walletSweepCmd, walletSignCmd,
 		walletBalanceCmd, walletBroadcastCmd, walletTransactionsCmd, walletUnlockCmd)
 	walletInitCmd.Flags().BoolVarP(&initPassword, "password", "p", false, "Prompt for a custom password")
 	walletInitCmd.Flags().BoolVarP(&initForce, "force", "", false, "destroy the existing wallet and re-encrypt")

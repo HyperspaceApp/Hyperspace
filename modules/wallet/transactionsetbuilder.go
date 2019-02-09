@@ -62,6 +62,9 @@ func (w *Wallet) registerTransactionSet(t types.Transaction, parents []types.Tra
 // fee of 0 or greater is also taken into account in the input aggregation and
 // added to the transaction if necessary.
 func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, fee types.Currency) error {
+	if fee.Cmp64(0) == 0 {
+		return tb.fundOutputs(newOutputs, fee, false)
+	}
 	return tb.fundOutputs(newOutputs, fee, true)
 }
 
@@ -70,6 +73,9 @@ func (tb *transactionSetBuilder) FundOutputs(newOutputs []types.SiacoinOutput, f
 // each call!
 func (tb *transactionSetBuilder) FundOutput(output types.SiacoinOutput, fee types.Currency) error {
 	var outputs []types.SiacoinOutput
+	if fee.Cmp64(0) == 0 {
+		return tb.fundOutputs(append(outputs, output), fee, false)
+	}
 	return tb.fundOutputs(append(outputs, output), fee, true)
 }
 
@@ -82,6 +88,8 @@ func (tb *transactionSetBuilder) FundOutputNoFee(output types.SiacoinOutput) err
 	return tb.fundOutputs(append(outputs, output), types.NewCurrency64(0), false)
 }
 
+// TODO can we get rid of this hasFee param? it seems pretty silly to me.
+// why not just detect dynamically if the fee is 0?
 func (tb *transactionSetBuilder) fundOutputs(newOutputs []types.SiacoinOutput, fee types.Currency, hasFee bool) error {
 	consensusHeight, err := dbGetConsensusHeight(tb.wallet.dbTx)
 	if err != nil {

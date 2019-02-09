@@ -479,7 +479,22 @@ func (api *API) walletSiacoinsHandler(w http.ResponseWriter, req *http.Request, 
 			WriteError(w, Error{"could not read address from POST call to /wallet/spacecash"}, http.StatusBadRequest)
 			return
 		}
+		feeStr := req.FormValue("fee")
+		// passed a manual fee
+		if feeStr != "" {
+			feeAmount, ok := scanAmount(feeStr)
+			if !ok {
+				WriteError(w, Error{"could not read fee from POST call to /wallet/spacecash"}, http.StatusBadRequest)
+				return
+			}
+			txns, err = api.wallet.SendSiacoinsWithSpecificFee(amount, dest, feeAmount)
+			if err != nil {
+				WriteError(w, Error{"error when calling /wallet/spacecash: " + err.Error()}, http.StatusInternalServerError)
+				return
+			}
+		}
 
+		// if not passed a manual fee, calculate the fee dynamically
 		txns, err = api.wallet.SendSiacoins(amount, dest)
 		if err != nil {
 			WriteError(w, Error{"error when calling /wallet/spacecash: " + err.Error()}, http.StatusInternalServerError)

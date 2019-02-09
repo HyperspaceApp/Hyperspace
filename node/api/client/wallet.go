@@ -104,6 +104,17 @@ func (c *Client) WalletSiacoinsMultiPost(outputs []types.SiacoinOutput) (wsp api
 	return
 }
 
+// WalletSendWithFeePost uses the /wallet/spacecash api endpoint to send money to a
+// single address with a specified fee
+func (c *Client) WalletSendWithFeePost(amount types.Currency, destination types.UnlockHash, fee types.Currency) (wsp api.WalletSiacoinsPOST, err error) {
+	values := url.Values{}
+	values.Set("amount", amount.String())
+	values.Set("destination", destination.String())
+	values.Set("fee", fee.String())
+	err = c.post("/wallet/spacecash", values.Encode(), &wsp)
+	return
+}
+
 // WalletSiacoinsPost uses the /wallet/spacecash api endpoint to send money to a
 // single address
 func (c *Client) WalletSiacoinsPost(amount types.Currency, destination types.UnlockHash) (wsp api.WalletSiacoinsPOST, err error) {

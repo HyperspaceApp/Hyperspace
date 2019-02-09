@@ -520,6 +520,8 @@ type (
 		// SendSiacoinsMulti sends coins to multiple addresses.
 		SendSiacoinsMulti(outputs []types.SiacoinOutput) ([]types.Transaction, error)
 
+		SendSiacoinsWithSpecificFee(amount types.Currency, dest types.UnlockHash, tpoolFee types.Currency) (txns []types.Transaction, err error)
+
 		// DustThreshold returns the quantity per byte below which a Currency is
 		// considered to be Dust.
 		DustThreshold() (types.Currency, error)

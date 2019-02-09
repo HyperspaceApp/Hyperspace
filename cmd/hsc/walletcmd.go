@@ -138,6 +138,7 @@ By default the wallet encryption / unlock password is the same as the generated 
 		Run:   wrap(walletseedscmd),
 	}
 
+	// TODO merge walletSendCmd and walletSendSiacoinsCmd
 	walletSendCmd = &cobra.Command{
 		Use:   "send",
 		Short: "Send space cash to an address",
@@ -155,6 +156,15 @@ If no unit is supplied, hastings will be assumed.
 
 A dynamic transaction fee is applied depending on the size of the transaction and how busy the network is.`,
 		Run: wrap(walletsendsiacoinscmd),
+	}
+
+	walletSendWithFeeCmd = &cobra.Command{
+		Use:   "send-with-fee [amount] [dest] [fee]",
+		Short: "Send space cash to an address with a specified fee",
+		Long: `Send space cash to an address with a specific fee. 'dest' must be a 76-byte hexadecimal address.
+'amount' and 'fee' can be specified in units, e.g. 1.23KS. Run 'wallet --help' for a list of units.
+If no unit is supplied, hastings will be assumed.`,
+		Run: wrap(walletsendwithfeecmd),
 	}
 
 	walletSignCmd = &cobra.Command{
@@ -407,6 +417,35 @@ func walletsendsiacoinscmd(amount, dest string) {
 		die("Could not send siacoins:", err)
 	}
 	fmt.Printf("Sent %s hastings to %s\n", hastings, dest)
+}
+
+// walletsendwithfeecmd sends SPACE to a desination address with a specified fee.
+func walletsendwithfeecmd(amount, dest, fee string) {
+	hastings, err := parseCurrency(amount)
+	if err != nil {
+		die("Could not parse amount:", err)
+	}
+	var value types.Currency
+	if _, err := fmt.Sscan(hastings, &value); err != nil {
+		die("Failed to parse amount", err)
+	}
+	var hash types.UnlockHash
+	if _, err := fmt.Sscan(dest, &hash); err != nil {
+		die("Failed to parse destination address", err)
+	}
+	feeHastings, err := parseCurrency(fee)
+	if err != nil {
+		die("Could not parse amount:", err)
+	}
+	var feeValue types.Currency
+	if _, err := fmt.Sscan(feeHastings, &feeValue); err != nil {
+		die("Failed to parse fee", err)
+	}
+	_, err = httpClient.WalletSendWithFeePost(value, hash, feeValue)
+	if err != nil {
+		die("Could not send siacoins:", err)
+	}
+	fmt.Printf("Sent %s hastings to %s with fee %s\n", hastings, dest, feeHastings)
 }
 
 // walletbalancecmd retrieves and displays information about the wallet.

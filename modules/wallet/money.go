@@ -143,9 +143,7 @@ func (w *Wallet) checkOutput(tx *bolt.Tx, currentHeight types.BlockHeight, id ty
 	return nil
 }
 
-// SendSiacoins creates a transaction sending 'amount' to 'dest'. The transaction
-// is submitted to the transaction pool and is also returned.
-func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txns []types.Transaction, err error) {
+func (w *Wallet) SendSiacoinsWithSpecificFee(amount types.Currency, dest types.UnlockHash, tpoolFee types.Currency) (txns []types.Transaction, err error) {
 	if err := w.tg.Add(); err != nil {
 		err = modules.ErrWalletShutdown
 		return nil, err
@@ -160,8 +158,6 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 		return nil, modules.ErrLockedWallet
 	}
 
-	_, tpoolFee := w.tpool.FeeEstimation()
-	tpoolFee = tpoolFee.Mul64(750) // Estimated transaction size in bytes
 	output := types.SiacoinOutput{
 		Value:      amount,
 		UnlockHash: dest,
@@ -207,6 +203,20 @@ func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txn
 		w.log.Println("\t", txn.ID())
 	}
 	return txnSet, nil
+}
+
+
+// SendSiacoins creates a transaction sending 'amount' to 'dest'. The transaction
+// is submitted to the transaction pool and is also returned.
+func (w *Wallet) SendSiacoins(amount types.Currency, dest types.UnlockHash) (txns []types.Transaction, err error) {
+	if err := w.tg.Add(); err != nil {
+		err = modules.ErrWalletShutdown
+		return nil, err
+	}
+	defer w.tg.Done()
+	_, tpoolFee := w.tpool.FeeEstimation()
+	tpoolFee = tpoolFee.Mul64(750) // Estimated transaction size in bytes
+	return w.SendSiacoinsWithSpecificFee(amount, dest, tpoolFee)
 }
 
 // SendSiacoinsMulti creates a transaction that includes the specified
