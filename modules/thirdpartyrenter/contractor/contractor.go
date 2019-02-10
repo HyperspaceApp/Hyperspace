@@ -162,20 +162,8 @@ func (c *Contractor) Contracts() []modules.RenterContract {
 	c.blockHeight = trc.Height
 	// var contracts []modules.RenterContract
 	for _, remoteContract := range trc.Contracts {
-		// contracts = append(contracts, modules.RenterContract{
-		// 	ID:               remoteContract.ID,
-		// 	HostPublicKey:    remoteContract.HostPublicKey,
-		// 	Transaction:      remoteContract.Transaction,
-		// 	StartHeight:      remoteContract.StartHeight,
-		// 	EndHeight:        remoteContract.EndHeight,
-		// 	RenterFunds:      remoteContract.RenterFunds,
-		// 	DownloadSpending: remoteContract.DownloadSpending,
-		// 	StorageSpending:  remoteContract.StorageSpending,
-		// 	UploadSpending:   remoteContract.UploadSpending,
-		// 	TotalCost:        remoteContract.TotalCost,
-		// })
 		// TODO: add hash if has one
-		c.staticContracts.ThirdpartyInsertContract(remoteContract, nil)
+		c.staticContracts.ThirdpartyInsertORUpdateContract(remoteContract, nil)
 
 		c.contractIDToPubKey[remoteContract.ID] = remoteContract.HostPublicKey
 		c.pubKeysToContractID[string(remoteContract.HostPublicKey.Key)] = remoteContract.ID

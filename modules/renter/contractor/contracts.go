@@ -58,11 +58,6 @@ func (c *Contractor) Contracts() []modules.RenterContract {
 	return c.staticContracts.ViewAll()
 }
 
-// ThirdpartyContracts will return contracts for thirdparty clients
-func (c *Contractor) ThirdpartyContracts() []modules.ThirdpartyRenterContract {
-	return c.staticContracts.ThirdpartyViewAll()
-}
-
 // ContractUtility returns the utility fields for the given contract.
 func (c *Contractor) ContractUtility(pk types.SiaPublicKey) (modules.ContractUtility, bool) {
 	c.mu.RLock()

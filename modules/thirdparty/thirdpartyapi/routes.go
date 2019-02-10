@@ -1,6 +1,7 @@
 package thirdpartyapi
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strings"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	nodeapi "github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/NebulousLabs/Sia/encoding"
 
 	"github.com/julienschmidt/httprouter"
 )
@@ -32,8 +34,9 @@ func (api *ThirdpartyAPI) buildHTTPRoutes() error {
 
 	// sign
 	// fetch contracts
-	router.GET("/contracts", api.renterContractsHandler)
+	router.GET("/contracts", api.contractsHandler)
 	router.GET("/hostdb/all", api.hostdbAllHandler)
+	router.POST("/contract/revision", api.contractRevisionHandlerPOST)
 
 	// update contract info
 	// upload/download meta data of fies
@@ -85,7 +88,7 @@ func RequireUserAgent(h http.Handler, ua string) http.Handler {
 	})
 }
 
-func (api *ThirdpartyAPI) renterContractsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+func (api *ThirdpartyAPI) contractsHandler(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	WriteJSON(w, modules.ThirdpartyRenterContracts{
 		Contracts: api.thirdparty.ThirdpartyContracts(),
 		Height:    api.cs.Height(),
@@ -108,4 +111,22 @@ func (api *ThirdpartyAPI) hostdbAllHandler(w http.ResponseWriter, req *http.Requ
 	WriteJSON(w, nodeapi.HostdbAllGET{
 		Hosts: extendedHosts,
 	})
+}
+
+// upload the revisions
+func (api *ThirdpartyAPI) contractRevisionHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var updator modules.ThirdpartyRenterRevisionUpdator
+
+	rawUpdator, err := base64.StdEncoding.DecodeString(req.FormValue("updator"))
+	if err != nil {
+		WriteError(w, Error{"error decoding updator:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	if err := encoding.Unmarshal(rawUpdator, &updator); err != nil {
+		WriteError(w, Error{"error decoding updator:" + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	api.thirdparty.UpdateContractRevision(updator)
+
+	WriteSuccess(w)
 }

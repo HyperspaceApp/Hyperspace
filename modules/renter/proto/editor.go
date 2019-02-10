@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -79,11 +78,11 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 	// to mitigate small errors (e.g. differing block heights), fudge the
 	// price and collateral by 0.2%. This is only applied to hosts above
 	// v1.0.1; older hosts use stricter math.
-	if build.VersionCmp(he.host.Version, "1.0.1") > 0 {
-		sectorStoragePrice = sectorStoragePrice.MulFloat(1 + hostPriceLeeway)
-		sectorBandwidthPrice = sectorBandwidthPrice.MulFloat(1 + hostPriceLeeway)
-		sectorCollateral = sectorCollateral.MulFloat(1 - hostPriceLeeway)
-	}
+	// if build.VersionCmp(he.host.Version, "1.0.1") > 0 {
+	// 	sectorStoragePrice = sectorStoragePrice.MulFloat(1 + hostPriceLeeway)
+	// 	sectorBandwidthPrice = sectorBandwidthPrice.MulFloat(1 + hostPriceLeeway)
+	// 	sectorCollateral = sectorCollateral.MulFloat(1 - hostPriceLeeway)
+	// }
 
 	sectorPrice := sectorStoragePrice.Add(sectorBandwidthPrice)
 	if contract.RenterFunds().Cmp(sectorPrice) < 0 {

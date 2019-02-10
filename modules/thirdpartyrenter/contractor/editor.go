@@ -104,10 +104,23 @@ func (he *hostEditor) Upload(data []byte) (_ crypto.Hash, err error) {
 	}
 
 	// Perform the upload.
-	_, sectorRoot, err := he.editor.Upload(data)
+	contract, sectorRoot, err := he.editor.Upload(data)
 	if err != nil {
 		return crypto.Hash{}, err
 	}
+	updator := modules.ThirdpartyRenterRevisionUpdator{
+		ID:               contract.ID,
+		DownloadSpending: contract.DownloadSpending,
+		StorageSpending:  contract.StorageSpending,
+		UploadSpending:   contract.UploadSpending,
+	}
+
+	err = he.contractor.httpClient.ThirdpartyServerContractRevisionPost(updator)
+	if err != nil {
+		he.contractor.log.Println("error when sync contract to thirdparty server:", err)
+		// TODO: add to retry loop
+	}
+
 	return sectorRoot, nil
 }
 

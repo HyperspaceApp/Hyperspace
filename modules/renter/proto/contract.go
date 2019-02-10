@@ -290,6 +290,7 @@ func (c *SafeContract) commitUpload(t *writeaheadlog.Transaction, signedTxn type
 		return err
 	}
 	c.unappliedTxns = nil
+
 	return nil
 }
 
@@ -388,9 +389,11 @@ func (c *SafeContract) unappliedHeader() (h contractHeader) {
 	return
 }
 
-// ThirdpartyInsertContract will help sync right info into static contract set
-func (cs *ContractSet) ThirdpartyInsertContract(remoteContract modules.ThirdpartyRenterContract, roots []crypto.Hash) (modules.RenterContract, error) {
-	header := contractHeader{
+// ThirdpartyInsertORUpdateContract will help sync right info into static contract set
+func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.ThirdpartyRenterContract, roots []crypto.Hash) (modules.RenterContract, error) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	remoteHeader := contractHeader{
 		Transaction:     remoteContract.Transaction,
 		SecretKey:       remoteContract.SecretKey,
 		StartHeight:     remoteContract.StartHeight,
@@ -403,8 +406,14 @@ func (cs *ContractSet) ThirdpartyInsertContract(remoteContract modules.Thirdpart
 			GoodForRenew:  true,
 		},
 	}
+	sc, exists := cs.Acquire(remoteContract.ID)
+	if exists {
+		if sc.header.LastRevision().NewRevisionNumber >= remoteHeader.LastRevision().NewRevisionNumber {
+			return sc.Metadata(), nil
+		}
+	}
 
-	return cs.managedInsertContract(header, roots)
+	return cs.managedInsertContract(remoteHeader, roots)
 }
 
 func (cs *ContractSet) managedInsertContract(h contractHeader, roots []crypto.Hash) (modules.RenterContract, error) {

@@ -175,6 +175,9 @@ type hostContractor interface {
 	// SetRateLimits sets the bandwidth limits for connections created by the
 	// contractor and its submodules.
 	SetRateLimits(int64, int64, uint64)
+
+	// UpdateContracatRevision help update thirdparty contract
+	UpdateContractRevision(modules.ThirdpartyRenterRevisionUpdator) error
 }
 
 // A Thirdparty is responsible for tracking all of the files that a user has
@@ -494,6 +497,11 @@ func (t *Thirdparty) PeriodSpending() modules.ContractorSpending {
 // RecoverableContracts returns the host contractor's recoverable contracts.
 func (t *Thirdparty) RecoverableContracts() []modules.RecoverableContract {
 	return t.hostContractor.RecoverableContracts()
+}
+
+// UpdateContractRevision update the revision in server
+func (t *Thirdparty) UpdateContractRevision(updator modules.ThirdpartyRenterRevisionUpdator) error {
+	return t.hostContractor.UpdateContractRevision(updator)
 }
 
 // ProcessConsensusChange returns the process consensus change

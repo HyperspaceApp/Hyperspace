@@ -49,6 +49,17 @@ type (
 		Contracts []ThirdpartyRenterContract `json:"contracts"`
 		Height    types.BlockHeight          `json:"height"`
 	}
+
+	// ThirdpartyRenterRevisionUpdator help update thirdparty revision
+	ThirdpartyRenterRevisionUpdator struct {
+		ID               types.FileContractID `json:"id"`
+		Action           types.Specifier      `json:"action"`
+		Transaction      types.Transaction    `json:"transaction"`
+		DownloadSpending types.Currency       `json:"downloadspending"`
+		StorageSpending  types.Currency       `json:"storagespending"`
+		UploadSpending   types.Currency       `json:"uploadspending"`
+		SectorRoot       crypto.Hash          `json:"sectorroot"`
+	}
 )
 
 const (
@@ -111,4 +122,7 @@ type Thirdparty interface {
 	// ScoreBreakdown will return the score for a host db entry using the
 	// hostdb's weighting algorithm.
 	ScoreBreakdown(entry HostDBEntry) HostScoreBreakdown
+
+	// UpdateContracatRevision help update thirdparty contract
+	UpdateContractRevision(ThirdpartyRenterRevisionUpdator) error
 }
