@@ -9,6 +9,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/HyperspaceApp/errors"
@@ -25,6 +26,7 @@ type Downloader struct {
 	hdb         hostDB
 	host        modules.HostDBEntry
 	once        sync.Once
+	httpClient  *client.Client
 }
 
 // Sector retrieves the sector with the specified Merkle root, and revises
@@ -100,7 +102,13 @@ func (hd *Downloader) Sector(root crypto.Hash) (_ modules.RenterContract, _ []by
 
 	// send the revision to the host for approval
 	extendDeadline(hd.conn, connTimeout)
-	signedTxn, err := negotiateRevision(hd.conn, rev, contract.SecretKey)
+	signedTxn, err := negotiateRevision(hd.conn, rev, func(sig crypto.Hash, txn types.Transaction) (crypto.Signature, error) {
+		if hd.httpClient == nil {
+			return crypto.SignHash(sig, contract.SecretKey), nil
+		}
+		// sign remotely
+		return hd.httpClient.ThirdpartyServerSignPost(hd.contractID, txn)
+	})
 	if err == modules.ErrStopResponse {
 		// If the host wants to stop communicating after this iteration, close
 		// our connection; this will cause the next download to fail. However,
@@ -215,7 +223,13 @@ func (hd *Downloader) Download(root crypto.Hash, offset, length uint32) (_ modul
 
 	// send the revision to the host for approval
 	extendDeadline(hd.conn, connTimeout)
-	signedTxn, err := negotiateRevision(hd.conn, rev, contract.SecretKey)
+	signedTxn, err := negotiateRevision(hd.conn, rev, func(sig crypto.Hash, txn types.Transaction) (crypto.Signature, error) {
+		if hd.httpClient == nil {
+			return crypto.SignHash(sig, contract.SecretKey), nil
+		}
+		// sign remotely
+		return hd.httpClient.ThirdpartyServerSignPost(hd.contractID, txn)
+	})
 	if err == modules.ErrStopResponse {
 		// If the host wants to stop communicating after this iteration, close
 		// our connection; this will cause the next download to fail. However,
@@ -275,7 +289,7 @@ func (hd *Downloader) Close() error {
 
 // NewDownloader initiates the download request loop with a host, and returns a
 // Downloader.
-func (cs *ContractSet) NewDownloader(host modules.HostDBEntry, id types.FileContractID, hdb hostDB, cancel <-chan struct{}) (_ *Downloader, err error) {
+func (cs *ContractSet) NewDownloader(host modules.HostDBEntry, id types.FileContractID, hdb hostDB, httpClient *client.Client, cancel <-chan struct{}) (_ *Downloader, err error) {
 	sc, ok := cs.Acquire(id)
 	if !ok {
 		return nil, errors.New("invalid contract")
@@ -319,5 +333,6 @@ func (cs *ContractSet) NewDownloader(host modules.HostDBEntry, id types.FileCont
 		closeChan:   closeChan,
 		deps:        cs.deps,
 		hdb:         hdb,
+		httpClient:  httpClient,
 	}, nil
 }

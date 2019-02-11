@@ -41,7 +41,7 @@ type (
 
 		TxnFee types.Currency `json:"txnfee"`
 
-		SecretKey crypto.SecretKey `json:"secretkey"`
+		// SecretKey crypto.SecretKey `json:"secretkey"`
 	}
 
 	// ThirdpartyRenterContracts is a holder of contracts info
@@ -59,6 +59,17 @@ type (
 		StorageSpending  types.Currency       `json:"storagespending"`
 		UploadSpending   types.Currency       `json:"uploadspending"`
 		SectorRoot       crypto.Hash          `json:"sectorroot"`
+	}
+
+	// ThirdpartySignPOSTParams contains the unsigned transaction
+	ThirdpartySignPOSTParams struct {
+		ID          types.FileContractID `json:"id"`
+		Transaction types.Transaction    `json:"transaction"`
+	}
+
+	// ThirdpartySignPOSTResp contains the signed transaction.
+	ThirdpartySignPOSTResp struct {
+		Transaction types.Transaction `json:"transaction"`
 	}
 )
 
@@ -125,4 +136,7 @@ type Thirdparty interface {
 
 	// UpdateContracatRevision help update thirdparty contract
 	UpdateContractRevision(ThirdpartyRenterRevisionUpdator) error
+
+	// Sign help thirdparty renter to sign upload/download action
+	Sign(id types.FileContractID, txn *types.Transaction) error
 }

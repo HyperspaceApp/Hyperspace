@@ -178,6 +178,9 @@ type hostContractor interface {
 
 	// UpdateContracatRevision help update thirdparty contract
 	UpdateContractRevision(modules.ThirdpartyRenterRevisionUpdator) error
+
+	// Sign help thirdparty renter to sign upload/download action
+	Sign(id types.FileContractID, txn *types.Transaction) error
 }
 
 // A Thirdparty is responsible for tracking all of the files that a user has
@@ -502,6 +505,11 @@ func (t *Thirdparty) RecoverableContracts() []modules.RecoverableContract {
 // UpdateContractRevision update the revision in server
 func (t *Thirdparty) UpdateContractRevision(updator modules.ThirdpartyRenterRevisionUpdator) error {
 	return t.hostContractor.UpdateContractRevision(updator)
+}
+
+// Sign help thirdparty renter to sign upload/download action
+func (t *Thirdparty) Sign(id types.FileContractID, txn *types.Transaction) error {
+	return t.hostContractor.Sign(id, txn)
 }
 
 // ProcessConsensusChange returns the process consensus change

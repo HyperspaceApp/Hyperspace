@@ -126,7 +126,7 @@ func verifyRecentRevision(conn net.Conn, contract *SafeContract, hostVersion str
 
 // negotiateRevision sends a revision and actions to the host for approval,
 // completing one iteration of the revision loop.
-func negotiateRevision(conn net.Conn, rev types.FileContractRevision, secretKey crypto.SecretKey) (types.Transaction, error) {
+func negotiateRevision(conn net.Conn, rev types.FileContractRevision, signFunc func(crypto.Hash, types.Transaction) (crypto.Signature, error)) (types.Transaction, error) {
 	// create transaction containing the revision
 	signedTxn := types.Transaction{
 		FileContractRevisions: []types.FileContractRevision{rev},
@@ -136,8 +136,12 @@ func negotiateRevision(conn net.Conn, rev types.FileContractRevision, secretKey 
 			PublicKeyIndex: 0, // renter key is always first -- see formContract
 		}},
 	}
+
 	// sign the transaction
-	encodedSig := crypto.SignHash(signedTxn.SigHash(0), secretKey)
+	encodedSig, err := signFunc(signedTxn.SigHash(0), signedTxn)
+	if err != nil {
+		return types.Transaction{}, err
+	}
 	signedTxn.TransactionSignatures[0].Signature = encodedSig[:]
 
 	// send the revision

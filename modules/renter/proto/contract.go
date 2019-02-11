@@ -395,7 +395,6 @@ func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.T
 	defer cs.mu.Unlock()
 	remoteHeader := contractHeader{
 		Transaction:     remoteContract.Transaction,
-		SecretKey:       remoteContract.SecretKey,
 		StartHeight:     remoteContract.StartHeight,
 		TotalCost:       remoteContract.TotalCost,
 		ContractFee:     remoteContract.ContractFee,

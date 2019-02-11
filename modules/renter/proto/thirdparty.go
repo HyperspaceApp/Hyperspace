@@ -1,7 +1,9 @@
 package proto
 
 import (
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // UpdateContractRevision update contract revision
@@ -35,5 +37,12 @@ func (c *SafeContract) UpdateContractRevision(updator modules.ThirdpartyRenterRe
 		return err
 	}
 
+	return nil
+}
+
+// Sign help thirdparty renter to sign upload/download action
+func (c *SafeContract) Sign(id types.FileContractID, txn *types.Transaction) error {
+	encodedSig := crypto.SignHash(txn.SigHash(0), c.header.SecretKey)
+	txn.TransactionSignatures[0].Signature = encodedSig[:]
 	return nil
 }

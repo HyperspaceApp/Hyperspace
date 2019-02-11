@@ -9,6 +9,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/types"
 
 	"github.com/HyperspaceApp/errors"
@@ -36,7 +37,8 @@ type Editor struct {
 	host        modules.HostDBEntry
 	once        sync.Once
 
-	height types.BlockHeight
+	height     types.BlockHeight
+	httpClient *client.Client
 }
 
 // shutdown terminates the revision loop and signals the goroutine spawned in
@@ -146,7 +148,13 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 
 	// send revision to host and exchange signatures
 	extendDeadline(he.conn, connTimeout)
-	signedTxn, err := negotiateRevision(he.conn, rev, contract.SecretKey)
+	signedTxn, err := negotiateRevision(he.conn, rev, func(sig crypto.Hash, txn types.Transaction) (crypto.Signature, error) {
+		if he.httpClient == nil {
+			return crypto.SignHash(sig, contract.SecretKey), nil
+		}
+		// sign remotely
+		return he.httpClient.ThirdpartyServerSignPost(he.contractID, txn)
+	})
 	if err == modules.ErrStopResponse {
 		// if host gracefully closed, close our connection as well; this will
 		// cause the next operation to fail
@@ -172,7 +180,8 @@ func (he *Editor) Upload(data []byte) (_ modules.RenterContract, _ crypto.Hash, 
 
 // NewEditor initiates the contract revision process with a host, and returns
 // an Editor.
-func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContractID, currentHeight types.BlockHeight, hdb hostDB, cancel <-chan struct{}) (_ *Editor, err error) {
+func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContractID,
+	currentHeight types.BlockHeight, hdb hostDB, httpClient *client.Client, cancel <-chan struct{}) (_ *Editor, err error) {
 	sc, ok := cs.Acquire(id)
 	if !ok {
 		return nil, errors.New("invalid contract")
@@ -216,6 +225,7 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 		conn:        conn,
 		closeChan:   closeChan,
 		deps:        cs.deps,
+		httpClient:  httpClient,
 	}, nil
 }
 

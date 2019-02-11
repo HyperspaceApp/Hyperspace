@@ -2,6 +2,7 @@ package thirdpartyapi
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -36,7 +37,8 @@ func (api *ThirdpartyAPI) buildHTTPRoutes() error {
 	// fetch contracts
 	router.GET("/contracts", api.contractsHandler)
 	router.GET("/hostdb/all", api.hostdbAllHandler)
-	router.POST("/contract/revision", api.contractRevisionHandlerPOST)
+	router.POST("/sign/upload", api.signUploadHandlerPOST)
+	// router.POST("/contract/revision", api.contractRevisionHandlerPOST)
 
 	// update contract info
 	// upload/download meta data of fies
@@ -110,6 +112,23 @@ func (api *ThirdpartyAPI) hostdbAllHandler(w http.ResponseWriter, req *http.Requ
 
 	WriteJSON(w, nodeapi.HostdbAllGET{
 		Hosts: extendedHosts,
+	})
+}
+
+func (api *ThirdpartyAPI) signUploadHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var params modules.ThirdpartySignPOSTParams
+	err := json.NewDecoder(req.Body).Decode(&params)
+	if err != nil {
+		WriteError(w, Error{"invalid parameters: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	err = api.thirdparty.Sign(params.ID, &params.Transaction)
+	if err != nil {
+		WriteError(w, Error{"failed to sign transaction: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, modules.ThirdpartySignPOSTResp{
+		Transaction: params.Transaction,
 	})
 }
 

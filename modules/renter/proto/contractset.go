@@ -165,7 +165,6 @@ func (cs *ContractSet) ThirdpartyViewAll() []modules.ThirdpartyRenterContract {
 			TotalCost:        c.TotalCost,
 			TxnFee:           c.TxnFee,
 			ContractFee:      c.ContractFee,
-			SecretKey:        safeContract.header.SecretKey,
 		}
 		thirdpartyContracts = append(thirdpartyContracts, thirdpartyContract)
 	}

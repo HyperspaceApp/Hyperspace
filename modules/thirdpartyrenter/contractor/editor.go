@@ -115,10 +115,13 @@ func (he *hostEditor) Upload(data []byte) (_ crypto.Hash, err error) {
 		UploadSpending:   contract.UploadSpending,
 	}
 
-	err = he.contractor.httpClient.ThirdpartyServerContractRevisionPost(updator)
-	if err != nil {
-		he.contractor.log.Println("error when sync contract to thirdparty server:", err)
-		// TODO: add to retry loop
+	// TODO: remove it later when we decide to use remote sign
+	if he.contractor.httpClient != nil { // thidparty client
+		err = he.contractor.httpClient.ThirdpartyServerContractRevisionPost(updator)
+		if err != nil {
+			he.contractor.log.Println("error when sync contract to thirdparty server:", err)
+			// TODO: add to retry loop
+		}
 	}
 
 	return sectorRoot, nil
@@ -181,7 +184,7 @@ func (c *Contractor) Editor(pk types.SiaPublicKey, cancel <-chan struct{}) (_ Ed
 	// }
 
 	// Create the editor.
-	e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, cancel)
+	e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, c.httpClient, cancel)
 	if err != nil {
 		return nil, err
 	}

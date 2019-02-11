@@ -166,7 +166,7 @@ func (c *Contractor) Downloader(pk types.SiaPublicKey, cancel <-chan struct{}) (
 	}
 
 	// create downloader
-	d, err := c.staticContracts.NewDownloader(host, contract.ID, c.hdb, cancel)
+	d, err := c.staticContracts.NewDownloader(host, contract.ID, c.hdb, nil, cancel)
 	if err != nil {
 		return nil, err
 	}

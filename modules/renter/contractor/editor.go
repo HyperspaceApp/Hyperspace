@@ -168,7 +168,7 @@ func (c *Contractor) Editor(pk types.SiaPublicKey, cancel <-chan struct{}) (_ Ed
 	}
 
 	// Create the editor.
-	e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, cancel)
+	e, err := c.staticContracts.NewEditor(host, contract.ID, height, c.hdb, nil, cancel)
 	if err != nil {
 		return nil, err
 	}

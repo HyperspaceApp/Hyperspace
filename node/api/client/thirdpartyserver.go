@@ -2,11 +2,14 @@ package client
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"net/url"
 
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/node/api"
+	"github.com/HyperspaceApp/Hyperspace/types"
 )
 
 // ThirdpartyServerContractsGet get the contracts
@@ -27,5 +30,23 @@ func (c *Client) ThirdpartyServerContractRevisionPost(trru modules.ThirdpartyRen
 	values.Set("updator", base64.StdEncoding.EncodeToString(encoding.Marshal(trru)))
 
 	err = c.post("/contract/revision", values.Encode(), nil)
+	return
+}
+
+// ThirdpartyServerSignPost will remotely sign the transaction
+func (c *Client) ThirdpartyServerSignPost(id types.FileContractID, txn types.Transaction) (encodedSig crypto.Signature, err error) {
+	var tspr modules.ThirdpartySignPOSTResp
+	json, err := json.Marshal(modules.ThirdpartySignPOSTParams{
+		Transaction: txn,
+		ID:          id,
+	})
+	if err != nil {
+		return crypto.Signature{}, err
+	}
+	err = c.post("/sign", string(json), &tspr)
+	if err != nil {
+		return crypto.Signature{}, err
+	}
+	copy(encodedSig[:], tspr.Transaction.TransactionSignatures[0].Signature[:])
 	return
 }
