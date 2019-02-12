@@ -284,7 +284,7 @@ func startDaemon(config Config) (err error) {
 	}
 
 	// longer timeout time for locks
-	deadlock.Opts.DeadlockTimeout = time.Minute * 2
+	deadlock.Opts.DeadlockTimeout = time.Second * 30
 
 	// Install a signal handler that will catch exceptions thrown by mmap'd
 	// files.

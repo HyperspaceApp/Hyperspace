@@ -41,6 +41,8 @@ type (
 
 		TxnFee types.Currency `json:"txnfee"`
 
+		Roots []crypto.Hash `json:"roots"`
+
 		// SecretKey crypto.SecretKey `json:"secretkey"`
 	}
 

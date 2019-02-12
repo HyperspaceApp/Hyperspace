@@ -3,6 +3,7 @@
 package thirdpartyrenter
 
 import (
+	"log"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -170,6 +171,7 @@ func NewCustomThirdpartyRenter(hc hostContractor, persistDir string, deps module
 		r.mu.RUnlock(id)
 		return nil
 	})
+	log.Printf("3")
 
 	return r, nil
 }

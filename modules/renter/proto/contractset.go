@@ -2,9 +2,11 @@ package proto
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
-	"sync"
+
+	"github.com/sasha-s/go-deadlock"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
 	"github.com/HyperspaceApp/Hyperspace/modules"
@@ -23,7 +25,7 @@ type ContractSet struct {
 	pubKeys   map[string]types.FileContractID
 	deps      modules.Dependencies
 	dir       string
-	mu        sync.Mutex
+	mu        deadlock.Mutex
 	rl        *ratelimit.RateLimit
 	wal       *writeaheadlog.WAL
 }
@@ -152,6 +154,10 @@ func (cs *ContractSet) ThirdpartyViewAll() []modules.ThirdpartyRenterContract {
 	thirdpartyContracts := make([]modules.ThirdpartyRenterContract, 0, len(cs.contracts))
 	for _, safeContract := range cs.contracts {
 		c := safeContract.Metadata()
+		roots, err := safeContract.merkleRoots.merkleRoots()
+		if err != nil {
+			log.Printf("get merkle err: %s", err)
+		}
 		thirdpartyContract := modules.ThirdpartyRenterContract{
 			ID:               c.ID,
 			HostPublicKey:    c.HostPublicKey,
@@ -165,6 +171,7 @@ func (cs *ContractSet) ThirdpartyViewAll() []modules.ThirdpartyRenterContract {
 			TotalCost:        c.TotalCost,
 			TxnFee:           c.TxnFee,
 			ContractFee:      c.ContractFee,
+			Roots:            roots,
 		}
 		thirdpartyContracts = append(thirdpartyContracts, thirdpartyContract)
 	}

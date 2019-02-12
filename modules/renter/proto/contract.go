@@ -390,9 +390,7 @@ func (c *SafeContract) unappliedHeader() (h contractHeader) {
 }
 
 // ThirdpartyInsertORUpdateContract will help sync right info into static contract set
-func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.ThirdpartyRenterContract, roots []crypto.Hash) (modules.RenterContract, error) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
+func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.ThirdpartyRenterContract) (modules.RenterContract, error) {
 	remoteHeader := contractHeader{
 		Transaction:     remoteContract.Transaction,
 		StartHeight:     remoteContract.StartHeight,
@@ -407,12 +405,39 @@ func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.T
 	}
 	sc, exists := cs.Acquire(remoteContract.ID)
 	if exists {
+		cs.Return(sc)
 		if sc.header.LastRevision().NewRevisionNumber >= remoteHeader.LastRevision().NewRevisionNumber {
+			// TODO: upload the revision when local is newer?
 			return sc.Metadata(), nil
+		} else {
+			// replace whole contract
+			cs.managedUpdateContract(sc, remoteHeader, remoteContract.Roots)
 		}
 	}
 
-	return cs.managedInsertContract(remoteHeader, roots)
+	return cs.managedInsertContract(remoteHeader, remoteContract.Roots)
+}
+
+func (cs *ContractSet) managedUpdateContract(sc *SafeContract, h contractHeader, roots []crypto.Hash) (modules.RenterContract, error) {
+	//
+	sc.mu.Lock()
+	defer sc.mu.Lock()
+
+	sc.header = h
+	if _, err := sc.headerFile.WriteAt(encoding.Marshal(h), 0); err != nil {
+		return modules.RenterContract{}, err
+	}
+	merkleRoots := newMerkleRoots(sc.merkleRoots.rootsFile)
+	for _, root := range roots {
+		if err := merkleRoots.push(root); err != nil {
+			return modules.RenterContract{}, err
+		}
+	}
+	if err := sc.headerFile.f.Sync(); err != nil {
+		return modules.RenterContract{}, err
+	}
+	sc.merkleRoots = merkleRoots
+	return sc.Metadata(), nil
 }
 
 func (cs *ContractSet) managedInsertContract(h contractHeader, roots []crypto.Hash) (modules.RenterContract, error) {
