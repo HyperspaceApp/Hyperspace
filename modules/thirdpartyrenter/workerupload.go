@@ -75,11 +75,9 @@ func (w *worker) managedNextUploadChunk() (nextChunk *unfinishedUploadChunk, pie
 // managedQueueUploadChunk will take a chunk and add it to the worker's repair
 // stack.
 func (w *worker) managedQueueUploadChunk(uc *unfinishedUploadChunk) {
-	log.Printf("managedQueueUploadChunk: %s", w.contract.ID)
 	// Check that the worker is allowed to be uploading before grabbing the
 	// worker lock.
 	utility, exists := w.renter.hostContractor.ContractUtility(w.contract.HostPublicKey)
-	log.Printf("managedQueueUploadChunk: %v %v", utility, exists)
 	goodForUpload := exists && utility.GoodForUpload
 	w.mu.Lock()
 	if !goodForUpload || w.uploadTerminated || w.onUploadCooldown() {

@@ -25,7 +25,7 @@ var (
 		case "dev":
 			return 1
 		case "standard":
-			return 5
+			return 3
 		case "testing":
 			return 1
 		}

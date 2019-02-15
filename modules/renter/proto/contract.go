@@ -2,6 +2,7 @@ package proto
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -407,13 +408,16 @@ func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.T
 	if exists {
 		cs.Return(sc)
 		if sc.header.LastRevision().NewRevisionNumber >= remoteHeader.LastRevision().NewRevisionNumber {
+			log.Printf("ThirdpartyInsert: no need to update %s", remoteContract.ID)
 			// TODO: upload the revision when local is newer?
 			return sc.Metadata(), nil
 		} else {
+			log.Printf("ThirdpartyInsert: updating %s", remoteContract.ID)
 			// replace whole contract
 			cs.managedUpdateContract(sc, remoteHeader, remoteContract.Roots)
 		}
 	}
+	log.Printf("ThirdpartyInsert: new contact %s", remoteContract.ID)
 
 	return cs.managedInsertContract(remoteHeader, remoteContract.Roots)
 }

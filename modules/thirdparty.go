@@ -73,6 +73,16 @@ type (
 	ThirdpartySignPOSTResp struct {
 		Transaction types.Transaction `json:"transaction"`
 	}
+
+	// ThirdpartySignChallengePOSTParams is the param for challenge sign
+	ThirdpartySignChallengePOSTParams struct {
+		ID        types.FileContractID `json:"id"`
+		Challenge crypto.Hash          `json:"challenge"`
+	}
+
+	ThirdpartySignChallengePOSTResp struct {
+		Signature crypto.Signature `json:"signature"`
+	}
 )
 
 const (
@@ -141,4 +151,7 @@ type Thirdparty interface {
 
 	// Sign help thirdparty renter to sign upload/download action
 	Sign(id types.FileContractID, txn *types.Transaction) error
+
+	// SignChallenge help sign contract challenge
+	SignChallenge(id types.FileContractID, challenge crypto.Hash) (crypto.Signature, error)
 }

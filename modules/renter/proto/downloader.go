@@ -314,7 +314,12 @@ func (cs *ContractSet) NewDownloader(host modules.HostDBEntry, id types.FileCont
 		}
 	}()
 
-	conn, closeChan, err := initiateRevisionLoop(host, sc, modules.RPCDownload, cancel, cs.rl)
+	conn, closeChan, err := initiateRevisionLoop(host, sc, modules.RPCDownload, func(challenge crypto.Hash) (crypto.Signature, error) {
+		if httpClient == nil {
+			return crypto.SignHash(challenge, contract.SecretKey), nil
+		}
+		return httpClient.ThirdpartyServerSignChallengePost(id, challenge)
+	}, cancel, cs.rl)
 	if err != nil {
 		return nil, errors.AddContext(err, "failed to initiate revision loop")
 	}

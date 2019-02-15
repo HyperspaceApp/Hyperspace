@@ -37,7 +37,8 @@ func (api *ThirdpartyAPI) buildHTTPRoutes() error {
 	// fetch contracts
 	router.GET("/contracts", api.contractsHandler)
 	router.GET("/hostdb/all", api.hostdbAllHandler)
-	router.POST("/sign/upload", api.signUploadHandlerPOST)
+	router.POST("/sign", api.signHandlerPOST)
+	router.POST("/sign/challenge", api.signChallengeHandlerPOST)
 	// router.POST("/contract/revision", api.contractRevisionHandlerPOST)
 
 	// update contract info
@@ -115,23 +116,6 @@ func (api *ThirdpartyAPI) hostdbAllHandler(w http.ResponseWriter, req *http.Requ
 	})
 }
 
-func (api *ThirdpartyAPI) signUploadHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-	var params modules.ThirdpartySignPOSTParams
-	err := json.NewDecoder(req.Body).Decode(&params)
-	if err != nil {
-		WriteError(w, Error{"invalid parameters: " + err.Error()}, http.StatusBadRequest)
-		return
-	}
-	err = api.thirdparty.Sign(params.ID, &params.Transaction)
-	if err != nil {
-		WriteError(w, Error{"failed to sign transaction: " + err.Error()}, http.StatusBadRequest)
-		return
-	}
-	WriteJSON(w, modules.ThirdpartySignPOSTResp{
-		Transaction: params.Transaction,
-	})
-}
-
 // upload the revisions
 func (api *ThirdpartyAPI) contractRevisionHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
 	var updator modules.ThirdpartyRenterRevisionUpdator
@@ -148,4 +132,38 @@ func (api *ThirdpartyAPI) contractRevisionHandlerPOST(w http.ResponseWriter, req
 	api.thirdparty.UpdateContractRevision(updator)
 
 	WriteSuccess(w)
+}
+
+func (api *ThirdpartyAPI) signHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var params modules.ThirdpartySignPOSTParams
+	err := json.NewDecoder(req.Body).Decode(&params)
+	if err != nil {
+		WriteError(w, Error{"invalid parameters: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	err = api.thirdparty.Sign(params.ID, &params.Transaction)
+	if err != nil {
+		WriteError(w, Error{"failed to sign transaction: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, modules.ThirdpartySignPOSTResp{
+		Transaction: params.Transaction,
+	})
+}
+
+func (api *ThirdpartyAPI) signChallengeHandlerPOST(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+	var params modules.ThirdpartySignChallengePOSTParams
+	err := json.NewDecoder(req.Body).Decode(&params)
+	if err != nil {
+		WriteError(w, Error{"invalid parameters: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	signature, err := api.thirdparty.SignChallenge(params.ID, params.Challenge)
+	if err != nil {
+		WriteError(w, Error{"failed to sign challenge: " + err.Error()}, http.StatusBadRequest)
+		return
+	}
+	WriteJSON(w, modules.ThirdpartySignChallengePOSTResp{
+		Signature: signature,
+	})
 }

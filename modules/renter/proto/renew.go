@@ -135,7 +135,10 @@ func (cs *ContractSet) oldRenew(oldContract *SafeContract, params ContractParams
 		return modules.RenterContract{}, errors.New("couldn't initiate RPC: " + err.Error())
 	}
 	// verify that both parties are renewing the same contract
-	err = verifyRecentRevision(conn, oldContract, host.Version)
+	err = verifyRecentRevision(conn, oldContract, host.Version, func(challenge crypto.Hash) (crypto.Signature, error) {
+		// this will only happen in renter/thirdparyt not thirdpartyrenter, so it's safe to assume secretkey present
+		return crypto.SignHash(challenge, contract.SecretKey), nil
+	})
 	if err != nil {
 		return modules.RenterContract{}, err
 	}

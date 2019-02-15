@@ -50,3 +50,21 @@ func (c *Client) ThirdpartyServerSignPost(id types.FileContractID, txn types.Tra
 	copy(encodedSig[:], tspr.Transaction.TransactionSignatures[0].Signature[:])
 	return
 }
+
+// ThirdpartyServerSignChallengePost will remotely sign the transaction
+func (c *Client) ThirdpartyServerSignChallengePost(id types.FileContractID, challenge crypto.Hash) (encodedSig crypto.Signature, err error) {
+	var tscpr modules.ThirdpartySignChallengePOSTResp
+	json, err := json.Marshal(modules.ThirdpartySignChallengePOSTParams{
+		Challenge: challenge,
+		ID:        id,
+	})
+	if err != nil {
+		return crypto.Signature{}, err
+	}
+	err = c.post("/sign/challenge", string(json), &tscpr)
+	if err != nil {
+		return crypto.Signature{}, err
+	}
+	copy(encodedSig[:], tscpr.Signature[:])
+	return
+}

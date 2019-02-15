@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/HyperspaceApp/Hyperspace/build"
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/contractor"
 	"github.com/HyperspaceApp/Hyperspace/modules/renter/hostdb"
@@ -181,6 +182,9 @@ type hostContractor interface {
 
 	// Sign help thirdparty renter to sign upload/download action
 	Sign(id types.FileContractID, txn *types.Transaction) error
+
+	// SignChallenge help sign contract challenge
+	SignChallenge(id types.FileContractID, challenge crypto.Hash) (crypto.Signature, error)
 }
 
 // A Thirdparty is responsible for tracking all of the files that a user has
@@ -510,6 +514,11 @@ func (t *Thirdparty) UpdateContractRevision(updator modules.ThirdpartyRenterRevi
 // Sign help thirdparty renter to sign upload/download action
 func (t *Thirdparty) Sign(id types.FileContractID, txn *types.Transaction) error {
 	return t.hostContractor.Sign(id, txn)
+}
+
+// SignChallenge help sign contract challenge
+func (t *Thirdparty) SignChallenge(id types.FileContractID, challenge crypto.Hash) (crypto.Signature, error) {
+	return t.hostContractor.SignChallenge(id, challenge)
 }
 
 // ProcessConsensusChange returns the process consensus change

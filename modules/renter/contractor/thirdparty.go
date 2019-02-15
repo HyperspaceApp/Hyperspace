@@ -3,6 +3,7 @@ package contractor
 import (
 	"fmt"
 
+	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/modules"
 	"github.com/HyperspaceApp/Hyperspace/types"
 )
@@ -27,9 +28,18 @@ func (c *Contractor) UpdateContractRevision(updator modules.ThirdpartyRenterRevi
 func (c *Contractor) Sign(id types.FileContractID, txn *types.Transaction) error {
 	sc, exists := c.staticContracts.Acquire(id)
 	defer c.staticContracts.Return(sc)
-	// TODO: compare and update
 	if !exists {
-		return fmt.Errorf("there is no such contract: %s", id)
+		return fmt.Errorf("Sign:there is no such contract: %s", id)
 	}
 	return sc.Sign(id, txn)
+}
+
+// SignChallenge help sign contract challenge
+func (c *Contractor) SignChallenge(id types.FileContractID, challenge crypto.Hash) (crypto.Signature, error) {
+	sc, exists := c.staticContracts.Acquire(id)
+	defer c.staticContracts.Return(sc)
+	if !exists {
+		return crypto.Signature{}, fmt.Errorf("SignChallenge:there is no such contract: %s", id)
+	}
+	return sc.SignChallenge(id, challenge)
 }

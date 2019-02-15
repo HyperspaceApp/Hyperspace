@@ -152,15 +152,14 @@ func (c *Contractor) ContractUtility(types.SiaPublicKey) (modules.ContractUtilit
 
 // Contracts fetch contracts from remote
 func (c *Contractor) Contracts() []modules.RenterContract {
+	log.Printf("refresh contracts")
 	// fetch our contracts from remote server
 	// TODO: add auth and our id
-	log.Printf("1")
 	trc, err := c.httpClient.ThirdpartyServerContractsGet()
 	if err != nil {
 		log.Println("Could not get contracts:", err)
 		return nil
 	}
-	log.Printf("2")
 	c.blockHeight = trc.Height
 	// var contracts []modules.RenterContract
 	for _, remoteContract := range trc.Contracts {
@@ -170,7 +169,6 @@ func (c *Contractor) Contracts() []modules.RenterContract {
 		c.contractIDToPubKey[remoteContract.ID] = remoteContract.HostPublicKey
 		c.pubKeysToContractID[string(remoteContract.HostPublicKey.Key)] = remoteContract.ID
 	}
-	log.Printf("3")
 
 	// sync hostdb after sync contracts
 	hdag, err := c.httpClient.ThirdpartyServerHostDbAllGet()

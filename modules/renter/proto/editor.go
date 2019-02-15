@@ -205,7 +205,12 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 		}
 	}()
 
-	conn, closeChan, err := initiateRevisionLoop(host, sc, modules.RPCReviseContract, cancel, cs.rl)
+	conn, closeChan, err := initiateRevisionLoop(host, sc, modules.RPCReviseContract, func(challenge crypto.Hash) (crypto.Signature, error) {
+		if httpClient == nil {
+			return crypto.SignHash(challenge, contract.SecretKey), nil
+		}
+		return httpClient.ThirdpartyServerSignChallengePost(id, challenge)
+	}, cancel, cs.rl)
 	if err != nil {
 		return nil, errors.AddContext(err, "failed to initiate revision loop")
 	}
@@ -231,7 +236,7 @@ func (cs *ContractSet) NewEditor(host modules.HostDBEntry, id types.FileContract
 
 // initiateRevisionLoop initiates either the editor or downloader loop with
 // host, depending on which rpc was passed.
-func initiateRevisionLoop(host modules.HostDBEntry, contract *SafeContract, rpc types.Specifier, cancel <-chan struct{}, rl *ratelimit.RateLimit) (net.Conn, chan struct{}, error) {
+func initiateRevisionLoop(host modules.HostDBEntry, contract *SafeContract, rpc types.Specifier, signFunc func(challenge crypto.Hash) (crypto.Signature, error), cancel <-chan struct{}, rl *ratelimit.RateLimit) (net.Conn, chan struct{}, error) {
 	c, err := (&net.Dialer{
 		Cancel:  cancel,
 		Timeout: 45 * time.Second, // TODO: Constant
@@ -258,7 +263,8 @@ func initiateRevisionLoop(host modules.HostDBEntry, contract *SafeContract, rpc 
 		close(closeChan)
 		return nil, closeChan, errors.New("couldn't initiate RPC: " + err.Error())
 	}
-	if err := verifyRecentRevision(conn, contract, host.Version); err != nil {
+	err = verifyRecentRevision(conn, contract, host.Version, signFunc)
+	if err != nil {
 		conn.Close() // TODO: close gracefully if host has entered revision loop
 		close(closeChan)
 		return nil, closeChan, err
