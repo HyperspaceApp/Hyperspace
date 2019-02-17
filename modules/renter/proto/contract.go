@@ -10,6 +10,7 @@ import (
 	"github.com/HyperspaceApp/Hyperspace/crypto"
 	"github.com/HyperspaceApp/Hyperspace/encoding"
 	"github.com/HyperspaceApp/Hyperspace/modules"
+	"github.com/HyperspaceApp/Hyperspace/node/api/client"
 	"github.com/HyperspaceApp/Hyperspace/types"
 	"github.com/HyperspaceApp/errors"
 	"github.com/HyperspaceApp/writeaheadlog"
@@ -391,7 +392,7 @@ func (c *SafeContract) unappliedHeader() (h contractHeader) {
 }
 
 // ThirdpartyInsertORUpdateContract will help sync right info into static contract set
-func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.ThirdpartyRenterContract) (modules.RenterContract, error) {
+func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.ThirdpartyRenterContract, httpClient *client.Client) (modules.RenterContract, error) {
 	remoteHeader := contractHeader{
 		Transaction:     remoteContract.Transaction,
 		StartHeight:     remoteContract.StartHeight,
@@ -408,8 +409,18 @@ func (cs *ContractSet) ThirdpartyInsertORUpdateContract(remoteContract modules.T
 	if exists {
 		cs.Return(sc)
 		if sc.header.LastRevision().NewRevisionNumber >= remoteHeader.LastRevision().NewRevisionNumber {
-			log.Printf("ThirdpartyInsert: no need to update %s", remoteContract.ID)
-			// TODO: upload the revision when local is newer?
+			if sc.header.LastRevision().NewRevisionNumber == remoteHeader.LastRevision().NewRevisionNumber {
+				return sc.Metadata(), nil
+			}
+			// if httpClient != nil { // thidparty client
+			// 	err = httpClient.ThirdpartyServerContractRevisionPost(modules.ThirdpartyRenterRevisionUpdator{
+			// 		ID:     remoteContract.ID,
+			// 		Action: modules.ThirdpartySync,
+			// 		Transaction: sc.header.LastRevision(),
+
+			// 	})
+			// }
+			// post to remote
 			return sc.Metadata(), nil
 		} else {
 			log.Printf("ThirdpartyInsert: updating %s", remoteContract.ID)

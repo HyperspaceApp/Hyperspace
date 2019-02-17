@@ -61,6 +61,7 @@ type (
 		StorageSpending  types.Currency       `json:"storagespending"`
 		UploadSpending   types.Currency       `json:"uploadspending"`
 		SectorRoot       crypto.Hash          `json:"sectorroot"`
+		SectorRoots      []crypto.Hash        `json:"sectorroots"`
 	}
 
 	// ThirdpartySignPOSTParams contains the unsigned transaction
@@ -80,6 +81,7 @@ type (
 		Challenge crypto.Hash          `json:"challenge"`
 	}
 
+	// ThirdpartySignChallengePOSTResp is the signed challenge
 	ThirdpartySignChallengePOSTResp struct {
 		Signature crypto.Signature `json:"signature"`
 	}
@@ -89,6 +91,11 @@ const (
 	// ThirdpartyDir is the name of the directory that is used to store the
 	// third party's persistent data.
 	ThirdpartyDir = "thirdparty"
+)
+
+var (
+	// ThirdpartySync is the specifier for syncing
+	ThirdpartySync = types.Specifier{'T', 'h', 'i', 'r', 'd', 'p', 'a', 'r', 't', 'y', 'S', 'y', 'n', 'c'}
 )
 
 // A Thirdparty uploads, tracks, repairs, and downloads a set of files for the

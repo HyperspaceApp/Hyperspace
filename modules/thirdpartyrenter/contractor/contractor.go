@@ -164,7 +164,7 @@ func (c *Contractor) Contracts() []modules.RenterContract {
 	// var contracts []modules.RenterContract
 	for _, remoteContract := range trc.Contracts {
 		// TODO: add hash if has one
-		c.staticContracts.ThirdpartyInsertORUpdateContract(remoteContract)
+		c.staticContracts.ThirdpartyInsertORUpdateContract(remoteContract, c.httpClient)
 
 		c.contractIDToPubKey[remoteContract.ID] = remoteContract.HostPublicKey
 		c.pubKeysToContractID[string(remoteContract.HostPublicKey.Key)] = remoteContract.ID

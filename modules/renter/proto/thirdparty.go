@@ -1,6 +1,7 @@
 package proto
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/HyperspaceApp/Hyperspace/crypto"
@@ -11,11 +12,13 @@ import (
 // UpdateContractRevision update contract revision
 func (c *SafeContract) UpdateContractRevision(updator modules.ThirdpartyRenterRevisionUpdator) error {
 	log.Printf("UpdateContractRevision for contract :%s", updator.ID)
+
 	// construct new header
-	if updator.Transaction.FileContractRevisions[0].NewRevisionNumber == c.header.LastRevision().NewRevisionNumber+1 {
+	if updator.Transaction.FileContractRevisions[0].NewRevisionNumber != c.header.LastRevision().NewRevisionNumber+1 {
 		// need to be next revision to be accept
-		return nil
+		return fmt.Errorf("UpdateContractRevision not next revision: %s %d %d", updator.ID, updator.Transaction.FileContractRevisions[0].NewRevisionNumber, c.header.LastRevision().NewRevisionNumber)
 	}
+	log.Printf("UpdateContractRevision for contract updating :%s", updator.ID)
 
 	c.headerMu.Lock()
 	newHeader := c.header
@@ -24,6 +27,7 @@ func (c *SafeContract) UpdateContractRevision(updator modules.ThirdpartyRenterRe
 	if updator.Action == modules.RPCReviseContract {
 		newHeader.StorageSpending = updator.StorageSpending
 		newHeader.UploadSpending = updator.UploadSpending
+		newHeader.Transaction = updator.Transaction
 		if err := c.applySetRoot(updator.SectorRoot, c.merkleRoots.len()); err != nil {
 			return err
 		}
@@ -31,7 +35,12 @@ func (c *SafeContract) UpdateContractRevision(updator modules.ThirdpartyRenterRe
 	if updator.Action == modules.RPCDownload {
 		newHeader.StorageSpending = updator.StorageSpending
 		newHeader.DownloadSpending = updator.DownloadSpending
+		newHeader.Transaction = updator.Transaction
 	}
+
+	// if updator.Action == modules.ThirdpartySync {
+
+	// }
 
 	if err := c.applySetHeader(newHeader); err != nil {
 		return err

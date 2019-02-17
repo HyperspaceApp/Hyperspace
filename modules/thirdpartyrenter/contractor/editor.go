@@ -110,6 +110,7 @@ func (he *hostEditor) Upload(data []byte) (_ crypto.Hash, err error) {
 	}
 	updator := modules.ThirdpartyRenterRevisionUpdator{
 		ID:               contract.ID,
+		Transaction:      contract.Transaction,
 		DownloadSpending: contract.DownloadSpending,
 		StorageSpending:  contract.StorageSpending,
 		UploadSpending:   contract.UploadSpending,

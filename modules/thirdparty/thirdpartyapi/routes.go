@@ -39,7 +39,7 @@ func (api *ThirdpartyAPI) buildHTTPRoutes() error {
 	router.GET("/hostdb/all", api.hostdbAllHandler)
 	router.POST("/sign", api.signHandlerPOST)
 	router.POST("/sign/challenge", api.signChallengeHandlerPOST)
-	// router.POST("/contract/revision", api.contractRevisionHandlerPOST)
+	router.POST("/contract/revision", api.contractRevisionHandlerPOST)
 
 	// update contract info
 	// upload/download meta data of fies
