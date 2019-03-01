@@ -18,7 +18,7 @@ var (
 	thirdpartyRenterCmd = &cobra.Command{
 		Use:   "thirdpartyrenter",
 		Short: "Perform thirdpartyrenter actions",
-		Long:  "upload, download",
+		Long:  "upload, download, list, downloads",
 		Run:   wrap(thirdpartyrentercmd),
 	}
 
@@ -37,6 +37,19 @@ var (
 		Run:     wrap(thirdpartyrenterfileslistcmd),
 	}
 
+	thirdpartyRenterDownloadsCmd = &cobra.Command{
+		Use:   "downloads",
+		Short: "View the download queue",
+		Long:  "View the list of files currently downloading.",
+		Run:   wrap(thirdpartyrenterdownloadscmd),
+	}
+
+	thirdpartyRenterFilesDownloadCmd = &cobra.Command{
+		Use:   "download [path] [destination]",
+		Short: "Download a file",
+		Long:  "Download a previously-uploaded file to a specified destination.",
+		Run:   wrap(thirdpartyrenterfilesdownloadcmd),
+	}
 	// renterUploadsCmd = &cobra.Command{
 	// 	Use:   "uploads",
 	// 	Short: "View the upload queue",
@@ -149,4 +162,75 @@ func thirdpartyrenterfileslistcmd() {
 		fmt.Fprintln(w, "")
 	}
 	w.Flush()
+}
+
+// thirdpartyrenterfilesdownloadcmd is the handler for the comand `hsc renter download [path] [destination]`.
+// Downloads a path from the Sia network to the local specified destination.
+func thirdpartyrenterfilesdownloadcmd(path, destination string) {
+	destination = abs(destination)
+
+	// Queue the download. An error will be returned if the queueing failed, but
+	// the call will return before the download has completed. The call is made
+	// as an async call.
+	err := httpClient.ThirdpartyRenterDownloadFullGet(path, destination, true)
+	if err != nil {
+		die("Download could not be started:", err)
+	}
+
+	// If the download is async, report success.
+	if renterDownloadAsync {
+		fmt.Printf("Queued Download '%s' to %s.\n", path, abs(destination))
+		return
+	}
+
+	// If the download is blocking, display progress as the file downloads.
+	err = downloadprogress(path, destination)
+	if err != nil {
+		die("\nDownload could not be completed:", err)
+	}
+	fmt.Printf("\nDownloaded '%s' to '%s'.\n", path, abs(destination))
+}
+
+// thirdpartyrenterdownloadscmd is the handler for the command `hsc renter downloads`.
+// Lists files currently downloading, and optionally previously downloaded
+// files if the -H or --history flag is specified.
+func thirdpartyrenterdownloadscmd() {
+	queue, err := httpClient.ThirdpartyRenterDownloadsGet()
+	if err != nil {
+		die("Could not get download queue:", err)
+	}
+	// Filter out files that have been downloaded.
+	var downloading []api.DownloadInfo
+	for _, file := range queue.Downloads {
+		if !file.Completed {
+			downloading = append(downloading, file)
+		}
+	}
+	if len(downloading) == 0 {
+		fmt.Println("No files are downloading.")
+	} else {
+		fmt.Println("Downloading", len(downloading), "files:")
+		for _, file := range downloading {
+			fmt.Printf("%s: %5.1f%% %s -> %s\n", file.StartTime.Format("Jan 02 03:04 PM"), 100*float64(file.Received)/float64(file.Filesize), file.HyperspacePath, file.Destination)
+		}
+	}
+	if !renterShowHistory {
+		return
+	}
+	fmt.Println()
+	// Filter out files that are downloading.
+	var downloaded []api.DownloadInfo
+	for _, file := range queue.Downloads {
+		if file.Completed {
+			downloaded = append(downloaded, file)
+		}
+	}
+	if len(downloaded) == 0 {
+		fmt.Println("No files downloaded.")
+	} else {
+		fmt.Println("Downloaded", len(downloaded), "files:")
+		for _, file := range downloaded {
+			fmt.Printf("%s: %s -> %s\n", file.StartTime.Format("Jan 02 03:04 PM"), file.HyperspacePath, file.Destination)
+		}
+	}
 }

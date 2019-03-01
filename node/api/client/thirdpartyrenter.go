@@ -83,3 +83,21 @@ func (c *Client) ThirdpartyRenterFilesGet() (rf api.RenterFiles, err error) {
 	err = c.get("/thirdpartyrenter/files", &rf)
 	return
 }
+
+// ThirdpartyRenterDownloadFullGet uses the /renter/download endpoint to download a full
+// file.
+func (c *Client) ThirdpartyRenterDownloadFullGet(siaPath, destination string, async bool) (err error) {
+	siaPath = escapeHyperspacePath(trimHyperspacePath(siaPath))
+	values := url.Values{}
+	values.Set("destination", url.QueryEscape(destination))
+	values.Set("httpresp", fmt.Sprint(false))
+	values.Set("async", fmt.Sprint(async))
+	err = c.get(fmt.Sprintf("/thirdpartyrenter/download/%s?%s", siaPath, values.Encode()), nil)
+	return
+}
+
+// ThirdpartyRenterDownloadsGet requests the /renter/downloads resource
+func (c *Client) ThirdpartyRenterDownloadsGet() (rdq api.RenterDownloadQueue, err error) {
+	err = c.get("/thirdpartyrenter/downloads", &rdq)
+	return
+}

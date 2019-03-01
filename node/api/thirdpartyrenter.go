@@ -165,3 +165,54 @@ func (api *API) thirdpartyRenterFilesHandler(w http.ResponseWriter, req *http.Re
 		})
 	}
 }
+
+// renterDownloadHandler handles the API call to download a file.
+func (api *API) thirdpartyRenterDownloadHandler(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
+	params, err := parseDownloadParameters(w, req, ps)
+	if err != nil {
+		WriteError(w, Error{err.Error()}, http.StatusBadRequest)
+		return
+	}
+	if params.Async {
+		err = api.thirdpartyrenter.DownloadAsync(params)
+	} else {
+		err = api.thirdpartyrenter.Download(params)
+	}
+	if err != nil {
+		WriteError(w, Error{"download failed: " + err.Error()}, http.StatusInternalServerError)
+		return
+	}
+	if params.Httpwriter == nil {
+		// `httpresp=true` causes writes to w before this line is run, automatically
+		// adding `200 Status OK` code to response. Calling this results in a
+		// multiple calls to WriteHeaders() errors.
+		WriteSuccess(w)
+		return
+	}
+}
+
+// thirdpartyRenterDownloadsHandler handles the API call to request the download queue.
+func (api *API) thirdpartyRenterDownloadsHandler(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	var downloads []DownloadInfo
+	for _, di := range api.thirdpartyrenter.DownloadHistory() {
+		downloads = append(downloads, DownloadInfo{
+			Destination:     di.Destination,
+			DestinationType: di.DestinationType,
+			Filesize:        di.Length,
+			Length:          di.Length,
+			Offset:          di.Offset,
+			HyperspacePath:  di.HyperspacePath,
+
+			Completed:            di.Completed,
+			EndTime:              di.EndTime,
+			Error:                di.Error,
+			Received:             di.Received,
+			StartTime:            di.StartTime,
+			StartTimeUnix:        di.StartTimeUnix,
+			TotalDataTransferred: di.TotalDataTransferred,
+		})
+	}
+	WriteJSON(w, RenterDownloadQueue{
+		Downloads: downloads,
+	})
+}

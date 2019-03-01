@@ -172,7 +172,8 @@ func main() {
 	thirdpartyContractsCmd.Flags().BoolVarP(&renterAllContracts, "all", "A", false, "Show all expired contracts in addition to active contracts")
 
 	root.AddCommand(thirdpartyRenterCmd)
-	thirdpartyRenterCmd.AddCommand(thirdpartyRenterFilesUploadCmd, thirdpartyRenterFilesListCmd)
+	thirdpartyRenterCmd.AddCommand(thirdpartyRenterFilesUploadCmd, thirdpartyRenterFilesListCmd, thirdpartyRenterFilesDownloadCmd,
+		thirdpartyRenterDownloadsCmd)
 
 	root.AddCommand(gatewayCmd)
 	gatewayCmd.AddCommand(gatewayConnectCmd, gatewayDisconnectCmd, gatewayAddressCmd, gatewayListCmd)

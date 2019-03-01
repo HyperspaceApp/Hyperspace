@@ -11,14 +11,20 @@ import (
 
 // UpdateContractRevision update contract revision
 func (c *SafeContract) UpdateContractRevision(updator modules.ThirdpartyRenterRevisionUpdator) error {
-	log.Printf("UpdateContractRevision for contract :%s", updator.ID)
+	if updator.Action == modules.RPCReviseContract {
+		// log.Printf("UpdateContractRevision for upload :%s", updator.ID)
+	} else if updator.Action == modules.RPCDownload {
+		log.Printf("UpdateContractRevision for download :%s", updator.ID)
+	} else {
+		log.Printf("UpdateContractRevision for other :%s", updator.ID)
+	}
 
 	// construct new header
 	if updator.Transaction.FileContractRevisions[0].NewRevisionNumber != c.header.LastRevision().NewRevisionNumber+1 {
 		// need to be next revision to be accept
 		return fmt.Errorf("UpdateContractRevision not next revision: %s %d %d", updator.ID, updator.Transaction.FileContractRevisions[0].NewRevisionNumber, c.header.LastRevision().NewRevisionNumber)
 	}
-	log.Printf("UpdateContractRevision for contract updating :%s", updator.ID)
+	// log.Printf("UpdateContractRevision for contract updating :%s", updator.ID)
 
 	c.headerMu.Lock()
 	newHeader := c.header
@@ -39,7 +45,6 @@ func (c *SafeContract) UpdateContractRevision(updator modules.ThirdpartyRenterRe
 	}
 
 	// if updator.Action == modules.ThirdpartySync {
-
 	// }
 
 	if err := c.applySetHeader(newHeader); err != nil {

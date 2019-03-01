@@ -214,6 +214,8 @@ func (api *API) buildHTTPRoutes(requiredUserAgent string, requiredPassword strin
 		// Directory endpoints
 		router.POST("/thirdpartyrenter/dir/*hyperspacepath", RequirePassword(api.thirdpartyRenterDirHandlerPOST, requiredPassword))
 		router.GET("/thirdpartyrenter/dir/*hyperspacepath", api.renterDirHandlerGET)
+		router.GET("/thirdpartyrenter/download/*hyperspacepath", RequirePassword(api.thirdpartyRenterDownloadHandler, requiredPassword))
+		router.GET("/thirdpartyrenter/downloads", api.thirdpartyRenterDownloadsHandler)
 	} else {
 		log.Printf("thirdpartyrenter not exists")
 	}
